@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <getopt.h>
 #include <stdbool.h>
 
 #include <glib.h>
@@ -40,6 +39,12 @@
 #include "commands.h"
 
 static DBusConnection *connection;
+
+struct connman_option {
+	const char *name;
+	const char val;
+	const char *desc;
+};
 
 static char *ipv4[] = {
 	"Method",
@@ -57,7 +62,7 @@ static char *ipv6[] = {
 	NULL
 };
 
-static int cmd_help(char *args[], int num, struct option *options);
+static int cmd_help(char *args[], int num, struct connman_option *options);
 
 static int parse_boolean(char *arg)
 {
@@ -85,7 +90,7 @@ static int parse_boolean(char *arg)
 	return -1;
 }
 
-static int parse_args(char *arg, struct option *options)
+static int parse_args(char *arg, struct connman_option *options)
 {
 	int i;
 
@@ -122,7 +127,7 @@ static void enable_return(DBusMessageIter *iter, const char *error,
 	g_free(user_data);
 }
 
-static int cmd_enable(char *args[], int num, struct option *options)
+static int cmd_enable(char *args[], int num, struct connman_option *options)
 {
 	char *tech;
 	dbus_bool_t b = TRUE;
@@ -166,7 +171,7 @@ static void disable_return(DBusMessageIter *iter, const char *error,
 	g_free(user_data);
 }
 
-static int cmd_disable(char *args[], int num, struct option *options)
+static int cmd_disable(char *args[], int num, struct connman_option *options)
 {
 	char *tech;
 	dbus_bool_t b = FALSE;
@@ -205,7 +210,7 @@ static void state_print(DBusMessageIter *iter, const char *error,
 	fprintf(stdout, "\n");
 }
 
-static int cmd_state(char *args[], int num, struct option *options)
+static int cmd_state(char *args[], int num, struct connman_option *options)
 {
 	if (num > 1)
 		return -E2BIG;
@@ -254,7 +259,7 @@ static void services_properties(DBusMessageIter *iter, const char *error,
 	g_free(user_data);
 }
 
-static int cmd_services(char *args[], int num, struct option *options)
+static int cmd_services(char *args[], int num, struct connman_option *options)
 {
 	char *service_name = NULL;
 	char *path;
@@ -320,7 +325,8 @@ static void technology_print(DBusMessageIter *iter, const char *error,
 	}
 }
 
-static int cmd_technologies(char *args[], int num, struct option *options)
+static int cmd_technologies(char *args[], int num,
+		struct connman_option *options)
 {
 	if (num > 1)
 		return -E2BIG;
@@ -463,7 +469,7 @@ static int tether_set_ssid(char *ssid, char *passphrase, int set_tethering)
 	return -EINPROGRESS;
 }
 
-static int cmd_tether(char *args[], int num, struct option *options)
+static int cmd_tether(char *args[], int num, struct connman_option *options)
 {
 	char *ssid, *passphrase;
 	int set_tethering;
@@ -515,7 +521,7 @@ static void scan_return(DBusMessageIter *iter, const char *error,
 	g_free(user_data);
 }
 
-static int cmd_scan(char *args[], int num, struct option *options)
+static int cmd_scan(char *args[], int num, struct connman_option *options)
 {
 	char *path;
 
@@ -546,7 +552,7 @@ static void connect_return(DBusMessageIter *iter, const char *error,
 	g_free(user_data);
 }
 
-static int cmd_connect(char *args[], int num, struct option *options)
+static int cmd_connect(char *args[], int num, struct connman_option *options)
 {
 	char *path;
 
@@ -577,7 +583,7 @@ static void disconnect_return(DBusMessageIter *iter, const char *error,
 	g_free(user_data);
 }
 
-static int cmd_disconnect(char *args[], int num, struct option *options)
+static int cmd_disconnect(char *args[], int num, struct connman_option *options)
 {
 	char *path;
 
@@ -794,7 +800,7 @@ static void config_append_proxy(DBusMessageIter *iter, void *user_data)
 	append->values++;
 }
 
-static int cmd_config(char *args[], int num, struct option *options)
+static int cmd_config(char *args[], int num, struct connman_option *options)
 {
 	int result = 0, res = 0, index = 2, oldindex = 0;
 	int c;
@@ -1048,7 +1054,7 @@ static void monitor_del(char *interface)
 				NULL);
 }
 
-static int cmd_monitor(char *args[], int num, struct option *options)
+static int cmd_monitor(char *args[], int num, struct connman_option *options)
 {
 	bool add = true;
 	int c;
@@ -1121,104 +1127,78 @@ static int cmd_monitor(char *args[], int num, struct option *options)
 	return 0;
 }
 
-static int cmd_exit(char *args[], int num, struct option *options)
+static int cmd_exit(char *args[], int num, struct connman_option *options)
 {
 	return 1;
 }
 
-static struct option service_options[] = {
-	{"properties", required_argument, 0, 'p'},
+static struct connman_option service_options[] = {
+	{"properties", 'p', "[<service>]      (obsolete)"},
 	{ NULL, }
 };
 
-static const char *service_desc[] = {
-	"[<service>]      (obsolete)",
-	NULL
-};
-
-static struct option config_options[] = {
-	{"nameservers", required_argument, 0, 'n'},
-	{"timeservers", required_argument, 0, 't'},
-	{"domains", required_argument, 0, 'd'},
-	{"ipv6", required_argument, 0, 'v'},
-	{"proxy", required_argument, 0, 'x'},
-	{"autoconnect", required_argument, 0, 'a'},
-	{"ipv4", required_argument, 0, 'i'},
-	{"remove", 0, 0, 'r'},
+static struct connman_option config_options[] = {
+	{"nameservers", 'n', "<dns1> [<dns2>] [<dns3>]"},
+	{"timeservers", 't', "<ntp1> [<ntp2>] [...]"},
+	{"domains", 'd', "<domain1> [<domain2>] [...]"},
+	{"ipv6", 'v', "off|auto [enable|disable|prefered]|\n"
+	              "\t\t\tmanual <address> <prefixlength> <gateway>"},
+	{"proxy", 'x', "direct|auto <URL>|manual <URL1> [<URL2>] [...]\n"
+	               "\t\t\t[exclude <exclude1> [<exclude2>] [...]]"},
+	{"autoconnect", 'a', "yes|no"},
+	{"ipv4", 'i', "off|dhcp|manual <address> <netmask> <gateway>"},
+	{"remove", 'r', "                 Remove service"},
 	{ NULL, }
 };
 
-static const char *config_desc[] = {
-	"<dns1> [<dns2>] [<dns3>]",
-	"<ntp1> [<ntp2>] [...]",
-	"<domain1> [<domain2>] [...]",
-	"off|auto [enable|disable|prefered]|\n"
-	"\t\t\tmanual <address> <prefixlength> <gateway>",
-	"direct|auto <URL>|manual <URL1> [<URL2>] [...]\n"
-	"\t\t\t[exclude <exclude1> [<exclude2>] [...]]",
-	"yes|no",
-	"off|dhcp|manual <address> <netmask> <gateway>",
-	"                 Remove service",
-	NULL
-};
-
-static struct option monitor_options[] = {
-	{"services", no_argument, 0, 's'},
-	{"tech", no_argument, 0, 'c'},
-	{"manager", no_argument, 0, 'm'},
+static struct connman_option monitor_options[] = {
+	{"services", 's', "[off]            Monitor only services"},
+	{"tech", 'c', "[off]            Monitor only technologies"},
+	{"manager", 'm', "[off]            Monitor only manager interface"},
 	{ NULL, }
-};
-
-static const char *monitor_desc[] = {
-	"[off]            Monitor only services",
-	"[off]            Monitor only technologies",
-	"[off]            Monitor only manager interface",
-	NULL
 };
 
 static const struct {
         const char *cmd;
 	const char *argument;
-        struct option *options;
-	const char **options_desc;
-        int (*func) (char *args[], int num, struct option *options);
+        struct connman_option *options;
+        int (*func) (char *args[], int num, struct connman_option *options);
         const char *desc;
 } cmd_table[] = {
-	{ "state",        NULL,           NULL,            NULL,
-	  cmd_state, "Shows if the system is online or offline" },
-	{ "technologies", NULL,           NULL,            NULL,
-	  cmd_technologies, "Display technologies" },
-	{ "enable",       "<technology>|offline", NULL,    NULL,
-	  cmd_enable, "Enables given technology or offline mode" },
-	{ "disable",      "<technology>|offline", NULL,    NULL,
-	  cmd_disable, "Disables given technology or offline mode"},
+	{ "state",        NULL,           NULL,            cmd_state,
+	  "Shows if the system is online or offline" },
+	{ "technologies", NULL,           NULL,            cmd_technologies,
+	  "Display technologies" },
+	{ "enable",       "<technology>|offline", NULL,    cmd_enable,
+	  "Enables given technology or offline mode" },
+	{ "disable",      "<technology>|offline", NULL,    cmd_disable,
+	  "Disables given technology or offline mode"},
 	{ "tether", "<technology> on|off\n"
 	            "            wifi [on|off] <ssid> <passphrase> ",
-	                                  NULL,            NULL,
-	  cmd_tether,
+	                                  NULL,            cmd_tether,
 	  "Enable, disable tethering, set SSID and passphrase for wifi" },
-	{ "services",     "[<service>]",  service_options, &service_desc[0],
-	  cmd_services, "Display services" },
-	{ "scan",         "<technology>", NULL,            NULL,
-	  cmd_scan, "Scans for new services for given technology" },
-	{ "connect",      "<service>",    NULL,            NULL,
-	  cmd_connect, "Connect a given service" },
-	{ "disconnect",   "<service>",    NULL,            NULL,
-	  cmd_disconnect, "Disconnect a given service" },
-	{ "config",       "<service>",    config_options,  &config_desc[0],
-	  cmd_config, "Set service configuration options" },
-	{ "monitor",      "[off]",        monitor_options, &monitor_desc[0],
-	  cmd_monitor, "Monitor signals from interfaces" },
-	{ "help",         NULL,           NULL,            NULL,
-	  cmd_help, "Show help" },
-	{ "exit",         NULL,           NULL,            NULL,
-	  cmd_exit,       "Exit" },
-	{ "quit",         NULL,           NULL,            NULL,
-	  cmd_exit,       "Quit" },
+	{ "services",     "[<service>]",  service_options, cmd_services,
+	  "Display services" },
+	{ "scan",         "<technology>", NULL,            cmd_scan,
+	  "Scans for new services for given technology" },
+	{ "connect",      "<service>",    NULL,            cmd_connect,
+	  "Connect a given service" },
+	{ "disconnect",   "<service>",    NULL,            cmd_disconnect,
+	  "Disconnect a given service" },
+	{ "config",       "<service>",    config_options,  cmd_config,
+	  "Set service configuration options" },
+	{ "monitor",      "[off]",        monitor_options, cmd_monitor,
+	  "Monitor signals from interfaces" },
+	{ "help",         NULL,           NULL,            cmd_help,
+	  "Show help" },
+	{ "exit",         NULL,           NULL,            cmd_exit,
+	  "Exit" },
+	{ "quit",         NULL,           NULL,            cmd_exit,
+	  "Quit" },
 	{  NULL, },
 };
 
-static int cmd_help(char *args[], int num, struct option *options)
+static int cmd_help(char *args[], int num, struct connman_option *options)
 {
 	bool interactive = __connmanctl_is_interactive();
 	int i, j;
@@ -1239,8 +1219,8 @@ static int cmd_help(char *args[], int num, struct option *options)
 			for (j = 0; cmd_table[i].options[j].name != NULL;
 			     j++) {
 				const char *options_desc =
-					cmd_table[i].options_desc != NULL ?
-					cmd_table[i].options_desc[j]: "";
+					cmd_table[i].options[j].desc != NULL ?
+					cmd_table[i].options[j].desc: "";
 
 				printf("   --%-12s%s\n",
 						cmd_table[i].options[j].name,
