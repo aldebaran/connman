@@ -3345,8 +3345,10 @@ static void destroy_udp_listener(struct listener_data *ifdata)
 	if (ifdata->udp6_listener_watch > 0)
 		g_source_remove(ifdata->udp6_listener_watch);
 
-	g_io_channel_unref(ifdata->udp4_listener_channel);
-	g_io_channel_unref(ifdata->udp6_listener_channel);
+	if (ifdata->udp4_listener_channel != NULL)
+		g_io_channel_unref(ifdata->udp4_listener_channel);
+	if (ifdata->udp6_listener_channel != NULL)
+		g_io_channel_unref(ifdata->udp6_listener_channel);
 }
 
 static void destroy_tcp_listener(struct listener_data *ifdata)
@@ -3358,8 +3360,10 @@ static void destroy_tcp_listener(struct listener_data *ifdata)
 	if (ifdata->tcp6_listener_watch > 0)
 		g_source_remove(ifdata->tcp6_listener_watch);
 
-	g_io_channel_unref(ifdata->tcp4_listener_channel);
-	g_io_channel_unref(ifdata->tcp6_listener_channel);
+	if (ifdata->tcp4_listener_channel != NULL)
+		g_io_channel_unref(ifdata->tcp4_listener_channel);
+	if (ifdata->tcp6_listener_channel != NULL)
+		g_io_channel_unref(ifdata->tcp6_listener_channel);
 }
 
 static int create_listener(struct listener_data *ifdata)
