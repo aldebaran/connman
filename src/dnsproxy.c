@@ -1083,7 +1083,7 @@ static int parse_response(unsigned char *buf, int buflen,
 			 * of the alias and cache that.
 			 */
 			unsigned char *end = NULL;
-			int name_len = 0, output_len;
+			int name_len = 0, output_len = 0;
 
 			memset(rsp, 0, sizeof(rsp));
 			rsp_len = sizeof(rsp) - 1;
