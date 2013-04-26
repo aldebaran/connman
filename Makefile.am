@@ -226,7 +226,7 @@ include Makefile.plugins
 if CLIENT
 noinst_PROGRAMS += client/connmanctl
 
-MANUAL_PAGES += doc/connmanctl.1
+noinst_MANUAL_PAGES = doc/connmanctl.1
 
 client_connmanctl_SOURCES =  $(gdbus_sources) \
 			client/dbus_helpers.h client/dbus_helpers.c \
@@ -357,7 +357,7 @@ EXTRA_DIST += src/main.conf
 
 MANUAL_PAGES += doc/connman.8 doc/connman.conf.5
 
-noinst_dist_man_MANS = $(MANUAL_PAGES)
+dist_man_MANS = $(MANUAL_PAGES)
 
 pkgconfigdir = $(libdir)/pkgconfig
 
