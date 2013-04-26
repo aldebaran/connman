@@ -816,9 +816,15 @@ static int send_dhcpv6_msg(GDHCPClient *dhcp_client, int type, char *msg)
 
 	init_packet(dhcp_client, packet, type);
 
-	dhcp_client->xid = packet->transaction_id[0] << 16 |
-			packet->transaction_id[1] << 8 |
-			packet->transaction_id[2];
+	if (dhcp_client->retransmit == FALSE)
+		dhcp_client->xid = packet->transaction_id[0] << 16 |
+				packet->transaction_id[1] << 8 |
+				packet->transaction_id[2];
+	else {
+		packet->transaction_id[0] = dhcp_client->xid >> 16;
+		packet->transaction_id[1] = dhcp_client->xid >> 8 ;
+		packet->transaction_id[2] = dhcp_client->xid;
+	}
 
 	debug(dhcp_client, "sending DHCPv6 %s message xid 0x%04x", msg,
 							dhcp_client->xid);
