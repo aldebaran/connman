@@ -445,6 +445,10 @@ static void portal_manage_status(GWebResult *result,
 				&str) == TRUE)
 		connman_info("Client-Region: %s", str);
 
+	if (g_web_result_get_header(result, "X-ConnMan-Client-Timezone",
+				&str) == TRUE)
+		connman_info("Client-Timezone: %s", str);
+
 	free_connman_wispr_portal_context(wp_context);
 
 	__connman_service_ipconfig_indicate_state(service,
