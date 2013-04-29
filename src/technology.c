@@ -115,7 +115,7 @@ connman_technology_is_tethering_allowed(enum connman_service_type type)
 	if (type_str == NULL)
 		return FALSE;
 
-	allowed = connman_setting_get_string_list("AllowedTetheringTechnologies");
+	allowed = connman_setting_get_string_list("TetheringTechnologies");
 	if (allowed == NULL)
 		allowed = allowed_default;
 

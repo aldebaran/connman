@@ -70,7 +70,7 @@ static struct {
 	char **blacklisted_interfaces;
 	connman_bool_t allow_hostname_updates;
 	connman_bool_t single_tech;
-	char **allowed_tethering_technologies;
+	char **tethering_technologies;
 	connman_bool_t persistent_tethering_mode;
 } connman_settings  = {
 	.bg_scan = TRUE,
@@ -83,7 +83,7 @@ static struct {
 	.blacklisted_interfaces = NULL,
 	.allow_hostname_updates = TRUE,
 	.single_tech = FALSE,
-	.allowed_tethering_technologies = NULL,
+	.tethering_technologies = NULL,
 	.persistent_tethering_mode = FALSE,
 };
 
@@ -97,7 +97,7 @@ static struct {
 #define CONF_BLACKLISTED_INTERFACES     "NetworkInterfaceBlacklist"
 #define CONF_ALLOW_HOSTNAME_UPDATES     "AllowHostnameUpdates"
 #define CONF_SINGLE_TECH                "SingleConnectedTechnology"
-#define CONF_ALLOWED_TETHERING_TECHNOLOGIES   "AllowedTetheringTechnologies"
+#define CONF_TETHERING_TECHNOLOGIES      "TetheringTechnologies"
 #define CONF_PERSISTENT_TETHERING_MODE  "PersistentTetheringMode"
 
 static const char *supported_options[] = {
@@ -111,7 +111,7 @@ static const char *supported_options[] = {
 	CONF_BLACKLISTED_INTERFACES,
 	CONF_ALLOW_HOSTNAME_UPDATES,
 	CONF_SINGLE_TECH,
-	CONF_ALLOWED_TETHERING_TECHNOLOGIES,
+	CONF_TETHERING_TECHNOLOGIES,
 	CONF_PERSISTENT_TETHERING_MODE,
 	NULL
 };
@@ -338,10 +338,10 @@ static void parse_config(GKeyFile *config)
 	g_clear_error(&error);
 
 	tethering = g_key_file_get_string_list(config, "General",
-			CONF_ALLOWED_TETHERING_TECHNOLOGIES, &len, &error);
+			CONF_TETHERING_TECHNOLOGIES, &len, &error);
 
 	if (error == NULL)
-		connman_settings.allowed_tethering_technologies = tethering;
+		connman_settings.tethering_technologies = tethering;
 
 	g_clear_error(&error);
 
@@ -540,8 +540,8 @@ char **connman_setting_get_string_list(const char *key)
 	if (g_str_equal(key, CONF_BLACKLISTED_INTERFACES) == TRUE)
 		return connman_settings.blacklisted_interfaces;
 
-	if (g_str_equal(key, CONF_ALLOWED_TETHERING_TECHNOLOGIES) == TRUE)
-		return connman_settings.allowed_tethering_technologies;
+	if (g_str_equal(key, CONF_TETHERING_TECHNOLOGIES) == TRUE)
+		return connman_settings.tethering_technologies;
 
 	return NULL;
 }
@@ -752,7 +752,7 @@ int main(int argc, char *argv[])
 	g_free(connman_settings.preferred_techs);
 	g_strfreev(connman_settings.fallback_nameservers);
 	g_strfreev(connman_settings.blacklisted_interfaces);
-	g_strfreev(connman_settings.allowed_tethering_technologies);
+	g_strfreev(connman_settings.tethering_technologies);
 
 	g_free(option_debug);
 
