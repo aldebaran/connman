@@ -82,6 +82,7 @@ typedef enum {
 #define G_DHCPV6_IA_TA		4
 #define G_DHCPV6_IAADDR		5
 #define G_DHCPV6_ORO		6
+#define G_DHCPV6_ELAPSED_TIME   8
 #define G_DHCPV6_STATUS_CODE	13
 #define G_DHCPV6_RAPID_COMMIT	14
 #define G_DHCPV6_DNS_SERVERS	23

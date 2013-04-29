@@ -31,6 +31,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 #include <netpacket/packet.h>
 #include <netinet/if_ether.h>
@@ -144,6 +145,7 @@ struct _GDHCPClient {
 	time_t last_rebind;
 	time_t expire;
 	gboolean retransmit;
+	struct timeval start_time;
 };
 
 static inline void debug(GDHCPClient *client, const char *format, ...)
@@ -250,13 +252,27 @@ static void copy_option(uint8_t *buf, uint16_t code, uint16_t len,
 		memcpy(&buf[4], msg, len);
 }
 
+static int32_t get_time_diff(struct timeval *tv)
+{
+	struct timeval now;
+	int32_t hsec;
+
+	gettimeofday(&now, NULL);
+
+	hsec = (now.tv_sec - tv->tv_sec) * 100;
+	hsec += (now.tv_usec - tv->tv_usec) / 10000;
+
+	return hsec;
+}
+
 static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 				struct dhcpv6_packet *packet,
 				unsigned char *buf, int max_buf,
 				unsigned char **ptr_buf)
 {
 	GList *list;
-	uint16_t code;
+	uint16_t code, value;
+	int32_t diff;
 	int len;
 
 	if (dhcp_client->type == G_DHCP_IPV4)
@@ -312,6 +328,31 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 			break;
 
 		case G_DHCPV6_ORO:
+			break;
+
+		case G_DHCPV6_ELAPSED_TIME:
+			if (dhcp_client->retransmit == FALSE) {
+				/*
+				 * Initial message, elapsed time is 0.
+				 */
+				diff = 0;
+			} else {
+				diff = get_time_diff(&dhcp_client->start_time);
+				if (diff < 0 || diff > 0xffff)
+					diff = 0xffff;
+			}
+
+			len = 2 + 2 + 2;
+			if ((*ptr_buf + len) > (buf + max_buf)) {
+				debug(dhcp_client, "Too long dhcpv6 message "
+					"when writing elapsed time option");
+				return;
+			}
+
+			value = htons((uint16_t)diff);
+			copy_option(*ptr_buf, G_DHCPV6_ELAPSED_TIME,
+				2, (uint8_t *)&value);
+			(*ptr_buf) += len;
 			break;
 
 		case G_DHCPV6_DNS_SERVERS:
@@ -816,15 +857,18 @@ static int send_dhcpv6_msg(GDHCPClient *dhcp_client, int type, char *msg)
 
 	init_packet(dhcp_client, packet, type);
 
-	if (dhcp_client->retransmit == FALSE)
+	if (dhcp_client->retransmit == FALSE) {
 		dhcp_client->xid = packet->transaction_id[0] << 16 |
 				packet->transaction_id[1] << 8 |
 				packet->transaction_id[2];
-	else {
+		gettimeofday(&dhcp_client->start_time, NULL);
+	} else {
 		packet->transaction_id[0] = dhcp_client->xid >> 16;
 		packet->transaction_id[1] = dhcp_client->xid >> 8 ;
 		packet->transaction_id[2] = dhcp_client->xid;
 	}
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_ELAPSED_TIME);
 
 	debug(dhcp_client, "sending DHCPv6 %s message xid 0x%04x", msg,
 							dhcp_client->xid);
