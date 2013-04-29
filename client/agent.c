@@ -29,6 +29,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <string.h>
+#include <ctype.h>
 
 #include <gdbus.h>
 
@@ -40,6 +42,39 @@ static bool agent_registered = false;
 static DBusMessage *agent_message = NULL;
 
 #define AGENT_INTERFACE      "net.connman.Agent"
+
+static int confirm_input(char *input)
+{
+	int i;
+
+	if (input == NULL)
+		return false;
+
+	for (i = 0; input[i] != '\0'; i++)
+		if (isspace(input[i]) != 0)
+			continue;
+
+	if (strcasecmp(&input[i], "yes") == 0 ||
+			strcasecmp(&input[i], "y") == 0)
+		return 1;
+
+	if (strcasecmp(&input[i], "no") == 0 ||
+			strcasecmp(&input[i], "n") == 0)
+		return 1;
+
+	return -1;
+}
+
+static char *strip_path(char *path)
+{
+	char *name = strrchr(path, '/');
+	if (name != NULL)
+		name++;
+	else
+		name = path;
+
+	return name;
+}
 
 static char *agent_path(void)
 {
@@ -97,9 +132,59 @@ static DBusMessage *agent_cancel(DBusConnection *connection,
 	return dbus_message_new_method_return(message);
 }
 
+static DBusConnection *agent_connection = NULL;
+
+static void request_browser_return(char *input)
+{
+	switch (confirm_input(input)) {
+	case 1:
+		g_dbus_send_reply(agent_connection, agent_message,
+				DBUS_TYPE_INVALID);
+		break;
+	case 0:
+		g_dbus_send_error(agent_connection, agent_message,
+				"net.connman.Agent.Error.Canceled", NULL);
+		break;
+	default:
+		return;
+	}
+
+	pending_message_remove();
+	pending_command_complete("");
+}
+
+static DBusMessage *agent_request_browser(DBusConnection *connection,
+		DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter;
+	char *service, *url;
+
+	dbus_message_iter_init(message, &iter);
+
+	dbus_message_iter_get_basic(&iter, &service);
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_get_basic(&iter, &url);
+
+	__connmanctl_save_rl();
+	fprintf(stdout, "Agent RequestBrowser %s\n", strip_path(service));
+	fprintf(stdout, "  %s\n", url);
+	__connmanctl_redraw_rl();
+
+	agent_connection = connection;
+	agent_message = dbus_message_ref(message);
+	__connmanctl_agent_mode("Connected (yes/no)? ",
+			request_browser_return);
+
+	return NULL;
+}
+
 static const GDBusMethodTable agent_methods[] = {
 	{ GDBUS_METHOD("Release", NULL, NULL, agent_release) },
 	{ GDBUS_METHOD("Cancel", NULL, NULL, agent_cancel) },
+	{ GDBUS_ASYNC_METHOD("RequestBrowser",
+				GDBUS_ARGS({ "service", "o" },
+					{ "url", "s" }),
+				NULL, agent_request_browser) },
 	{ },
 };
 
@@ -133,7 +218,8 @@ int __connmanctl_agent_register(DBusConnection *connection)
 
 	if (g_dbus_register_interface(connection, path,
 					AGENT_INTERFACE, agent_methods,
-					NULL, NULL, NULL, NULL) == FALSE) {
+					NULL, NULL, connection,
+					NULL) == FALSE) {
 		fprintf(stderr, "Error: Failed to register Agent callbacks\n");
 		return 0;
 	}
