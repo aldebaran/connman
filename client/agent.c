@@ -178,6 +178,51 @@ static DBusMessage *agent_request_browser(DBusConnection *connection,
 	return NULL;
 }
 
+static void report_error_return(char *input)
+{
+	switch (confirm_input(input)) {
+	case 1:
+		g_dbus_send_error(agent_connection, agent_message,
+				"net.connman.Agent.Error.Retry", NULL);
+		break;
+	case 0:
+		g_dbus_send_reply(agent_connection, agent_message,
+				DBUS_TYPE_INVALID);
+		break;
+	default:
+		return;
+	}
+
+	pending_message_remove();
+	pending_command_complete("");
+}
+
+static DBusMessage *agent_report_error(DBusConnection *connection,
+		DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter;
+	char *path, *service, *error;
+
+	dbus_message_iter_init(message, &iter);
+
+	dbus_message_iter_get_basic(&iter, &path);
+	service = strip_path(path);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_get_basic(&iter, &error);
+
+	__connmanctl_save_rl();
+	fprintf(stdout, "Agent ReportError %s\n", service);
+	fprintf(stdout, "  %s\n", error);
+	__connmanctl_redraw_rl();
+
+	agent_connection = connection;
+	agent_message = dbus_message_ref(message);
+	__connmanctl_agent_mode("Retry (yes/no)? ", report_error_return);
+
+	return NULL;
+}
+
 static const GDBusMethodTable agent_methods[] = {
 	{ GDBUS_METHOD("Release", NULL, NULL, agent_release) },
 	{ GDBUS_METHOD("Cancel", NULL, NULL, agent_cancel) },
@@ -185,6 +230,10 @@ static const GDBusMethodTable agent_methods[] = {
 				GDBUS_ARGS({ "service", "o" },
 					{ "url", "s" }),
 				NULL, agent_request_browser) },
+	{ GDBUS_ASYNC_METHOD("ReportError",
+				GDBUS_ARGS({ "service", "o" },
+					{ "error", "s" }),
+				NULL, agent_report_error) },
 	{ },
 };
 
