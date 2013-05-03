@@ -260,8 +260,8 @@ int __connmanctl_dbus_set_property(DBusConnection *connection,
 	return send_method_call(connection, message, cb, user_data);
 }
 
-void __connmanctl_dbus_append_dict_entry(DBusMessageIter *iter, char *property,
-		int type, void *value)
+void __connmanctl_dbus_append_dict_entry(DBusMessageIter *iter,
+		const char *property, int type, void *value)
 {
 	DBusMessageIter dict_entry;
 

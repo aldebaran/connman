@@ -47,8 +47,8 @@ int __connmanctl_dbus_set_property(DBusConnection *connection,
 typedef void (*connmanctl_dbus_append_func_t)(DBusMessageIter *iter,
 		void *user_data);
 
-void __connmanctl_dbus_append_dict_entry(DBusMessageIter *iter, char *property,
-		int type, void *value);
+void __connmanctl_dbus_append_dict_entry(DBusMessageIter *iter,
+		const char *property, int type, void *value);
 int __connmanctl_dbus_set_property_dict(DBusConnection *connection,
 		const char *path, const char *interface,
 		connmanctl_dbus_method_return_func_t cb, void * user_data,
