@@ -40,8 +40,17 @@
 
 static bool agent_registered = false;
 static DBusMessage *agent_message = NULL;
+static struct {
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+} agent_reply = { };
 
 #define AGENT_INTERFACE      "net.connman.Agent"
+
+static void request_input_ssid_return(char *input);
+static void request_input_passphrase_return(char *input);
+static void request_input_string_return(char *input);
 
 static int confirm_input(char *input)
 {
@@ -91,6 +100,11 @@ static void pending_message_remove()
 	if (agent_message != NULL) {
 		dbus_message_unref(agent_message);
 		agent_message = NULL;
+	}
+
+	if (agent_reply.reply != NULL) {
+		dbus_message_unref(agent_reply.reply);
+		agent_reply.reply = NULL;
 	}
 }
 
@@ -223,6 +237,186 @@ static DBusMessage *agent_report_error(DBusConnection *connection,
 	return NULL;
 }
 
+enum requestinput {
+	SSID                    = 0,
+	IDENTITY                = 1,
+	PASSPHRASE              = 2,
+	WPS                     = 3,
+	WISPR_USERNAME          = 4,
+	WISPR_PASSPHRASE        = 5,
+	REQUEST_INPUT_MAX       = 6,
+};
+
+static struct {
+	const char *attribute;
+	bool requested;
+	char *prompt;
+	connmanctl_input_func_t *func;
+} agent_input[] = {
+	{ "Name", false, "Hidden SSID name? ", request_input_ssid_return },
+	{ "Identity", false, "EAP username? ", request_input_string_return },
+	{ "Passphrase", false, "Passphrase? ",
+	  request_input_passphrase_return },
+	{ "WPS", false, "WPS PIN (empty line for pushbutton)? " ,
+	  request_input_string_return },
+	{ "Username", false, "WISPr username? ", request_input_string_return },
+	{ "Password", false, "WISPr password? ", request_input_string_return },
+	{ },
+};
+
+static void request_input_next(void)
+{
+	int i;
+
+	for (i = 0; agent_input[i].attribute != NULL; i++) {
+		if (agent_input[i].requested == true) {
+			if(agent_input[i].func != NULL)
+				__connmanctl_agent_mode(agent_input[i].prompt,
+						agent_input[i].func);
+			else
+				agent_input[i].requested = false;
+			return;
+		}
+	}
+
+	dbus_message_iter_close_container(&agent_reply.iter,
+			&agent_reply.dict);
+
+	g_dbus_send_message(agent_connection, agent_reply.reply);
+	agent_reply.reply = NULL;
+}
+
+static void request_input_append(const char *attribute, char *value)
+{
+	__connmanctl_dbus_append_dict_entry(&agent_reply.dict, attribute,
+			DBUS_TYPE_STRING, &value);
+}
+
+static void request_input_ssid_return(char *input)
+{
+	int len = 0;
+
+	if (input != NULL)
+		len = strlen(input);
+
+	if (len > 0 && len <= 32) {
+		agent_input[SSID].requested = false;
+		request_input_append(agent_input[SSID].attribute, input);
+
+		request_input_next();
+	}
+}
+
+static void request_input_passphrase_return(char *input)
+{
+	/* TBD passphrase length checking */
+
+	agent_input[PASSPHRASE].requested = false;
+	request_input_append(agent_input[PASSPHRASE].attribute, input);
+
+	if (input != NULL && strlen(input) > 0)
+		agent_input[WPS].requested = false;
+
+	request_input_next();
+}
+
+static void request_input_string_return(char *input)
+{
+	int i;
+
+	for (i = 0; agent_input[i].attribute != NULL; i++) {
+		if (agent_input[i].requested == true) {
+			request_input_append(agent_input[i].attribute, input);
+			agent_input[i].requested = false;
+			break;
+		}
+	}
+
+	request_input_next();
+}
+
+static DBusMessage *agent_request_input(DBusConnection *connection,
+		DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter, dict, entry, variant;
+	char *service, *str, *field;
+	DBusMessageIter dict_entry, field_entry, field_value;
+	char *argument, *value, *attr_type;
+
+	int i;
+
+	dbus_message_iter_init(message, &iter);
+
+	dbus_message_iter_get_basic(&iter, &str);
+	service = strip_path(str);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &dict);
+
+	__connmanctl_save_rl();
+	fprintf(stdout, "Agent RequestInput %s\n", service);
+	__connmanctl_dbus_print(&dict, "  ", " = ", "\n");
+	fprintf(stdout, "\n");
+	__connmanctl_redraw_rl();
+
+	dbus_message_iter_recurse(&iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		dbus_message_iter_get_basic(&entry, &field);
+
+		dbus_message_iter_next(&entry);
+
+		dbus_message_iter_recurse(&entry, &variant);
+		dbus_message_iter_recurse(&variant, &dict_entry);
+
+		while (dbus_message_iter_get_arg_type(&dict_entry)
+				== DBUS_TYPE_DICT_ENTRY) {
+			dbus_message_iter_recurse(&dict_entry, &field_entry);
+
+			dbus_message_iter_get_basic(&field_entry, &argument);
+
+			dbus_message_iter_next(&field_entry);
+
+			dbus_message_iter_recurse(&field_entry, &field_value);
+
+			dbus_message_iter_get_basic(&field_value, &value);
+
+			if (strcmp(argument, "Type") == 0)
+				attr_type = g_strdup(value);
+
+			dbus_message_iter_next(&dict_entry);
+		}
+
+		for (i = 0; agent_input[i].attribute != NULL; i++) {
+			if (strcmp(field, agent_input[i].attribute) == 0) {
+				agent_input[i].requested = true;
+				break;
+			}
+		}
+
+		g_free(attr_type);
+		attr_type = NULL;
+
+		dbus_message_iter_next(&dict);
+	}
+
+	agent_connection = connection;
+	agent_reply.reply = dbus_message_new_method_return(message);
+	dbus_message_iter_init_append(agent_reply.reply, &agent_reply.iter);
+
+	dbus_message_iter_open_container(&agent_reply.iter, DBUS_TYPE_ARRAY,
+                        DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+                        DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+                        DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &agent_reply.dict);
+
+	request_input_next();
+
+	return NULL;
+}
+
 static const GDBusMethodTable agent_methods[] = {
 	{ GDBUS_METHOD("Release", NULL, NULL, agent_release) },
 	{ GDBUS_METHOD("Cancel", NULL, NULL, agent_cancel) },
@@ -234,6 +428,11 @@ static const GDBusMethodTable agent_methods[] = {
 				GDBUS_ARGS({ "service", "o" },
 					{ "error", "s" }),
 				NULL, agent_report_error) },
+	{ GDBUS_ASYNC_METHOD("RequestInput",
+				GDBUS_ARGS({ "service", "o" },
+					{ "fields", "a{sv}" }),
+				GDBUS_ARGS({ "fields", "a{sv}" }),
+				agent_request_input) },
 	{ },
 };
 
