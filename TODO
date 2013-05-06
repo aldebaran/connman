@@ -192,17 +192,18 @@ VPN
    old "L2TP." and "PPTP." prefix for PPP options. Remove the compatibility
    code and only allow "PPPD." prefix for PPP options.
 
+
 Tools
 =====
 
-- Add Agent mode to connmanctl command line tool
+- Add Session mode and VPN support to connmanctl command line tool
 
-   Priority: Medium
+   Priority: Low
    Complexity: C2
 
-   connmanctl should implement agent prompting when started with a suitable
-   command line option. Agent mode should also be enabled when in interactive
-   mode.
+   The connmanctl command line tool should support Session mode and VPN
+   Agent with a set of suitable commands used in both interactive and
+   non-interactive mode.
 
 
 User Interface
