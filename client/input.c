@@ -43,6 +43,8 @@ static bool save_input;
 static char *saved_line;
 static int saved_point;
 
+static connmanctl_input_func_t *readline_input_handler;
+
 void __connmanctl_quit(void)
 {
 	if (main_loop != NULL)
@@ -124,7 +126,8 @@ static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
 		return FALSE;
 	}
 
-	rl_callback_read_char();
+	if (readline_input_handler != NULL)
+		rl_callback_read_char();
 	return TRUE;
 }
 
@@ -151,17 +154,22 @@ static char **complete_command(const char *text, int start, int end)
 void __connmanctl_agent_mode(const char *prompt,
 		connmanctl_input_func_t input_handler)
 {
+	readline_input_handler = input_handler;
+
 	if (input_handler != NULL)
 		rl_callback_handler_install(prompt, input_handler);
 	else {
 		rl_set_prompt(prompt);
 		rl_callback_handler_remove();
+		rl_redisplay();
 	}
 	rl_attempted_completion_function = complete_agent;
 }
 
 void __connmanctl_command_mode(void)
 {
+	readline_input_handler = rl_handler;
+
 	rl_callback_handler_install("connmanctl> ", rl_handler);
 	rl_attempted_completion_function = complete_command;
 }
