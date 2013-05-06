@@ -539,6 +539,9 @@ static int set_addresses(GDHCPClient *dhcp_client,
 		__connman_ipconfig_set_prefixlen(ipconfig, prefix_len);
 
 		DBG("new address %s/%d", address, prefix_len);
+
+		__connman_ipconfig_set_dhcp_address(ipconfig, address);
+		__connman_service_save(service);
 	}
 
 	g_free(address);
