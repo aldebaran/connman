@@ -50,6 +50,10 @@
 #define REN_MAX_RT      (600 * 1000)
 #define REB_TIMEOUT     (10 * 1000)
 #define REB_MAX_RT      (600 * 1000)
+#define CNF_MAX_DELAY   (1 * 1000)
+#define CNF_TIMEOUT	(1 * 1000)
+#define CNF_MAX_RT	(4 * 1000)
+#define CNF_MAX_RD	(10 * 1000)
 
 
 struct connman_dhcpv6 {
@@ -242,6 +246,10 @@ static void clear_callbacks(GDHCPClient *dhcp_client)
 
 	g_dhcp_client_register_event(dhcp_client,
 				G_DHCP_CLIENT_EVENT_REQUEST,
+				NULL, NULL);
+
+	g_dhcp_client_register_event(dhcp_client,
+				G_DHCP_CLIENT_EVENT_CONFIRM,
 				NULL, NULL);
 
 	g_dhcp_client_register_event(dhcp_client,
@@ -608,7 +616,7 @@ static int dhcpv6_rebind(struct connman_dhcpv6 *dhcp)
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
 			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
-			NULL, NULL, FALSE);
+			NULL, NULL, FALSE, NULL);
 
 	clear_callbacks(dhcp_client);
 
@@ -721,7 +729,7 @@ static int dhcpv6_request(struct connman_dhcpv6 *dhcp,
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
 			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
-			&T1, &T2, add_addresses);
+			&T1, &T2, add_addresses, NULL);
 
 	clear_callbacks(dhcp_client);
 
@@ -791,7 +799,7 @@ static int dhcpv6_renew(struct connman_dhcpv6 *dhcp)
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
 			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
-			&T1, &T2, TRUE);
+			&T1, &T2, TRUE, NULL);
 
 	clear_callbacks(dhcp_client);
 
@@ -945,7 +953,7 @@ int __connman_dhcpv6_start_release(struct connman_network *network,
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
 			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
-			NULL, NULL, TRUE);
+			NULL, NULL, TRUE, NULL);
 
 	clear_callbacks(dhcp_client);
 
@@ -1166,7 +1174,7 @@ static int dhcpv6_solicitation(struct connman_dhcpv6 *dhcp)
 
 	g_dhcpv6_client_set_ia(dhcp_client, index,
 			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
-			NULL, NULL, FALSE);
+			NULL, NULL, FALSE, NULL);
 
 	clear_callbacks(dhcp_client);
 
@@ -1199,10 +1207,150 @@ static gboolean start_solicitation(gpointer user_data)
 	return FALSE;
 }
 
+static void confirm_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+	int status = g_dhcpv6_client_get_status(dhcp_client);
+
+	DBG("dhcpv6 confirm msg %p status %d", dhcp, status);
+
+	clear_timer(dhcp);
+
+	set_addresses(dhcp_client, dhcp);
+
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
+
+	/*
+	 * If confirm fails, start from scratch.
+	 */
+	if (status != 0) {
+		g_dhcp_client_unref(dhcp->dhcp_client);
+		start_solicitation(dhcp);
+	} else if (dhcp->callback != NULL)
+		dhcp->callback(dhcp->network, TRUE);
+}
+
+static int dhcpv6_confirm(struct connman_dhcpv6 *dhcp)
+{
+	GDHCPClient *dhcp_client;
+	GDHCPClientError error;
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig_ipv6;
+	int index, ret;
+
+	DBG("dhcp %p", dhcp);
+
+	index = connman_network_get_index(dhcp->network);
+
+	dhcp_client = g_dhcp_client_new(G_DHCP_IPV6, index, &error);
+	if (error != G_DHCP_CLIENT_ERROR_NONE) {
+		clear_timer(dhcp);
+		return -EINVAL;
+	}
+
+	if (getenv("CONNMAN_DHCPV6_DEBUG"))
+		g_dhcp_client_set_debug(dhcp_client, dhcpv6_debug, "DHCPv6");
+
+	service = connman_service_lookup_from_network(dhcp->network);
+	if (service == NULL) {
+		clear_timer(dhcp);
+		g_dhcp_client_unref(dhcp_client);
+		return -EINVAL;
+	}
+
+	ret = set_duid(service, dhcp->network, dhcp_client, index);
+	if (ret < 0) {
+		clear_timer(dhcp);
+		g_dhcp_client_unref(dhcp_client);
+		return ret;
+	}
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_RAPID_COMMIT);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
+
+	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
+				G_DHCPV6_SNTP_SERVERS);
+
+	ipconfig_ipv6 = __connman_service_get_ip6config(service);
+	dhcp->use_ta = __connman_ipconfig_ipv6_privacy_enabled(ipconfig_ipv6);
+
+	g_dhcpv6_client_set_ia(dhcp_client, index,
+			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
+			NULL, NULL, TRUE,
+			__connman_ipconfig_get_dhcp_address(ipconfig_ipv6));
+
+	clear_callbacks(dhcp_client);
+
+	g_dhcp_client_register_event(dhcp_client,
+				G_DHCP_CLIENT_EVENT_CONFIRM,
+				confirm_cb, dhcp);
+
+	dhcp->dhcp_client = dhcp_client;
+
+	return g_dhcp_client_start(dhcp_client, NULL);
+}
+
+static gboolean timeout_confirm(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	dhcp->RT = calc_delay(dhcp->RT, CNF_MAX_RT);
+
+	DBG("confirm RT timeout %d msec", dhcp->RT);
+
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_confirm, dhcp);
+
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
+
+	g_dhcp_client_start(dhcp->dhcp_client, NULL);
+
+	return FALSE;
+}
+
+static gboolean timeout_max_confirm(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	dhcp->MRD = 0;
+
+	clear_timer(dhcp);
+
+	DBG("confirm max retransmit duration timeout");
+
+	g_dhcpv6_client_clear_retransmit(dhcp->dhcp_client);
+
+	if (dhcp->callback != NULL)
+		dhcp->callback(dhcp->network, FALSE);
+
+	return FALSE;
+}
+
+static gboolean start_confirm(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	/* Set the confirm timeout, RFC 3315 chapter 14 */
+	dhcp->RT = CNF_TIMEOUT * (1 + get_random());
+
+	DBG("confirm initial RT timeout %d msec", dhcp->RT);
+
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_confirm, dhcp);
+	dhcp->MRD = g_timeout_add(CNF_MAX_RD, timeout_max_confirm, dhcp);
+
+	dhcpv6_confirm(dhcp);
+
+	return FALSE;
+}
+
 int __connman_dhcpv6_start(struct connman_network *network,
 				GSList *prefixes, dhcp_cb callback)
 {
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig_ipv6;
 	struct connman_dhcpv6 *dhcp;
+	char *last_address;
 	int delay;
 
 	DBG("");
@@ -1212,6 +1360,10 @@ int __connman_dhcpv6_start(struct connman_network *network,
 		if (dhcp != NULL && dhcp->started == TRUE)
 			return -EBUSY;
 	}
+
+	service = connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return -EINVAL;
 
 	dhcp = g_try_new0(struct connman_dhcpv6, 1);
 	if (dhcp == NULL)
@@ -1231,7 +1383,24 @@ int __connman_dhcpv6_start(struct connman_network *network,
 	/* Initial timeout, RFC 3315, 17.1.2 */
 	delay = rand() % 1000;
 
-	dhcp->timeout = g_timeout_add(delay, start_solicitation, dhcp);
+	ipconfig_ipv6 = __connman_service_get_ip6config(service);
+	last_address = __connman_ipconfig_get_dhcp_address(ipconfig_ipv6);
+
+	if (prefixes != NULL && last_address != NULL &&
+			check_ipv6_addr_prefix(prefixes,
+						last_address) != 128) {
+		/*
+		 * So we are in the same subnet
+		 * RFC 3315, chapter 18.1.2 Confirm message
+		 */
+		dhcp->timeout = g_timeout_add(delay, start_confirm, dhcp);
+	} else {
+		/*
+		 * Start from scratch.
+		 * RFC 3315, chapter 17.1.2 Solicitation message
+		 */
+		dhcp->timeout = g_timeout_add(delay, start_solicitation, dhcp);
+	}
 
 	return 0;
 }

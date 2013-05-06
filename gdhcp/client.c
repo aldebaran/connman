@@ -73,6 +73,7 @@ typedef enum _dhcp_client_state {
 	INFORMATION_REQ,
 	SOLICITATION,
 	REQUEST,
+	CONFIRM,
 	RENEW,
 	REBIND,
 	RELEASE,
@@ -131,6 +132,8 @@ struct _GDHCPClient {
 	gpointer rebind_data;
 	GDHCPClientEventFunc release_cb;
 	gpointer release_data;
+	GDHCPClientEventFunc confirm_cb;
+	gpointer confirm_data;
 	char *last_address;
 	unsigned char *duid;
 	int duid_len;
@@ -759,7 +762,7 @@ static void put_iaid(GDHCPClient *dhcp_client, int index, uint8_t *buf)
 
 int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
 			int code, uint32_t *T1, uint32_t *T2,
-			gboolean add_iaaddr)
+			gboolean add_iaaddr, const char *ia_na)
 {
 	if (code == G_DHCPV6_IA_TA) {
 		uint8_t ia_options[4];
@@ -771,12 +774,28 @@ int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
 					ia_options, sizeof(ia_options));
 
 	} else if (code == G_DHCPV6_IA_NA) {
+		struct in6_addr addr;
 
 		g_dhcp_client_set_request(dhcp_client, G_DHCPV6_IA_NA);
 
-		if (add_iaaddr == TRUE) {
+		/*
+		 * If caller has specified the IPv6 address it wishes to
+		 * to use (ia_na != NULL and address is valid), then send
+		 * the address to server.
+		 * If caller did not specify the address (ia_na == NULL) and
+		 * if the current address is not set, then we should not send
+		 * the address sub-option.
+		 */
+		if (add_iaaddr == TRUE && ((ia_na == NULL &&
+			IN6_IS_ADDR_UNSPECIFIED(&dhcp_client->ia_na) == FALSE)
+			|| (ia_na != NULL &&
+				inet_pton(AF_INET6, ia_na, &addr) == 1))) {
 #define IAADDR_LEN (16+4+4)
 			uint8_t ia_options[4+4+4+2+2+IAADDR_LEN];
+
+			if (ia_na != NULL)
+				memcpy(&dhcp_client->ia_na, &addr,
+						sizeof(struct in6_addr));
 
 			put_iaid(dhcp_client, index, ia_options);
 
@@ -893,6 +912,11 @@ static int send_solicitation(GDHCPClient *dhcp_client)
 static int send_dhcpv6_request(GDHCPClient *dhcp_client)
 {
 	return send_dhcpv6_msg(dhcp_client, DHCPV6_REQUEST, "request");
+}
+
+static int send_dhcpv6_confirm(GDHCPClient *dhcp_client)
+{
+	return send_dhcpv6_msg(dhcp_client, DHCPV6_CONFIRM, "confirm");
 }
 
 static int send_dhcpv6_renew(GDHCPClient *dhcp_client)
@@ -2109,6 +2133,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	case RENEW:
 	case REBIND:
 	case RELEASE:
+	case CONFIRM:
 		if (dhcp_client->type != G_DHCP_IPV6)
 			return TRUE;
 
@@ -2162,6 +2187,30 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		if (dhcp_client->release_cb != NULL) {
 			dhcp_client->release_cb(dhcp_client,
 					dhcp_client->release_data);
+			return TRUE;
+		}
+		if (dhcp_client->confirm_cb != NULL) {
+			count = 0;
+			server_id = dhcpv6_get_option(packet6, pkt_len,
+						G_DHCPV6_SERVERID, &option_len,
+						&count);
+			if (server_id == NULL || count != 1 ||
+							option_len == 0) {
+				/* RFC 3315, 15.10 */
+				debug(dhcp_client,
+					"confirm server duid error, "
+					"discarding msg %p/%d/%d",
+					server_id, option_len, count);
+				return TRUE;
+			}
+			dhcp_client->server_duid = g_try_malloc(option_len);
+			if (dhcp_client->server_duid == NULL)
+				return TRUE;
+			memcpy(dhcp_client->server_duid, server_id, option_len);
+			dhcp_client->server_duid_len = option_len;
+
+			dhcp_client->confirm_cb(dhcp_client,
+						dhcp_client->confirm_data);
 			return TRUE;
 		}
 		break;
@@ -2287,6 +2336,16 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 				return re;
 			}
 			send_dhcpv6_request(dhcp_client);
+
+		} else if (dhcp_client->confirm_cb) {
+			dhcp_client->state = CONFIRM;
+			re = switch_listening_mode(dhcp_client, L3);
+			if (re != 0) {
+				switch_listening_mode(dhcp_client, L_NONE);
+				dhcp_client->state = 0;
+				return re;
+			}
+			send_dhcpv6_confirm(dhcp_client);
 
 		} else if (dhcp_client->renew_cb) {
 			dhcp_client->state = RENEW;
@@ -2474,6 +2533,12 @@ void g_dhcp_client_register_event(GDHCPClient *dhcp_client,
 		dhcp_client->release_cb = func;
 		dhcp_client->release_data = data;
 		return;
+	case G_DHCP_CLIENT_EVENT_CONFIRM:
+		if (dhcp_client->type == G_DHCP_IPV4)
+			return;
+		dhcp_client->confirm_cb = func;
+		dhcp_client->confirm_data = data;
+		return;
 	}
 }
 
@@ -2512,6 +2577,7 @@ char *g_dhcp_client_get_netmask(GDHCPClient *dhcp_client)
 	case INFORMATION_REQ:
 	case SOLICITATION:
 	case REQUEST:
+	case CONFIRM:
 	case RENEW:
 	case REBIND:
 	case RELEASE:
