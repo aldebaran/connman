@@ -1908,6 +1908,8 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 
 	pkt = &packet;
 
+	dhcp_client->status_code = 0;
+
 	if (dhcp_client->listen_mode == L2)
 		re = dhcp_recv_l2_packet(&packet,
 					dhcp_client->listener_sockfd);
@@ -1971,9 +1973,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 				}
 			}
 			dhcp_client->status_code = status;
-		} else
-			dhcp_client->status_code = 0;
-
+		}
 	} else {
 		message_type = dhcp_get_option(&packet, DHCP_MESSAGE_TYPE);
 		if (message_type == NULL)
@@ -2132,7 +2132,6 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 
 		switch_listening_mode(dhcp_client, L_NONE);
 
-		dhcp_client->status_code = 0;
 		get_dhcpv6_request(dhcp_client, packet6, pkt_len,
 						&dhcp_client->status_code);
 
