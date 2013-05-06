@@ -62,6 +62,7 @@ struct connman_dhcpv6 {
 	GDHCPClient *dhcp_client;
 
 	guint timeout;		/* operation timeout in msec */
+	guint MRD;		/* max operation timeout in msec */
 	guint RT;		/* in msec */
 	gboolean use_ta;	/* set to TRUE if IPv6 privacy is enabled */
 	GSList *prefixes;	/* network prefixes from radvd */
@@ -79,6 +80,11 @@ static void clear_timer(struct connman_dhcpv6 *dhcp)
 	if (dhcp->timeout > 0) {
 		g_source_remove(dhcp->timeout);
 		dhcp->timeout = 0;
+	}
+
+	if (dhcp->MRD > 0) {
+		g_source_remove(dhcp->MRD);
+		dhcp->MRD = 0;
 	}
 }
 
