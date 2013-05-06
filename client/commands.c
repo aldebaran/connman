@@ -535,7 +535,7 @@ static int scan_return(DBusMessageIter *iter, const char *error,
 		str++;
 		fprintf(stdout, "Scan completed for %s\n", str);
 	} else
-		fprintf(stderr, "Error %s: %s", path, error);
+		fprintf(stderr, "Error %s: %s\n", path, error);
 
 	g_free(user_data);
 
