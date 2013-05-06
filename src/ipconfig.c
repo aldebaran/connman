@@ -2222,6 +2222,15 @@ int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 		key = g_strdup_printf("%sprivacy", prefix);
 		g_key_file_set_string(keyfile, identifier, key, privacy);
 		g_free(key);
+
+		key = g_strdup_printf("%sDHCP.LastAddress", prefix);
+		if (ipconfig->last_dhcp_address != NULL &&
+				strlen(ipconfig->last_dhcp_address) > 0)
+			g_key_file_set_string(keyfile, identifier, key,
+					ipconfig->last_dhcp_address);
+		else
+			g_key_file_remove_key(keyfile, identifier, key, NULL);
+		g_free(key);
 	}
 
 	switch (ipconfig->method) {
