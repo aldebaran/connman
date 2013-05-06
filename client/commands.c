@@ -65,6 +65,27 @@ static char *ipv6[] = {
 
 static int cmd_help(char *args[], int num, struct connman_option *options);
 
+static bool check_dbus_name(const char *name)
+{
+	/*
+	 * Valid dbus chars should be [A-Z][a-z][0-9]_
+	 * and should not start with number.
+	 */
+	unsigned int i;
+
+	if (name == NULL || (name[0] >= '0' && name[0] <= '9'))
+		return false;
+
+	for (i = 0; i < strlen(name); i++)
+		if (!((name[i] >= 'A' && name[i] <= 'Z') ||
+				(name[i] >= 'a' && name[i] <= 'z') ||
+				(name[i] >= '0' && name[i] <= '9') ||
+				name[i] == '_'))
+			return false;
+
+	return true;
+}
+
 static int parse_boolean(char *arg)
 {
 	if (arg == NULL)
@@ -141,6 +162,9 @@ static int cmd_enable(char *args[], int num, struct connman_option *options)
 	if (num < 2)
 		return -EINVAL;
 
+	if (check_dbus_name(args[1]) == false)
+		return -EINVAL;
+
 	if (strcmp(args[1], "offlinemode") == 0) {
 		tech = g_strdup(args[1]);
 		return __connmanctl_dbus_set_property(connection, "/",
@@ -185,6 +209,9 @@ static int cmd_disable(char *args[], int num, struct connman_option *options)
 		return -E2BIG;
 
 	if (num < 2)
+		return -EINVAL;
+
+	if (check_dbus_name(args[1]) == false)
 		return -EINVAL;
 
 	if (strcmp(args[1], "offlinemode") == 0) {
@@ -294,6 +321,9 @@ static int cmd_services(char *args[], int num, struct connman_option *options)
 		service_name = args[1];
 		break;
 	}
+
+	if (check_dbus_name(service_name) == false)
+		return -EINVAL;
 
 	if (service_name == NULL) {
 		return __connmanctl_dbus_method_call(connection, "/",
@@ -522,6 +552,9 @@ static int cmd_tether(char *args[], int num, struct connman_option *options)
 	if (set_tethering == -1)
 		return -EINVAL;
 
+	if (check_dbus_name(args[1]) == false)
+		return -EINVAL;
+
 	return tether_set(args[1], set_tethering);
 }
 
@@ -550,6 +583,9 @@ static int cmd_scan(char *args[], int num, struct connman_option *options)
 		return -E2BIG;
 
 	if (num < 2)
+		return -EINVAL;
+
+	if (check_dbus_name(args[1]) == false)
 		return -EINVAL;
 
 	path = g_strdup_printf("/net/connman/technology/%s", args[1]);
@@ -585,6 +621,9 @@ static int cmd_connect(char *args[], int num, struct connman_option *options)
 	if (num < 2)
 		return -EINVAL;
 
+	if (check_dbus_name(args[1]) == false)
+		return -EINVAL;
+
 	path = g_strdup_printf("/net/connman/service/%s", args[1]);
 	return __connmanctl_dbus_method_call(connection, path,
 			"net.connman.Service", "Connect",
@@ -616,6 +655,9 @@ static int cmd_disconnect(char *args[], int num, struct connman_option *options)
 		return -E2BIG;
 
 	if (num < 2)
+		return -EINVAL;
+
+	if (check_dbus_name(args[1]) == false)
 		return -EINVAL;
 
 	path = g_strdup_printf("/net/connman/service/%s", args[1]);
@@ -836,6 +878,9 @@ static int cmd_config(char *args[], int num, struct connman_option *options)
 
 	service_name = args[1];
 	if (service_name == NULL)
+		return -EINVAL;
+
+	if (check_dbus_name(service_name) == false)
 		return -EINVAL;
 
 	while (index < num && args[index] != NULL) {
