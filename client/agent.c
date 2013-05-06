@@ -57,11 +57,11 @@ static int confirm_input(char *input)
 	int i;
 
 	if (input == NULL)
-		return false;
+		return -1;
 
 	for (i = 0; input[i] != '\0'; i++)
-		if (isspace(input[i]) != 0)
-			continue;
+		if (isspace(input[i]) == 0)
+			break;
 
 	if (strcasecmp(&input[i], "yes") == 0 ||
 			strcasecmp(&input[i], "y") == 0)
@@ -69,7 +69,7 @@ static int confirm_input(char *input)
 
 	if (strcasecmp(&input[i], "no") == 0 ||
 			strcasecmp(&input[i], "n") == 0)
-		return 1;
+		return 0;
 
 	return -1;
 }
@@ -284,6 +284,9 @@ static void request_input_next(void)
 
 	g_dbus_send_message(agent_connection, agent_reply.reply);
 	agent_reply.reply = NULL;
+
+	pending_message_remove();
+	pending_command_complete("");
 }
 
 static void request_input_append(const char *attribute, char *value)
@@ -311,13 +314,14 @@ static void request_input_passphrase_return(char *input)
 {
 	/* TBD passphrase length checking */
 
-	agent_input[PASSPHRASE].requested = false;
-	request_input_append(agent_input[PASSPHRASE].attribute, input);
+	if (input != NULL && strlen(input) > 0) {
+		agent_input[PASSPHRASE].requested = false;
+		request_input_append(agent_input[PASSPHRASE].attribute, input);
 
-	if (input != NULL && strlen(input) > 0)
 		agent_input[WPS].requested = false;
 
-	request_input_next();
+		request_input_next();
+	}
 }
 
 static void request_input_string_return(char *input)
