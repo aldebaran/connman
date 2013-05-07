@@ -112,7 +112,7 @@ static void pending_command_complete(char *message)
 {
 	__connmanctl_save_rl();
 
-	fprintf(stdout, message);
+	fprintf(stdout, "%s", message);
 
 	__connmanctl_redraw_rl();
 
