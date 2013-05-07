@@ -1,3 +1,11 @@
+ver 1.14:
+	Fix issue with WiFi scanning race condition and power cycle.
+	Add support for configuring allowed tethering technologies.
+	Add support for persistent tethering configurations.
+	Add support for DHCPv6 max retransmission duration option.
+	Add support for DHCPv6 elapsed time option.
+	Add support for DHCPv6 confirm messages.
+
 ver 1.13:
 	Fix issue with auto-scanning of known hidden SSIDs.
 	Fix issue with not correctly terminated auto-scanning.
