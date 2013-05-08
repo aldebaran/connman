@@ -322,14 +322,14 @@ static int cmd_services(char *args[], int num, struct connman_option *options)
 		break;
 	}
 
-	if (check_dbus_name(service_name) == false)
-		return -EINVAL;
-
 	if (service_name == NULL) {
 		return __connmanctl_dbus_method_call(connection, "/",
 			"net.connman.Manager", "GetServices",
 			services_list, NULL, DBUS_TYPE_INVALID);
 	}
+
+	if (check_dbus_name(service_name) == false)
+		return -EINVAL;
 
 	path = g_strdup_printf("/net/connman/service/%s", service_name);
 	return __connmanctl_dbus_method_call(connection, path,
