@@ -235,7 +235,7 @@ static void add_dhcpv6_send_options(GDHCPClient *dhcp_client,
 		.ptr_buf = ptr_buf
 	};
 
-	if (dhcp_client->type == G_DHCP_IPV4)
+	if (dhcp_client->type != G_DHCP_IPV6)
 		return;
 
 	g_hash_table_foreach(dhcp_client->send_value_hash,
@@ -278,7 +278,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 	int32_t diff;
 	int len;
 
-	if (dhcp_client->type == G_DHCP_IPV4)
+	if (dhcp_client->type != G_DHCP_IPV6)
 		return;
 
 	for (list = dhcp_client->request_list; list; list = list->next) {
@@ -674,7 +674,7 @@ int g_dhcpv6_create_duid(GDHCPDuidType duid_type, int index, int type,
 int g_dhcpv6_client_set_duid(GDHCPClient *dhcp_client, unsigned char *duid,
 			int duid_len)
 {
-	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
+	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
 		return -EINVAL;
 
 	g_free(dhcp_client->duid);
@@ -687,7 +687,7 @@ int g_dhcpv6_client_set_duid(GDHCPClient *dhcp_client, unsigned char *duid,
 
 uint32_t g_dhcpv6_client_get_iaid(GDHCPClient *dhcp_client)
 {
-	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
+	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
 		return 0;
 
 	return dhcp_client->iaid;
@@ -710,7 +710,7 @@ int g_dhcpv6_client_get_timeouts(GDHCPClient *dhcp_client,
 				time_t *last_renew, time_t *last_rebind,
 				time_t *expire)
 {
-	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
+	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
 		return -EINVAL;
 
 	if (T1 != NULL)
@@ -2492,49 +2492,49 @@ void g_dhcp_client_register_event(GDHCPClient *dhcp_client,
 		dhcp_client->address_conflict_data = data;
 		return;
 	case G_DHCP_CLIENT_EVENT_INFORMATION_REQ:
-		if (dhcp_client->type == G_DHCP_IPV4)
+		if (dhcp_client->type != G_DHCP_IPV6)
 			return;
 		dhcp_client->information_req_cb = func;
 		dhcp_client->information_req_data = data;
 		return;
 	case G_DHCP_CLIENT_EVENT_SOLICITATION:
-		if (dhcp_client->type == G_DHCP_IPV4)
+		if (dhcp_client->type != G_DHCP_IPV6)
 			return;
 		dhcp_client->solicitation_cb = func;
 		dhcp_client->solicitation_data = data;
 		return;
 	case G_DHCP_CLIENT_EVENT_ADVERTISE:
-		if (dhcp_client->type == G_DHCP_IPV4)
+		if (dhcp_client->type != G_DHCP_IPV6)
 			return;
 		dhcp_client->advertise_cb = func;
 		dhcp_client->advertise_data = data;
 		return;
 	case G_DHCP_CLIENT_EVENT_REQUEST:
-		if (dhcp_client->type == G_DHCP_IPV4)
+		if (dhcp_client->type != G_DHCP_IPV6)
 			return;
 		dhcp_client->request_cb = func;
 		dhcp_client->request_data = data;
 		return;
 	case G_DHCP_CLIENT_EVENT_RENEW:
-		if (dhcp_client->type == G_DHCP_IPV4)
+		if (dhcp_client->type != G_DHCP_IPV6)
 			return;
 		dhcp_client->renew_cb = func;
 		dhcp_client->renew_data = data;
 		return;
 	case G_DHCP_CLIENT_EVENT_REBIND:
-		if (dhcp_client->type == G_DHCP_IPV4)
+		if (dhcp_client->type != G_DHCP_IPV6)
 			return;
 		dhcp_client->rebind_cb = func;
 		dhcp_client->rebind_data = data;
 		return;
 	case G_DHCP_CLIENT_EVENT_RELEASE:
-		if (dhcp_client->type == G_DHCP_IPV4)
+		if (dhcp_client->type != G_DHCP_IPV6)
 			return;
 		dhcp_client->release_cb = func;
 		dhcp_client->release_data = data;
 		return;
 	case G_DHCP_CLIENT_EVENT_CONFIRM:
-		if (dhcp_client->type == G_DHCP_IPV4)
+		if (dhcp_client->type != G_DHCP_IPV6)
 			return;
 		dhcp_client->confirm_cb = func;
 		dhcp_client->confirm_data = data;
@@ -2715,7 +2715,7 @@ void g_dhcpv6_client_set_send(GDHCPClient *dhcp_client,
 
 void g_dhcpv6_client_reset_renew(GDHCPClient *dhcp_client)
 {
-	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
+	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
 		return;
 
 	dhcp_client->last_renew = time(NULL);
@@ -2723,7 +2723,7 @@ void g_dhcpv6_client_reset_renew(GDHCPClient *dhcp_client)
 
 void g_dhcpv6_client_reset_rebind(GDHCPClient *dhcp_client)
 {
-	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
+	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
 		return;
 
 	dhcp_client->last_rebind = time(NULL);
@@ -2731,7 +2731,7 @@ void g_dhcpv6_client_reset_rebind(GDHCPClient *dhcp_client)
 
 void g_dhcpv6_client_set_expire(GDHCPClient *dhcp_client, uint32_t timeout)
 {
-	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
+	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
 		return;
 
 	dhcp_client->expire = time(NULL) + timeout;
@@ -2739,7 +2739,7 @@ void g_dhcpv6_client_set_expire(GDHCPClient *dhcp_client, uint32_t timeout)
 
 uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client)
 {
-	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
+	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
 		return 0;
 
 	return dhcp_client->status_code;
