@@ -107,6 +107,12 @@ Core
    and oFono in general.
 
 
+- DHCPv6 DECLINE message support
+
+   Priority: Medium
+   Complexity: C2
+
+
 WiFi
 ====
 
