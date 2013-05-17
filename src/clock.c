@@ -88,6 +88,65 @@ static enum timezone_updates string2timezone_updates(const char *value)
         return TIMEZONE_UPDATES_UNKNOWN;
 }
 
+static void clock_properties_load(void)
+{
+	GKeyFile *keyfile;
+	char *str;
+	enum time_updates time_value;
+	enum timezone_updates timezone_value;
+
+	keyfile = __connman_storage_load_global();
+	if (keyfile == NULL)
+		return;
+
+	str = g_key_file_get_string(keyfile, "global", "TimeUpdates", NULL);
+
+	time_value = string2time_updates(str);
+	if (time_value != TIME_UPDATES_UNKNOWN)
+		time_updates_config = time_value;
+
+	g_free(str);
+
+	str = g_key_file_get_string(keyfile, "global", "TimezoneUpdates",
+			NULL);
+
+	timezone_value = string2timezone_updates(str);
+	if (timezone_value != TIMEZONE_UPDATES_UNKNOWN)
+		timezone_updates_config = timezone_value;
+
+	g_free(str);
+
+	g_key_file_free(keyfile);
+}
+
+static void clock_properties_save(void)
+{
+	GKeyFile *keyfile;
+	const char *str;
+
+	keyfile = __connman_storage_load_global();
+	if (keyfile == NULL)
+		keyfile = g_key_file_new();
+
+	str = time_updates2string(time_updates_config);
+	if (str != NULL)
+		g_key_file_set_string(keyfile, "global", "TimeUpdates", str);
+	else
+		g_key_file_remove_key(keyfile, "global", "TimeUpdates", NULL);
+
+	str = timezone_updates2string(timezone_updates_config);
+	if (str != NULL)
+		g_key_file_set_string(keyfile, "global", "TimezoneUpdates",
+				str);
+	else
+		g_key_file_remove_key(keyfile, "global", "TimezoneUpdates",
+				NULL);
+
+	__connman_storage_save_global(keyfile);
+
+	g_key_file_free(keyfile);
+}
+
 enum time_updates __connman_clock_timeupdates(void)
 {
 	return time_updates_config;
@@ -220,6 +279,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		time_updates_config = newval;
 
+		clock_properties_save();
 		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_CLOCK_INTERFACE, "TimeUpdates",
 				DBUS_TYPE_STRING, &strval);
@@ -254,6 +314,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		timezone_updates_config = newval;
 
+		clock_properties_save();
 		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_CLOCK_INTERFACE, "TimezoneUpdates",
 				DBUS_TYPE_STRING, &strval);
@@ -357,6 +418,7 @@ int __connman_clock_init(void)
 						clock_methods, clock_signals,
 						NULL, NULL, NULL);
 
+	clock_properties_load();
 	return 0;
 }
 
