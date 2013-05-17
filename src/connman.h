@@ -56,6 +56,13 @@ DBusMessage *__connman_error_invalid_property(DBusMessage *msg);
 int __connman_manager_init(void);
 void __connman_manager_cleanup(void);
 
+enum time_updates {
+	TIME_UPDATES_UNKNOWN = 0,
+	TIME_UPDATES_MANUAL  = 1,
+	TIME_UPDATES_AUTO    = 2,
+};
+
+enum time_updates __connman_clock_timeupdates(void);
 int __connman_clock_init(void);
 void __connman_clock_cleanup(void);
 

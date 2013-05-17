@@ -29,12 +29,6 @@
 
 #include "connman.h"
 
-enum time_updates {
-	TIME_UPDATES_UNKNOWN = 0,
-	TIME_UPDATES_MANUAL  = 1,
-	TIME_UPDATES_AUTO    = 2,
-};
-
 enum timezone_updates {
 	TIMEZONE_UPDATES_UNKNOWN = 0,
 	TIMEZONE_UPDATES_MANUAL  = 1,
@@ -92,6 +86,11 @@ static enum timezone_updates string2timezone_updates(const char *value)
 		return TIMEZONE_UPDATES_AUTO;
 
         return TIMEZONE_UPDATES_UNKNOWN;
+}
+
+enum time_updates __connman_clock_timeupdates(void)
+{
+	return time_updates_config;
 }
 
 static void append_timeservers(DBusMessageIter *iter, void *user_data)
