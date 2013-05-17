@@ -182,6 +182,9 @@ GSList *__connman_timeserver_get_all(struct connman_service *service)
 	char **fallback_ts;
 	int index, i;
 
+	if (__connman_clock_timeupdates() == TIME_UPDATES_MANUAL)
+		return NULL;
+
 	service_ts_config = connman_service_get_timeservers_config(service);
 
 	/* First add Service Timeservers.Configuration to the list */
