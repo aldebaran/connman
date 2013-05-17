@@ -202,14 +202,14 @@ VPN
 Tools
 =====
 
-- Add Session mode and VPN support to connmanctl command line tool
+- Add Session mode, VPN and Clock API support to connmanctl command line tool
 
    Priority: Low
    Complexity: C2
 
    The connmanctl command line tool should support Session mode and VPN
    Agent with a set of suitable commands used in both interactive and
-   non-interactive mode.
+   non-interactive mode. Also add support for Clock API.
 
 
 User Interface
