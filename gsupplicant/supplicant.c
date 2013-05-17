@@ -2742,7 +2742,7 @@ static void add_scan_frequencies(DBusMessageIter *iter,
 	unsigned int freq;
 	int i;
 
-	for (i = 0; i < scan_data->num_ssids; i++) {
+	for (i = 0; i < scan_data->num_freqs; i++) {
 		freq = scan_data->freqs[i];
 		if (!freq)
 			break;

@@ -148,6 +148,7 @@ struct _GSupplicantScanParams {
 
 	uint8_t num_ssids;
 
+	uint8_t num_freqs;
 	uint16_t *freqs;
 };
 

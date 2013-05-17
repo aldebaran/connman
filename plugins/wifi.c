@@ -107,6 +107,8 @@ struct wifi_data {
 	 * autoscan "emulation".
 	 */
 	struct autoscan_params *autoscan;
+
+	GSupplicantScanParams *scan_params;
 };
 
 static GList *iface_list = NULL;
@@ -263,6 +265,9 @@ static void wifi_remove(struct connman_device *device)
 
 	g_supplicant_interface_set_data(wifi->interface, NULL);
 
+	if (wifi->scan_params != NULL)
+		g_supplicant_free_scan_params(wifi->scan_params);
+
 	g_free(wifi->autoscan);
 	g_free(wifi->identifier);
 	g_free(wifi);
@@ -290,7 +295,8 @@ static int add_scan_param(gchar *hex_ssid, char *raw_ssid, int ssid_len,
 	unsigned int i;
 	struct scan_ssid *scan_ssid;
 
-	if (driver_max_scan_ssids > scan_data->num_ssids &&
+	if ((driver_max_scan_ssids == 0 ||
+			driver_max_scan_ssids > scan_data->num_ssids) &&
 			(hex_ssid != NULL || raw_ssid != NULL)) {
 		gchar *ssid;
 		unsigned int j = 0, hex;
@@ -344,36 +350,41 @@ static int add_scan_param(gchar *hex_ssid, char *raw_ssid, int ssid_len,
 	scan_data->ssids = g_slist_reverse(scan_data->ssids);
 
 	if (scan_data->freqs == NULL) {
-		scan_data->freqs = g_try_malloc0(sizeof(uint16_t) *
-						scan_data->num_ssids);
+		scan_data->freqs = g_try_malloc0(sizeof(uint16_t));
 		if (scan_data->freqs == NULL) {
 			g_slist_free_full(scan_data->ssids, g_free);
 			return -ENOMEM;
 		}
-	} else {
-		scan_data->freqs = g_try_realloc(scan_data->freqs,
-				sizeof(uint16_t) * scan_data->num_ssids);
-		if (scan_data->freqs == NULL) {
-			g_slist_free_full(scan_data->ssids, g_free);
-			return -ENOMEM;
-		}
-		scan_data->freqs[scan_data->num_ssids - 1] = 0;
-	}
 
-	/* Don't add duplicate entries */
-	for (i = 0; i < scan_data->num_ssids; i++) {
-		if (scan_data->freqs[i] == 0) {
-			scan_data->freqs[i] = freq;
-			break;
-		} else if (scan_data->freqs[i] == freq)
-			break;
+		scan_data->num_freqs = 1;
+		scan_data->freqs[0] = freq;
+	} else {
+		connman_bool_t duplicate = FALSE;
+
+		/* Don't add duplicate entries */
+		for (i = 0; i < scan_data->num_freqs; i++) {
+			if (scan_data->freqs[i] == freq) {
+				duplicate = TRUE;
+				break;
+			}
+		}
+
+		if (duplicate == FALSE) {
+			scan_data->num_freqs++;
+			scan_data->freqs = g_try_realloc(scan_data->freqs,
+				sizeof(uint16_t) * scan_data->num_freqs);
+			if (scan_data->freqs == NULL) {
+				g_slist_free_full(scan_data->ssids, g_free);
+				return -ENOMEM;
+			}
+			scan_data->freqs[scan_data->num_freqs - 1] = freq;
+		}
 	}
 
 	return 1;
 }
 
-static int get_hidden_connections(int max_ssids,
-				GSupplicantScanParams *scan_data)
+static int get_hidden_connections(GSupplicantScanParams *scan_data)
 {
 	struct connman_config_entry **entries;
 	GKeyFile *keyfile;
@@ -415,13 +426,13 @@ static int get_hidden_connections(int max_ssids,
 		name = g_key_file_get_string(keyfile, services[i], "Name",
 								NULL);
 
-		ret = add_scan_param(ssid, NULL, 0, freq, scan_data,
-				max_ssids, name);
+		ret = add_scan_param(ssid, NULL, 0, freq, scan_data, 0, name);
 		if (ret < 0)
 			add_param_failed++;
 		else if (ret > 0)
 			num_ssids++;
 
+		g_free(ssid);
 		g_free(name);
 		g_key_file_free(keyfile);
 	}
@@ -447,8 +458,7 @@ static int get_hidden_connections(int max_ssids,
 		if (ssid == NULL)
 			continue;
 
-		ret = add_scan_param(NULL, ssid, len, 0, scan_data,
-							max_ssids, ssid);
+		ret = add_scan_param(NULL, ssid, len, 0, scan_data, 0, ssid);
 		if (ret < 0)
 			add_param_failed++;
 		else if (ret > 0)
@@ -458,12 +468,82 @@ static int get_hidden_connections(int max_ssids,
 	connman_config_free_entries(entries);
 
 	if (add_param_failed > 0)
-		DBG("Unable to scan %d out of %d SSIDs (max is %d)",
-			add_param_failed, num_ssids, max_ssids);
+		DBG("Unable to scan %d out of %d SSIDs",
+					add_param_failed, num_ssids);
 
 	g_strfreev(services);
 
-	return num_ssids > max_ssids ? max_ssids : num_ssids;
+	return num_ssids;
+}
+
+static int get_hidden_connections_params(struct wifi_data *wifi,
+					GSupplicantScanParams *scan_params)
+{
+	int driver_max_ssids, i;
+	GSupplicantScanParams *orig_params;
+
+	/*
+	 * Scan hidden networks so that we can autoconnect to them.
+	 * We will assume 1 as a default number of ssid to scan.
+	 */
+	driver_max_ssids = g_supplicant_interface_get_max_scan_ssids(
+							wifi->interface);
+	if (driver_max_ssids == 0)
+		driver_max_ssids = 1;
+
+	DBG("max ssids %d", driver_max_ssids);
+
+	if (wifi->scan_params == NULL) {
+		wifi->scan_params = g_try_malloc0(sizeof(GSupplicantScanParams));
+		if (wifi->scan_params == NULL)
+			return 0;
+
+		if (get_hidden_connections(wifi->scan_params) == 0) {
+			g_supplicant_free_scan_params(wifi->scan_params);
+			wifi->scan_params = NULL;
+
+			return 0;
+		}
+	}
+
+	orig_params = wifi->scan_params;
+
+	/* Let's transfer driver_max_ssids params */
+	for (i = 0; i < driver_max_ssids; i++) {
+		struct scan_ssid *ssid;
+
+		if (wifi->scan_params->ssids == NULL)
+			break;
+
+		ssid = orig_params->ssids->data;
+		orig_params->ssids = g_slist_remove(orig_params->ssids, ssid);
+		scan_params->ssids = g_slist_prepend(scan_params->ssids, ssid);
+	}
+
+	if (i > 0) {
+		scan_params->num_ssids = i;
+		scan_params->ssids = g_slist_reverse(scan_params->ssids);
+
+		scan_params->freqs = g_memdup(orig_params->freqs,
+				sizeof(uint16_t) * orig_params->num_freqs);
+		if (scan_params->freqs == NULL)
+			goto err;
+
+		scan_params->num_freqs = orig_params->num_freqs;
+
+	} else
+		goto err;
+
+	orig_params->num_ssids -= scan_params->num_ssids;
+
+	return scan_params->num_ssids;
+
+err:
+	g_slist_free_full(scan_params->ssids, g_free);
+	g_supplicant_free_scan_params(wifi->scan_params);
+	wifi->scan_params = NULL;
+
+	return 0;
 }
 
 static int throw_wifi_scan(struct connman_device *device,
@@ -514,10 +594,17 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 
 	DBG("result %d wifi %p", result, wifi);
 
-	if (wifi != NULL && wifi->hidden != NULL) {
-		connman_network_clear_hidden(wifi->hidden->user_data);
-		hidden_free(wifi->hidden);
-		wifi->hidden = NULL;
+	if (wifi != NULL) {
+		if (wifi->hidden != NULL) {
+			connman_network_clear_hidden(wifi->hidden->user_data);
+			hidden_free(wifi->hidden);
+			wifi->hidden = NULL;
+		}
+
+		if (wifi->scan_params != NULL) {
+			g_supplicant_free_scan_params(wifi->scan_params);
+			wifi->scan_params = NULL;
+		}
 	}
 
 	if (result < 0)
@@ -548,32 +635,21 @@ static void scan_callback_hidden(int result,
 	struct connman_device *device = user_data;
 	struct wifi_data *wifi = connman_device_get_data(device);
 	GSupplicantScanParams *scan_params;
-	int driver_max_ssids, ret;
+	int ret;
 
 	DBG("result %d wifi %p", result, wifi);
 
 	if (wifi == NULL)
 		goto out;
 
-	/*
-	 * Scan hidden networks so that we can autoconnect to them.
-	 * We will assume 1 as a default number of ssid to scan.
-	 */
-	driver_max_ssids = g_supplicant_interface_get_max_scan_ssids(
-							wifi->interface);
-	if (driver_max_ssids == 0)
-		driver_max_ssids = 1;
-
-	DBG("max ssids %d", driver_max_ssids);
-
 	scan_params = g_try_malloc0(sizeof(GSupplicantScanParams));
 	if (scan_params == NULL)
 		goto out;
 
-	if (get_hidden_connections(driver_max_ssids, scan_params) > 0) {
+	if (get_hidden_connections_params(wifi, scan_params) > 0) {
 		ret = g_supplicant_interface_scan(wifi->interface,
 							scan_params,
-							scan_callback,
+							scan_callback_hidden,
 							device);
 		if (ret == 0)
 			return;
