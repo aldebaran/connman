@@ -64,6 +64,10 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		void RemoveProvider(object path)	[deprecated]
+
+			Remove a VPN specified by the object path.
+
 		void RegisterAgent(object path)
 
 			Register new agent for handling user requests.
