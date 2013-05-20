@@ -3210,7 +3210,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		service_save(service);
 		timeservers_configuration_changed(service);
 
-		__connman_timeserver_sync(service);
+		if (service == __connman_service_get_default())
+			__connman_timeserver_sync(service);
+
 	} else if (g_str_equal(name, "Domains.Configuration") == TRUE) {
 		DBusMessageIter entry;
 		GString *str;
