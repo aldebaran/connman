@@ -32,7 +32,11 @@
 
 #include "connman.h"
 
+#define TS_RECHECK_INTERVAL     7200
+
 static GSList *ts_list = NULL;
+static char *ts_current = NULL;
+static int ts_recheck_id = 0;
 
 static GResolv *resolv = NULL;
 static int resolv_id = 0;
@@ -117,7 +121,10 @@ static void resolv_result(GResolvResultStatus status, char **results, gpointer u
  */
 void __connman_timeserver_sync_next()
 {
-	char *server;
+	if (ts_current != NULL) {
+		g_free(ts_current);
+		ts_current = NULL;
+	}
 
 	__connman_ntp_stop();
 
@@ -125,26 +132,23 @@ void __connman_timeserver_sync_next()
 	if (ts_list == NULL)
 		return;
 
-	server = ts_list->data;
+	ts_current = ts_list->data;
 
 	ts_list = g_slist_delete_link(ts_list, ts_list);
 
 	/* if its a IP , directly query it. */
-	if (connman_inet_check_ipaddress(server) > 0) {
-		DBG("Using timeserver %s", server);
+	if (connman_inet_check_ipaddress(ts_current) > 0) {
+		DBG("Using timeserver %s", ts_current);
 
-		__connman_ntp_start(server);
+		__connman_ntp_start(ts_current);
 
-		g_free(server);
 		return;
 	}
 
-	DBG("Resolving server %s", server);
+	DBG("Resolving server %s", ts_current);
 
-	resolv_id = g_resolv_lookup_hostname(resolv, server,
+	resolv_id = g_resolv_lookup_hostname(resolv, ts_current,
 						resolv_result, NULL);
-
-	g_free(server);
 
 	return;
 }
@@ -227,6 +231,58 @@ GSList *__connman_timeserver_get_all(struct connman_service *service)
 	return g_slist_reverse(list);
 }
 
+static gboolean ts_recheck(void *user_data)
+{
+	GSList *ts;
+
+	ts = __connman_timeserver_get_all(__connman_service_get_default());
+
+	if (ts == NULL) {
+		DBG("timeservers disabled");
+
+		return TRUE;
+	}
+
+	if (g_strcmp0(ts_current, ts->data) != 0) {
+		DBG("current %s preferred %s", ts_current, (char *)ts->data);
+
+		g_slist_free_full(ts, g_free);
+
+		__connman_timeserver_sync(NULL);
+
+		return FALSE;
+	}
+
+	DBG("");
+
+	g_slist_free_full(ts, g_free);
+
+	return TRUE;
+}
+
+static void ts_recheck_disable(void)
+{
+	if (ts_recheck_id == 0)
+		return;
+
+	g_source_remove(ts_recheck_id);
+	ts_recheck_id = 0;
+
+	if (ts_current != NULL) {
+		g_free(ts_current);
+		ts_current = NULL;
+	}
+}
+
+static void ts_recheck_enable(void)
+{
+	if (ts_recheck_id > 0)
+		return;
+
+	ts_recheck_id = g_timeout_add_seconds(TS_RECHECK_INTERVAL, ts_recheck,
+			NULL);
+}
+
 /*
  * This function must be called everytime the default service changes, the
  * service timeserver(s) or gatway changes or the global timeserver(s) changes.
@@ -252,6 +308,8 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 
 	__connman_ntp_stop();
 
+	ts_recheck_disable();
+
 	if (resolv_id > 0)
 		g_resolv_cancel_lookup(resolv, resolv_id);
 
@@ -265,6 +323,8 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 		DBG("No timeservers set.");
 		return 0;
 	}
+
+	ts_recheck_enable();
 
         __connman_timeserver_sync_next();
 
@@ -327,6 +387,8 @@ static void timeserver_stop()
 	ts_list = NULL;
 
 	__connman_ntp_stop();
+
+	ts_recheck_disable();
 }
 
 int __connman_timeserver_system_set(char **servers)
