@@ -73,10 +73,11 @@ static bool check_dbus_name(const char *name)
 	 */
 	unsigned int i;
 
-	if (name == NULL || (name[0] >= '0' && name[0] <= '9'))
+	if (name == NULL || name[0] == '\0' || (name[0] >= '0' &&
+					name[0] <= '9'))
 		return false;
 
-	for (i = 0; i < strlen(name); i++)
+	for (i = 0; name[i] != '\0'; i++)
 		if (!((name[i] >= 'A' && name[i] <= 'Z') ||
 				(name[i] >= 'a' && name[i] <= 'z') ||
 				(name[i] >= '0' && name[i] <= '9') ||
