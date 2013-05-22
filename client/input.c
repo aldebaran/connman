@@ -96,7 +96,7 @@ static void rl_handler(char *input)
 	args = g_strsplit(input, " ", 0);
 	num = g_strv_length(args);
 
-	trim_args = g_new0(char *, num);
+	trim_args = g_new0(char *, num + 1);
 	for (i = 0, len = 0; i < num; i++) {
 		if (*args[i] != '\0') {
 			trim_args[len] = args[i];
