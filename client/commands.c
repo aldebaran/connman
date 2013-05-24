@@ -738,10 +738,12 @@ static void config_append_ipv6(DBusMessageIter *iter, void *user_data)
 			if (opts[1] != NULL) {
 				append->values = 2;
 
-				if (g_strcmp0(opts[1], "prefered") != 0) {
+				if (g_strcmp0(opts[1], "prefered") != 0 &&
+						g_strcmp0(opts[1],
+							"preferred") != 0) {
 					fprintf(stderr, "Error %s: %s\n",
 							opts[1],
-							strerror(-EINVAL));
+							strerror(EINVAL));
 					return;
 				}
 
