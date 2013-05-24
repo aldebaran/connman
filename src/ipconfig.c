@@ -1761,10 +1761,10 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 		return;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
-	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		append_addr = ipconfig->address;
 		break;
 
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 		append_addr = ipconfig->system;
 		break;
