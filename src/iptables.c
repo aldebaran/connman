@@ -945,7 +945,7 @@ static GList *find_existing_rule(struct connman_iptables *table,
 				struct ipt_ip *ip, const char *chain_name,
 				const char *target_name,
 				struct xtables_target *xt_t,
-				struct xtables_match *xt_m,
+				GList *matches,
 				struct xtables_rule_match *xt_rm)
 {
 	GList *chain_tail, *chain_head, *list;
@@ -963,7 +963,7 @@ static GList *find_existing_rule(struct connman_iptables *table,
 	if (chain_tail == NULL)
 		return NULL;
 
-	if (!xt_t && !xt_m)
+	if (!xt_t && !matches)
 		return NULL;
 
 	entry_test = new_rule(ip, target_name, xt_t, xt_rm);
@@ -972,7 +972,7 @@ static GList *find_existing_rule(struct connman_iptables *table,
 
 	if (xt_t != NULL)
 		xt_e_t = ipt_get_target(entry_test);
-	if (xt_m != NULL)
+	if (matches != NULL)
 		xt_e_m = (struct xt_entry_match *)entry_test->elems;
 
 	entry = chain_head->data;
@@ -1002,7 +1002,7 @@ static GList *find_existing_rule(struct connman_iptables *table,
 				continue;
 		}
 
-		if (xt_m != NULL) {
+		if (matches != NULL) {
 			struct xt_entry_match *tmp_xt_e_m;
 
 			tmp_xt_e_m = (struct xt_entry_match *)tmp_e->elems;
@@ -1026,12 +1026,13 @@ static int iptables_delete_rule(struct connman_iptables *table,
 				struct ipt_ip *ip, const char *chain_name,
 				const char *target_name,
 				struct xtables_target *xt_t,
-				struct xtables_match *xt_m,
+				GList *matches,
 				struct xtables_rule_match *xt_rm)
 {
 	struct connman_iptables_entry *entry;
 	GList *chain_head, *chain_tail, *list;
 	int builtin, removed;
+
 
 	DBG("table %s chain %s", table->name, chain_name);
 
@@ -1046,7 +1047,7 @@ static int iptables_delete_rule(struct connman_iptables *table,
 		return -EINVAL;
 
 	list = find_existing_rule(table, ip, chain_name, target_name,
-							xt_t, xt_m, xt_rm);
+							xt_t, matches, xt_rm);
 	if (list == NULL)
 		return -EINVAL;
 
@@ -1250,6 +1251,9 @@ static void dump_target(struct ipt_entry *entry)
 			xt_t->print(NULL, target, 1);
 		}
 	}
+
+	if (xt_t == xt_t->next)
+		free(xt_t);
 }
 
 static void dump_match(struct ipt_entry *entry)
@@ -1275,6 +1279,8 @@ static void dump_match(struct ipt_entry *entry)
 
 		return;
 	}
+	if (xt_m == xt_m->next)
+		free(xt_m);
 
 out:
 	DBG("\tmatch %s", match->u.user.name);
@@ -1655,6 +1661,10 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 
 	if (iptables_globals.opts == NULL) {
 		g_free(xt_m->m);
+
+		if (xt_m == xt_m->next)
+			free(xt_m);
+
 		xt_m = NULL;
 	}
 
@@ -1724,7 +1734,7 @@ struct parse_context {
 	char **argv;
 	struct ipt_ip *ip;
 	struct xtables_target *xt_t;
-	struct xtables_match *xt_m;
+	GList *xt_m;
 	struct xtables_rule_match *xt_rm;
 };
 
@@ -1891,6 +1901,7 @@ static int parse_rule_spec(struct connman_iptables *table,
 	 *    xtables_option_mpcall() depending on which version
 	 *    of libxtables is found.
 	 */
+	struct xtables_match *xt_m;
 	connman_bool_t invert = FALSE;
 	int len, c, err;
 
@@ -1960,11 +1971,12 @@ static int parse_rule_spec(struct connman_iptables *table,
 			break;
 		case 'm':
 			/* Matches */
-			ctx->xt_m = prepare_matches(table, &ctx->xt_rm, optarg);
-			if (ctx->xt_m == NULL) {
+			xt_m = prepare_matches(table, &ctx->xt_rm, optarg);
+			if (xt_m == NULL) {
 				err = -EINVAL;
 				goto out;
 			}
+			ctx->xt_m = g_list_append(ctx->xt_m, xt_m);
 
 			break;
 		case 'j':
@@ -2044,6 +2056,7 @@ static void reset_xtables(void)
 static void cleanup_parse_context(struct parse_context *ctx)
 {
 	struct xtables_rule_match *rm, *tmp;
+	GList *list;
 
 	g_strfreev(ctx->argv);
 	g_free(ctx->ip);
@@ -2051,10 +2064,19 @@ static void cleanup_parse_context(struct parse_context *ctx)
 		g_free(ctx->xt_t->t);
 		ctx->xt_t->t = NULL;
 	}
-	if (ctx->xt_m != NULL) {
-		g_free(ctx->xt_m->m);
-		ctx->xt_m->m = NULL;
+
+	for (list = ctx->xt_m; list != NULL; list = list->next) {
+		struct xtables_match *xt_m = list->data;
+
+		g_free(xt_m->m);
+
+		if (xt_m != xt_m->next)
+			continue;
+
+		g_free(xt_m);
 	}
+	g_list_free(ctx->xt_m);
+
 	for (tmp = NULL, rm = ctx->xt_rm; rm != NULL; rm = rm->next) {
 		if (tmp != NULL)
 			g_free(tmp);
