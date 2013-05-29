@@ -113,6 +113,14 @@ Core
    Complexity: C2
 
 
+- Support other time sources than NTP
+
+   Priority: Medium
+   Complexity: C2
+
+   Support other time sources like cellular, GPS in addition to NTP.
+
+
 WiFi
 ====
 
