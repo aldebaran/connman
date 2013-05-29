@@ -235,11 +235,16 @@ static int load_provider(GKeyFile *keyfile, const char *group,
 		struct vpn_provider *provider;
 		provider = __vpn_provider_lookup(id);
 		if (provider != NULL) {
-			if (action == REMOVE)
+			if (action == REMOVE) {
 				__vpn_provider_delete(provider);
+				err = 0;
+			} else {
+				connman_warn("Provider configuration %s "
+						"already exist", id);
+				err = -EALREADY;
+			}
 
 			g_free(id);
-			err = -EALREADY;
 			goto err;
 		}
 
