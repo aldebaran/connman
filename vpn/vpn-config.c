@@ -59,24 +59,20 @@ struct vpn_config {
 	char *ident;
 	char *name;
 	char *description;
-	connman_bool_t protected;
 	GHashTable *provider_table;
 };
 
 static GHashTable *config_table = NULL;
-static GSList *protected_providers = NULL;
 
 static connman_bool_t cleanup = FALSE;
 
 /* Definition of possible strings in the .config files */
 #define CONFIG_KEY_NAME                "Name"
 #define CONFIG_KEY_DESC                "Description"
-#define CONFIG_KEY_PROT                "Protected"
 
 static const char *config_possible_keys[] = {
 	CONFIG_KEY_NAME,
 	CONFIG_KEY_DESC,
-	CONFIG_KEY_PROT,
 	NULL,
 };
 
@@ -108,9 +104,6 @@ static void unregister_provider(gpointer data)
 	connman_info("Removing provider configuration %s provider %s",
 				config_provider->ident, provider_id);
 
-	protected_providers = g_slist_remove(protected_providers,
-						config_provider);
-
 	provider = __vpn_provider_lookup(provider_id);
 	if (provider != NULL)
 		__vpn_provider_delete(provider);
@@ -132,42 +125,6 @@ free_only:
 	g_free(config_provider->config_ident);
 	g_free(config_provider->config_entry);
 	g_free(config_provider);
-}
-
-static connman_bool_t check_type(const char *type)
-{
-	if (g_strcmp0(type, "OpenConnect") == 0)
-		return TRUE;
-	if (g_strcmp0(type, "OpenVPN") == 0)
-		return TRUE;
-	if (g_strcmp0(type, "VPNC") == 0)
-		return TRUE;
-	if (g_strcmp0(type, "L2TP") == 0)
-		return TRUE;
-	if (g_strcmp0(type, "PPTP") == 0)
-		return TRUE;
-
-	return FALSE;
-}
-
-static connman_bool_t
-is_protected_provider(struct vpn_config_provider *config_provider)
-{
-	GSList *list;
-
-	DBG("ident %s", config_provider->ident);
-
-	for (list = protected_providers; list; list = list->next) {
-		struct vpn_config_provider *p = list->data;
-
-		if (g_strcmp0(p->type, config_provider->type) != 0)
-			continue;
-
-		if (check_type(config_provider->type) == TRUE)
-			return TRUE;
-	}
-
-	return FALSE;
 }
 
 static int set_string(struct vpn_config_provider *config_provider,
@@ -295,22 +252,12 @@ static int load_provider(GKeyFile *keyfile, const char *group,
 		goto err;
 	}
 
-	if (is_protected_provider(config_provider) == TRUE) {
-		connman_error("Trying to provision a protected service");
-		err = -EACCES;
-		goto err;
-	}
-
 	config_provider->config_ident = g_strdup(config->ident);
 	config_provider->config_entry = g_strdup_printf("provider_%s",
 						config_provider->ident);
 
 	g_hash_table_insert(config->provider_table,
 				config_provider->ident,	config_provider);
-
-	if (config->protected == TRUE)
-		protected_providers =
-			g_slist_prepend(protected_providers, config_provider);
 
 	err = __vpn_provider_create_from_config(
 					config_provider->setting_strings,
@@ -365,11 +312,10 @@ static void check_keys(GKeyFile *keyfile, const char *group,
 static int load_config(struct vpn_config *config, char *path, enum what action)
 {
 	GKeyFile *keyfile;
-	GError *error = NULL;
 	gsize length;
 	char **groups;
 	char *str;
-	gboolean protected, found = FALSE;
+	gboolean found = FALSE;
 	int i;
 
 	DBG("config %p", config);
@@ -392,14 +338,6 @@ static int load_config(struct vpn_config *config, char *path, enum what action)
 		g_free(config->description);
 		config->description = str;
 	}
-
-	protected = g_key_file_get_boolean(keyfile, "global",
-					CONFIG_KEY_PROT, &error);
-	if (error == NULL)
-		config->protected = protected;
-	else
-		config->protected = TRUE;
-	g_clear_error(&error);
 
 	groups = g_key_file_get_groups(keyfile, &length);
 
