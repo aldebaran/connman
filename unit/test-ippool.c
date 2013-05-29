@@ -111,8 +111,6 @@ static void test_case_3(void)
 
 	__connman_ippool_init();
 
-	/* Allocate all possible pools */
-
 	/*
 	 *                                             Number of addresses
 	 * 24-bit block         10.0.0.0    – 10.255.255.255    16,777,216
@@ -124,12 +122,18 @@ static void test_case_3(void)
 	 * Total numbers of 256 blocks:                             69,888
 	 */
 
+	/*
+	 * Completely exhaust the first two pools because they are a bit
+	 * too large.
+	 */
+	__connman_ippool_newaddr(45, "10.0.0.1", 8);
+	__connman_ippool_newaddr(46, "172.16.0.1", 11);
+
 	while (TRUE) {
 		pool = __connman_ippool_create(23, 1, 100, NULL, NULL);
 		if (pool == NULL)
 			break;
 		i += 1;
-		g_assert(i < 69888);
 
 		list = g_slist_prepend(list, pool);
 
@@ -145,6 +149,8 @@ static void test_case_3(void)
 		g_assert(start_ip);
 		g_assert(end_ip);
 	}
+
+	g_assert(i == 255);
 
 	LOG("Number of blocks %d", i);
 
