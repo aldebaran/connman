@@ -3115,7 +3115,10 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (str == NULL)
 			return __connman_error_invalid_arguments(msg);
 
-		index = connman_network_get_index(service->network);
+		if (service->type == CONNMAN_SERVICE_TYPE_VPN)
+			index = connman_provider_get_index(service->provider);
+		else
+			index = connman_network_get_index(service->network);
 		gw = __connman_ipconfig_get_gateway_from_index(index,
 			CONNMAN_IPCONFIG_TYPE_ALL);
 
