@@ -76,19 +76,16 @@ struct connman_config {
 	char *ident;
 	char *name;
 	char *description;
-	connman_bool_t protected;
 	GHashTable *service_table;
 };
 
 static GHashTable *config_table = NULL;
-static GSList *protected_services = NULL;
 
 static connman_bool_t cleanup = FALSE;
 
 /* Definition of possible strings in the .config files */
 #define CONFIG_KEY_NAME                "Name"
 #define CONFIG_KEY_DESC                "Description"
-#define CONFIG_KEY_PROT                "Protected"
 
 #define SERVICE_KEY_TYPE               "Type"
 #define SERVICE_KEY_NAME               "Name"
@@ -116,7 +113,6 @@ static connman_bool_t cleanup = FALSE;
 static const char *config_possible_keys[] = {
 	CONFIG_KEY_NAME,
 	CONFIG_KEY_DESC,
-	CONFIG_KEY_PROT,
 	NULL,
 };
 
@@ -171,9 +167,6 @@ static void unregister_service(gpointer data)
 
 	connman_info("Removing service configuration %s",
 						config_service->ident);
-
-	protected_services = g_slist_remove(protected_services,
-						config_service);
 
 	if (config_service->virtual == TRUE)
 		goto free_only;
@@ -272,34 +265,6 @@ static void check_keys(GKeyFile *keyfile, const char *group,
 	}
 
 	g_strfreev(avail_keys);
-}
-
-static connman_bool_t
-is_protected_service(struct connman_config_service *service)
-{
-	GSList *list;
-
-	DBG("ident %s", service->ident);
-
-	for (list = protected_services; list; list = list->next) {
-		struct connman_config_service *s = list->data;
-
-		if (g_strcmp0(s->type, service->type) != 0)
-			continue;
-
-		if (s->ssid == NULL || service->ssid == NULL)
-			continue;
-
-		if (s->ssid_len != service->ssid_len)
-			continue;
-
-		if (g_strcmp0(service->type, "wifi") == 0 &&
-			strncmp(s->ssid, service->ssid, s->ssid_len) == 0) {
-			return TRUE;
-		}
-	}
-
-	return FALSE;
 }
 
 static int check_family(const char *address, int expected_family)
@@ -640,11 +605,6 @@ static connman_bool_t load_service(GKeyFile *keyfile, const char *group,
 		service->ssid_len = ssid_len;
 	}
 
-	if (is_protected_service(service) == TRUE) {
-		connman_error("Trying to provision a protected service");
-		goto err;
-	}
-
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_EAP, NULL);
 	if (str != NULL) {
 		g_free(service->eap);
@@ -712,10 +672,6 @@ static connman_bool_t load_service(GKeyFile *keyfile, const char *group,
 		g_hash_table_insert(config->service_table, service->ident,
 					service);
 
-	if (config->protected == TRUE)
-		protected_services =
-			g_slist_prepend(protected_services, service);
-
 	connman_info("Adding service configuration %s", service->ident);
 
 	return TRUE;
@@ -755,8 +711,6 @@ static connman_bool_t load_service_from_keyfile(GKeyFile *keyfile,
 
 static int load_config(struct connman_config *config)
 {
-	GError *error = NULL;
-	gboolean protected;
 	GKeyFile *keyfile;
 	char *str;
 
@@ -780,14 +734,6 @@ static int load_config(struct connman_config *config)
 		g_free(config->description);
 		config->description = str;
 	}
-
-	protected = g_key_file_get_boolean(keyfile, "global",
-					CONFIG_KEY_PROT, &error);
-	if (error == NULL)
-		config->protected = protected;
-	else
-		config->protected = TRUE;
-	g_clear_error(&error);
 
 	if (load_service_from_keyfile(keyfile, config) == FALSE)
 		connman_warn("Config file %s/%s.config does not contain any "
