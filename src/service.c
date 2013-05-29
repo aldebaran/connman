@@ -3254,6 +3254,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		update_nameservers(service);
 		domain_configuration_changed(service);
+		domain_changed(service);
 
 		service_save(service);
 	} else if (g_str_equal(name, "Proxy.Configuration") == TRUE) {
