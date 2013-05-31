@@ -347,18 +347,12 @@ static void update_session(struct connman_session *session)
 
 static void remove_policy(struct policy_data *policy)
 {
-	connman_bool_t update = FALSE;
-
-	if (policy->session != NULL)
-		update = TRUE;
+	if (policy->session != NULL) {
+		connman_session_set_default_config(policy->config);
+		update_session(policy->session);
+	}
 
 	policy_unref(policy);
-
-	if (update == FALSE)
-		return;
-
-	connman_session_set_default_config(policy->config);
-	update_session(policy->session);
 }
 
 static void notify_handler(struct inotify_event *event,
