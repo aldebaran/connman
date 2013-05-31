@@ -122,12 +122,10 @@ static struct policy_data *create_policy(const char *ident)
 
 	DBG("ident %s", ident);
 
-	policy = g_try_new0(struct policy_data, 1);
-	if (policy == NULL)
-		return NULL;
+	policy = g_new0(struct policy_data, 1);
+	policy->refcount = 1;
 
 	policy->config = connman_session_create_default_config();
-	policy->refcount = 1;
 	policy->ident = g_strdup(ident);
 
 	g_hash_table_replace(policy_hash, policy->ident, policy);
@@ -179,13 +177,8 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 	if (policy != NULL) {
 		policy_ref(policy);
 		policy->session = data->session;
-	} else {
+	} else
 		policy = create_policy(ident);
-		if (policy == NULL) {
-			err = -ENOMEM;
-			goto done;
-		}
-	}
 
 	g_hash_table_replace(session_hash, data->session, policy);
 	config = policy->config;
@@ -209,9 +202,7 @@ static int policy_local_create(struct connman_session *session,
 
 	DBG("session %p", session);
 
-	data = g_try_new0(struct create_data, 1);
-	if (data == NULL)
-		return -ENOMEM;
+	data = g_new0(struct create_data, 1);
 	cbd->data = data;
 
 	data->session = session;
@@ -294,8 +285,6 @@ static int load_policy(struct policy_data *policy)
 	connman_session_set_default_config(config);
 
 	pathname = g_strdup_printf("%s/%s", POLICYDIR, policy->ident);
-	if(pathname == NULL)
-		return -ENOMEM;
 
 	err = load_keyfile(pathname, &keyfile);
 	if (err < 0) {
@@ -444,11 +433,6 @@ static int read_policies(void)
 			struct policy_data *policy;
 
 			policy = create_policy(file);
-			if (policy == NULL) {
-				err = -ENOMEM;
-				break;
-			}
-
 			err = load_policy(policy);
 			if (err < 0)
 				break;
@@ -478,17 +462,8 @@ static int session_policy_local_init(void)
 
 	session_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 						NULL, NULL);
-	if (session_hash == NULL) {
-		err = -ENOMEM;
-		goto err;
-	}
-
 	policy_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 					NULL, cleanup_policy);
-	if (policy_hash == NULL) {
-		err = -ENOMEM;
-		goto err;
-	}
 
 	err = connman_inotify_register(POLICYDIR, notify_handler);
 	if (err < 0)
