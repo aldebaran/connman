@@ -1244,6 +1244,13 @@ static struct service_entry *create_service_entry(struct connman_session * sessi
 static void destroy_service_entry(gpointer data)
 {
 	struct service_entry *entry = data;
+	struct session_info *info = entry->session->info;
+	struct connman_session *session;
+
+	if (info != NULL && info->entry == entry) {
+		session = entry->session;
+		deselect_and_disconnect(session);
+	}
 
 	pending_timeout_remove_all(entry);
 	g_free(entry->ifname);
@@ -1287,6 +1294,7 @@ static void session_changed(struct connman_session *session,
 {
 	struct session_info *info = session->info;
 	struct session_info *info_last = session->info_last;
+	struct connman_service *service;
 	GSequenceIter *service_iter = NULL, *service_iter_last = NULL;
 	GSequence *service_list_last;
 	GHashTable *service_hash_last;
@@ -1318,15 +1326,20 @@ static void session_changed(struct connman_session *session,
 			service_hash_last = session->service_hash;
 			service_list_last = session->service_list;
 
+			if (info->entry != NULL)
+				service = info->entry->service;
+			else
+				service = NULL;
+
 			populate_service_list(session);
 
-			if (info->entry != NULL) {
+			if (service != NULL) {
 				service_iter_last = g_hash_table_lookup(
 							service_hash_last,
-							info->entry->service);
+							service);
 				service_iter = g_hash_table_lookup(
 							session->service_hash,
-							info->entry->service);
+							service);
 			}
 
 			if (service_iter == NULL && service_iter_last != NULL) {
