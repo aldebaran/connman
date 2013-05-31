@@ -1,3 +1,10 @@
+ver 1.15:
+	Fix issue with missing cleanup for IPv4-LL handling.
+	Fix issue with missing property update for domain names.
+	Fix issue with scanning for all stored hidden WiFi networks.
+	Fix issue with time server polling for non-default service.
+	Fix issue with persistent storage of time configuration.
+
 ver 1.14:
 	Fix issue with WiFi scanning race condition and power cycle.
 	Add support for configuring allowed tethering technologies.
