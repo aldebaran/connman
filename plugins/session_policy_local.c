@@ -65,6 +65,8 @@ static void cleanup_policy(gpointer user_data)
 {
 	struct policy_data *policy = user_data;
 
+	DBG("policy %p", policy);
+
 	if (policy->config != NULL)
 		g_slist_free(policy->config->allowed_bearers);
 
@@ -117,6 +119,8 @@ static struct policy_data *create_policy(const char *ident)
 
 	policy = g_new0(struct policy_data, 1);
 	policy->refcount = 1;
+
+	DBG("policy %p", policy);
 
 	policy->config = connman_session_create_default_config();
 	policy->ident = g_strdup(ident);
@@ -339,18 +343,22 @@ static int load_policy(struct policy_data *policy)
 	return err;
 }
 
-static void update_session(struct connman_session *session)
+static void update_session(struct policy_data *policy)
 {
-	if (connman_session_config_update(session) < 0)
-		connman_session_destroy(session);
+	DBG("policy %p session %p", policy, policy->session);
+
+	if (policy->session == NULL)
+		return;
+
+	if (connman_session_config_update(policy->session) < 0)
+		connman_session_destroy(policy->session);
 }
 
 static void remove_policy(struct policy_data *policy)
 {
-	if (policy->session != NULL) {
+	if (policy->session != NULL)
 		connman_session_set_default_config(policy->config);
-		update_session(policy->session);
-	}
+	update_session(policy);
 
 	policy_unref(policy);
 }
@@ -403,8 +411,7 @@ static void notify_handler(struct inotify_event *event,
 		return;
 	}
 
-	if (policy->session != NULL)
-		update_session(policy->session);
+	update_session(policy);
 }
 
 static int read_policies(void)
@@ -436,6 +443,8 @@ static int read_policies(void)
 static int session_policy_local_init(void)
 {
 	int err;
+
+	DBG("");
 
 	/* If the dir doesn't exist, create it */
 	if (g_file_test(POLICYDIR, G_FILE_TEST_IS_DIR) == FALSE) {
@@ -487,6 +496,8 @@ err:
 
 static void session_policy_local_exit(void)
 {
+	DBG("");
+
 	g_hash_table_destroy(session_hash);
 	g_hash_table_destroy(policy_hash);
 
