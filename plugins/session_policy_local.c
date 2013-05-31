@@ -88,6 +88,7 @@ struct policy_group {
 /* A struct policy_config object is created and owned by a session. */
 struct policy_config {
 	char *selinux;
+	char *selinux_context;
 	char *uid;
 	GSList *gids;
 
@@ -173,12 +174,18 @@ static void finish_create(struct policy_config *policy,
 	group = g_hash_table_lookup(selinux_hash, policy->selinux);
 	if (group != NULL) {
 		set_policy(policy, group);
+
+		policy->config->id_type = CONNMAN_SESSION_ID_TYPE_LSM;
+		policy->config->id = g_strdup(policy->selinux_context);
 		goto done;
 	}
 
 	group = g_hash_table_lookup(uid_hash, policy->uid);
 	if (group != NULL) {
 		set_policy(policy, group);
+
+		policy->config->id_type = CONNMAN_SESSION_ID_TYPE_UID;
+		policy->config->id = g_strdup(policy->uid);
 		goto done;
 	}
 
@@ -190,6 +197,9 @@ static void finish_create(struct policy_config *policy,
 			continue;
 
 		set_policy(policy, group);
+
+		policy->config->id_type = CONNMAN_SESSION_ID_TYPE_GID;
+		policy->config->id = g_strdup(gid);
 		break;
 	}
 done:
@@ -224,7 +234,8 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 
 	DBG("SELinux context %s", context);
 
-	ident = parse_selinux_type((const char*)context);
+	policy->selinux_context = g_strdup((const char *)context);
+	ident = parse_selinux_type(policy->selinux_context);
 	if (ident != NULL)
 		policy->selinux = g_strdup(ident);
 
@@ -486,7 +497,9 @@ static void cleanup_config(gpointer user_data)
 			g_slist_remove(policy->group->sessions, policy);
 
 	g_slist_free(policy->config->allowed_bearers);
+	g_free(policy->config->id);
 	g_free(policy->config);
+	g_free(policy->selinux_context);
 	g_free(policy->selinux);
 	g_free(policy->uid);
 	g_slist_free_full(policy->gids, g_free);
@@ -502,6 +515,7 @@ static void cleanup_group(gpointer user_data)
 	g_slist_free_full(group->sessions, set_default_config);
 
 	g_slist_free(group->config->allowed_bearers);
+	g_free(group->config->id);
 	g_free(group->config);
 	if (group->selinux != NULL)
 		g_hash_table_remove(selinux_hash, group->selinux);
@@ -530,6 +544,7 @@ static void recheck_sessions(void)
 	GHashTableIter iter;
 	gpointer value, key;
 	struct policy_group *group = NULL;
+	GSList *list;
 
 	g_hash_table_iter_init(&iter, session_hash);
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
@@ -540,8 +555,35 @@ static void recheck_sessions(void)
 
 		group = g_hash_table_lookup(selinux_hash, policy->selinux);
 		if (group != NULL) {
-			set_policy(policy, group);
+			policy->config->id_type = CONNMAN_SESSION_ID_TYPE_LSM;
+			g_free(policy->config->id);
+			policy->config->id = g_strdup(policy->selinux_context);
 			update_session(policy);
+			continue;
+		}
+
+		group = g_hash_table_lookup(uid_hash, policy->uid);
+		if (group != NULL) {
+			set_policy(policy, group);
+
+			policy->config->id_type = CONNMAN_SESSION_ID_TYPE_UID;
+			g_free(policy->config->id);
+			policy->config->id = g_strdup(policy->uid);
+			update_session(policy);
+			continue;
+		}
+
+		for (list = policy->gids; list != NULL; list = list->next) {
+			char *gid = list->data;
+			group = g_hash_table_lookup(gid_hash, gid);
+			if (group != NULL) {
+				set_policy(policy, group);
+
+				policy->config->id_type = CONNMAN_SESSION_ID_TYPE_GID;
+				g_free(policy->config->id);
+				policy->config->id = g_strdup(gid);
+				update_session(policy);
+			}
 		}
 	}
 }
