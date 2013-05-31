@@ -52,10 +52,6 @@ static GHashTable *session_hash; /* (connman_session, policy_config) */
 /* Global lookup table for mapping sessions to policies */
 static GHashTable *selinux_hash; /* (lsm context, policy_group) */
 
-struct create_data {
-	struct connman_session *session;
-};
-
 /*
  * A instance of struct policy_file is created per file in
  * POLICYDIR.
@@ -156,31 +152,19 @@ static char *parse_selinux_type(const char *context)
 	return ident;
 }
 
-static struct policy_config *create_policy(void)
-{
-	struct policy_config *policy;
-
-	policy = g_new0(struct policy_config, 1);
-
-	DBG("policy %p", policy);
-
-	policy->config = connman_session_create_default_config();
-
-	return policy;
-}
+static void cleanup_config(gpointer user_data);
 
 static void selinux_context_reply(const unsigned char *context, void *user_data,
 					int err)
 {
 	struct cb_data *cbd = user_data;
 	connman_session_config_func_t cb = cbd->cb;
-	struct create_data *data = cbd->data;
-	struct policy_config *policy;
+	struct policy_config *policy = cbd->data;
 	struct policy_group *group;
 	struct connman_session_config *config = NULL;
 	char *ident = NULL;
 
-	DBG("session %p", data->session);
+	DBG("session %p", policy->session);
 
 	if (err < 0)
 		goto done;
@@ -193,22 +177,22 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 		goto done;
 	}
 
-	policy = create_policy();
 	policy->selinux = g_strdup(ident);
-	policy->session = data->session;
 
 	group = g_hash_table_lookup(selinux_hash, policy->selinux);
 	if (group != NULL)
 		set_policy(policy, group);
 
-	g_hash_table_replace(session_hash, data->session, policy);
+	g_hash_table_replace(session_hash, policy->session, policy);
 	config = policy->config;
 
 done:
-	(*cb)(data->session, config, cbd->user_data, err);
+	(*cb)(policy->session, config, cbd->user_data, err);
+
+	if (err < 0)
+		cleanup_config(policy);
 
 	g_free(cbd);
-	g_free(data);
 	g_free(ident);
 }
 
@@ -217,16 +201,17 @@ static int policy_local_create(struct connman_session *session,
 				void *user_data)
 {
 	struct cb_data *cbd = cb_data_new(cb, user_data);
-	struct create_data *data;
+	struct policy_config *policy;
 	const char *owner;
 	int err;
 
 	DBG("session %p", session);
 
-	data = g_new0(struct create_data, 1);
-	cbd->data = data;
+	policy = g_new0(struct policy_config, 1);
+	policy->config = connman_session_create_default_config();
+	policy->session = session;
 
-	data->session = session;
+	cbd->data = policy;
 
 	owner = connman_session_get_owner(session);
 
@@ -235,7 +220,7 @@ static int policy_local_create(struct connman_session *session,
 					cbd);
 	if (err < 0) {
 		connman_error("Could not get SELinux context");
-		g_free(data);
+		cleanup_config(policy);
 		g_free(cbd);
 		return err;
 	}
