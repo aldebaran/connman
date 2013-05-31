@@ -24,10 +24,15 @@
 #endif
 
 #include <stdio.h>
+#include <unistd.h>
+#include <pwd.h>
+#include <sys/types.h>
 
 #include <gdbus.h>
 
 #include "session-test.h"
+
+#define POLICYDIR STORAGEDIR "/session_policy_local"
 
 enum test_session_state {
 	TEST_SESSION_STATE_0 = 0,
@@ -495,6 +500,149 @@ static gboolean test_session_connect_free_ride(gpointer data)
 	return FALSE;
 }
 
+static void policy_save(GKeyFile *keyfile, char *pathname)
+{
+	gchar *data = NULL;
+	gsize length = 0;
+	GError *error = NULL;
+
+	data = g_key_file_to_data(keyfile, &length, NULL);
+
+	if(!g_file_set_contents(pathname, data, length, &error)) {
+		DBG("Failed to store information: %s", error->message);
+		g_error_free(error);
+		g_assert(0);
+	}
+
+	g_free(data);
+}
+
+static void policy_allowed_bearers(const char *allowed_bearers)
+{
+	struct passwd *pwd;
+	uid_t uid;
+	char *pathname;
+	GKeyFile *keyfile;
+
+	LOG("update to '%s'", allowed_bearers);
+
+	uid = getuid();
+	pwd = getpwuid(uid);
+	g_assert(pwd != NULL);
+
+	keyfile = g_key_file_new();
+	g_key_file_set_string(keyfile, "policy_foo", "uid", pwd->pw_name);
+	g_key_file_set_string(keyfile, "policy_foo", "AllowedBearers",
+				allowed_bearers);
+
+	pathname = g_strdup_printf("%s/foo.policy", POLICYDIR);
+	policy_save(keyfile, pathname);
+
+	g_free(pathname);
+	g_key_file_free(keyfile);
+}
+
+static void policy_remove_file(void)
+{
+	char *pathname;
+
+	pathname = g_strdup_printf("%s/foo.policy", POLICYDIR);
+	unlink(pathname);
+	g_free(pathname);
+}
+
+static void test_session_policy_notify(struct test_session *session)
+{
+	enum test_session_state state = get_session_state(session);
+	enum test_session_state next_state = state;
+	DBusMessage *msg;
+
+	LOG("state %d session %p %s state %d", state, session,
+		session->notify_path, session->info->state);
+
+	switch (state) {
+	case TEST_SESSION_STATE_0:
+		if (session->info->state == CONNMAN_SESSION_STATE_DISCONNECTED)
+			next_state = TEST_SESSION_STATE_1;
+		break;
+	case TEST_SESSION_STATE_1:
+		if (session->info->state >= CONNMAN_SESSION_STATE_CONNECTED)
+			next_state = TEST_SESSION_STATE_2;
+		break;
+	case TEST_SESSION_STATE_2:
+		if (session->info->state == CONNMAN_SESSION_STATE_DISCONNECTED)
+			next_state = TEST_SESSION_STATE_3;
+	default:
+		break;
+	}
+
+	if (state == next_state)
+		return;
+
+	set_session_state(session, next_state);
+
+	LOG("next_state %d", next_state);
+
+	switch (next_state) {
+	case TEST_SESSION_STATE_1:
+		policy_allowed_bearers("ethernet");
+
+		msg = session_connect(session->connection, session);
+		g_assert(msg != NULL);
+		dbus_message_unref(msg);
+		return;
+	case TEST_SESSION_STATE_2:
+		policy_allowed_bearers("");
+		return;
+	case TEST_SESSION_STATE_3:
+		policy_remove_file();
+		util_session_cleanup(session);
+		util_idle_call(session->fix, util_quit_loop,
+				util_session_destroy);
+		return;
+	default:
+		return;
+	}
+}
+
+static gboolean test_session_policy(gpointer data)
+{
+	struct test_fix *fix = data;
+	struct test_session *session;
+
+	/*
+	 * +-------------------+
+	 * |       START       |
+	 * +-------------------+
+	 *   |
+	 *   | write policy AllowedBearers = ethernet
+	 *   v
+	 * +-------------------+
+	 * |   FOO-CONNECTED   |
+	 * +-------------------+
+	 *  |
+	 *  | write policy AllowedBearers =
+	 *  v
+	 * +-------------------+
+	 * |        END        |
+	 * +-------------------+
+	 */
+
+	policy_remove_file();
+
+	util_session_create(fix, 1);
+	session = fix->session;
+
+	session->notify_path = g_strdup("/foo");
+	session->notify =  test_session_policy_notify;
+
+	util_session_init(session);
+
+	set_session_state(session, TEST_SESSION_STATE_0);
+
+	return FALSE;
+}
+
 static connman_bool_t is_online(struct test_fix *fix)
 {
 	if (g_strcmp0(fix->manager.state, "online") == 0)
@@ -583,6 +731,9 @@ int main(int argc, char *argv[])
 		test_session_connect_disconnect, setup_cb, teardown_cb);
 	util_test_add("/session/connect free-ride",
 		test_session_connect_free_ride, setup_cb, teardown_cb);
+
+	util_test_add("/session/policy",
+		test_session_policy, setup_cb, teardown_cb);
 
 	return g_test_run();
 }
