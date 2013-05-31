@@ -60,6 +60,7 @@ enum connman_session_state {
 };
 
 struct service_entry {
+	struct connman_session *session;
 	/* track why this service was selected */
 	enum connman_session_reason reason;
 	enum connman_service_state state;
@@ -1206,7 +1207,8 @@ static void select_and_connect(struct connman_session *session,
 	}
 }
 
-static struct service_entry *create_service_entry(struct connman_service *service,
+static struct service_entry *create_service_entry(struct connman_session * session,
+					struct connman_service *service,
 					const char *name,
 					enum connman_service_state state)
 {
@@ -1233,6 +1235,8 @@ static struct service_entry *create_service_entry(struct connman_service *servic
 
 	type = connman_service_get_type(entry->service);
 	entry->bearer = service2bearer(type);
+
+	entry->session = session;
 
 	return entry;
 }
@@ -1939,7 +1943,7 @@ static void service_add(struct connman_service *service,
 		if (service_match(session, service) == FALSE)
 			continue;
 
-		entry = create_service_entry(service, name,
+		entry = create_service_entry(session, service, name,
 						CONNMAN_SERVICE_STATE_IDLE);
 		if (entry == NULL)
 			continue;

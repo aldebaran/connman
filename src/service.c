@@ -2145,8 +2145,8 @@ GSequence *__connman_service_get_list(struct connman_session *session,
 		service = g_sequence_get(iter);
 
 		if (service_match(session, service) == TRUE) {
-			entry = create_service_entry(service, service->name,
-							service->state);
+			entry = create_service_entry(session, service,
+						service->name, service->state);
 			if (entry == NULL)
 				return list;
 

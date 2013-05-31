@@ -714,6 +714,7 @@ struct service_entry;
 typedef connman_bool_t (* service_match_cb) (struct connman_session *session,
 					struct connman_service *service);
 typedef struct service_entry* (* create_service_entry_cb) (
+					struct connman_session *session,
 					struct connman_service *service,
 					const char *name,
 					enum connman_service_state state);
