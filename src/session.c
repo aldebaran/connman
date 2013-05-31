@@ -414,6 +414,10 @@ void connman_session_policy_unregister(struct connman_session_policy *policy)
 
 void connman_session_set_default_config(struct connman_session_config *config)
 {
+	config->id_type = CONNMAN_SESSION_ID_TYPE_UNKNOWN;
+	g_free(config->id);
+	config->id = NULL;
+
 	config->priority = FALSE;
 	config->roaming_policy = CONNMAN_SESSION_ROAMING_POLICY_DEFAULT;
 	config->type = CONNMAN_SESSION_TYPE_ANY;

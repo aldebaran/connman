@@ -49,6 +49,13 @@ enum connman_session_type {
 	CONNMAN_SESSION_TYPE_INTERNET = 3,
 };
 
+enum connman_session_id_type {
+	CONNMAN_SESSION_ID_TYPE_UNKNOWN = 0,
+	CONNMAN_SESSION_ID_TYPE_UID	= 1,
+	CONNMAN_SESSION_ID_TYPE_GID	= 2,
+	CONNMAN_SESSION_ID_TYPE_LSM	= 3,
+};
+
 struct cb_data {
 	void *cb;
 	void *user_data;
@@ -69,6 +76,8 @@ static inline struct cb_data *cb_data_new(void *cb, void *user_data)
 struct connman_session;
 
 struct connman_session_config {
+	enum connman_session_id_type id_type;
+	char *id;
 	connman_bool_t priority;
 	enum connman_session_roaming_policy roaming_policy;
 	enum connman_session_type type;
