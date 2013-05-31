@@ -46,33 +46,78 @@
 
 static DBusConnection *connection;
 
-static GHashTable *policy_hash;
-static GHashTable *session_hash;
+static GHashTable *file_hash;    /* (filename, policy_file) */
+static GHashTable *session_hash; /* (connman_session, policy_config) */
+
+/* Global lookup table for mapping sessions to policies */
+static GHashTable *selinux_hash; /* (lsm context, policy_group) */
 
 struct create_data {
 	struct connman_session *session;
 };
 
-struct policy_data {
-	int refcount;
-	char *ident;
-
-	struct connman_session *session;
-	struct connman_session_config *config;
+/*
+ * A instance of struct policy_file is created per file in
+ * POLICYDIR.
+ */
+struct policy_file {
+	/*
+	 * A valid file is a keyfile with one ore more groups. All
+	 * groups are keept in this list.
+	 */
+	GSList *groups;
 };
 
-static void cleanup_policy(gpointer user_data)
+struct policy_group {
+	char *selinux;
+
+	/*
+	 * Each policy_group owns a config and is not shared with
+	 * sessions. Instead each session copies the valued from this
+	 * object.
+	 */
+	struct connman_session_config *config;
+
+	/* All 'users' of this policy. */
+	GSList *sessions;
+};
+
+/* A struct policy_config object is created and owned by a session. */
+struct policy_config {
+	char *selinux;
+
+	/* The policy config owned by the session */
+	struct connman_session_config *config;
+
+	/* To which policy belongs this policy_config */
+	struct connman_session *session;
+	/*
+	 * Points to the policy_group when a config has been applied
+	 * from a file.
+	 */
+	struct policy_group *group;
+};
+
+static void copy_session_config(struct connman_session_config *dst,
+			struct connman_session_config *src)
 {
-	struct policy_data *policy = user_data;
+	g_slist_free(dst->allowed_bearers);
+	dst->allowed_bearers = g_slist_copy(src->allowed_bearers);
+	dst->ecall = src->ecall;
+	dst->type = src->type;
+	dst->roaming_policy = src->roaming_policy;
+	dst->priority = src->priority;
+}
 
-	DBG("policy %p", policy);
+static void set_policy(struct policy_config *policy,
+			struct policy_group *group)
+{
+	DBG("policy %p group %p", policy, group);
 
-	if (policy->config != NULL)
-		g_slist_free(policy->config->allowed_bearers);
+	group->sessions = g_slist_prepend(group->sessions, policy);
+	policy->group = group;
 
-	g_free(policy->ident);
-	g_free(policy->config);
-	g_free(policy);
+	copy_session_config(policy->config, group->config);
 }
 
 static char *parse_selinux_type(const char *context)
@@ -111,43 +156,18 @@ static char *parse_selinux_type(const char *context)
 	return ident;
 }
 
-static struct policy_data *create_policy(const char *ident)
+static struct policy_config *create_policy(void)
 {
-	struct policy_data *policy;
+	struct policy_config *policy;
 
-	DBG("ident %s", ident);
-
-	policy = g_new0(struct policy_data, 1);
-	policy->refcount = 1;
+	policy = g_new0(struct policy_config, 1);
 
 	DBG("policy %p", policy);
 
 	policy->config = connman_session_create_default_config();
-	policy->ident = g_strdup(ident);
-
-	g_hash_table_replace(policy_hash, policy->ident, policy);
 
 	return policy;
 }
-
-static struct policy_data *policy_ref(struct policy_data *policy)
-{
-	DBG("%p %s ref %d", policy, policy->ident, policy->refcount + 1);
-
-	__sync_fetch_and_add(&policy->refcount, 1);
-
-	return policy;
-}
-
-static void policy_unref(struct policy_data *policy)
-{
-	DBG(" %p %s ref %d", policy, policy->ident, policy->refcount - 1);
-
-	if (__sync_fetch_and_sub(&policy->refcount, 1) != 1)
-		return;
-
-	g_hash_table_remove(policy_hash, policy->ident);
-};
 
 static void selinux_context_reply(const unsigned char *context, void *user_data,
 					int err)
@@ -155,7 +175,8 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 	struct cb_data *cbd = user_data;
 	connman_session_config_func_t cb = cbd->cb;
 	struct create_data *data = cbd->data;
-	struct policy_data *policy;
+	struct policy_config *policy;
+	struct policy_group *group;
 	struct connman_session_config *config = NULL;
 	char *ident = NULL;
 
@@ -172,12 +193,13 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 		goto done;
 	}
 
-	policy = g_hash_table_lookup(policy_hash, ident);
-	if (policy != NULL) {
-		policy_ref(policy);
-		policy->session = data->session;
-	} else
-		policy = create_policy(ident);
+	policy = create_policy();
+	policy->selinux = g_strdup(ident);
+	policy->session = data->session;
+
+	group = g_hash_table_lookup(selinux_hash, policy->selinux);
+	if (group != NULL)
+		set_policy(policy, group);
 
 	g_hash_table_replace(session_hash, data->session, policy);
 	config = policy->config;
@@ -232,8 +254,6 @@ static void policy_local_destroy(struct connman_session *session)
 		return;
 
 	g_hash_table_remove(session_hash, session);
-	policy->session = NULL;
-	policy_unref(policy);
 }
 
 static struct connman_session_policy session_policy_local = {
@@ -247,8 +267,6 @@ static int load_keyfile(const char *pathname, GKeyFile **keyfile)
 {
 	GError *error = NULL;
 	int err;
-
-	DBG("Loading %s", pathname);
 
 	*keyfile = g_key_file_new();
 
@@ -273,57 +291,41 @@ err:
 	return err;
 }
 
-static int load_policy(struct policy_data *policy)
+static int load_policy(GKeyFile *keyfile, const char *groupname,
+			struct policy_group *group)
 {
-	struct connman_session_config *config = policy->config;
-	GKeyFile *keyfile;
-	char *pathname;
+	struct connman_session_config *config = group->config;
 	char *str, **tokens;
 	int i, err = 0;
 
-	connman_session_set_default_config(config);
+	group->selinux = g_key_file_get_string(keyfile, groupname,
+						"selinux", NULL);
+	if (group->selinux == NULL)
+		return -EINVAL;
 
-	pathname = g_strdup_printf("%s/%s", POLICYDIR, policy->ident);
-
-	err = load_keyfile(pathname, &keyfile);
-	if (err < 0) {
-		g_free(pathname);
-
-		if (err == -ENOENT) {
-			/* Ignore empty files */
-			return 0;
-		}
-
-		return err;
-	}
-
-	config->priority = g_key_file_get_boolean(keyfile, "Default",
+	config->priority = g_key_file_get_boolean(keyfile, groupname,
 						"Priority", NULL);
 
-	str = g_key_file_get_string(keyfile, "Default", "RoamingPolicy",
+	str = g_key_file_get_string(keyfile, groupname, "RoamingPolicy",
 				NULL);
 	if (str != NULL) {
 		config->roaming_policy = connman_session_parse_roaming_policy(str);
 		g_free(str);
 	}
 
-	str = g_key_file_get_string(keyfile, "Default", "ConnectionType",
+	str = g_key_file_get_string(keyfile, groupname, "ConnectionType",
 				NULL);
 	if (str != NULL) {
 		config->type = connman_session_parse_connection_type(str);
 		g_free(str);
 	}
 
-	config->ecall = g_key_file_get_boolean(keyfile, "Default",
+	config->ecall = g_key_file_get_boolean(keyfile, groupname,
 						"EmergencyCall", NULL);
 
-	str = g_key_file_get_string(keyfile, "Default", "AllowedBearers",
+	str = g_key_file_get_string(keyfile, groupname, "AllowedBearers",
 				NULL);
-
 	if (str != NULL) {
-		g_slist_free(config->allowed_bearers);
-		config->allowed_bearers = NULL;
-
 		tokens = g_strsplit(str, " ", 0);
 
 		for (i = 0; tokens[i] != NULL; i++) {
@@ -337,13 +339,11 @@ static int load_policy(struct policy_data *policy)
 		g_strfreev(tokens);
 	}
 
-	g_key_file_free(keyfile);
-	g_free(pathname);
+	DBG("group %p selinux %s", group, group->selinux);
 
 	return err;
 }
-
-static void update_session(struct policy_data *policy)
+static void update_session(struct policy_config *policy)
 {
 	DBG("policy %p session %p", policy, policy->session);
 
@@ -354,90 +354,199 @@ static void update_session(struct policy_data *policy)
 		connman_session_destroy(policy->session);
 }
 
-static void remove_policy(struct policy_data *policy)
+static void set_default_config(gpointer user_data)
 {
-	if (policy->session != NULL)
-		connman_session_set_default_config(policy->config);
-	update_session(policy);
+	struct policy_config *policy = user_data;
 
-	policy_unref(policy);
-}
-
-static void notify_handler(struct inotify_event *event,
-                                        const char *ident)
-{
-	struct policy_data *policy;
-	int err;
-
-	if (ident == NULL)
-		return;
-
-	policy = g_hash_table_lookup(policy_hash, ident);
-
-	if (event->mask & (IN_CREATE | IN_MOVED_TO)) {
-		connman_info("Policy added for '%s'", ident);
-
-		if (policy != NULL)
-			policy_ref(policy);
-		else
-			policy = create_policy(ident);
-
-		err = load_policy(policy);
-		if (err < 0) {
-			connman_warn("Loading policy file '%s' failed with %s",
-					ident, strerror(-err));
-			return;
-		}
-	}
-
-	if (policy == NULL)
-		return;
-
-	if (event->mask & IN_MODIFY) {
-		connman_info("Policy modifed for '%s'", ident);
-
-		err = load_policy(policy);
-		if (err < 0) {
-			connman_warn("Loading policy file '%s' failed with %s",
-					ident, strerror(-err));
-			return;
-		}
-	}
-
-	if (event->mask & (IN_DELETE | IN_MOVED_FROM)) {
-		connman_info("Policy deleted for '%s'", ident);
-
-		remove_policy(policy);
-		return;
-	}
-
+	connman_session_set_default_config(policy->config);
+	policy->group = NULL;
 	update_session(policy);
 }
 
-static int read_policies(void)
+static void cleanup_config(gpointer user_data)
+{
+	struct policy_config *policy = user_data;
+
+	DBG("policy %p group %p", policy, policy->group);
+
+	if (policy->group != NULL)
+		policy->group->sessions =
+			g_slist_remove(policy->group->sessions, policy);
+
+	g_slist_free(policy->config->allowed_bearers);
+	g_free(policy->config);
+	g_free(policy->selinux);
+	g_free(policy);
+}
+
+static void cleanup_group(gpointer user_data)
+{
+	struct policy_group *group = user_data;
+
+	DBG("group %p", group);
+
+	g_slist_free_full(group->sessions, set_default_config);
+
+	g_slist_free(group->config->allowed_bearers);
+	g_free(group->config);
+	if (group->selinux != NULL)
+		g_hash_table_remove(selinux_hash, group->selinux);
+	g_free(group->selinux);
+	g_free(group);
+}
+
+static void cleanup_file(gpointer user_data)
+{
+	struct policy_file *file = user_data;
+
+	DBG("file %p", file);
+
+	g_slist_free_full(file->groups, cleanup_group);
+	g_free(file);
+}
+
+static void recheck_sessions(void)
+{
+	GHashTableIter iter;
+	gpointer value, key;
+	struct policy_group *group = NULL;
+
+	g_hash_table_iter_init(&iter, session_hash);
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct policy_config *policy = value;
+
+		if (policy->group != NULL)
+			continue;
+
+		group = g_hash_table_lookup(selinux_hash, policy->selinux);
+		if (group != NULL) {
+			set_policy(policy, group);
+			update_session(policy);
+		}
+	}
+}
+
+static int load_file(const char *filename, struct policy_file *file)
+{
+	GKeyFile *keyfile;
+	struct policy_group *group;
+	char **groupnames;
+	char *pathname;
+	int err = 0, i;
+
+	DBG("%s", filename);
+
+	pathname = g_strdup_printf("%s/%s", POLICYDIR, filename);
+	err = load_keyfile(pathname, &keyfile);
+	g_free(pathname);
+
+	if (err < 0)
+		return err;
+
+	groupnames = g_key_file_get_groups(keyfile, NULL);
+
+	for (i = 0; groupnames[i] != NULL; i++) {
+		group = g_new0(struct policy_group, 1);
+		group->config = g_new0(struct connman_session_config, 1);
+
+		err = load_policy(keyfile, groupnames[i], group);
+		if (err < 0) {
+			g_free(group->config);
+			g_free(group);
+			break;
+		}
+		g_hash_table_replace(selinux_hash, group->selinux, group);
+
+		file->groups = g_slist_prepend(file->groups, group);
+	}
+
+	g_strfreev(groupnames);
+
+	if (err < 0)
+		g_slist_free_full(file->groups, cleanup_group);
+
+	g_key_file_free(keyfile);
+
+	return err;
+}
+
+static connman_bool_t is_filename_valid(const char *filename)
+{
+	if (filename == NULL)
+		return FALSE;
+
+	if (filename[0] == '.')
+		return FALSE;
+
+	return g_str_has_suffix(filename, ".policy");
+}
+
+static int read_policies()
 {
 	GDir *dir;
-	int err = 0;
+	const gchar *filename;
+	struct policy_file *file;
 
 	DBG("");
 
 	dir = g_dir_open(POLICYDIR, 0, NULL);
-	if (dir != NULL) {
-		const gchar *file;
+	if (dir == NULL)
+		return -EINVAL;
 
-		while ((file = g_dir_read_name(dir)) != NULL) {
-			struct policy_data *policy;
+	while ((filename = g_dir_read_name(dir)) != NULL) {
+		if (is_filename_valid(filename) == FALSE)
+			continue;
 
-			policy = create_policy(file);
-			err = load_policy(policy);
-			if (err < 0)
-				break;
+		file = g_new0(struct policy_file, 1);
+		if (load_file(filename, file) < 0) {
+			g_free(file);
+			continue;
 		}
 
-		g_dir_close(dir);
+		g_hash_table_replace(file_hash, g_strdup(filename), file);
 	}
 
-	return err;
+	g_dir_close(dir);
+
+	return 0;
+}
+
+
+static void notify_handler(struct inotify_event *event,
+                                        const char *filename)
+{
+	struct policy_file *file;
+
+	DBG("event %x file %s", event->mask, filename);
+
+	if (event->mask & IN_CREATE)
+		return;
+
+	if (is_filename_valid(filename) == FALSE)
+		return;
+
+	/*
+	 * load_file() will modify the global selinux/uid/gid hash
+	 * tables. We need to remove the old entries first before
+	 * else the table points to the wrong entries.
+	 */
+	g_hash_table_remove(file_hash, filename);
+
+	if (event->mask & (IN_DELETE | IN_MOVED_FROM))
+		return;
+
+	if (event->mask & (IN_MOVED_TO | IN_MODIFY)) {
+		connman_info("Policy update for '%s'", filename);
+
+		file = g_new0(struct policy_file, 1);
+		if (load_file(filename, file) < 0) {
+			g_free(file);
+			return;
+		}
+
+		g_hash_table_replace(file_hash, g_strdup(filename), file);
+		recheck_sessions();
+	}
 }
 
 static int session_policy_local_init(void)
@@ -458,22 +567,22 @@ static int session_policy_local_init(void)
 	if (connection == NULL)
 		return -EIO;
 
+	file_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+					g_free, cleanup_file);
 	session_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-						NULL, NULL);
-	policy_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
-					NULL, cleanup_policy);
+						NULL, cleanup_config);
+	selinux_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+					NULL, NULL);
 
 	err = connman_inotify_register(POLICYDIR, notify_handler);
 	if (err < 0)
 		goto err;
 
-	err = read_policies();
-	if (err < 0)
-		goto err_notify;
-
 	err = connman_session_policy_register(&session_policy_local);
 	if (err < 0)
 		goto err_notify;
+
+	read_policies();
 
 	return 0;
 
@@ -482,10 +591,14 @@ err_notify:
 	connman_inotify_unregister(POLICYDIR, notify_handler);
 
 err:
+	if (file_hash != NULL)
+		g_hash_table_destroy(file_hash);
+
 	if (session_hash != NULL)
 		g_hash_table_destroy(session_hash);
-	if (policy_hash != NULL)
-		g_hash_table_destroy(policy_hash);
+
+	if (selinux_hash != NULL)
+		g_hash_table_destroy(selinux_hash);
 
 	connman_session_policy_unregister(&session_policy_local);
 
@@ -498,8 +611,9 @@ static void session_policy_local_exit(void)
 {
 	DBG("");
 
+	g_hash_table_destroy(file_hash);
 	g_hash_table_destroy(session_hash);
-	g_hash_table_destroy(policy_hash);
+	g_hash_table_destroy(selinux_hash);
 
 	connman_session_policy_unregister(&session_policy_local);
 
