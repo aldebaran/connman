@@ -73,9 +73,9 @@ static void cleanup_policy(gpointer user_data)
 	g_free(policy);
 }
 
-static char *parse_ident(const unsigned char *context)
+static char *parse_selinux_type(const char *context)
 {
-	char *str, *ident, **tokens;
+	char *ident, **tokens;
 
 	/*
 	 * SELinux combines Role-Based Access Control (RBAC), Type
@@ -95,15 +95,9 @@ static char *parse_ident(const unsigned char *context)
 	 * as haifux_t.
 	 */
 
-	str = g_strdup((const gchar*)context);
-	if (str == NULL)
-		return NULL;
-
-	DBG("SELinux context %s", str);
-
-	tokens = g_strsplit(str, ":", 0);
-	if (tokens == NULL) {
-		g_free(str);
+	tokens = g_strsplit(context, ":", 0);
+	if (g_strv_length(tokens) < 2) {
+		g_strfreev(tokens);
 		return NULL;
 	}
 
@@ -111,7 +105,6 @@ static char *parse_ident(const unsigned char *context)
 	ident = g_strdup(tokens[2]);
 
 	g_strfreev(tokens);
-	g_free(str);
 
 	return ident;
 }
@@ -167,7 +160,9 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 	if (err < 0)
 		goto done;
 
-	ident = parse_ident(context);
+	DBG("SELinux context %s", context);
+
+	ident = parse_selinux_type((const char*)context);
 	if (ident == NULL) {
 		err = -EINVAL;
 		goto done;
