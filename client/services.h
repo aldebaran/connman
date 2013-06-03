@@ -20,6 +20,19 @@
  *
  */
 
+#ifndef __CONNMANCTL_SERVICES_H
+#define __CONNMANCTL_SERVICES_H
+
 #include <dbus/dbus.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void __connmanctl_services_list(DBusMessageIter *iter);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __CONNMANCTL_SERVICES_H */
