@@ -1043,13 +1043,20 @@ static DBusHandlerResult monitor_changed(DBusConnection *connection,
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	if (dbus_message_is_signal(message, "net.connman.Manager",
-					"TechnologyAdded") == TRUE)
-		path = "TechnologyAdded";
 
-	if (dbus_message_is_signal(message, "net.connman.Manager",
+	if (dbus_message_is_signal(message, "net.connman.vpn.Manager",
+					"ConnectionAdded") == TRUE ||
+			dbus_message_is_signal(message,
+					"net.connman.vpn.Manager",
+					"ConnectionRemoved") == TRUE) {
+		interface = "vpn.Manager";
+		path = dbus_message_get_member(message);
+
+	} else if (dbus_message_is_signal(message, "net.connman.Manager",
+					"TechnologyAdded") == TRUE ||
+			dbus_message_is_signal(message, "net.connman.Manager",
 					"TechnologyRemoved") == TRUE)
-		path = "TechnologyRemoved";
+		path = dbus_message_get_member(message);
 
 	fprintf(stdout, "%-12s %-20s ", interface, path);
 	dbus_message_iter_init(message, &iter);
@@ -1062,33 +1069,44 @@ static DBusHandlerResult monitor_changed(DBusConnection *connection,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static bool monitor_s = false;
-static bool monitor_t = false;
-static bool monitor_m = false;
+static struct {
+	char *interface;
+	bool enabled;
+} monitor[] = {
+	{ "Service", false },
+	{ "Technology", false },
+	{ "Manager", false },
+	{ "vpn.Manager", false },
+	{ "vpn.Connection", false },
+	{ NULL, },
+};
 
 static void monitor_add(char *interface)
 {
+	bool add_filter = true, found = false;
+	int i;
 	char *rule;
 	DBusError err;
 
-	if (monitor_s == false && monitor_t == false && monitor_m == false)
+	for (i = 0; monitor[i].interface != NULL; i++) {
+		if (monitor[i].enabled == true)
+			add_filter = false;
+
+		if (g_strcmp0(interface, monitor[i].interface) == 0) {
+			if (monitor[i].enabled == true)
+				return;
+
+			monitor[i].enabled = true;
+			found = true;
+		}
+	}
+
+	if (found == false)
+		return;
+
+	if (add_filter == true)
 		dbus_connection_add_filter(connection, monitor_changed,
 				NULL, NULL);
-
-	if (g_strcmp0(interface, "Service") == 0) {
-		if (monitor_s == true)
-			return;
-		monitor_s = true;
-	} else if (g_strcmp0(interface, "Technology") == 0) {
-		if (monitor_t == true)
-			return;
-		monitor_t = true;
-	} else if (g_strcmp0(interface, "Manager") == 0) {
-		if (monitor_m == true)
-			return;
-		monitor_m = true;
-	} else
-		return;
 
 	dbus_error_init(&err);
 	rule  = g_strdup_printf("type='signal',interface='net.connman.%s'",
@@ -1102,21 +1120,25 @@ static void monitor_add(char *interface)
 
 static void monitor_del(char *interface)
 {
+	bool del_filter = true, found = false;
+	int i;
 	char *rule;
 
-	if (g_strcmp0(interface, "Service") == 0) {
-		if (monitor_s == false)
-			return;
-		monitor_s = false;
-	} else if (g_strcmp0(interface, "Technology") == 0) {
-		if (monitor_t == false)
-			return;
-		monitor_t = false;
-	} else if (g_strcmp0(interface, "Manager") == 0) {
-		if (monitor_m == false)
-			return;
-		monitor_m = false;
-	} else
+
+	for (i = 0; monitor[i].interface != NULL; i++) {
+		if (g_strcmp0(interface, monitor[i].interface) == 0) {
+			if (monitor[i].enabled == false)
+				return;
+
+			monitor[i].enabled = false;
+			found = true;
+		}
+
+		if (monitor[i].enabled == true)
+			del_filter = false;
+	}
+
+	if (found == false)
 		return;
 
 	rule  = g_strdup_printf("type='signal',interface='net.connman.%s'",
@@ -1124,7 +1146,7 @@ static void monitor_del(char *interface)
 	dbus_bus_remove_match(connection, rule, NULL);
 	g_free(rule);
 
-	if (monitor_s == false && monitor_t == false && monitor_m == false)
+	if (del_filter == true)
 		dbus_connection_remove_filter(connection, monitor_changed,
 				NULL);
 }
@@ -1154,6 +1176,8 @@ static int cmd_monitor(char *args[], int num, struct connman_option *options)
 		monitor_add("Service");
 		monitor_add("Technology");
 		monitor_add("Manager");
+		monitor_add("vpn.Manager");
+		monitor_add("vpn.Connection");
 		break;
 
 	case 's':
@@ -1177,18 +1201,36 @@ static int cmd_monitor(char *args[], int num, struct connman_option *options)
 			monitor_del("Manager");
 		break;
 
+	case 'M':
+		if (add == true)
+			monitor_add("vpn.Manager");
+		else
+			monitor_del("vpn.Manager");
+		break;
+
+	case 'C':
+		if (add == true)
+			monitor_add("vpn.Connection");
+		else
+			monitor_del("vpn.Connection");
+		break;
+
 	default:
 		switch(parse_boolean(args[1])) {
 		case 0:
 			monitor_del("Service");
 			monitor_del("Technology");
 			monitor_del("Manager");
+			monitor_del("vpn.Manager");
+			monitor_del("vpn.Connection");
 			break;
 
 		case 1:
 			monitor_add("Service");
 			monitor_add("Technology");
 			monitor_add("Manager");
+			monitor_add("vpn.Manager");
+			monitor_add("vpn.Connection");
 			break;
 
 		default:
@@ -1326,6 +1368,10 @@ static struct connman_option monitor_options[] = {
 	{"services", 's', "[off]            Monitor only services"},
 	{"tech", 'c', "[off]            Monitor only technologies"},
 	{"manager", 'm', "[off]            Monitor only manager interface"},
+	{"vpnmanager", 'M', "[off]            Monitor only VPN manager "
+	 "interface"},
+	{"vpnconnection", 'C', "[off]            Monitor only VPN "
+	 "connections" },
 	{ NULL, }
 };
 
