@@ -234,6 +234,7 @@ client_connmanctl_SOURCES =  $(gdbus_sources) \
 			client/commands.h client/commands.c \
 			client/input.h client/input.c \
 			client/agent.h client/agent.c \
+			client/vpnconnections.h client/vpnconnections.c \
 			client/main.c
 
 client_connmanctl_LDADD = @DBUS_LIBS@ @GLIB_LIBS@ -lreadline -ldl
