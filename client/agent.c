@@ -476,8 +476,8 @@ int __connmanctl_agent_register(DBusConnection *connection)
 		return 0;
 	}
 
-	result = __connmanctl_dbus_method_call(connection, "/",
-			"net.connman.Manager", "RegisterAgent",
+	result = __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE,
+			CONNMAN_PATH, "net.connman.Manager", "RegisterAgent",
 			agent_register_return, connection,
 			DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID);
 
@@ -517,8 +517,8 @@ int __connmanctl_agent_unregister(DBusConnection *connection)
 
 	g_dbus_unregister_interface(connection, agent_path(), AGENT_INTERFACE);
 
-	result = __connmanctl_dbus_method_call(connection, "/",
-			"net.connman.Manager", "UnregisterAgent",
+	result = __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE,
+			CONNMAN_PATH, "net.connman.Manager", "UnregisterAgent",
 			agent_unregister_return, NULL,
 			DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID);
 

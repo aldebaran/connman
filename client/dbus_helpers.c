@@ -216,16 +216,16 @@ static int append_variant(DBusMessageIter *iter, const char *property,
 	return 0;
 }
 
-int __connmanctl_dbus_method_call(DBusConnection *connection, const char *path,
-		const char *interface, const char *method,
-		connmanctl_dbus_method_return_func_t cb, void *user_data,
-		int arg1, ...)
+int __connmanctl_dbus_method_call(DBusConnection *connection,
+		const char *service, const char *path, const char *interface,
+		const char *method, connmanctl_dbus_method_return_func_t cb,
+		void *user_data, int arg1, ...)
 {
 	DBusMessage *message;
 	va_list args;
 
-	message = dbus_message_new_method_call("net.connman", path,
-			interface, method);
+	message = dbus_message_new_method_call(service, path, interface,
+			method);
 
 	if (message == NULL)
 		return -ENOMEM;

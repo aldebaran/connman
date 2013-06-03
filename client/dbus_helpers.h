@@ -29,15 +29,20 @@
 extern "C" {
 #endif
 
+#define CONNMAN_SERVICE   "net.connman"
+#define CONNMAN_PATH      "/"
+#define VPN_SERVICE       CONNMAN_SERVICE ".vpn"
+#define VPN_PATH          "/"
+
 void __connmanctl_dbus_print(DBusMessageIter *iter, const char *pre,
 		const char *dict, const char *sep);
 
 typedef int (*connmanctl_dbus_method_return_func_t)(DBusMessageIter *iter,
 		const char *error, void *user_data);
-int __connmanctl_dbus_method_call(DBusConnection *connection, const char *path,
-		const char *interface, const char *method,
-		connmanctl_dbus_method_return_func_t cb, void * user_data,
-		int arg1, ...);
+int __connmanctl_dbus_method_call(DBusConnection *connection,
+		const char *service, const char *path, const char *interface,
+		const char *method, connmanctl_dbus_method_return_func_t cb,
+		void * user_data, int arg1, ...);
 
 int __connmanctl_dbus_set_property(DBusConnection *connection,
 		const char *path, const char *interface,

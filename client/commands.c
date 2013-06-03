@@ -250,8 +250,8 @@ static int cmd_state(char *args[], int num, struct connman_option *options)
 	if (num > 1)
 		return -E2BIG;
 
-	return __connmanctl_dbus_method_call(connection, "/",
-			"net.connman.Manager", "GetProperties",
+	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE,
+			CONNMAN_PATH, "net.connman.Manager", "GetProperties",
 			state_print, NULL, DBUS_TYPE_INVALID);
 }
 
@@ -324,16 +324,17 @@ static int cmd_services(char *args[], int num, struct connman_option *options)
 	}
 
 	if (service_name == NULL) {
-		return __connmanctl_dbus_method_call(connection, "/",
-			"net.connman.Manager", "GetServices",
-			services_list, NULL, DBUS_TYPE_INVALID);
+		return __connmanctl_dbus_method_call(connection,
+				CONNMAN_SERVICE, CONNMAN_PATH,
+				"net.connman.Manager", "GetServices",
+				services_list, NULL, DBUS_TYPE_INVALID);
 	}
 
 	if (check_dbus_name(service_name) == false)
 		return -EINVAL;
 
 	path = g_strdup_printf("/net/connman/service/%s", service_name);
-	return __connmanctl_dbus_method_call(connection, path,
+	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE, path,
 			"net.connman.Service", "GetProperties",
 			services_properties, path, DBUS_TYPE_INVALID);
 }
@@ -375,8 +376,8 @@ static int cmd_technologies(char *args[], int num,
 	if (num > 1)
 		return -E2BIG;
 
-	return __connmanctl_dbus_method_call(connection, "/",
-			"net.connman.Manager", "GetTechnologies",
+	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE,
+			CONNMAN_PATH, "net.connman.Manager", "GetTechnologies",
 			technology_print, NULL,	DBUS_TYPE_INVALID);
 }
 
@@ -590,7 +591,7 @@ static int cmd_scan(char *args[], int num, struct connman_option *options)
 		return -EINVAL;
 
 	path = g_strdup_printf("/net/connman/technology/%s", args[1]);
-	return __connmanctl_dbus_method_call(connection, path,
+	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE, path,
 			"net.connman.Technology", "Scan",
 			scan_return, path, DBUS_TYPE_INVALID);
 }
@@ -626,7 +627,7 @@ static int cmd_connect(char *args[], int num, struct connman_option *options)
 		return -EINVAL;
 
 	path = g_strdup_printf("/net/connman/service/%s", args[1]);
-	return __connmanctl_dbus_method_call(connection, path,
+	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE, path,
 			"net.connman.Service", "Connect",
 			connect_return, path, DBUS_TYPE_INVALID);
 }
@@ -662,7 +663,7 @@ static int cmd_disconnect(char *args[], int num, struct connman_option *options)
 		return -EINVAL;
 
 	path = g_strdup_printf("/net/connman/service/%s", args[1]);
-	return __connmanctl_dbus_method_call(connection, path,
+	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE, path,
 			"net.connman.Service", "Disconnect",
 			disconnect_return, path, DBUS_TYPE_INVALID);
 }
@@ -981,7 +982,8 @@ static int cmd_config(char *args[], int num, struct connman_option *options)
 			break;
 		case 'r':
 			res = __connmanctl_dbus_method_call(connection,
-					path, "net.connman.Service", "Remove",
+					CONNMAN_SERVICE, path,
+					"net.connman.Service", "Remove",
 					config_return, g_strdup(service_name),
 					DBUS_TYPE_INVALID);
 			break;
