@@ -38,6 +38,7 @@
 #include "services.h"
 #include "commands.h"
 #include "agent.h"
+#include "vpnconnections.h"
 
 static DBusConnection *connection;
 
@@ -73,8 +74,7 @@ static bool check_dbus_name(const char *name)
 	 */
 	unsigned int i;
 
-	if (name == NULL || name[0] == '\0' || (name[0] >= '0' &&
-					name[0] <= '9'))
+	if (name == NULL || name[0] == '\0')
 		return false;
 
 	for (i = 0; name[i] != '\0'; i++)
@@ -1229,6 +1229,75 @@ static int cmd_agent(char *args[], int num, struct connman_option *options)
 	return 0;
 }
 
+static int vpnconnections_properties(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	char *path = user_data;
+	char *str;
+	DBusMessageIter dict;
+
+	if (error == NULL) {
+		fprintf(stdout, "%s\n", path);
+
+		dbus_message_iter_recurse(iter, &dict);
+		__connmanctl_dbus_print(&dict, "  ", " = ", "\n");
+
+		fprintf(stdout, "\n");
+
+	} else {
+		str = strrchr(path, '/');
+		if (str != NULL)
+			str++;
+		else
+			str = path;
+
+		fprintf(stderr, "Error %s: %s\n", str, error);
+	}
+
+	g_free(user_data);
+
+	return 0;
+}
+
+static int vpnconnections_list(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	if (error == NULL)
+		__connmanctl_vpnconnections_list(iter);
+        else
+		fprintf(stderr, "Error: %s\n", error);
+
+	return 0;
+}
+
+static int cmd_vpnconnections(char *args[], int num,
+		struct connman_option *options)
+{
+	char *vpnconnection_name, *path;
+
+	if (num > 2)
+		return -E2BIG;
+
+	vpnconnection_name = args[1];
+
+	if (vpnconnection_name == NULL)
+		return __connmanctl_dbus_method_call(connection,
+				VPN_SERVICE, VPN_PATH,
+				"net.connman.vpn.Manager", "GetConnections",
+				vpnconnections_list, NULL,
+				DBUS_TYPE_INVALID);
+
+	if (check_dbus_name(vpnconnection_name) == false)
+		return -EINVAL;
+
+	path = g_strdup_printf("/net/connman/vpn/connection/%s",
+			vpnconnection_name);
+	return __connmanctl_dbus_method_call(connection, VPN_SERVICE, path,
+			"net.connman.vpn.Connection", "GetProperties",
+			vpnconnections_properties, path, DBUS_TYPE_INVALID);
+
+}
+
 static int cmd_exit(char *args[], int num, struct connman_option *options)
 {
 	return 1;
@@ -1293,6 +1362,8 @@ static const struct {
 	  "Monitor signals from interfaces" },
 	{ "agent", "on|off",              NULL,            cmd_agent,
 	  "Agent mode" },
+	{"vpnconnections", "[<connection>]", NULL,         cmd_vpnconnections,
+	 "Display VPN connections" },
 	{ "help",         NULL,           NULL,            cmd_help,
 	  "Show help" },
 	{ "exit",         NULL,           NULL,            cmd_exit,
@@ -1315,7 +1386,7 @@ static int cmd_help(char *args[], int num, struct connman_option *options)
 		const char *argument = cmd_table[i].argument;
 		const char *desc = cmd_table[i].desc;
 
-		printf("%-12s%-22s%s\n", cmd != NULL? cmd: "",
+		printf("%-16s%-22s%s\n", cmd != NULL? cmd: "",
 				argument != NULL? argument: "",
 				desc != NULL? desc: "");
 
@@ -1326,7 +1397,7 @@ static int cmd_help(char *args[], int num, struct connman_option *options)
 					cmd_table[i].options[j].desc != NULL ?
 					cmd_table[i].options[j].desc: "";
 
-				printf("   --%-12s%s\n",
+				printf("   --%-16s%s\n",
 						cmd_table[i].options[j].name,
 						options_desc);
 			}
