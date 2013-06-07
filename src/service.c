@@ -41,7 +41,7 @@
 
 static DBusConnection *connection = NULL;
 
-static GSequence *service_list = NULL;
+static GList *service_list = NULL;
 static GHashTable *service_hash = NULL;
 static GSList *counter_list = NULL;
 static unsigned int autoconnect_timeout = 0;
@@ -157,7 +157,7 @@ static struct connman_service *find_service(const char *path)
 
 	DBG("path %s", path);
 
-	g_sequence_foreach(service_list, compare_path, &data);
+	g_list_foreach(service_list, compare_path, &data);
 
 	return data.service;
 }
@@ -1318,14 +1318,11 @@ static void reset_stats(struct connman_service *service)
 struct connman_service *__connman_service_get_default(void)
 {
 	struct connman_service *service;
-	GSequenceIter *iter;
 
-	iter = g_sequence_get_begin_iter(service_list);
-
-	if (g_sequence_iter_is_end(iter) == TRUE)
+	if (service_list == NULL)
 		return NULL;
 
-	service = g_sequence_get(iter);
+	service = service_list->data;
 
 	if (is_connected(service) == FALSE)
 		return NULL;
@@ -2078,17 +2075,15 @@ void __connman_service_notify(struct connman_service *service,
 int __connman_service_counter_register(const char *counter)
 {
 	struct connman_service *service;
-	GSequenceIter *iter;
+	GList *list;
 	struct connman_stats_counter *counters;
 
 	DBG("counter %s", counter);
 
 	counter_list = g_slist_prepend(counter_list, (gpointer)counter);
 
-	iter = g_sequence_get_begin_iter(service_list);
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		service = g_sequence_get(iter);
+	for (list = service_list; list != NULL; list = list->next) {
+		service = list->data;
 
 		counters = g_try_new0(struct connman_stats_counter, 1);
 		if (counters == NULL)
@@ -2098,8 +2093,6 @@ int __connman_service_counter_register(const char *counter)
 
 		g_hash_table_replace(service->counter_table, (gpointer)counter,
 					counters);
-
-		iter = g_sequence_iter_next(iter);
 	}
 
 	return 0;
@@ -2108,18 +2101,14 @@ int __connman_service_counter_register(const char *counter)
 void __connman_service_counter_unregister(const char *counter)
 {
 	struct connman_service *service;
-	GSequenceIter *iter;
+	GList *list;
 
 	DBG("counter %s", counter);
 
-	iter = g_sequence_get_begin_iter(service_list);
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		service = g_sequence_get(iter);
+	for (list = service_list; list != NULL; list = list->next) {
+		service = list->data;
 
 		g_hash_table_remove(service->counter_table, counter);
-
-		iter = g_sequence_iter_next(iter);
 	}
 
 	counter_list = g_slist_remove(counter_list, counter);
@@ -2127,16 +2116,12 @@ void __connman_service_counter_unregister(const char *counter)
 
 int __connman_service_iterate_services(service_iterate_cb cb, void *user_data)
 {
-	GSequenceIter *iter;
+	GList *list;
 
-	iter = g_sequence_get_begin_iter(service_list);
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		struct connman_service *service = g_sequence_get(iter);
+	for (list = service_list; list != NULL; list = list->next) {
+		struct connman_service *service = list->data;
 
 		cb(service, service->name, service->state, user_data);
-
-		iter = g_sequence_iter_next(iter);
 	}
 
 	return 0;
@@ -2312,7 +2297,7 @@ static void append_struct(gpointer value, gpointer user_data)
 
 void __connman_service_list_struct(DBusMessageIter *iter)
 {
-	g_sequence_foreach(service_list, append_struct, iter);
+	g_list_foreach(service_list, append_struct, iter);
 }
 
 connman_bool_t __connman_service_is_hidden(struct connman_service *service)
@@ -3398,7 +3383,7 @@ static connman_bool_t is_ignore(struct connman_service *service)
 }
 
 struct preferred_tech_data {
-	GSequence *preferred_list;
+	GList *preferred_list;
 	enum connman_service_type type;
 };
 
@@ -3408,14 +3393,15 @@ static void preferred_tech_add_by_type(gpointer data, gpointer user_data)
 	struct preferred_tech_data *tech_data = user_data;
 
 	if (service->type == tech_data->type) {
-		g_sequence_append(tech_data->preferred_list, service);
+		tech_data->preferred_list =
+			g_list_append(tech_data->preferred_list, service);
 
 		DBG("type %d service %p %s", tech_data->type, service,
 				service->name);
 	}
 }
 
-static GSequence* preferred_tech_list_get(void)
+static GList* preferred_tech_list_get(void)
 {
 	unsigned int *tech_array;
 	struct preferred_tech_data tech_data = { 0, };
@@ -3426,11 +3412,9 @@ static GSequence* preferred_tech_list_get(void)
 		return NULL;
 
 	if (connman_setting_get_bool("SingleConnectedTechnology") == TRUE) {
-		GSequenceIter *iter = g_sequence_get_begin_iter(service_list);
-		while (g_sequence_iter_is_end(iter) == FALSE) {
-			struct connman_service *service;
-
-			service = g_sequence_get(iter);
+		GList *list;
+		for (list = service_list; list != NULL; list = list->next) {
+			struct connman_service *service = list->data;
 
 			if (is_connected(service) == FALSE)
 				break;
@@ -3440,29 +3424,26 @@ static GSequence* preferred_tech_list_get(void)
 						service, service->name);
 				return NULL;
 			}
-
-			iter = g_sequence_iter_next(iter);
 		}
 	}
 
-	tech_data.preferred_list = g_sequence_new(NULL);
-
 	for (i = 0; tech_array[i] != 0; i += 1) {
 		tech_data.type = tech_array[i];
-		g_sequence_foreach(service_list, preferred_tech_add_by_type,
+		g_list_foreach(service_list, preferred_tech_add_by_type,
 				&tech_data);
 	}
 
 	return tech_data.preferred_list;
 }
 
-static connman_bool_t auto_connect_service(GSequenceIter* iter,
+static connman_bool_t auto_connect_service(GList *services,
 		connman_bool_t preferred)
 {
 	struct connman_service *service = NULL;
+	GList *list;
 
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		service = g_sequence_get(iter);
+	for (list = services; list != NULL; list = list->next) {
+		service = list->data;
 
 		if (service->pending != NULL)
 			return TRUE;
@@ -3485,8 +3466,6 @@ static connman_bool_t auto_connect_service(GSequenceIter* iter,
 
 	next_service:
 		service = NULL;
-
-		iter = g_sequence_iter_next(iter);
 	}
 
 	if (service != NULL) {
@@ -3503,8 +3482,7 @@ static connman_bool_t auto_connect_service(GSequenceIter* iter,
 
 static gboolean run_auto_connect(gpointer data)
 {
-	GSequenceIter *iter = NULL;
-	GSequence *preferred_tech;
+	GList *list = NULL, *preferred_tech;
 
 	autoconnect_timeout = 0;
 
@@ -3512,16 +3490,16 @@ static gboolean run_auto_connect(gpointer data)
 
 	preferred_tech = preferred_tech_list_get();
 	if (preferred_tech != NULL)
-		iter = g_sequence_get_begin_iter(preferred_tech);
+		list = preferred_tech;
 
-	if (iter == NULL || auto_connect_service(iter, TRUE) == FALSE)
-		iter = g_sequence_get_begin_iter(service_list);
+	if (list == NULL || auto_connect_service(list, TRUE) == FALSE)
+		list = service_list;
 
-	if (iter != NULL)
-		auto_connect_service(iter, FALSE);
+	if (list != NULL)
+		auto_connect_service(list, FALSE);
 
 	if (preferred_tech != NULL)
-		g_sequence_free(preferred_tech);
+		g_list_free(preferred_tech);
 
 	return FALSE;
 }
@@ -3758,7 +3736,7 @@ static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_service *service = user_data;
-	GSequenceIter *iter;
+	GList *list;
 	int err;
 
 	DBG("service %p", service);
@@ -3766,10 +3744,8 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	if (service->pending != NULL)
 		return __connman_error_in_progress(msg);
 
-	iter = g_sequence_get_begin_iter(service_list);
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		struct connman_service *temp = g_sequence_get(iter);
+	for (list = service_list; list != NULL; list = list->next) {
+		struct connman_service *temp = list->data;
 
 		/*
 		 * We should allow connection if there are available
@@ -3793,8 +3769,6 @@ static DBusMessage *connect_service(DBusConnection *conn,
 				break;
 			}
 		}
-
-		iter = g_sequence_iter_next(iter);
 	}
 
 	service->ignore = FALSE;
@@ -3952,12 +3926,21 @@ static void apply_relevant_default_downgrade(struct connman_service *service)
 static void switch_default_service(struct connman_service *default_service,
 		struct connman_service *downgrade_service)
 {
-	GSequenceIter *src, *dst;
+	struct connman_service *service;
+	GList *src, *dst;
 
 	apply_relevant_default_downgrade(default_service);
-	src = g_hash_table_lookup(service_hash, downgrade_service->identifier);
-	dst = g_hash_table_lookup(service_hash, default_service->identifier);
-	g_sequence_move(src, dst);
+	src = g_list_find(service_list, downgrade_service);
+	dst = g_list_find(service_list, default_service);
+
+	/* Nothing to do */
+	if (src == dst || src->next == dst)
+		return;
+
+	service = src->data;
+	service_list = g_list_delete_link(service_list, src);
+	service_list = g_list_insert_before(service_list, dst, service);
+
 	downgrade_state(downgrade_service);
 }
 
@@ -4123,9 +4106,7 @@ static void service_append_added_foreach(gpointer data, gpointer user_data)
 
 static void service_append_ordered(DBusMessageIter *iter, void *user_data)
 {
-	if (service_list != NULL)
-		g_sequence_foreach(service_list,
-					service_append_added_foreach, iter);
+	g_list_foreach(service_list, service_append_added_foreach, iter);
 }
 
 static void append_removed(gpointer key, gpointer value, gpointer user_data)
@@ -4255,8 +4236,6 @@ static void service_free(gpointer user_data)
 	DBG("service %p", service);
 
 	reply_pending(service, ENOENT);
-
-	g_hash_table_remove(service_hash, service->identifier);
 
 	__connman_notifier_service_remove(service);
 	service_schedule_removed(service);
@@ -4452,28 +4431,21 @@ connman_service_ref_debug(struct connman_service *service,
 void connman_service_unref_debug(struct connman_service *service,
 			const char *file, int line, const char *caller)
 {
-	GSequenceIter *iter;
-
 	DBG("%p ref %d by %s:%d:%s()", service, service->refcount - 1,
 		file, line, caller);
 
 	if (__sync_fetch_and_sub(&service->refcount, 1) != 1)
 		return;
 
-	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter != NULL) {
-		reply_pending(service, ECONNABORTED);
+	service_list = g_list_remove(service_list, service);
 
-		__connman_service_disconnect(service);
+	reply_pending(service, ECONNABORTED);
+	__connman_service_disconnect(service);
 
-		g_sequence_remove(iter);
-	} else {
-		service_free(service);
-	}
+	g_hash_table_remove(service_hash, service->identifier);
 }
 
-static gint service_compare(gconstpointer a, gconstpointer b,
-							gpointer user_data)
+static gint service_compare(gconstpointer a, gconstpointer b)
 {
 	struct connman_service *service_a = (void *) a;
 	struct connman_service *service_b = (void *) b;
@@ -4689,13 +4661,8 @@ int __connman_service_set_favorite_delayed(struct connman_service *service,
 					connman_bool_t favorite,
 					gboolean delay_ordering)
 {
-	GSequenceIter *iter;
-
 	if (service->hidden == TRUE)
 		return -EOPNOTSUPP;
-	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter == NULL)
-		return -ENOENT;
 
 	if (service->favorite == favorite)
 		return -EALREADY;
@@ -4709,8 +4676,9 @@ int __connman_service_set_favorite_delayed(struct connman_service *service,
 
 	if (delay_ordering == FALSE) {
 
-		if (g_sequence_get_length(service_list) > 1) {
-			g_sequence_sort_changed(iter, service_compare, NULL);
+		if (service_list->next != NULL) {
+			service_list = g_list_sort(service_list,
+							service_compare);
 			service_schedule_changed();
 		}
 
@@ -5008,23 +4976,18 @@ static void request_input_cb (struct connman_service *service,
 static void downgrade_connected_services(void)
 {
 	struct connman_service *up_service;
-	GSequenceIter *iter;
+	GList *list;
 
-	iter = g_sequence_get_begin_iter(service_list);
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		up_service = g_sequence_get(iter);
+	for (list = service_list; list != NULL; list = list->next) {
+		up_service = list->data;
 
-		if (is_connected(up_service) == FALSE) {
-			iter = g_sequence_iter_next(iter);
+		if (is_connected(up_service) == FALSE)
 			continue;
-		}
 
 		if (up_service->state == CONNMAN_SERVICE_STATE_ONLINE)
 			return;
 
 		downgrade_state(up_service);
-
-		iter = g_sequence_iter_next(iter);
 	}
 }
 
@@ -5060,25 +5023,26 @@ static int service_update_preferred_order(struct connman_service *default_servic
 
 static void single_connected_tech(struct connman_service *allowed)
 {
-	GSList *services = NULL;
-	GSequenceIter *iter;
-	GSList *list;
-
-	iter = g_sequence_get_begin_iter(service_list);
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		struct connman_service *service = g_sequence_get(iter);
-
-		if (service != allowed && is_connected(service))
-			services = g_slist_prepend(services, service);
-
-		iter = g_sequence_iter_next(iter);
-	}
+	struct connman_service *service;
+	GSList *services = NULL, *list;
+	GList *iter;
 
 	DBG("keeping %p %s", allowed, allowed->path);
 
+	for (iter = service_list; iter != NULL; iter = iter->next) {
+		service = iter->data;
+
+		if (is_connected(service) == FALSE)
+			break;
+
+		if (service == allowed)
+			continue;
+
+		services = g_slist_prepend(services, service);
+	}
+
 	for (list = services; list != NULL; list = list->next) {
-		struct connman_service *service = list->data;
+		service = list->data;
 
 		DBG("disconnecting %p %s", service, service->path);
 		__connman_service_disconnect(service);
@@ -5092,7 +5056,6 @@ static int service_indicate_state(struct connman_service *service)
 	enum connman_service_state old_state, new_state;
 	struct connman_service *def_service;
 	int result;
-	GSequenceIter *iter;
 
 	if (service == NULL)
 		return -EINVAL;
@@ -5253,9 +5216,8 @@ static int service_indicate_state(struct connman_service *service)
 	} else
 		set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 
-	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter != NULL && g_sequence_get_length(service_list) > 1) {
-		g_sequence_sort_changed(iter, service_compare, NULL);
+	if (service_list->next != NULL) {
+		service_list = g_list_sort(service_list, service_compare);
 		service_schedule_changed();
 	}
 
@@ -5866,19 +5828,19 @@ int __connman_service_disconnect(struct connman_service *service)
 
 int __connman_service_disconnect_all(void)
 {
-	GSequenceIter *iter;
+	struct connman_service *service;
 	GSList *services = NULL, *list;
+	GList *iter;
 
 	DBG("");
 
-	iter = g_sequence_get_begin_iter(service_list);
+	for (iter = service_list; iter != NULL; iter = iter->next) {
+		service = iter->data;
 
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		struct connman_service *service = g_sequence_get(iter);
+		if (is_connected(service) == FALSE)
+			break;
 
 		services = g_slist_prepend(services, service);
-
-		iter = g_sequence_iter_next(iter);
 	}
 
 	for (list = services; list != NULL; list = list->next) {
@@ -5891,10 +5853,9 @@ int __connman_service_disconnect_all(void)
 		__connman_service_disconnect(service);
 	}
 
-	g_slist_free(list);
+	g_slist_free(services);
 
 	return 0;
-
 }
 
 /**
@@ -5905,13 +5866,7 @@ int __connman_service_disconnect_all(void)
  */
 static struct connman_service *lookup_by_identifier(const char *identifier)
 {
-	GSequenceIter *iter;
-
-	iter = g_hash_table_lookup(service_hash, identifier);
-	if (iter != NULL)
-		return g_sequence_get(iter);
-
-	return NULL;
+	return g_hash_table_lookup(service_hash, identifier);
 }
 
 struct provision_user_data {
@@ -5939,7 +5894,7 @@ int __connman_service_provision_changed(const char *ident)
 		.ret = 0
 	};
 
-	g_sequence_foreach(service_list, provision_changed, (void *)&data);
+	g_list_foreach(service_list, provision_changed, (void *)&data);
 
 	/*
 	 * Because the provision_changed() might have set some services
@@ -5948,8 +5903,9 @@ int __connman_service_provision_changed(const char *ident)
 	if (services_dirty == TRUE) {
 		services_dirty = FALSE;
 
-		if (g_sequence_get_length(service_list) > 1) {
-			g_sequence_sort(service_list, service_compare, NULL);
+		if (service_list->next != NULL) {
+			service_list = g_list_sort(service_list,
+							service_compare);
 			service_schedule_changed();
 		}
 
@@ -5981,13 +5937,10 @@ void __connman_service_set_config(struct connman_service *service,
 static struct connman_service *service_get(const char *identifier)
 {
 	struct connman_service *service;
-	GSequenceIter *iter;
 
-	iter = g_hash_table_lookup(service_hash, identifier);
-	if (iter != NULL) {
-		service = g_sequence_get(iter);
-		if (service != NULL)
-			connman_service_ref(service);
+	service = g_hash_table_lookup(service_hash, identifier);
+	if (service != NULL) {
+		connman_service_ref(service);
 		return service;
 	}
 
@@ -5999,18 +5952,16 @@ static struct connman_service *service_get(const char *identifier)
 
 	service->identifier = g_strdup(identifier);
 
-	iter = g_sequence_insert_sorted(service_list, service,
-						service_compare, NULL);
+	service_list = g_list_insert_sorted(service_list, service,
+						service_compare);
 
-	g_hash_table_insert(service_hash, service->identifier, iter);
+	g_hash_table_insert(service_hash, service->identifier, service);
 
 	return service;
 }
 
 static int service_register(struct connman_service *service)
 {
-	GSequenceIter *iter;
-
 	DBG("service %p", service);
 
 	if (service->path != NULL)
@@ -6030,9 +5981,8 @@ static int service_register(struct connman_service *service)
 					service_methods, service_signals,
 							NULL, service, NULL);
 
-	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter != NULL && g_sequence_get_length(service_list) > 1) {
-		g_sequence_sort_changed(iter, service_compare, NULL);
+	if (service_list->next != NULL) {
+		service_list = g_list_sort(service_list, service_compare);
 		service_schedule_changed();
 	}
 
@@ -6287,12 +6237,10 @@ struct connman_service *connman_service_lookup_from_network(struct connman_netwo
 struct connman_service *__connman_service_lookup_from_index(int index)
 {
 	struct connman_service *service;
-	GSequenceIter *iter;
+	GList *list;
 
-	iter = g_sequence_get_begin_iter(service_list);
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		service = g_sequence_get(iter);
+	for (list = service_list; list != NULL; list = list->next) {
+		service = list->data;
 
 		if (__connman_ipconfig_get_index(service->ipconfig_ipv4)
 							== index)
@@ -6301,8 +6249,6 @@ struct connman_service *__connman_service_lookup_from_index(int index)
 		if (__connman_ipconfig_get_index(service->ipconfig_ipv6)
 							== index)
 			return service;
-
-		iter = g_sequence_iter_next(iter);
 	}
 
 	return NULL;
@@ -6325,8 +6271,6 @@ const char *__connman_service_get_path(struct connman_service *service)
 
 unsigned int __connman_service_get_order(struct connman_service *service)
 {
-	GSequenceIter *iter;
-
 	if (service == NULL)
 		return 0;
 
@@ -6335,16 +6279,13 @@ unsigned int __connman_service_get_order(struct connman_service *service)
 		goto done;
 	}
 
-	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter != NULL) {
-		if (g_sequence_iter_get_position(iter) == 0)
-			service->order = 1;
-		else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
-				service->do_split_routing == FALSE)
-			service->order = 10;
-		else
-			service->order = 0;
-	}
+	if (service == service_list->data)
+		service->order = 1;
+	else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
+			service->do_split_routing == FALSE)
+		service->order = 10;
+	else
+		service->order = 0;
 
 	DBG("service %p name %s order %d split %d", service, service->name,
 		service->order, service->do_split_routing);
@@ -6355,11 +6296,8 @@ done:
 
 void __connman_service_update_ordering(void)
 {
-	GSequenceIter *iter;
-
-	iter = g_sequence_get_begin_iter(service_list);
-	if (iter != NULL && g_sequence_get_length(service_list) > 1)
-		g_sequence_sort_changed(iter, service_compare, NULL);
+	if (service_list != NULL && service_list->next != NULL)
+		service_list = g_list_sort(service_list, service_compare);
 }
 
 static enum connman_service_type convert_network_type(struct connman_network *network)
@@ -6408,7 +6346,6 @@ static void update_from_network(struct connman_service *service,
 					struct connman_network *network)
 {
 	uint8_t strength = service->strength;
-	GSequenceIter *iter;
 	const char *str;
 
 	DBG("service %p network %p", service, network);
@@ -6457,9 +6394,8 @@ static void update_from_network(struct connman_service *service,
 	if (service->network == NULL)
 		service->network = connman_network_ref(network);
 
-	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter != NULL && g_sequence_get_length(service_list) > 1) {
-		g_sequence_sort_changed(iter, service_compare, NULL);
+	if (service_list->next != NULL) {
+		service_list = g_list_sort(service_list, service_compare);
 		service_schedule_changed();
 	}
 }
@@ -6570,7 +6506,6 @@ void __connman_service_update_from_network(struct connman_network *network)
 	struct connman_service *service;
 	uint8_t strength;
 	connman_bool_t roaming;
-	GSequenceIter *iter;
 	const char *name;
 	connman_bool_t stats_enable;
 
@@ -6625,9 +6560,9 @@ roaming:
 
 sorting:
 	if (need_sort == TRUE) {
-		iter = g_hash_table_lookup(service_hash, service->identifier);
-		if (iter != NULL && g_sequence_get_length(service_list) > 1) {
-			g_sequence_sort_changed(iter, service_compare, NULL);
+		if (service_list->next != NULL) {
+			service_list = g_list_sort(service_list,
+							service_compare);
 			service_schedule_changed();
 		}
 	}
@@ -6824,9 +6759,7 @@ int __connman_service_init(void)
 	connection = connman_dbus_get_connection();
 
 	service_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
-								NULL, NULL);
-
-	service_list = g_sequence_new(service_free);
+							NULL, service_free);
 
 	services_notify = g_new0(struct _services_notify, 1);
 	services_notify->remove = g_hash_table_new_full(g_str_hash,
@@ -6840,8 +6773,6 @@ int __connman_service_init(void)
 
 void __connman_service_cleanup(void)
 {
-	GSequence *list;
-
 	DBG("");
 
 	if (autoconnect_timeout != 0) {
@@ -6849,9 +6780,8 @@ void __connman_service_cleanup(void)
 		autoconnect_timeout = 0;
 	}
 
-	list = service_list;
+	g_list_free(service_list);
 	service_list = NULL;
-	g_sequence_free(list);
 
 	g_hash_table_destroy(service_hash);
 	service_hash = NULL;
