@@ -287,6 +287,8 @@ static void request_input_next(void)
 
 	pending_message_remove();
 	pending_command_complete("");
+
+	__connmanctl_redraw_rl();
 }
 
 static void request_input_append(const char *attribute, char *value)
@@ -361,7 +363,6 @@ static DBusMessage *agent_request_input(DBusConnection *connection,
 	fprintf(stdout, "Agent RequestInput %s\n", service);
 	__connmanctl_dbus_print(&dict, "  ", " = ", "\n");
 	fprintf(stdout, "\n");
-	__connmanctl_redraw_rl();
 
 	dbus_message_iter_recurse(&iter, &dict);
 
