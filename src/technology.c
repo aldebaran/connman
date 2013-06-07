@@ -1472,7 +1472,7 @@ int __connman_technology_disabled(enum connman_service_type type)
 int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 {
 	GSList *list;
-	int err = -EINVAL;
+	int err = -EINVAL, enabled_tech_count = 0;
 
 	if (global_offlinemode == offlinemode)
 		return 0;
@@ -1496,12 +1496,16 @@ int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 
 		if (offlinemode)
 			err = technology_disable(technology);
-
-		if (!offlinemode && technology->enable_persistent)
-			err = technology_enable(technology);
+		else {
+			if (technology->enable_persistent) {
+				err = technology_enable(technology);
+				enabled_tech_count++;
+			}
+		}
 	}
 
-	if (err == 0 || err == -EINPROGRESS || err == -EALREADY) {
+	if (err == 0 || err == -EINPROGRESS || err == -EALREADY ||
+			(err == -EINVAL && enabled_tech_count == 0)) {
 		connman_technology_save_offlinemode();
 		__connman_notifier_offlinemode(offlinemode);
 	} else
