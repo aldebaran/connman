@@ -92,8 +92,7 @@ Core
    Priority: Medium
    Complexity: C4
 
-   Use hash tables, queues and lists in the code. Replace GSequences with
-   simpler structures. At the same time do a check on the currently used
+   Use hash tables, queues and lists in the code. Check on the currently used
    data structures and see if something can be simplified.
 
 
