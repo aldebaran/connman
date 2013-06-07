@@ -3435,7 +3435,7 @@ static void preferred_tech_add_by_type(gpointer data, gpointer user_data)
 static GSequence* preferred_tech_list_get(void)
 {
 	unsigned int *tech_array;
-	struct preferred_tech_data tech_data;
+	struct preferred_tech_data tech_data = { 0, };
 	int i;
 
 	tech_array = connman_setting_get_uint_list("PreferredTechnologies");
