@@ -5149,6 +5149,7 @@ static int service_indicate_state(struct connman_service *service)
 		update_nameservers(service);
 		dns_changed(service);
 		domain_changed(service);
+		proxy_changed(service);
 
 		if (old_state != CONNMAN_SERVICE_STATE_ONLINE)
 			__connman_notifier_connect(service->type);
@@ -5195,6 +5196,7 @@ static int service_indicate_state(struct connman_service *service)
 		update_nameservers(service);
 		dns_changed(service);
 		domain_changed(service);
+		proxy_changed(service);
 
 		__connman_notifier_disconnect(service->type);
 
