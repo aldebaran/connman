@@ -710,19 +710,12 @@ void __connman_service_counter_unregister(const char *counter);
 
 #include <connman/session.h>
 
-struct service_entry;
-typedef connman_bool_t (* service_match_cb) (struct connman_session *session,
-					struct connman_service *service);
-typedef struct service_entry* (* create_service_entry_cb) (
-					struct connman_session *session,
-					struct connman_service *service,
+typedef void (* service_iterate_cb) (struct connman_service *service,
 					const char *name,
-					enum connman_service_state state);
+					enum connman_service_state state,
+					void *user_data);
 
-GSequence *__connman_service_get_list(struct connman_session *session,
-				service_match_cb service_match,
-				create_service_entry_cb create_service_entry,
-				GDestroyNotify destroy_service_entry);
+int __connman_service_iterate_services(service_iterate_cb cb, void *user_data);
 
 void __connman_service_session_inc(struct connman_service *service);
 connman_bool_t __connman_service_session_dec(struct connman_service *service);

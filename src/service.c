@@ -2125,38 +2125,21 @@ void __connman_service_counter_unregister(const char *counter)
 	counter_list = g_slist_remove(counter_list, counter);
 }
 
-GSequence *__connman_service_get_list(struct connman_session *session,
-				service_match_cb service_match,
-				create_service_entry_cb create_service_entry,
-				GDestroyNotify destroy_service_entry)
+int __connman_service_iterate_services(service_iterate_cb cb, void *user_data)
 {
-	GSequence *list;
 	GSequenceIter *iter;
-	struct connman_service *service;
-	struct service_entry *entry;
-
-	list = g_sequence_new(destroy_service_entry);
-	if (list == NULL)
-		return NULL;
 
 	iter = g_sequence_get_begin_iter(service_list);
 
 	while (g_sequence_iter_is_end(iter) == FALSE) {
-		service = g_sequence_get(iter);
+		struct connman_service *service = g_sequence_get(iter);
 
-		if (service_match(session, service) == TRUE) {
-			entry = create_service_entry(session, service,
-						service->name, service->state);
-			if (entry == NULL)
-				return list;
-
-			g_sequence_append(list, entry);
-		}
+		cb(service, service->name, service->state, user_data);
 
 		iter = g_sequence_iter_next(iter);
 	}
 
-	return list;
+	return 0;
 }
 
 void __connman_service_session_inc(struct connman_service *service)

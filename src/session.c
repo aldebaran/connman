@@ -1245,6 +1245,24 @@ static struct service_entry *create_service_entry(struct connman_session * sessi
 	return entry;
 }
 
+static void iterate_service_cb(struct connman_service *service,
+				const char *name,
+				enum connman_service_state state,
+				void *user_data)
+{
+	struct connman_session *session = user_data;
+	struct service_entry *entry;
+
+	if (service_match(session, service) == FALSE)
+		return;
+
+	entry = create_service_entry(session, service, name, state);
+	if (entry == NULL)
+		return;
+
+	g_sequence_append(session->service_list, entry);
+}
+
 static void destroy_service_entry(gpointer data)
 {
 	struct service_entry *entry = data;
@@ -1270,10 +1288,8 @@ static void populate_service_list(struct connman_session *session)
 	session->service_hash =
 		g_hash_table_new_full(g_direct_hash, g_direct_equal,
 					NULL, NULL);
-	session->service_list = __connman_service_get_list(session,
-							service_match,
-							create_service_entry,
-							destroy_service_entry);
+	session->service_list = g_sequence_new(destroy_service_entry);
+	__connman_service_iterate_services(iterate_service_cb, session);
 
 	g_sequence_sort(session->service_list, sort_services, session);
 
