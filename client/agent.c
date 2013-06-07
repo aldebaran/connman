@@ -386,10 +386,11 @@ static DBusMessage *agent_request_input(DBusConnection *connection,
 
 			dbus_message_iter_recurse(&field_entry, &field_value);
 
-			dbus_message_iter_get_basic(&field_value, &value);
-
-			if (strcmp(argument, "Type") == 0)
+			if (strcmp(argument, "Type") == 0) {
+				dbus_message_iter_get_basic(&field_value,
+						&value);
 				attr_type = g_strdup(value);
+			}
 
 			dbus_message_iter_next(&dict_entry);
 		}
