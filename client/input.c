@@ -43,8 +43,6 @@ static bool save_input;
 static char *saved_line;
 static int saved_point;
 
-static connmanctl_input_func_t *readline_input_handler;
-
 void __connmanctl_quit(void)
 {
 	if (main_loop != NULL)
@@ -126,8 +124,7 @@ static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
 		return FALSE;
 	}
 
-	if (readline_input_handler != NULL)
-		rl_callback_read_char();
+	rl_callback_read_char();
 	return TRUE;
 }
 
@@ -151,13 +148,24 @@ static char **complete_command(const char *text, int start, int end)
 	return command;
 }
 
-void __connmanctl_agent_mode(const char *prompt,
-		connmanctl_input_func_t input_handler)
+static struct {
+	connmanctl_input_func_t cb;
+	void *user_data;
+} agent_handler;
+
+static void rl_agent_handler(char *input)
 {
-	readline_input_handler = input_handler;
+	agent_handler.cb(input, agent_handler.user_data);
+}
+
+void __connmanctl_agent_mode(const char *prompt,
+		connmanctl_input_func_t input_handler, void *user_data)
+{
+	agent_handler.cb = input_handler;
+	agent_handler.user_data = user_data;
 
 	if (input_handler != NULL)
-		rl_callback_handler_install(prompt, input_handler);
+		rl_callback_handler_install(prompt, rl_agent_handler);
 	else {
 		rl_set_prompt(prompt);
 		rl_callback_handler_remove();
@@ -168,8 +176,6 @@ void __connmanctl_agent_mode(const char *prompt,
 
 void __connmanctl_command_mode(void)
 {
-	readline_input_handler = rl_handler;
-
 	rl_callback_handler_install("connmanctl> ", rl_handler);
 	rl_attempted_completion_function = complete_command;
 }

@@ -38,19 +38,24 @@
 #include "dbus_helpers.h"
 #include "agent.h"
 
-static bool agent_registered = false;
-static DBusMessage *agent_message = NULL;
-static struct {
+#define AGENT_INTERFACE      "net.connman.Agent"
+
+struct agent_data {
+	char *interface;
+	bool registered;
+	DBusMessage *message;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
-} agent_reply = { };
+};
 
-#define AGENT_INTERFACE      "net.connman.Agent"
+static struct agent_data agent_request = {
+	AGENT_INTERFACE,
+};
 
-static void request_input_ssid_return(char *input);
-static void request_input_passphrase_return(char *input);
-static void request_input_string_return(char *input);
+static void request_input_ssid_return(char *input, void *user_data);
+static void request_input_passphrase_return(char *input, void *user_data);
+static void request_input_string_return(char *input, void *user_data);
 
 static int confirm_input(char *input)
 {
@@ -95,16 +100,16 @@ static char *agent_path(void)
 	return path;
 }
 
-static void pending_message_remove()
+static void pending_message_remove(struct agent_data *request)
 {
-	if (agent_message != NULL) {
-		dbus_message_unref(agent_message);
-		agent_message = NULL;
+	if (request->message != NULL) {
+		dbus_message_unref(request->message);
+		request->message = NULL;
 	}
 
-	if (agent_reply.reply != NULL) {
-		dbus_message_unref(agent_reply.reply);
-		agent_reply.reply = NULL;
+	if (request->reply != NULL) {
+		dbus_message_unref(request->reply);
+		request->reply = NULL;
 	}
 }
 
@@ -119,17 +124,22 @@ static void pending_command_complete(char *message)
 	if (__connmanctl_is_interactive() == true)
 		__connmanctl_command_mode();
 	else
-		__connmanctl_agent_mode("", NULL);
+		__connmanctl_agent_mode("", NULL, NULL);
 }
 
 static DBusMessage *agent_release(DBusConnection *connection,
 		DBusMessage *message, void *user_data)
 {
-	g_dbus_unregister_interface(connection, agent_path(), AGENT_INTERFACE);
-	agent_registered = false;
+	struct agent_data *request = user_data;
 
-	pending_message_remove();
-	pending_command_complete("Agent unregistered by ConnMan\n");
+	g_dbus_unregister_interface(connection, agent_path(),
+			request->interface);
+	request->registered = false;
+
+	pending_message_remove(request);
+
+	if (strcmp(request->interface, AGENT_INTERFACE) == 0)
+		pending_command_complete("Agent unregistered by ConnMan\n");
 
 	if (__connmanctl_is_interactive() == false)
 		__connmanctl_quit();
@@ -140,36 +150,44 @@ static DBusMessage *agent_release(DBusConnection *connection,
 static DBusMessage *agent_cancel(DBusConnection *connection,
 		DBusMessage *message, void *user_data)
 {
-	pending_message_remove();
-	pending_command_complete("Agent request cancelled by ConnMan\n");
+	struct agent_data *request = user_data;
+
+	pending_message_remove(request);
+
+	if (strcmp(request->interface, AGENT_INTERFACE) == 0)
+		pending_command_complete("Agent request cancelled by "
+				"ConnMan\n");
 
 	return dbus_message_new_method_return(message);
 }
 
 static DBusConnection *agent_connection = NULL;
 
-static void request_browser_return(char *input)
+static void request_browser_return(char *input, void *user_data)
 {
+	struct agent_data *request = user_data;
+
 	switch (confirm_input(input)) {
 	case 1:
-		g_dbus_send_reply(agent_connection, agent_message,
+		g_dbus_send_reply(agent_connection, request->message,
 				DBUS_TYPE_INVALID);
 		break;
 	case 0:
-		g_dbus_send_error(agent_connection, agent_message,
+		g_dbus_send_error(agent_connection, request->message,
 				"net.connman.Agent.Error.Canceled", NULL);
 		break;
 	default:
 		return;
 	}
 
-	pending_message_remove();
+	pending_message_remove(request);
 	pending_command_complete("");
 }
 
 static DBusMessage *agent_request_browser(DBusConnection *connection,
 		DBusMessage *message, void *user_data)
 {
+	struct agent_data *request = user_data;
 	DBusMessageIter iter;
 	char *service, *url;
 
@@ -185,35 +203,39 @@ static DBusMessage *agent_request_browser(DBusConnection *connection,
 	__connmanctl_redraw_rl();
 
 	agent_connection = connection;
-	agent_message = dbus_message_ref(message);
+	request->message = dbus_message_ref(message);
 	__connmanctl_agent_mode("Connected (yes/no)? ",
-			request_browser_return);
+			request_browser_return, request);
 
 	return NULL;
 }
 
-static void report_error_return(char *input)
+static void report_error_return(char *input, void *user_data)
 {
+	struct agent_data *request = user_data;
+
 	switch (confirm_input(input)) {
 	case 1:
-		g_dbus_send_error(agent_connection, agent_message,
-				"net.connman.Agent.Error.Retry", NULL);
+		if (strcmp(request->interface, AGENT_INTERFACE) == 0)
+			g_dbus_send_error(agent_connection, request->message,
+					"net.connman.Agent.Error.Retry", NULL);
 		break;
 	case 0:
-		g_dbus_send_reply(agent_connection, agent_message,
+		g_dbus_send_reply(agent_connection, request->message,
 				DBUS_TYPE_INVALID);
 		break;
 	default:
 		return;
 	}
 
-	pending_message_remove();
+	pending_message_remove(request);
 	pending_command_complete("");
 }
 
 static DBusMessage *agent_report_error(DBusConnection *connection,
 		DBusMessage *message, void *user_data)
 {
+	struct agent_data *request = user_data;
 	DBusMessageIter iter;
 	char *path, *service, *error;
 
@@ -226,13 +248,15 @@ static DBusMessage *agent_report_error(DBusConnection *connection,
 	dbus_message_iter_get_basic(&iter, &error);
 
 	__connmanctl_save_rl();
-	fprintf(stdout, "Agent ReportError %s\n", service);
+	if (strcmp(request->interface, AGENT_INTERFACE) == 0)
+		fprintf(stdout, "Agent ReportError %s\n", service);
 	fprintf(stdout, "  %s\n", error);
 	__connmanctl_redraw_rl();
 
 	agent_connection = connection;
-	agent_message = dbus_message_ref(message);
-	__connmanctl_agent_mode("Retry (yes/no)? ", report_error_return);
+	request->message = dbus_message_ref(message);
+	__connmanctl_agent_mode("Retry (yes/no)? ", report_error_return,
+			request);
 
 	return NULL;
 }
@@ -251,7 +275,7 @@ static struct {
 	const char *attribute;
 	bool requested;
 	char *prompt;
-	connmanctl_input_func_t *func;
+	connmanctl_input_func_t func;
 } agent_input[] = {
 	{ "Name", false, "Hidden SSID name? ", request_input_ssid_return },
 	{ "Identity", false, "EAP username? ", request_input_string_return },
@@ -264,7 +288,7 @@ static struct {
 	{ },
 };
 
-static void request_input_next(void)
+static void request_input_next(struct agent_data *request)
 {
 	int i;
 
@@ -272,33 +296,35 @@ static void request_input_next(void)
 		if (agent_input[i].requested == true) {
 			if(agent_input[i].func != NULL)
 				__connmanctl_agent_mode(agent_input[i].prompt,
-						agent_input[i].func);
+						agent_input[i].func, request);
 			else
 				agent_input[i].requested = false;
 			return;
 		}
 	}
 
-	dbus_message_iter_close_container(&agent_reply.iter,
-			&agent_reply.dict);
+	dbus_message_iter_close_container(&request->iter, &request->dict);
 
-	g_dbus_send_message(agent_connection, agent_reply.reply);
-	agent_reply.reply = NULL;
+	g_dbus_send_message(agent_connection, request->reply);
+	request->reply = NULL;
 
-	pending_message_remove();
+	pending_message_remove(request);
 	pending_command_complete("");
 
 	__connmanctl_redraw_rl();
 }
 
-static void request_input_append(const char *attribute, char *value)
+static void request_input_append(struct agent_data *request,
+		const char *attribute, char *value)
 {
-	__connmanctl_dbus_append_dict_entry(&agent_reply.dict, attribute,
+	__connmanctl_dbus_append_dict_entry(&request->dict, attribute,
 			DBUS_TYPE_STRING, &value);
 }
 
-static void request_input_ssid_return(char *input)
+static void request_input_ssid_return(char *input,
+		void *user_data)
 {
+	struct agent_data *request = user_data;
 	int len = 0;
 
 	if (input != NULL)
@@ -306,44 +332,51 @@ static void request_input_ssid_return(char *input)
 
 	if (len > 0 && len <= 32) {
 		agent_input[SSID].requested = false;
-		request_input_append(agent_input[SSID].attribute, input);
+		request_input_append(request, agent_input[SSID].attribute,
+				input);
 
-		request_input_next();
+		request_input_next(request);
 	}
 }
 
-static void request_input_passphrase_return(char *input)
+static void request_input_passphrase_return(char *input, void *user_data)
 {
+	struct agent_data *request = user_data;
+
 	/* TBD passphrase length checking */
 
 	if (input != NULL && strlen(input) > 0) {
 		agent_input[PASSPHRASE].requested = false;
-		request_input_append(agent_input[PASSPHRASE].attribute, input);
+		request_input_append(request,
+				agent_input[PASSPHRASE].attribute, input);
 
 		agent_input[WPS].requested = false;
 
-		request_input_next();
+		request_input_next(request);
 	}
 }
 
-static void request_input_string_return(char *input)
+static void request_input_string_return(char *input, void *user_data)
 {
+	struct agent_data *request = user_data;
 	int i;
 
 	for (i = 0; agent_input[i].attribute != NULL; i++) {
 		if (agent_input[i].requested == true) {
-			request_input_append(agent_input[i].attribute, input);
+			request_input_append(request, agent_input[i].attribute,
+					input);
 			agent_input[i].requested = false;
 			break;
 		}
 	}
 
-	request_input_next();
+	request_input_next(request);
 }
 
 static DBusMessage *agent_request_input(DBusConnection *connection,
 		DBusMessage *message, void *user_data)
 {
+	struct agent_data *request = user_data;
 	DBusMessageIter iter, dict, entry, variant;
 	char *service, *str, *field;
 	DBusMessageIter dict_entry, field_entry, field_value;
@@ -410,15 +443,16 @@ static DBusMessage *agent_request_input(DBusConnection *connection,
 	}
 
 	agent_connection = connection;
-	agent_reply.reply = dbus_message_new_method_return(message);
-	dbus_message_iter_init_append(agent_reply.reply, &agent_reply.iter);
+	request->reply = dbus_message_new_method_return(message);
+	dbus_message_iter_init_append(request->reply, &request->iter);
 
-	dbus_message_iter_open_container(&agent_reply.iter, DBUS_TYPE_ARRAY,
+	dbus_message_iter_open_container(&request->iter, DBUS_TYPE_ARRAY,
                         DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
                         DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-                        DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &agent_reply.dict);
+                        DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+			&request->dict);
 
-	request_input_next();
+	request_input_next(request);
 
 	return NULL;
 }
@@ -454,7 +488,7 @@ static int agent_register_return(DBusMessageIter *iter, const char *error,
 		return 0;
 	}
 
-	agent_registered = true;
+	agent_request.registered = true;
 	fprintf(stdout, "Agent registered\n");
 
 	return -EINPROGRESS;
@@ -465,14 +499,14 @@ int __connmanctl_agent_register(DBusConnection *connection)
 	char *path = agent_path();
 	int result;
 
-	if (agent_registered == true) {
+	if (agent_request.registered == true) {
 		fprintf(stderr, "Agent already registered\n");
 		return -EALREADY;
 	}
 
 	if (g_dbus_register_interface(connection, path,
 					AGENT_INTERFACE, agent_methods,
-					NULL, NULL, connection,
+					NULL, NULL, &agent_request,
 					NULL) == FALSE) {
 		fprintf(stderr, "Error: Failed to register Agent callbacks\n");
 		return 0;
@@ -501,7 +535,7 @@ static int agent_unregister_return(DBusMessageIter *iter, const char *error,
 		return 0;
 	}
 
-	agent_registered = false;
+	agent_request.registered = false;
 	fprintf(stdout, "Agent unregistered\n");
 
 	return 0;
@@ -512,7 +546,7 @@ int __connmanctl_agent_unregister(DBusConnection *connection)
 	char *path = agent_path();
 	int result;
 
-	if (agent_registered == false) {
+	if (agent_request.registered == false) {
 		fprintf(stderr, "Agent not registered\n");
 		return -EALREADY;
 	}
