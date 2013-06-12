@@ -1344,6 +1344,34 @@ static int cmd_vpnconnections(char *args[], int num,
 
 }
 
+static int cmd_vpnagent(char *args[], int num, struct connman_option *options)
+{
+	if (num > 2)
+		return -E2BIG;
+
+	if (num < 2)
+		return -EINVAL;
+
+	switch(parse_boolean(args[1])) {
+	case 0:
+		__connmanctl_vpn_agent_unregister(connection);
+		break;
+
+	case 1:
+		if (__connmanctl_vpn_agent_register(connection) ==
+				-EINPROGRESS)
+			return -EINPROGRESS;
+
+		break;
+
+	default:
+		return -EINVAL;
+		break;
+	}
+
+	return 0;
+}
+
 static int cmd_exit(char *args[], int num, struct connman_option *options)
 {
 	return 1;
@@ -1414,6 +1442,8 @@ static const struct {
 	  "Agent mode" },
 	{"vpnconnections", "[<connection>]", NULL,         cmd_vpnconnections,
 	 "Display VPN connections" },
+	{ "vpnagent",     "on|off",     NULL,            cmd_vpnagent,
+	  "VPN Agent mode" },
 	{ "help",         NULL,           NULL,            cmd_help,
 	  "Show help" },
 	{ "exit",         NULL,           NULL,            cmd_exit,
