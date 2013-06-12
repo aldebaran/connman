@@ -337,6 +337,102 @@ static void test_case_5(void)
 	__connman_ippool_cleanup();
 }
 
+static void test_case_6(void)
+{
+	struct connman_ippool *pool;
+	const char *gateway;
+	const char *broadcast;
+	const char *subnet_mask;
+	const char *start_ip;
+	const char *end_ip;
+	int flag;
+
+	__connman_ippool_init();
+
+	/* Test the IP range collision */
+
+	flag = 0;
+	start_ip = "192.168.1.2";
+	__connman_ippool_newaddr(25, start_ip, 24);
+	g_assert(flag == 0);
+
+	flag = 0;
+	start_ip = "192.168.0.2";
+	__connman_ippool_newaddr(25, start_ip, 24);
+	g_assert(flag == 0);
+
+	/* pool should return 192.168.2.1 now */
+	pool = __connman_ippool_create(26, 1, 100, collision_cb, &flag);
+	g_assert(pool);
+
+	gateway = __connman_ippool_get_gateway(pool);
+	broadcast = __connman_ippool_get_broadcast(pool);
+	subnet_mask = __connman_ippool_get_subnet_mask(pool);
+	start_ip = __connman_ippool_get_start_ip(pool);
+	end_ip = __connman_ippool_get_end_ip(pool);
+
+	g_assert(gateway);
+	g_assert(broadcast);
+	g_assert(subnet_mask);
+	g_assert(start_ip);
+	g_assert(end_ip);
+
+	g_assert_cmpstr(gateway, ==, "192.168.2.1");
+	g_assert_cmpstr(broadcast, ==, "192.168.2.255");
+	g_assert_cmpstr(subnet_mask, ==, "255.255.255.0");
+	g_assert_cmpstr(start_ip, ==, "192.168.2.1");
+	g_assert_cmpstr(end_ip, ==, "192.168.2.101");
+
+	LOG("\n\tIP range %s --> %s\n"
+		"\tgateway %s broadcast %s mask %s", start_ip, end_ip,
+		gateway, broadcast, subnet_mask);
+
+	__connman_ippool_unref(pool);
+
+	/*
+	 * Now create the pool again, we should not get collision
+	 * with existing allocated address.
+	 */
+
+	/* pool should return 192.168.3.1 now */
+	flag = 0;
+	pool = __connman_ippool_create(23, 1, 100, collision_cb, &flag);
+	g_assert(pool);
+
+	gateway = __connman_ippool_get_gateway(pool);
+	broadcast = __connman_ippool_get_broadcast(pool);
+	subnet_mask = __connman_ippool_get_subnet_mask(pool);
+	start_ip = __connman_ippool_get_start_ip(pool);
+	end_ip = __connman_ippool_get_end_ip(pool);
+
+	g_assert(gateway);
+	g_assert(broadcast);
+	g_assert(subnet_mask);
+	g_assert(start_ip);
+	g_assert(end_ip);
+
+	g_assert_cmpstr(gateway, ==, "192.168.3.1");
+	g_assert_cmpstr(broadcast, ==, "192.168.3.255");
+	g_assert_cmpstr(subnet_mask, ==, "255.255.255.0");
+	g_assert_cmpstr(start_ip, ==, "192.168.3.1");
+	g_assert_cmpstr(end_ip, ==, "192.168.3.101");
+
+	LOG("\n\tIP range %s --> %s\n"
+		"\tgateway %s broadcast %s mask %s", start_ip, end_ip,
+		gateway, broadcast, subnet_mask);
+
+	g_assert(flag == 0);
+
+	flag = 0;
+	start_ip = "192.168.3.2";
+	__connman_ippool_newaddr(25, start_ip, 24);
+	g_assert(flag == 1);
+
+	__connman_ippool_unref(pool);
+
+	__connman_ippool_cleanup();
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -346,6 +442,7 @@ int main(int argc, char *argv[])
 	g_test_add_func("/ippool/Test case 3", test_case_3);
 	g_test_add_func("/ippool/Test case 4", test_case_4);
 	g_test_add_func("/ippool/Test case 5", test_case_5);
+	g_test_add_func("/ippool/Test case 6", test_case_6);
 
 	return g_test_run();
 }
