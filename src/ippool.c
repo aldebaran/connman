@@ -223,21 +223,13 @@ static struct address_info *lookup_info(int index, uint32_t start)
 
 static connman_bool_t is_private_address(uint32_t address)
 {
-	uint32_t val;
+	unsigned int a, b;
 
-	if ((address & 0xff000000) == block_24_bits)
-		return TRUE;
+	a = (address & 0xff000000) >> 24;
+	b = (address & 0x00ff0000) >> 16;
 
-	if ((address & 0xffff0000) == block_20_bits) {
-		val = (address & 0x00ff0000) >> 16;
-
-		if (val < 16 || val > 31)
-			return FALSE;
-
-		return TRUE;
-	}
-
-	if ((address & 0xffffff00) == block_16_bits)
+	if (a == 10 || (a == 192 && b == 168) ||
+					(a == 172 && (b >= 16 && b <= 31)))
 		return TRUE;
 
 	return FALSE;
