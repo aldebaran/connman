@@ -48,7 +48,10 @@ struct agent_data {
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
+	GDBusMethodFunction pending_function;
 };
+
+static DBusConnection *agent_connection;
 
 static struct agent_data agent_request = {
 	AGENT_INTERFACE,
@@ -119,6 +122,10 @@ static void pending_message_remove(struct agent_data *request)
 
 static void pending_command_complete(char *message)
 {
+	struct agent_data *next_request = NULL;
+	DBusMessage *pending_message;
+	GDBusMethodFunction pending_function;
+
 	__connmanctl_save_rl();
 
 	fprintf(stdout, "%s", message);
@@ -129,12 +136,45 @@ static void pending_command_complete(char *message)
 		__connmanctl_command_mode();
 	else
 		__connmanctl_agent_mode("", NULL, NULL);
+
+	if (agent_request.message != NULL)
+		next_request = &agent_request;
+	else if (vpn_agent_request.message != NULL)
+		next_request = &vpn_agent_request;
+
+	if (next_request == NULL)
+		return;
+
+	pending_message = next_request->message;
+	pending_function = next_request->pending_function;
+	next_request->pending_function = NULL;
+
+	pending_function(agent_connection, next_request->message,
+			next_request);
+
+	dbus_message_unref(pending_message);
+}
+
+static bool handle_message(DBusMessage *message, struct agent_data *request,
+		GDBusMethodFunction function)
+{
+	if (agent_request.pending_function == NULL &&
+			vpn_agent_request.pending_function == NULL)
+		return true;
+
+	request->message = dbus_message_ref(message);
+	request->pending_function = function;
+
+	return false;
 }
 
 static DBusMessage *agent_release(DBusConnection *connection,
 		DBusMessage *message, void *user_data)
 {
 	struct agent_data *request = user_data;
+
+	if (handle_message(message, request, agent_release) == false)
+		return NULL;
 
 	g_dbus_unregister_interface(connection, agent_path(),
 			request->interface);
@@ -159,6 +199,9 @@ static DBusMessage *agent_cancel(DBusConnection *connection,
 {
 	struct agent_data *request = user_data;
 
+	if (handle_message(message, request, agent_cancel) == false)
+		return NULL;
+
 	pending_message_remove(request);
 
 	if (strcmp(request->interface, AGENT_INTERFACE) == 0)
@@ -170,8 +213,6 @@ static DBusMessage *agent_cancel(DBusConnection *connection,
 
 	return dbus_message_new_method_return(message);
 }
-
-static DBusConnection *agent_connection = NULL;
 
 static void request_browser_return(char *input, void *user_data)
 {
@@ -201,6 +242,9 @@ static DBusMessage *agent_request_browser(DBusConnection *connection,
 	DBusMessageIter iter;
 	char *service, *url;
 
+	if (handle_message(message, request, agent_request_browser) == false)
+		return NULL;
+
 	dbus_message_iter_init(message, &iter);
 
 	dbus_message_iter_get_basic(&iter, &service);
@@ -212,7 +256,6 @@ static DBusMessage *agent_request_browser(DBusConnection *connection,
 	fprintf(stdout, "  %s\n", url);
 	__connmanctl_redraw_rl();
 
-	agent_connection = connection;
 	request->message = dbus_message_ref(message);
 	__connmanctl_agent_mode("Connected (yes/no)? ",
 			request_browser_return, request);
@@ -253,6 +296,9 @@ static DBusMessage *agent_report_error(DBusConnection *connection,
 	DBusMessageIter iter;
 	char *path, *service, *error;
 
+	if (handle_message(message, request, agent_report_error) == false)
+		return NULL;
+
 	dbus_message_iter_init(message, &iter);
 
 	dbus_message_iter_get_basic(&iter, &path);
@@ -269,7 +315,6 @@ static DBusMessage *agent_report_error(DBusConnection *connection,
 	fprintf(stdout, "  %s\n", error);
 	__connmanctl_redraw_rl();
 
-	agent_connection = connection;
 	request->message = dbus_message_ref(message);
 	__connmanctl_agent_mode("Retry (yes/no)? ", report_error_return,
 			request);
@@ -400,6 +445,9 @@ static DBusMessage *agent_request_input(DBusConnection *connection,
 
 	int i;
 
+	if (handle_message(message, request, agent_request_input) == false)
+		return NULL;
+
 	dbus_message_iter_init(message, &iter);
 
 	dbus_message_iter_get_basic(&iter, &str);
@@ -458,7 +506,6 @@ static DBusMessage *agent_request_input(DBusConnection *connection,
 		dbus_message_iter_next(&dict);
 	}
 
-	agent_connection = connection;
 	request->reply = dbus_message_new_method_return(message);
 	dbus_message_iter_init_append(request->reply, &request->iter);
 
@@ -474,8 +521,8 @@ static DBusMessage *agent_request_input(DBusConnection *connection,
 }
 
 static const GDBusMethodTable agent_methods[] = {
-	{ GDBUS_METHOD("Release", NULL, NULL, agent_release) },
-	{ GDBUS_METHOD("Cancel", NULL, NULL, agent_cancel) },
+	{ GDBUS_ASYNC_METHOD("Release", NULL, NULL, agent_release) },
+	{ GDBUS_ASYNC_METHOD("Cancel", NULL, NULL, agent_cancel) },
 	{ GDBUS_ASYNC_METHOD("RequestBrowser",
 				GDBUS_ARGS({ "service", "o" },
 					{ "url", "s" }),
@@ -519,6 +566,8 @@ int __connmanctl_agent_register(DBusConnection *connection)
 		fprintf(stderr, "Agent already registered\n");
 		return -EALREADY;
 	}
+
+	agent_connection = connection;
 
 	if (g_dbus_register_interface(connection, path,
 					AGENT_INTERFACE, agent_methods,
@@ -581,8 +630,8 @@ int __connmanctl_agent_unregister(DBusConnection *connection)
 }
 
 static const GDBusMethodTable vpn_agent_methods[] = {
-	{ GDBUS_METHOD("Release", NULL, NULL, agent_release) },
-	{ GDBUS_METHOD("Cancel", NULL, NULL, agent_cancel) },
+	{ GDBUS_ASYNC_METHOD("Release", NULL, NULL, agent_release) },
+	{ GDBUS_ASYNC_METHOD("Cancel", NULL, NULL, agent_cancel) },
 	{ GDBUS_ASYNC_METHOD("ReportError",
 				GDBUS_ARGS({ "service", "o" },
 					{ "error", "s" }),
@@ -617,6 +666,8 @@ int __connmanctl_vpn_agent_register(DBusConnection *connection)
 		fprintf(stderr, "VPN Agent already registered\n");
 		return -EALREADY;
 	}
+
+	agent_connection = connection;
 
 	if (g_dbus_register_interface(connection, path,
 					VPN_AGENT_INTERFACE, vpn_agent_methods,
