@@ -35,6 +35,7 @@ void __connmanctl_dbus_print(DBusMessageIter *iter, const char *pre,
 	int arg_type;
 	dbus_bool_t b;
 	unsigned char c;
+	dbus_uint16_t u16;
 	dbus_uint32_t u;
 	dbus_int32_t i;
 	double d;
@@ -98,6 +99,10 @@ void __connmanctl_dbus_print(DBusMessageIter *iter, const char *pre,
 			break;
 
 		case DBUS_TYPE_UINT16:
+			dbus_message_iter_get_basic(iter, &u16);
+			fprintf(stdout, "%u", u16);
+			break;
+
 		case DBUS_TYPE_UINT32:
 			dbus_message_iter_get_basic(iter, &u);
 			fprintf(stdout, "%d", u);
