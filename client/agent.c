@@ -418,11 +418,19 @@ static void request_input_ssid_return(char *input,
 static void request_input_passphrase_return(char *input, void *user_data)
 {
 	struct agent_data *request = user_data;
+	int len = 0;
 
 	/* TBD passphrase length checking */
 
-	if (input != NULL && strlen(input) > 0) {
-		request->input[PASSPHRASE].requested = false;
+	if (input != NULL)
+		len = strlen(input);
+
+	if (len == 0 && request->input[WPS].requested == false)
+		return;
+
+	request->input[PASSPHRASE].requested = false;
+
+	if (len > 0) {
 		request_input_append(request,
 				request->input[PASSPHRASE].attribute, input);
 
