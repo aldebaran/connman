@@ -465,4 +465,5 @@ void __connman_ippool_cleanup(void)
 
 	g_slist_free(allocated_blocks);
 	last_block = 0;
+	allocated_blocks = NULL;
 }
