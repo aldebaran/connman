@@ -32,6 +32,9 @@ extern "C" {
 int __connmanctl_agent_register(DBusConnection *connection);
 int __connmanctl_agent_unregister(DBusConnection *connection);
 
+int __connmanctl_vpn_agent_register(DBusConnection *connection);
+int __connmanctl_vpn_agent_unregister(DBusConnection *connection);
+
 #ifdef __cplusplus
 }
 #endif

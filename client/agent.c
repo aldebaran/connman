@@ -39,6 +39,7 @@
 #include "agent.h"
 
 #define AGENT_INTERFACE      "net.connman.Agent"
+#define VPN_AGENT_INTERFACE  "net.connman.vpn.Agent"
 
 struct agent_data {
 	char *interface;
@@ -51,6 +52,9 @@ struct agent_data {
 
 static struct agent_data agent_request = {
 	AGENT_INTERFACE,
+};
+static struct agent_data vpn_agent_request = {
+	VPN_AGENT_INTERFACE,
 };
 
 static void request_input_ssid_return(char *input, void *user_data);
@@ -140,6 +144,9 @@ static DBusMessage *agent_release(DBusConnection *connection,
 
 	if (strcmp(request->interface, AGENT_INTERFACE) == 0)
 		pending_command_complete("Agent unregistered by ConnMan\n");
+	else
+		pending_command_complete("VPN Agent unregistered by ConnMan "
+				"VPNd\n");
 
 	if (__connmanctl_is_interactive() == false)
 		__connmanctl_quit();
@@ -157,6 +164,9 @@ static DBusMessage *agent_cancel(DBusConnection *connection,
 	if (strcmp(request->interface, AGENT_INTERFACE) == 0)
 		pending_command_complete("Agent request cancelled by "
 				"ConnMan\n");
+	else
+		pending_command_complete("VPN Agent request cancelled by "
+				"ConnMan VPNd\n");
 
 	return dbus_message_new_method_return(message);
 }
@@ -219,6 +229,10 @@ static void report_error_return(char *input, void *user_data)
 		if (strcmp(request->interface, AGENT_INTERFACE) == 0)
 			g_dbus_send_error(agent_connection, request->message,
 					"net.connman.Agent.Error.Retry", NULL);
+		else
+			g_dbus_send_error(agent_connection, request->message,
+					"net.connman.vpn.Agent.Error.Retry",
+					NULL);
 		break;
 	case 0:
 		g_dbus_send_reply(agent_connection, request->message,
@@ -250,6 +264,8 @@ static DBusMessage *agent_report_error(DBusConnection *connection,
 	__connmanctl_save_rl();
 	if (strcmp(request->interface, AGENT_INTERFACE) == 0)
 		fprintf(stdout, "Agent ReportError %s\n", service);
+	else
+		fprintf(stdout, "VPN Agent ReportError %s\n", service);
 	fprintf(stdout, "  %s\n", error);
 	__connmanctl_redraw_rl();
 
@@ -560,6 +576,106 @@ int __connmanctl_agent_unregister(DBusConnection *connection)
 
 	if (result != -EINPROGRESS)
 		fprintf(stderr, "Error: Failed to unregister Agent\n");
+
+	return result;
+}
+
+static const GDBusMethodTable vpn_agent_methods[] = {
+	{ GDBUS_METHOD("Release", NULL, NULL, agent_release) },
+	{ GDBUS_METHOD("Cancel", NULL, NULL, agent_cancel) },
+	{ GDBUS_ASYNC_METHOD("ReportError",
+				GDBUS_ARGS({ "service", "o" },
+					{ "error", "s" }),
+				NULL, agent_report_error) },
+	{ },
+};
+
+static int vpn_agent_register_return(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	DBusConnection *connection = user_data;
+
+	if (error != NULL) {
+		g_dbus_unregister_interface(connection, agent_path(),
+				VPN_AGENT_INTERFACE);
+		fprintf(stderr, "Error registering VPN Agent: %s\n", error);
+		return 0;
+	}
+
+	vpn_agent_request.registered = true;
+	fprintf(stdout, "VPN Agent registered\n");
+
+	return -EINPROGRESS;
+}
+
+int __connmanctl_vpn_agent_register(DBusConnection *connection)
+{
+	char *path = agent_path();
+	int result;
+
+	if (vpn_agent_request.registered == true) {
+		fprintf(stderr, "VPN Agent already registered\n");
+		return -EALREADY;
+	}
+
+	if (g_dbus_register_interface(connection, path,
+					VPN_AGENT_INTERFACE, vpn_agent_methods,
+					NULL, NULL, &vpn_agent_request,
+					NULL) == FALSE) {
+		fprintf(stderr, "Error: Failed to register VPN Agent "
+				"callbacks\n");
+		return 0;
+	}
+
+	result = __connmanctl_dbus_method_call(connection, VPN_SERVICE,
+			VPN_PATH, "net.connman.vpn.Manager", "RegisterAgent",
+			vpn_agent_register_return, connection,
+			DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID);
+
+	if (result != -EINPROGRESS) {
+		g_dbus_unregister_interface(connection, agent_path(),
+				VPN_AGENT_INTERFACE);
+
+		fprintf(stderr, "Error: Failed to register VPN Agent\n");
+	}
+
+	return result;
+}
+
+static int vpn_agent_unregister_return(DBusMessageIter *iter,
+		const char *error, void *user_data)
+{
+	if (error != NULL) {
+		fprintf(stderr, "Error unregistering VPN Agent: %s\n", error);
+		return 0;
+	}
+
+	vpn_agent_request.registered = false;
+	fprintf(stdout, "VPN Agent unregistered\n");
+
+	return 0;
+}
+
+int __connmanctl_vpn_agent_unregister(DBusConnection *connection)
+{
+	char *path = agent_path();
+	int result;
+
+	if (vpn_agent_request.registered == false) {
+		fprintf(stderr, "VPN Agent not registered\n");
+		return -EALREADY;
+	}
+
+	g_dbus_unregister_interface(connection, agent_path(),
+			VPN_AGENT_INTERFACE);
+
+	result = __connmanctl_dbus_method_call(connection, VPN_SERVICE,
+			VPN_PATH, "net.connman.vpn.Manager", "UnregisterAgent",
+			vpn_agent_unregister_return, NULL,
+			DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID);
+
+	if (result != -EINPROGRESS)
+		fprintf(stderr, "Error: Failed to unregister VPN Agent\n");
 
 	return result;
 }
