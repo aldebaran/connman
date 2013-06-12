@@ -361,6 +361,9 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 		case G_DHCPV6_DNS_SERVERS:
 			break;
 
+		case G_DHCPV6_DOMAIN_LIST:
+			break;
+
 		case G_DHCPV6_SNTP_SERVERS:
 			break;
 

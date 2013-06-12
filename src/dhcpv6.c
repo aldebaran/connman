@@ -385,10 +385,11 @@ static int dhcpv6_info_request(struct connman_dhcpv6 *dhcp)
 
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DOMAIN_LIST);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
 
-	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
-				G_DHCPV6_SNTP_SERVERS);
+	g_dhcpv6_client_set_oro(dhcp_client, 3, G_DHCPV6_DNS_SERVERS,
+				G_DHCPV6_DOMAIN_LIST, G_DHCPV6_SNTP_SERVERS);
 
 	g_dhcp_client_register_event(dhcp_client,
 			G_DHCP_CLIENT_EVENT_INFORMATION_REQ, info_req_cb, dhcp);
@@ -608,10 +609,11 @@ static int dhcpv6_rebind(struct connman_dhcpv6 *dhcp)
 
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DOMAIN_LIST);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
 
-	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
-				G_DHCPV6_SNTP_SERVERS);
+	g_dhcpv6_client_set_oro(dhcp_client, 3, G_DHCPV6_DNS_SERVERS,
+				G_DHCPV6_DOMAIN_LIST, G_DHCPV6_SNTP_SERVERS);
 
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
@@ -720,10 +722,11 @@ static int dhcpv6_request(struct connman_dhcpv6 *dhcp,
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SERVERID);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DOMAIN_LIST);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
 
-	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
-				G_DHCPV6_SNTP_SERVERS);
+	g_dhcpv6_client_set_oro(dhcp_client, 3, G_DHCPV6_DNS_SERVERS,
+				G_DHCPV6_DOMAIN_LIST, G_DHCPV6_SNTP_SERVERS);
 
 	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL, NULL);
 	g_dhcpv6_client_set_ia(dhcp_client,
@@ -790,10 +793,11 @@ static int dhcpv6_renew(struct connman_dhcpv6 *dhcp)
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SERVERID);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DOMAIN_LIST);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
 
-	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
-				G_DHCPV6_SNTP_SERVERS);
+	g_dhcpv6_client_set_oro(dhcp_client, 3, G_DHCPV6_DNS_SERVERS,
+				G_DHCPV6_DOMAIN_LIST, G_DHCPV6_SNTP_SERVERS);
 
 	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL, NULL);
 	g_dhcpv6_client_set_ia(dhcp_client,
@@ -1173,10 +1177,11 @@ static int dhcpv6_solicitation(struct connman_dhcpv6 *dhcp)
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_RAPID_COMMIT);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DOMAIN_LIST);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
 
-	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
-				G_DHCPV6_SNTP_SERVERS);
+	g_dhcpv6_client_set_oro(dhcp_client, 3, G_DHCPV6_DNS_SERVERS,
+				G_DHCPV6_DOMAIN_LIST, G_DHCPV6_SNTP_SERVERS);
 
 	ipconfig_ipv6 = __connman_service_get_ip6config(service);
 	dhcp->use_ta = __connman_ipconfig_ipv6_privacy_enabled(ipconfig_ipv6);
@@ -1277,10 +1282,11 @@ static int dhcpv6_confirm(struct connman_dhcpv6 *dhcp)
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_RAPID_COMMIT);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DOMAIN_LIST);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
 
-	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
-				G_DHCPV6_SNTP_SERVERS);
+	g_dhcpv6_client_set_oro(dhcp_client, 3, G_DHCPV6_DNS_SERVERS,
+				G_DHCPV6_DOMAIN_LIST, G_DHCPV6_SNTP_SERVERS);
 
 	ipconfig_ipv6 = __connman_service_get_ip6config(service);
 	dhcp->use_ta = __connman_ipconfig_ipv6_privacy_enabled(ipconfig_ipv6);
