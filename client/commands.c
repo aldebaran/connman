@@ -1019,6 +1019,10 @@ static DBusHandlerResult monitor_changed(DBusConnection *connection,
 	if (strncmp(interface, "net.connman.", 12) != 0)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
+	if (strncmp(interface, "net.connman.Agent", 17) == 0 ||
+			strncmp(interface, "net.connman.vpn.Agent", 21) == 0)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
 	interface = strrchr(interface, '.');
 	if (interface != NULL && *interface != '\0')
 		interface++;
