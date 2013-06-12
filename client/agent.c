@@ -41,7 +41,17 @@
 #define AGENT_INTERFACE      "net.connman.Agent"
 #define VPN_AGENT_INTERFACE  "net.connman.vpn.Agent"
 
+static DBusConnection *agent_connection;
+
+struct agent_input_data {
+	const char *attribute;
+	bool requested;
+	char *prompt;
+	connmanctl_input_func_t func;
+};
+
 struct agent_data {
+	struct agent_input_data *input;
 	char *interface;
 	bool registered;
 	DBusMessage *message;
@@ -51,18 +61,49 @@ struct agent_data {
 	GDBusMethodFunction pending_function;
 };
 
-static DBusConnection *agent_connection;
-
-static struct agent_data agent_request = {
-	AGENT_INTERFACE,
-};
-static struct agent_data vpn_agent_request = {
-	VPN_AGENT_INTERFACE,
-};
-
 static void request_input_ssid_return(char *input, void *user_data);
 static void request_input_passphrase_return(char *input, void *user_data);
 static void request_input_string_return(char *input, void *user_data);
+
+enum requestinput {
+	SSID                    = 0,
+	IDENTITY                = 1,
+	PASSPHRASE              = 2,
+	WPS                     = 3,
+	WISPR_USERNAME          = 4,
+	WISPR_PASSPHRASE        = 5,
+	REQUEST_INPUT_MAX       = 6,
+};
+
+static struct agent_input_data agent_input_handler[] = {
+	{ "Name", false, "Hidden SSID name? ", request_input_ssid_return },
+	{ "Identity", false, "EAP username? ", request_input_string_return },
+	{ "Passphrase", false, "Passphrase? ",
+	  request_input_passphrase_return },
+	{ "WPS", false, "WPS PIN (empty line for pushbutton)? " ,
+	  request_input_string_return },
+	{ "Username", false, "WISPr username? ", request_input_string_return },
+	{ "Password", false, "WISPr password? ", request_input_string_return },
+	{ },
+};
+
+static struct agent_data agent_request = {
+	agent_input_handler,
+	AGENT_INTERFACE,
+};
+
+static struct agent_input_data vpnagent_input_handler[] = {
+	{ "OpenConnect.Cookie", false, "OpenConnect Cookie? ",
+	  request_input_string_return },
+	{ "Username", false, "VPN username? ", request_input_string_return },
+	{ "Password", false, "VPN password? ", request_input_string_return },
+	{ },
+};
+
+static struct agent_data vpn_agent_request = {
+	vpnagent_input_handler,
+	VPN_AGENT_INTERFACE,
+};
 
 static int confirm_input(char *input)
 {
@@ -322,44 +363,18 @@ static DBusMessage *agent_report_error(DBusConnection *connection,
 	return NULL;
 }
 
-enum requestinput {
-	SSID                    = 0,
-	IDENTITY                = 1,
-	PASSPHRASE              = 2,
-	WPS                     = 3,
-	WISPR_USERNAME          = 4,
-	WISPR_PASSPHRASE        = 5,
-	REQUEST_INPUT_MAX       = 6,
-};
-
-static struct {
-	const char *attribute;
-	bool requested;
-	char *prompt;
-	connmanctl_input_func_t func;
-} agent_input[] = {
-	{ "Name", false, "Hidden SSID name? ", request_input_ssid_return },
-	{ "Identity", false, "EAP username? ", request_input_string_return },
-	{ "Passphrase", false, "Passphrase? ",
-	  request_input_passphrase_return },
-	{ "WPS", false, "WPS PIN (empty line for pushbutton)? " ,
-	  request_input_string_return },
-	{ "Username", false, "WISPr username? ", request_input_string_return },
-	{ "Password", false, "WISPr password? ", request_input_string_return },
-	{ },
-};
-
 static void request_input_next(struct agent_data *request)
 {
 	int i;
 
-	for (i = 0; agent_input[i].attribute != NULL; i++) {
-		if (agent_input[i].requested == true) {
-			if(agent_input[i].func != NULL)
-				__connmanctl_agent_mode(agent_input[i].prompt,
-						agent_input[i].func, request);
+	for (i = 0; request->input[i].attribute != NULL; i++) {
+		if (request->input[i].requested == true) {
+			if(request->input[i].func != NULL)
+				__connmanctl_agent_mode(request->input[i].prompt,
+						request->input[i].func,
+						request);
 			else
-				agent_input[i].requested = false;
+				request->input[i].requested = false;
 			return;
 		}
 	}
@@ -392,8 +407,8 @@ static void request_input_ssid_return(char *input,
 		len = strlen(input);
 
 	if (len > 0 && len <= 32) {
-		agent_input[SSID].requested = false;
-		request_input_append(request, agent_input[SSID].attribute,
+		request->input[SSID].requested = false;
+		request_input_append(request, request->input[SSID].attribute,
 				input);
 
 		request_input_next(request);
@@ -407,14 +422,14 @@ static void request_input_passphrase_return(char *input, void *user_data)
 	/* TBD passphrase length checking */
 
 	if (input != NULL && strlen(input) > 0) {
-		agent_input[PASSPHRASE].requested = false;
+		request->input[PASSPHRASE].requested = false;
 		request_input_append(request,
-				agent_input[PASSPHRASE].attribute, input);
+				request->input[PASSPHRASE].attribute, input);
 
-		agent_input[WPS].requested = false;
-
-		request_input_next(request);
+		request->input[WPS].requested = false;
 	}
+
+	request_input_next(request);
 }
 
 static void request_input_string_return(char *input, void *user_data)
@@ -422,11 +437,11 @@ static void request_input_string_return(char *input, void *user_data)
 	struct agent_data *request = user_data;
 	int i;
 
-	for (i = 0; agent_input[i].attribute != NULL; i++) {
-		if (agent_input[i].requested == true) {
-			request_input_append(request, agent_input[i].attribute,
-					input);
-			agent_input[i].requested = false;
+	for (i = 0; request->input[i].attribute != NULL; i++) {
+		if (request->input[i].requested == true) {
+			request_input_append(request,
+					request->input[i].attribute, input);
+			request->input[i].requested = false;
 			break;
 		}
 	}
@@ -457,7 +472,10 @@ static DBusMessage *agent_request_input(DBusConnection *connection,
 	dbus_message_iter_recurse(&iter, &dict);
 
 	__connmanctl_save_rl();
-	fprintf(stdout, "Agent RequestInput %s\n", service);
+	if (strcmp(request->interface, AGENT_INTERFACE) == 0)
+		fprintf(stdout, "Agent RequestInput %s\n", service);
+	else
+		fprintf(stdout, "VPN Agent RequestInput %s\n", service);
 	__connmanctl_dbus_print(&dict, "  ", " = ", "\n");
 	fprintf(stdout, "\n");
 
@@ -493,9 +511,9 @@ static DBusMessage *agent_request_input(DBusConnection *connection,
 			dbus_message_iter_next(&dict_entry);
 		}
 
-		for (i = 0; agent_input[i].attribute != NULL; i++) {
-			if (strcmp(field, agent_input[i].attribute) == 0) {
-				agent_input[i].requested = true;
+		for (i = 0; request->input[i].attribute != NULL; i++) {
+			if (strcmp(field, request->input[i].attribute) == 0) {
+				request->input[i].requested = true;
 				break;
 			}
 		}
@@ -636,6 +654,11 @@ static const GDBusMethodTable vpn_agent_methods[] = {
 				GDBUS_ARGS({ "service", "o" },
 					{ "error", "s" }),
 				NULL, agent_report_error) },
+	{ GDBUS_ASYNC_METHOD("RequestInput",
+				GDBUS_ARGS({ "service", "o" },
+					{ "fields", "a{sv}" }),
+				GDBUS_ARGS({ "fields", "a{sv}" }),
+				agent_request_input) },
 	{ },
 };
 
