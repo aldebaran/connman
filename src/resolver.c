@@ -282,7 +282,7 @@ static gboolean resolver_refresh_cb(gpointer user_data)
 			 * Send Router Solicitation to refresh RDNSS entries
 			 * before their lifetime expires
 			 */
-			__connman_refresh_rs_ipv6(
+			__connman_network_refresh_rs_ipv6(
 					__connman_service_get_network(service),
 					entry->index);
 		}

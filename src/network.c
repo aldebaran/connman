@@ -505,7 +505,8 @@ static void receive_refresh_rs_reply(struct nd_router_advert *reply,
 	return;
 }
 
-int __connman_refresh_rs_ipv6(struct connman_network *network, int index)
+int __connman_network_refresh_rs_ipv6(struct connman_network *network,
+					int index)
 {
 	int ret = 0;
 

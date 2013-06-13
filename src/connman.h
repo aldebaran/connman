@@ -161,7 +161,7 @@ int __connman_inet_ipv6_start_recv_rs(int index,
 				void *user_data, void **context);
 void __connman_inet_ipv6_stop_recv_rs(void *context);
 
-int __connman_refresh_rs_ipv6(struct connman_network *network, int index);
+int __connman_network_refresh_rs_ipv6(struct connman_network *network, int index);
 
 GSList *__connman_inet_ipv6_get_prefixes(struct nd_router_advert *hdr,
 					unsigned int length);
