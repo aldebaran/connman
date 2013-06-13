@@ -1967,6 +1967,7 @@ static void ap_create_callback(int result,
 		connman_technology_tethering_notify(info->technology, FALSE);
 
 		g_free(info->ifname);
+		g_free(info->ssid);
 		g_free(info);
 		return;
 	}
@@ -1994,6 +1995,7 @@ static void sta_remove_callback(int result,
 		info->wifi->tethering = TRUE;
 
 		g_free(info->ifname);
+		g_free(info->ssid);
 		g_free(info);
 		return;
 	}
@@ -2069,6 +2071,7 @@ static int tech_set_tethering(struct connman_technology *technology,
 		}
 		info->ifname = g_strdup(ifname);
 		if (info->ifname == NULL) {
+			g_free(info->ssid);
 			g_free(info);
 			continue;
 		}
