@@ -331,6 +331,7 @@ void __connman_ippool_deladdr(int index, const char *address,
 		return;
 
 	allocated_blocks = g_slist_remove(allocated_blocks, info);
+	g_free(info);
 }
 
 struct connman_ippool *__connman_ippool_create(int index,
@@ -463,7 +464,7 @@ void __connman_ippool_cleanup(void)
 	g_hash_table_destroy(pool_hash);
 	pool_hash = NULL;
 
-	g_slist_free(allocated_blocks);
+	g_slist_free_full(allocated_blocks, g_free);
 	last_block = 0;
 	allocated_blocks = NULL;
 }
