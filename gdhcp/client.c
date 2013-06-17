@@ -275,6 +275,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 {
 	GList *list;
 	uint16_t code, value;
+	gboolean added;
 	int32_t diff;
 	int len;
 
@@ -283,6 +284,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 
 	for (list = dhcp_client->request_list; list; list = list->next) {
 		code = (uint16_t) GPOINTER_TO_INT(list->data);
+		added = FALSE;
 
 		switch (code) {
 		case G_DHCPV6_CLIENTID:
@@ -299,6 +301,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 			copy_option(*ptr_buf, G_DHCPV6_CLIENTID,
 				dhcp_client->duid_len, dhcp_client->duid);
 			(*ptr_buf) += len;
+			added = TRUE;
 			break;
 
 		case G_DHCPV6_SERVERID:
@@ -316,6 +319,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 				dhcp_client->server_duid_len,
 				dhcp_client->server_duid);
 			(*ptr_buf) += len;
+			added = TRUE;
 			break;
 
 		case G_DHCPV6_RAPID_COMMIT:
@@ -328,6 +332,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 
 			copy_option(*ptr_buf, G_DHCPV6_RAPID_COMMIT, 0, 0);
 			(*ptr_buf) += len;
+			added = TRUE;
 			break;
 
 		case G_DHCPV6_ORO:
@@ -356,6 +361,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 			copy_option(*ptr_buf, G_DHCPV6_ELAPSED_TIME,
 				2, (uint8_t *)&value);
 			(*ptr_buf) += len;
+			added = TRUE;
 			break;
 
 		case G_DHCPV6_DNS_SERVERS:
@@ -370,6 +376,9 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 		default:
 			break;
 		}
+
+		if (added)
+			debug(dhcp_client, "option %d len %d added", code, len);
 	}
 }
 
