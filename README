@@ -263,6 +263,13 @@ CONFIG_NETFILTER
 CONFIG_NF_CONNTRACK_IPV4
 CONFIG_NF_NAT_IPV4
 
+For routing and statistic support in Sessions, the following options
+need to be enabled as modules (m) or builtin (y):
+
+CONFIG_IP_NF_IPTABLES
+CONFIG_IP_MULTIPLE_TABLES
+CONFIG_NETFILTER_NETLINK_ACCT
+CONFIG_NETFILTER_XT_MATCH_NFACCT
 
 wpa_supplicant configuration
 ============================
