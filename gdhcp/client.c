@@ -683,6 +683,17 @@ int g_dhcpv6_create_duid(GDHCPDuidType duid_type, int index, int type,
 	return 0;
 }
 
+static gchar *convert_to_hex(unsigned char *buf, int len)
+{
+	gchar *ret = g_try_malloc(len * 2 + 1);
+	int i;
+
+	for (i = 0; ret != NULL && i < len; i++)
+		g_snprintf(ret + i * 2, 3, "%02x", buf[i]);
+
+	return ret;
+}
+
 int g_dhcpv6_client_set_duid(GDHCPClient *dhcp_client, unsigned char *duid,
 			int duid_len)
 {
@@ -693,6 +704,12 @@ int g_dhcpv6_client_set_duid(GDHCPClient *dhcp_client, unsigned char *duid,
 
 	dhcp_client->duid = duid;
 	dhcp_client->duid_len = duid_len;
+
+	if (dhcp_client->debug_func != NULL) {
+		gchar *hex = convert_to_hex(duid, duid_len);
+		debug(dhcp_client, "DUID(%d) %s", duid_len, hex);
+		g_free(hex);
+	}
 
 	return 0;
 }
