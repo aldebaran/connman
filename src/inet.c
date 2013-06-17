@@ -49,6 +49,7 @@
 #include <linux/fib_rules.h>
 
 #include "connman.h"
+#include <gdhcp/gdhcp.h>
 
 #define NLMSG_TAIL(nmsg)				\
 	((struct rtattr *) (((uint8_t*) (nmsg)) +	\
@@ -1698,6 +1699,103 @@ int __connman_inet_ipv6_send_rs(int index, int timeout,
 	ndisc_send_unspec(ND_ROUTER_SOLICIT, index, &dst, NULL, NULL, 0, 0);
 
 	return 0;
+}
+
+static inline void ipv6_addr_advert_mult(const struct in6_addr *addr,
+					struct in6_addr *advert)
+{
+	ipv6_addr_set(advert, htonl(0xFF020000), 0, htonl(0x2),
+			htonl(0xFF000000) | addr->s6_addr32[3]);
+}
+
+#define MSG_SIZE_SEND 1452
+
+static int inc_len(int len, int inc)
+{
+	if (len > MSG_SIZE_SEND)
+		return -EINVAL;
+
+	len += inc;
+	return len;
+}
+
+int __connman_inet_ipv6_send_ra(int index, struct in6_addr *src_addr,
+				GSList *prefixes, int router_lifetime)
+{
+	GSList *list;
+	struct in6_addr src, *source;
+	struct in6_addr dst = in6addr_all_nodes_mc;
+	GDHCPIAPrefix *prefix;
+	unsigned char buf[MSG_SIZE_SEND];
+	char addr_str[INET6_ADDRSTRLEN];
+	int sk, err = 0;
+	int len, count = 0;
+
+	if (prefixes == NULL)
+		return -EINVAL;
+
+	sk = socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
+	if (sk < 0)
+		return -errno;
+
+	if (src_addr == NULL) {
+		__connman_inet_get_interface_ll_address(index, AF_INET6, &src);
+		source = &src;
+	} else
+		source = src_addr;
+
+	DBG("sock %d index %d prefixes %p src %s lifetime %d", sk, index,
+		prefixes, inet_ntop(AF_INET6, source, addr_str,
+				INET6_ADDRSTRLEN),
+		router_lifetime);
+
+	memset(buf, 0, MSG_SIZE_SEND);
+	len = 0;
+
+	for (list = prefixes; list; list = list->next) {
+		struct nd_opt_prefix_info *pinfo;
+
+		prefix = list->data;
+		pinfo = (struct nd_opt_prefix_info *)(buf + len);
+
+		len = inc_len(len, sizeof(*pinfo));
+		if (len < 0) {
+			err = len;
+			goto out;
+		}
+
+		pinfo->nd_opt_pi_type = ND_OPT_PREFIX_INFORMATION;
+		pinfo->nd_opt_pi_len = 4;
+		pinfo->nd_opt_pi_prefix_len = prefix->prefixlen;
+		pinfo->nd_opt_pi_flags_reserved = ND_OPT_PI_FLAG_ONLINK;
+		pinfo->nd_opt_pi_flags_reserved	|= ND_OPT_PI_FLAG_AUTO;
+		if (router_lifetime > 0) {
+			pinfo->nd_opt_pi_valid_time = htonl(prefix->valid);
+			pinfo->nd_opt_pi_preferred_time =
+						htonl(prefix->preferred);
+		}
+		pinfo->nd_opt_pi_reserved2 = 0;
+
+		memcpy(&pinfo->nd_opt_pi_prefix, &prefix->prefix,
+						sizeof(struct in6_addr));
+
+		DBG("[%d] index %d prefix %s/%d", count, index,
+			inet_ntop(AF_INET6, &prefix->prefix, addr_str,
+				INET6_ADDRSTRLEN), prefix->prefixlen);
+
+		count++;
+	}
+
+	if (count > 0) {
+		err = ndisc_send_unspec(ND_ROUTER_ADVERT, index, &dst, source,
+					buf, len, router_lifetime);
+		if (err < 0)
+			DBG("cannot send RA %d/%s", err, strerror(-err));
+	}
+
+out:
+	close(sk);
+	return err;
 }
 
 GSList *__connman_inet_ipv6_get_prefixes(struct nd_router_advert *hdr,
