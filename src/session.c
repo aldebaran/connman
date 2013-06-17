@@ -296,28 +296,29 @@ static int assign_policy_plugin(struct connman_session *session)
 	return 0;
 }
 
-struct user_config {
+struct creation_data {
 	DBusMessage *pending;
 
+	/* user config */
 	enum connman_session_type type;
 	GSList *allowed_bearers;
 };
 
-static void cleanup_user_config(struct user_config *user_config)
+static void cleanup_creation_data(struct creation_data *creation_data)
 {
-	if (user_config == NULL)
+	if (creation_data == NULL)
 		return;
 
-	if (user_config->pending != NULL)
-		dbus_message_unref(user_config->pending);
+	if (creation_data->pending != NULL)
+		dbus_message_unref(creation_data->pending);
 
-	g_slist_free(user_config->allowed_bearers);
-	g_free(user_config);
+	g_slist_free(creation_data->allowed_bearers);
+	g_free(creation_data);
 }
 
 static int create_policy_config(struct connman_session *session,
 				connman_session_config_func_t cb,
-				struct user_config *user_config)
+				struct creation_data *creation_data)
 {
 	struct connman_session_config *config;
 
@@ -325,14 +326,14 @@ static int create_policy_config(struct connman_session *session,
 		config = connman_session_create_default_config();
 		if (config == NULL) {
 			free_session(session);
-			cleanup_user_config(user_config);
+			cleanup_creation_data(creation_data);
 			return -ENOMEM;
 		}
 
-		return cb(session, config, user_config, 0);
+		return cb(session, config, creation_data, 0);
 	}
 
-	return (*session->policy->create)(session, cb, user_config);
+	return (*session->policy->create)(session, cb, creation_data);
 }
 
 static void probe_policy(struct connman_session_policy *policy)
@@ -1654,8 +1655,8 @@ static int session_create_cb(struct connman_session *session,
 				struct connman_session_config *config,
 				void *user_data, int err)
 {
+	struct creation_data *creation_data = user_data;
 	DBusMessage *reply;
-	struct user_config *user_config = user_data;
 	struct session_info *info, *info_last;
 
 	DBG("session %p config %p", session, config);
@@ -1674,13 +1675,13 @@ static int session_create_cb(struct connman_session *session,
 	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
 	info->config.type = apply_policy_on_type(
 				session->policy_config->type,
-				user_config->type);
+				creation_data->type);
 	info->config.priority = session->policy_config->priority;
 	info->config.roaming_policy = session->policy_config->roaming_policy;
 	info->entry = NULL;
 
-	session->user_allowed_bearers = user_config->allowed_bearers;
-	user_config->allowed_bearers = NULL;
+	session->user_allowed_bearers = creation_data->allowed_bearers;
+	creation_data->allowed_bearers = NULL;
 
 	err = apply_policy_on_bearers(
 			session->policy_config->allowed_bearers,
@@ -1703,11 +1704,11 @@ static int session_create_cb(struct connman_session *session,
 		goto out;
 	}
 
-	reply = g_dbus_create_reply(user_config->pending,
+	reply = g_dbus_create_reply(creation_data->pending,
 				DBUS_TYPE_OBJECT_PATH, &session->session_path,
 				DBUS_TYPE_INVALID);
 	g_dbus_send_message(connection, reply);
-	user_config->pending = NULL;
+	creation_data->pending = NULL;
 
 	populate_service_list(session);
 
@@ -1723,13 +1724,11 @@ static int session_create_cb(struct connman_session *session,
 
 out:
 	if (err < 0) {
-		reply = __connman_error_failed(user_config->pending, -err);
+		reply = __connman_error_failed(creation_data->pending, -err);
 		g_dbus_send_message(connection, reply);
-
-		free_session(session);
 	}
 
-	cleanup_user_config(user_config);
+	cleanup_creation_data(creation_data);
 
 	return err;
 }
@@ -1740,7 +1739,7 @@ int __connman_session_create(DBusMessage *msg)
 	char *session_path = NULL;
 	DBusMessageIter iter, array;
 	struct connman_session *session = NULL;
-	struct user_config *user_config = NULL;
+	struct creation_data *creation_data = NULL;
 	connman_bool_t user_allowed_bearers = FALSE;
 	connman_bool_t user_connection_type = FALSE;
 	int err;
@@ -1758,13 +1757,13 @@ int __connman_session_create(DBusMessage *msg)
 		goto err;
 	}
 
-	user_config = g_try_new0(struct user_config, 1);
-	if (user_config == NULL) {
+	creation_data = g_try_new0(struct creation_data, 1);
+	if (creation_data == NULL) {
 		err = -ENOMEM;
 		goto err;
 	}
 
-	user_config->pending = dbus_message_ref(msg);
+	creation_data->pending = dbus_message_ref(msg);
 
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_recurse(&iter, &array);
@@ -1783,7 +1782,7 @@ int __connman_session_create(DBusMessage *msg)
 		case DBUS_TYPE_ARRAY:
 			if (g_str_equal(key, "AllowedBearers") == TRUE) {
 				err = parse_bearers(&value,
-						&user_config->allowed_bearers);
+						&creation_data->allowed_bearers);
 				if (err < 0)
 					goto err;
 
@@ -1796,7 +1795,7 @@ int __connman_session_create(DBusMessage *msg)
 		case DBUS_TYPE_STRING:
 			if (g_str_equal(key, "ConnectionType") == TRUE) {
 				dbus_message_iter_get_basic(&value, &val);
-				user_config->type =
+				creation_data->type =
 					connman_session_parse_connection_type(val);
 
 				user_connection_type = TRUE;
@@ -1815,10 +1814,10 @@ int __connman_session_create(DBusMessage *msg)
 	 * For AllowedBearers this is '*', ...
 	 */
 	if (user_allowed_bearers == FALSE) {
-		user_config->allowed_bearers =
+		creation_data->allowed_bearers =
 			g_slist_append(NULL,
 				GINT_TO_POINTER(CONNMAN_SERVICE_TYPE_UNKNOWN));
-		if (user_config->allowed_bearers == NULL) {
+		if (creation_data->allowed_bearers == NULL) {
 			err = -ENOMEM;
 			goto err;
 		}
@@ -1826,7 +1825,7 @@ int __connman_session_create(DBusMessage *msg)
 
 	/* ... and for ConnectionType it is 'any'. */
 	if (user_connection_type == FALSE)
-		user_config->type = CONNMAN_SESSION_TYPE_ANY;
+		creation_data->type = CONNMAN_SESSION_TYPE_ANY;
 
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_get_basic(&iter, &notify_path);
@@ -1881,7 +1880,7 @@ int __connman_session_create(DBusMessage *msg)
 	if (err < 0)
 		goto err;
 
-	err = create_policy_config(session, session_create_cb, user_config);
+	err = create_policy_config(session, session_create_cb, creation_data);
 	if (err < 0 && err != -EINPROGRESS)
 		return err;
 
@@ -1892,7 +1891,7 @@ err:
 
 	free_session(session);
 
-	cleanup_user_config(user_config);
+	cleanup_creation_data(creation_data);
 	return err;
 }
 
