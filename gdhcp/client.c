@@ -306,7 +306,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 
 		case G_DHCPV6_SERVERID:
 			if (dhcp_client->server_duid == NULL)
-				return;
+				break;
 
 			len = 2 + 2 + dhcp_client->server_duid_len;
 			if ((*ptr_buf + len) > (buf + max_buf)) {
