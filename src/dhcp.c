@@ -122,7 +122,7 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 	__connman_ipconfig_set_prefixlen(ipconfig, 0);
 
 	if (dhcp->callback != NULL && callback)
-		dhcp->callback(dhcp->network, FALSE);
+		dhcp->callback(dhcp->network, FALSE, NULL);
 
 out:
 	dhcp_free(dhcp);
@@ -131,7 +131,7 @@ out:
 static void dhcp_valid(struct connman_dhcp *dhcp)
 {
 	if (dhcp->callback != NULL)
-		dhcp->callback(dhcp->network, TRUE);
+		dhcp->callback(dhcp->network, TRUE, NULL);
 }
 
 static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)

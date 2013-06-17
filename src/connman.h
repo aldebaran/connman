@@ -413,7 +413,7 @@ int __connman_timeserver_sync(struct connman_service *service);
 void __connman_timeserver_sync_next();
 
 typedef void (* dhcp_cb) (struct connman_network *network,
-				connman_bool_t success);
+			connman_bool_t success, gpointer data);
 int __connman_dhcp_start(struct connman_network *network, dhcp_cb callback);
 void __connman_dhcp_stop(struct connman_network *network);
 int __connman_dhcp_init(void);
@@ -429,6 +429,8 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 				dhcp_cb callback);
 int __connman_dhcpv6_start_release(struct connman_network *network,
 				dhcp_cb callback);
+int __connman_dhcpv6_start_pd(int index, GSList *prefixes, dhcp_cb callback);
+void __connman_dhcpv6_stop_pd(int index);
 
 int __connman_ipv4_init(void);
 void __connman_ipv4_cleanup(void);

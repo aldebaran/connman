@@ -186,7 +186,7 @@ static void dhcp_failure(struct connman_network *network)
 }
 
 static void dhcp_callback(struct connman_network *network,
-			connman_bool_t success)
+			connman_bool_t success, gpointer data)
 {
 	DBG("success %d", success);
 
@@ -331,7 +331,7 @@ static void stop_dhcpv6(struct connman_network *network)
 }
 
 static void dhcpv6_release_callback(struct connman_network *network,
-				connman_bool_t success)
+				connman_bool_t success, gpointer data)
 {
 	DBG("success %d", success);
 
@@ -345,7 +345,7 @@ static void release_dhcpv6(struct connman_network *network)
 }
 
 static void dhcpv6_info_callback(struct connman_network *network,
-				connman_bool_t success)
+				connman_bool_t success, gpointer data)
 {
 	DBG("success %d", success);
 
@@ -385,7 +385,7 @@ err:
 
 static void autoconf_ipv6_set(struct connman_network *network);
 static void dhcpv6_callback(struct connman_network *network,
-			connman_bool_t success);
+			connman_bool_t success, gpointer data);
 
 /*
  * Have a separate callback for renew so that we do not do autoconf
@@ -393,10 +393,10 @@ static void dhcpv6_callback(struct connman_network *network,
  * DHCPv6 solicitation.
  */
 static void dhcpv6_renew_callback(struct connman_network *network,
-					connman_bool_t success)
+				connman_bool_t success, gpointer data)
 {
 	if (success == TRUE)
-		dhcpv6_callback(network, success);
+		dhcpv6_callback(network, success, data);
 	else {
 		stop_dhcpv6(network);
 
@@ -406,7 +406,7 @@ static void dhcpv6_renew_callback(struct connman_network *network,
 }
 
 static void dhcpv6_callback(struct connman_network *network,
-					connman_bool_t success)
+				connman_bool_t success, gpointer data)
 {
 	DBG("success %d", success);
 
@@ -420,7 +420,7 @@ static void dhcpv6_callback(struct connman_network *network,
 
 		if (__connman_dhcpv6_start_renew(network,
 					dhcpv6_renew_callback) == -ETIMEDOUT)
-			dhcpv6_renew_callback(network, FALSE);
+			dhcpv6_renew_callback(network, FALSE, data);
 	} else
 		stop_dhcpv6(network);
 }

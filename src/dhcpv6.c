@@ -69,15 +69,17 @@ struct connman_dhcpv6 {
 	guint MRD;		/* max operation timeout in msec */
 	guint RT;		/* in msec */
 	gboolean use_ta;	/* set to TRUE if IPv6 privacy is enabled */
-	GSList *prefixes;	/* network prefixes from radvd */
+	GSList *prefixes;	/* network prefixes from radvd or dhcpv6 pd */
 	int request_count;	/* how many times REQUEST have been sent */
 	gboolean stateless;	/* TRUE if stateless DHCPv6 is used */
 	gboolean started;	/* TRUE if we have DHCPv6 started */
 };
 
 static GHashTable *network_table;
+static GHashTable *network_pd_table;
 
 static int dhcpv6_request(struct connman_dhcpv6 *dhcp, gboolean add_addresses);
+static int dhcpv6_pd_request(struct connman_dhcpv6 *dhcp);
 
 static void clear_timer(struct connman_dhcpv6 *dhcp)
 {
@@ -113,7 +115,7 @@ static guint calc_delay(guint RT, guint MRT)
 	return (guint)rt;
 }
 
-static void free_prefix(gpointer data, gpointer user_data)
+static void free_prefix(gpointer data)
 {
 	g_free(data);
 }
@@ -127,8 +129,7 @@ static void dhcpv6_free(struct connman_dhcpv6 *dhcp)
 	dhcp->timeservers = NULL;
 	dhcp->started = FALSE;
 
-	g_slist_foreach(dhcp->prefixes, free_prefix, NULL);
-	g_slist_free(dhcp->prefixes);
+	g_slist_free_full(dhcp->prefixes, free_prefix);
 }
 
 static gboolean compare_string_arrays(char **array_a, char **array_b)
@@ -345,7 +346,8 @@ static void info_req_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	if (dhcp->callback != NULL) {
 		uint16_t status = g_dhcpv6_client_get_status(dhcp_client);
-		dhcp->callback(dhcp->network, status == 0 ? TRUE : FALSE);
+		dhcp->callback(dhcp->network, status == 0 ? TRUE : FALSE,
+									NULL);
 	}
 }
 
@@ -572,7 +574,7 @@ static void re_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	if (ret < 0) {
 		if (dhcp->callback != NULL)
-			dhcp->callback(dhcp->network, FALSE);
+			dhcp->callback(dhcp->network, FALSE, NULL);
 		return;
 	}
 
@@ -582,7 +584,7 @@ static void re_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	} else {
 		if (dhcp->callback != NULL)
 			dhcp->callback(dhcp->network,
-						status == 0 ? TRUE : FALSE);
+					status == 0 ? TRUE : FALSE, NULL);
 	}
 }
 
@@ -635,7 +637,7 @@ static gboolean dhcpv6_restart(gpointer user_data)
 	struct connman_dhcpv6 *dhcp = user_data;
 
 	if (dhcp->callback != NULL)
-		dhcp->callback(dhcp->network, FALSE);
+		dhcp->callback(dhcp->network, FALSE, NULL);
 
 	return FALSE;
 }
@@ -752,7 +754,7 @@ static gboolean timeout_request(gpointer user_data)
 		DBG("max request retry attempts %d", dhcp->request_count);
 		dhcp->request_count = 0;
 		if (dhcp->callback != NULL)
-			dhcp->callback(dhcp->network, FALSE);
+			dhcp->callback(dhcp->network, FALSE, NULL);
 		return FALSE;
 	}
 
@@ -1095,7 +1097,7 @@ static void advertise_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	if (g_dhcpv6_client_get_status(dhcp_client) != 0) {
 		if (dhcp->callback != NULL)
-			dhcp->callback(dhcp->network, FALSE);
+			dhcp->callback(dhcp->network, FALSE, NULL);
 		return;
 	}
 
@@ -1241,7 +1243,7 @@ static void confirm_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		g_dhcp_client_unref(dhcp->dhcp_client);
 		start_solicitation(dhcp);
 	} else if (dhcp->callback != NULL)
-		dhcp->callback(dhcp->network, TRUE);
+		dhcp->callback(dhcp->network, TRUE, NULL);
 }
 
 static int dhcpv6_confirm(struct connman_dhcpv6 *dhcp)
@@ -1337,7 +1339,7 @@ static gboolean timeout_max_confirm(gpointer user_data)
 	g_dhcpv6_client_clear_retransmit(dhcp->dhcp_client);
 
 	if (dhcp->callback != NULL)
-		dhcp->callback(dhcp->network, FALSE);
+		dhcp->callback(dhcp->network, FALSE, NULL);
 
 	return FALSE;
 }
@@ -1431,6 +1433,554 @@ void __connman_dhcpv6_stop(struct connman_network *network)
 		connman_network_unref(network);
 }
 
+static int save_prefixes(struct connman_ipconfig *ipconfig,
+			GSList *prefixes)
+{
+	GSList *list;
+	int i = 0, count = g_slist_length(prefixes);
+	char **array;
+
+	if (count == 0)
+		return 0;
+
+	array = g_try_new0(char *, count + 1);
+	if (array == NULL)
+		return -ENOMEM;
+
+	for (list = prefixes; list; list = list->next) {
+		char *elem, addr_str[INET6_ADDRSTRLEN];
+		GDHCPIAPrefix *prefix = list->data;
+
+		elem = g_strdup_printf("%s/%d", inet_ntop(AF_INET6,
+				&prefix->prefix, addr_str, INET6_ADDRSTRLEN),
+				prefix->prefixlen);
+		if (elem == NULL) {
+			g_strfreev(array);
+			return -ENOMEM;
+		}
+
+		array[i++] = elem;
+	}
+
+	__connman_ipconfig_set_dhcpv6_prefixes(ipconfig, array);
+	return 0;
+}
+
+static GSList *load_prefixes(struct connman_ipconfig *ipconfig)
+{
+	int i;
+	GSList *list = NULL;
+	char **array =  __connman_ipconfig_get_dhcpv6_prefixes(ipconfig);
+
+	if (array == NULL)
+		return NULL;
+
+	for (i = 0; array[i] != NULL; i++) {
+		GDHCPIAPrefix *prefix;
+		long int value;
+		char *ptr, **elems = g_strsplit(array[i], "/", 0);
+
+		if (elems == NULL)
+			return list;
+
+		value = strtol(elems[1], &ptr, 10);
+		if (ptr != elems[1] && *ptr == '\0' && value <= 128) {
+			struct in6_addr addr;
+
+			if (inet_pton(AF_INET6, elems[0], &addr) == 1) {
+				prefix = g_try_new0(GDHCPIAPrefix, 1);
+				if (prefix == NULL) {
+					g_strfreev(elems);
+					return list;
+				}
+				memcpy(&prefix->prefix, &addr,
+					sizeof(struct in6_addr));
+				prefix->prefixlen = value;
+
+				list = g_slist_prepend(list, prefix);
+			}
+		}
+
+		g_strfreev(elems);
+	}
+
+	return list;
+}
+
+static GDHCPIAPrefix *copy_prefix(gpointer data)
+{
+	GDHCPIAPrefix *copy, *prefix = data;
+
+	copy = g_try_new(GDHCPIAPrefix, 1);
+	if (copy == NULL)
+		return NULL;
+
+	memcpy(copy, prefix, sizeof(GDHCPIAPrefix));
+
+	return copy;
+}
+
+static GSList *copy_and_convert_prefixes(GList *prefixes)
+{
+	GSList *copy = NULL;
+	GList *list;
+
+	for (list = prefixes; list; list = list->next)
+		copy = g_slist_prepend(copy, copy_prefix(list->data));
+
+	return copy;
+}
+
+static int set_prefixes(GDHCPClient *dhcp_client, struct connman_dhcpv6 *dhcp)
+{
+	if (dhcp->prefixes != NULL)
+		g_slist_free_full(dhcp->prefixes, free_prefix);
+
+	dhcp->prefixes =
+		copy_and_convert_prefixes(g_dhcp_client_get_option(dhcp_client,
+							G_DHCPV6_IA_PD));
+
+	DBG("Got %d prefix", g_slist_length(dhcp->prefixes));
+
+	if (dhcp->callback != NULL) {
+		uint16_t status = g_dhcpv6_client_get_status(dhcp_client);
+		if (status == G_DHCPV6_ERROR_NO_PREFIX)
+			dhcp->callback(dhcp->network, FALSE, NULL);
+		else {
+			struct connman_service *service;
+			struct connman_ipconfig *ipconfig;
+			int ifindex = connman_network_get_index(dhcp->network);
+
+			service = __connman_service_lookup_from_index(ifindex);
+			if (service != NULL) {
+				ipconfig = __connman_service_get_ip6config(
+								service);
+				save_prefixes(ipconfig, dhcp->prefixes);
+				__connman_service_save(service);
+			}
+
+			dhcp->callback(dhcp->network, TRUE, dhcp->prefixes);
+		}
+	} else {
+		g_slist_free_full(dhcp->prefixes, free_prefix);
+		dhcp->prefixes = NULL;
+	}
+
+	return 0;
+}
+
+static void re_pd_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+	uint16_t status;
+	int ret;
+
+	status = g_dhcpv6_client_get_status(dhcp_client);
+
+	DBG("dhcpv6 cb msg %p status %d", dhcp, status);
+
+	if (status  == G_DHCPV6_ERROR_BINDING) {
+		/* RFC 3315, 18.1.8 */
+		dhcpv6_pd_request(dhcp);
+	} else {
+		ret = set_prefixes(dhcp_client, dhcp);
+		if (ret < 0) {
+			if (dhcp->callback != NULL)
+				dhcp->callback(dhcp->network, FALSE, NULL);
+			return;
+		}
+	}
+}
+
+static void rebind_pd_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	DBG("");
+
+	g_dhcpv6_client_reset_rebind(dhcp_client);
+	g_dhcpv6_client_reset_renew(dhcp_client);
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
+
+	re_pd_cb(dhcp_client, user_data);
+}
+
+static GDHCPClient *create_pd_client(struct connman_dhcpv6 *dhcp, int *err)
+{
+	GDHCPClient *dhcp_client;
+	GDHCPClientError error;
+	struct connman_service *service;
+	int index, ret;
+	uint32_t iaid;
+
+	index = connman_network_get_index(dhcp->network);
+
+	dhcp_client = g_dhcp_client_new(G_DHCP_IPV6, index, &error);
+	if (error != G_DHCP_CLIENT_ERROR_NONE) {
+		*err = -EINVAL;
+		return NULL;
+	}
+
+	if (getenv("CONNMAN_DHCPV6_DEBUG"))
+		g_dhcp_client_set_debug(dhcp_client, dhcpv6_debug, "DHCPv6:PD");
+
+	service = connman_service_lookup_from_network(dhcp->network);
+	if (service == NULL) {
+		g_dhcp_client_unref(dhcp_client);
+		*err = -EINVAL;
+		return NULL;
+	}
+
+	ret = set_duid(service, dhcp->network, dhcp_client, index);
+	if (ret < 0) {
+		g_dhcp_client_unref(dhcp_client);
+		*err = ret;
+		return NULL;
+	}
+
+	g_dhcpv6_client_create_iaid(dhcp_client, index, (unsigned char *)&iaid);
+	g_dhcpv6_client_set_iaid(dhcp_client, iaid);
+
+	return dhcp_client;
+}
+
+static int dhcpv6_pd_rebind(struct connman_dhcpv6 *dhcp)
+{
+	GDHCPClient *dhcp_client;
+	uint32_t T1, T2;
+
+	DBG("dhcp %p", dhcp);
+
+	if (dhcp->dhcp_client == NULL) {
+		/*
+		 * We skipped the solicitation phase
+		 */
+		int err;
+
+		dhcp->dhcp_client = create_pd_client(dhcp, &err);
+		if (dhcp->dhcp_client == NULL) {
+			clear_timer(dhcp);
+			return err;
+		}
+	}
+
+	dhcp_client = dhcp->dhcp_client;
+
+	g_dhcp_client_clear_requests(dhcp_client);
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
+
+	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL, NULL);
+	g_dhcpv6_client_set_pd(dhcp_client, &T1, &T2, dhcp->prefixes);
+
+	clear_callbacks(dhcp_client);
+
+	g_dhcp_client_register_event(dhcp_client, G_DHCP_CLIENT_EVENT_REBIND,
+					rebind_pd_cb, dhcp);
+
+	return g_dhcp_client_start(dhcp_client, NULL);
+}
+
+static gboolean timeout_pd_rebind_confirm(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	dhcp->RT = calc_delay(dhcp->RT, CNF_MAX_RT);
+
+	DBG("rebind with confirm RT timeout %d msec", dhcp->RT);
+
+	dhcp->timeout = g_timeout_add(dhcp->RT,
+					timeout_pd_rebind_confirm, dhcp);
+
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
+
+	g_dhcp_client_start(dhcp->dhcp_client, NULL);
+
+	return FALSE;
+}
+
+static gboolean timeout_pd_max_confirm(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	dhcp->MRD = 0;
+
+	clear_timer(dhcp);
+
+	DBG("rebind with confirm max retransmit duration timeout");
+
+	g_dhcpv6_client_clear_retransmit(dhcp->dhcp_client);
+
+	if (dhcp->callback != NULL)
+		dhcp->callback(dhcp->network, FALSE, NULL);
+
+	return FALSE;
+}
+
+static gboolean start_pd_rebind_with_confirm(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	dhcp->RT = CNF_TIMEOUT * (1 + get_random());
+
+	DBG("rebind with confirm initial RT timeout %d msec", dhcp->RT);
+
+	dhcp->timeout = g_timeout_add(dhcp->RT,
+					timeout_pd_rebind_confirm, dhcp);
+	dhcp->MRD = g_timeout_add(CNF_MAX_RD, timeout_pd_max_confirm, dhcp);
+
+	dhcpv6_pd_rebind(dhcp);
+
+	return FALSE;
+}
+
+static gboolean timeout_pd_request(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	if (dhcp->request_count >= REQ_MAX_RC) {
+		DBG("max request retry attempts %d", dhcp->request_count);
+		dhcp->request_count = 0;
+		if (dhcp->callback != NULL)
+			dhcp->callback(dhcp->network, FALSE, NULL);
+		return FALSE;
+	}
+
+	dhcp->request_count++;
+
+	dhcp->RT = calc_delay(dhcp->RT, REQ_MAX_RT);
+	DBG("request RT timeout %d msec", dhcp->RT);
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_pd_request, dhcp);
+
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
+
+	g_dhcp_client_start(dhcp->dhcp_client, NULL);
+
+	return FALSE;
+}
+
+static void request_pd_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+	uint16_t status;
+
+	DBG("");
+
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
+
+	status = g_dhcpv6_client_get_status(dhcp_client);
+
+	DBG("dhcpv6 pd cb msg %p status %d", dhcp, status);
+
+	if (status  == G_DHCPV6_ERROR_BINDING) {
+		/* RFC 3315, 18.1.8 */
+		dhcpv6_pd_request(dhcp);
+	} else {
+		set_prefixes(dhcp_client, dhcp);
+	}
+}
+
+static int dhcpv6_pd_request(struct connman_dhcpv6 *dhcp)
+{
+	GDHCPClient *dhcp_client;
+	uint32_t T1 = 0, T2 = 0;
+
+	DBG("dhcp %p", dhcp);
+
+	dhcp_client = dhcp->dhcp_client;
+
+	g_dhcp_client_clear_requests(dhcp_client);
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SERVERID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
+
+	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL, NULL);
+	g_dhcpv6_client_set_pd(dhcp_client, &T1, &T2, dhcp->prefixes);
+
+	clear_callbacks(dhcp_client);
+
+	g_dhcp_client_register_event(dhcp_client, G_DHCP_CLIENT_EVENT_REQUEST,
+					request_pd_cb, dhcp);
+
+	return g_dhcp_client_start(dhcp_client, NULL);
+}
+
+static void advertise_pd_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	DBG("dhcpv6 advertise pd msg %p", dhcp);
+
+	clear_timer(dhcp);
+
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
+
+	if (g_dhcpv6_client_get_status(dhcp_client) != 0) {
+		if (dhcp->callback != NULL)
+			dhcp->callback(dhcp->network, FALSE, NULL);
+		return;
+	}
+
+	dhcp->RT = REQ_TIMEOUT * (1 + get_random());
+	DBG("request initial RT timeout %d msec", dhcp->RT);
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_pd_request, dhcp);
+
+	dhcp->request_count = 1;
+
+	dhcpv6_pd_request(dhcp);
+}
+
+static void solicitation_pd_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	/*
+	 * This callback is here so that g_dhcp_client_start()
+	 * will enter the proper L3 mode.
+	 */
+	DBG("DHCPv6 %p solicitation msg received, ignoring it", user_data);
+}
+
+static int dhcpv6_pd_solicitation(struct connman_dhcpv6 *dhcp)
+{
+	GDHCPClient *dhcp_client;
+	int ret;
+
+	DBG("dhcp %p", dhcp);
+
+	dhcp_client = create_pd_client(dhcp, &ret);
+	if (dhcp_client == NULL) {
+		clear_timer(dhcp);
+		return ret;
+	}
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
+
+	g_dhcpv6_client_set_pd(dhcp_client, NULL, NULL, NULL);
+
+	clear_callbacks(dhcp_client);
+
+	g_dhcp_client_register_event(dhcp_client,
+				G_DHCP_CLIENT_EVENT_ADVERTISE,
+				advertise_pd_cb, dhcp);
+
+	g_dhcp_client_register_event(dhcp_client,
+				G_DHCP_CLIENT_EVENT_SOLICITATION,
+				solicitation_pd_cb, dhcp);
+
+	dhcp->dhcp_client = dhcp_client;
+
+	return g_dhcp_client_start(dhcp_client, NULL);
+}
+
+static gboolean start_pd_solicitation(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	/* Set the retransmission timeout, RFC 3315 chapter 14 */
+	dhcp->RT = SOL_TIMEOUT * (1 + get_random());
+
+	DBG("solicit initial RT timeout %d msec", dhcp->RT);
+
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_solicitation, dhcp);
+
+	dhcpv6_pd_solicitation(dhcp);
+
+	return FALSE;
+}
+
+int __connman_dhcpv6_start_pd(int index, GSList *prefixes, dhcp_cb callback)
+{
+	struct connman_service *service;
+	struct connman_network *network;
+	struct connman_dhcpv6 *dhcp;
+
+	if (index < 0)
+		return 0;
+
+	DBG("index %d", index);
+
+	service = __connman_service_lookup_from_index(index);
+	if (service == NULL)
+		return -EINVAL;
+
+	network = __connman_service_get_network(service);
+	if (network == NULL)
+		return -EINVAL;
+
+	if (network_pd_table != NULL) {
+		dhcp = g_hash_table_lookup(network_pd_table, network);
+		if (dhcp != NULL && dhcp->started == TRUE)
+			return -EBUSY;
+	}
+
+	dhcp = g_try_new0(struct connman_dhcpv6, 1);
+	if (dhcp == NULL)
+		return -ENOMEM;
+
+	dhcp->network = network;
+	dhcp->callback = callback;
+	dhcp->started = TRUE;
+
+	if (prefixes == NULL) {
+		/*
+		 * Try to load the earlier prefixes if caller did not supply
+		 * any that we could use.
+		 */
+		struct connman_ipconfig *ipconfig;
+		ipconfig = __connman_service_get_ip6config(service);
+
+		dhcp->prefixes = load_prefixes(ipconfig);
+	} else
+		dhcp->prefixes = prefixes;
+
+	connman_network_ref(network);
+
+	DBG("replace network %p dhcp %p", network, dhcp);
+
+	g_hash_table_replace(network_pd_table, network, dhcp);
+
+	if (dhcp->prefixes == NULL) {
+		/*
+		 * Refresh start, try to get prefixes.
+		 */
+		start_pd_solicitation(dhcp);
+	} else {
+		/*
+		 * We used to have prefixes, try to use them again.
+		 * We need to use timeouts from confirm msg, RFC 3633, ch 12.1
+		 */
+		start_pd_rebind_with_confirm(dhcp);
+	}
+
+	return 0;
+}
+
+void __connman_dhcpv6_stop_pd(int index)
+{
+	struct connman_service *service;
+	struct connman_network *network;
+
+	if (index < 0)
+		return;
+
+	DBG("index %d", index);
+
+	if (network_pd_table == NULL)
+		return;
+
+	service = __connman_service_lookup_from_index(index);
+	if (service == NULL)
+		return;
+
+	network = __connman_service_get_network(service);
+	if (network == NULL)
+		return;
+
+	if (g_hash_table_remove(network_pd_table, network) == TRUE)
+		connman_network_unref(network);
+}
+
 int __connman_dhcpv6_init(void)
 {
 	DBG("");
@@ -1438,6 +1988,9 @@ int __connman_dhcpv6_init(void)
 	srand(time(NULL));
 
 	network_table = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+							NULL, remove_network);
+
+	network_pd_table = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 							NULL, remove_network);
 
 	return 0;
@@ -1449,4 +2002,7 @@ void __connman_dhcpv6_cleanup(void)
 
 	g_hash_table_destroy(network_table);
 	network_table = NULL;
+
+	g_hash_table_destroy(network_pd_table);
+	network_pd_table = NULL;
 }
