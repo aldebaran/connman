@@ -2300,10 +2300,28 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			return TRUE;
 		}
 		break;
+	case REBIND:
+		if (dhcp_client->type != G_DHCP_IPV6)
+			return TRUE;
+
+		server_id = dhcpv6_get_option(packet6, pkt_len,
+				G_DHCPV6_SERVERID, &option_len,	&count);
+		if (dhcp_client->server_duid == NULL && server_id != NULL &&
+								count == 1) {
+			/*
+			 * If we do not have server duid yet, then get it now.
+			 * Prefix delegation renew support needs it.
+			 */
+			dhcp_client->server_duid = g_try_malloc(option_len);
+			if (dhcp_client->server_duid == NULL)
+				return TRUE;
+			memcpy(dhcp_client->server_duid, server_id, option_len);
+			dhcp_client->server_duid_len = option_len;
+		}
+		/* fall through */
 	case INFORMATION_REQ:
 	case REQUEST:
 	case RENEW:
-	case REBIND:
 	case RELEASE:
 	case CONFIRM:
 		if (dhcp_client->type != G_DHCP_IPV6)
