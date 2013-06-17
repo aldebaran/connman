@@ -647,11 +647,6 @@ static void set_disconnected(struct connman_network *network)
 	enum connman_service_state state;
 	struct connman_service *service;
 
-	if (network->connected == FALSE)
-		return;
-
-	network->connected = FALSE;
-
 	service = connman_service_lookup_from_network(network);
 
 	ipconfig_ipv4 = __connman_service_get_ip4config(service);
@@ -673,28 +668,30 @@ static void set_disconnected(struct connman_network *network)
 
 	__connman_device_set_network(network->device, NULL);
 
-	switch (ipv6_method) {
-	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-	case CONNMAN_IPCONFIG_METHOD_OFF:
-	case CONNMAN_IPCONFIG_METHOD_FIXED:
-	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-		break;
-	case CONNMAN_IPCONFIG_METHOD_DHCP:
-	case CONNMAN_IPCONFIG_METHOD_AUTO:
-		release_dhcpv6(network);
-		break;
-	}
+	if (network->connected == TRUE) {
+		switch (ipv6_method) {
+		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+		case CONNMAN_IPCONFIG_METHOD_OFF:
+		case CONNMAN_IPCONFIG_METHOD_FIXED:
+		case CONNMAN_IPCONFIG_METHOD_MANUAL:
+			break;
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
+		case CONNMAN_IPCONFIG_METHOD_AUTO:
+			release_dhcpv6(network);
+			break;
+		}
 
-	switch (ipv4_method) {
-	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-	case CONNMAN_IPCONFIG_METHOD_OFF:
-	case CONNMAN_IPCONFIG_METHOD_AUTO:
-	case CONNMAN_IPCONFIG_METHOD_FIXED:
-	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-		break;
-	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		__connman_dhcp_stop(network);
-		break;
+		switch (ipv4_method) {
+		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+		case CONNMAN_IPCONFIG_METHOD_OFF:
+		case CONNMAN_IPCONFIG_METHOD_AUTO:
+		case CONNMAN_IPCONFIG_METHOD_FIXED:
+		case CONNMAN_IPCONFIG_METHOD_MANUAL:
+			break;
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
+			__connman_dhcp_stop(network);
+			break;
+		}
 	}
 
 	/*
@@ -718,21 +715,23 @@ static void set_disconnected(struct connman_network *network)
 					CONNMAN_SERVICE_STATE_DISCONNECT,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 
-	__connman_connection_gateway_remove(service,
-					CONNMAN_IPCONFIG_TYPE_ALL);
+	if (network->connected == TRUE) {
+		__connman_connection_gateway_remove(service,
+						CONNMAN_IPCONFIG_TYPE_ALL);
 
-	__connman_ipconfig_address_unset(ipconfig_ipv4);
-	__connman_ipconfig_address_unset(ipconfig_ipv6);
+		__connman_ipconfig_address_unset(ipconfig_ipv4);
+		__connman_ipconfig_address_unset(ipconfig_ipv6);
 
-	/*
-	 * Special handling for IPv6 autoconfigured address.
-	 * The simplest way to remove autoconfigured routes is to
-	 * disable IPv6 temporarily so that kernel will do the cleanup
-	 * automagically.
-	 */
-	if (ipv6_method == CONNMAN_IPCONFIG_METHOD_AUTO) {
-		__connman_ipconfig_disable_ipv6(ipconfig_ipv6);
-		__connman_ipconfig_enable_ipv6(ipconfig_ipv6);
+		/*
+		 * Special handling for IPv6 autoconfigured address.
+		 * The simplest way to remove autoconfigured routes is to
+		 * disable IPv6 temporarily so that kernel will do the cleanup
+		 * automagically.
+		 */
+		if (ipv6_method == CONNMAN_IPCONFIG_METHOD_AUTO) {
+			__connman_ipconfig_disable_ipv6(ipconfig_ipv6);
+			__connman_ipconfig_enable_ipv6(ipconfig_ipv6);
+		}
 	}
 
 	__connman_service_ipconfig_indicate_state(service,
@@ -744,6 +743,7 @@ static void set_disconnected(struct connman_network *network)
 						CONNMAN_IPCONFIG_TYPE_IPV6);
 
 	network->connecting = FALSE;
+	network->connected = FALSE;
 
 	connman_network_set_associating(network, FALSE);
 }
