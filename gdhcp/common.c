@@ -525,8 +525,17 @@ int dhcpv6_send_packet(int index, struct dhcpv6_packet *dhcp_pkt, int len)
 	m.msg_controllen = cmsg->cmsg_len;
 
 	ret = sendmsg(fd, &m, 0);
-	if (ret < 0)
-		perror("DHCPv6 msg send failed");
+	if (ret < 0) {
+		char *msg = "DHCPv6 msg send failed";
+
+		if (errno == EADDRNOTAVAIL) {
+			char *str = g_strdup_printf("%s (index %d)",
+					msg, index);
+			perror(str);
+			g_free(str);
+		} else
+			perror(msg);
+	}
 
 	g_free(control_buf);
 	close(fd);
