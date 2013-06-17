@@ -202,32 +202,41 @@ static void process_multi(struct netlink_info *netlink, struct nlmsghdr *nlmsg)
 	const void *data = nlmsg;
 	struct command *command;
 
+	command = g_hash_table_lookup(netlink->command_pending,
+					GUINT_TO_POINTER(nlmsg->nlmsg_seq));
+	if (command == NULL)
+		return;
+
+	if (command->handler == NULL)
+		goto done;
+
 	if (nlmsg->nlmsg_type < NLMSG_MIN_TYPE) {
-		command = g_hash_table_lookup(netlink->command_pending,
-					GUINT_TO_POINTER(nlmsg->nlmsg_seq));
-		if (command == NULL)
-			return;
+		const struct nlmsgerr *err;
 
-		g_hash_table_remove(netlink->command_pending,
-					GUINT_TO_POINTER(nlmsg->nlmsg_seq));
+		switch (nlmsg->nlmsg_type) {
+		case NLMSG_DONE:
+		case NLMSG_ERROR:
+			err = data + NLMSG_HDRLEN;
 
-		g_hash_table_remove(netlink->command_lookup,
-					GUINT_TO_POINTER(command->id));
-
-		destroy_command(command);
+			command->handler(-err->error, 0, NULL, 0,
+							command->user_data);
+			break;
+		}
 	} else {
-		command = g_hash_table_lookup(netlink->command_pending,
-					GUINT_TO_POINTER(nlmsg->nlmsg_seq));
-		if (command == NULL)
-			return;
-
-		if (command->handler == NULL)
-			return;
-
 		command->handler(0, nlmsg->nlmsg_type, data + NLMSG_HDRLEN,
 					nlmsg->nlmsg_len - NLMSG_HDRLEN,
 					command->user_data);
+		return;
 	}
+
+done:
+	g_hash_table_remove(netlink->command_pending,
+			GUINT_TO_POINTER(nlmsg->nlmsg_seq));
+
+	g_hash_table_remove(netlink->command_lookup,
+			GUINT_TO_POINTER(command->id));
+
+	destroy_command(command);
 }
 
 static gboolean can_read_data(GIOChannel *chan,
