@@ -38,7 +38,9 @@ gweb_sources += gweb/giognutls.h gweb/gionotls.c
 endif
 
 shared_sources = src/shared/util.h src/shared/util.c \
-		 src/shared/netlink.h src/shared/netlink.c
+		src/shared/netlink.h src/shared/netlink.c \
+		src/shared/nfacct.h src/shared/nfacct.c \
+		src/shared/nfnetlink_acct_copy.h
 
 if DATAFILES
 

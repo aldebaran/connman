@@ -36,6 +36,18 @@
 #include <glib.h>
 
 #include "../src/shared/netlink.h"
+#include "../src/shared/nfacct.h"
+#include "../src/shared/nfnetlink_acct_copy.h"
+
+#define NFGEN_DATA(nlh) ((void *)((char *)(nlh) +			\
+				NLMSG_ALIGN(sizeof(struct nfgenmsg))))
+#define NLA_DATA(nla)  ((void *)((char*)(nla) + NLA_HDRLEN))
+#define NLA_OK(nla,len) ((len) >= (int)sizeof(struct nlattr) &&		\
+				(nla)->nla_len >= sizeof(struct nlattr) && \
+				(nla)->nla_len <= (len))
+#define NLA_NEXT(nla,attrlen) ((attrlen) -= NLA_ALIGN((nla)->nla_len),	\
+				(struct nlattr*)(((char*)(nla)) +       \
+						NLA_ALIGN((nla)->nla_len)))
 
 static GMainLoop *mainloop;
 
@@ -103,11 +115,204 @@ static void test_case_1(void)
 	netlink_destroy(netlink);
 }
 
+static void test_nfacct_dump_callback(int error, uint16_t type, const void *data,
+						uint32_t len, void *user_data)
+{
+	const struct nfgenmsg *msg = data;
+	const struct nlattr *attr;
+	int attrlen;
+	char *name;
+	uint64_t packets, bytes;
+
+	if (error)
+		goto done;
+
+	attrlen = len - NLMSG_ALIGN(sizeof(struct nfgenmsg));
+
+	for (attr = NFGEN_DATA(msg); NLA_OK(attr, attrlen);
+		     attr = NLA_NEXT(attr, attrlen)) {
+		switch (attr->nla_type) {
+		case NFACCT_NAME:
+			name = NLA_DATA(attr);
+			break;
+		case NFACCT_PKTS:
+			packets = be64toh(*(uint64_t *) NLA_DATA(attr));
+			break;
+		case NFACCT_BYTES:
+			bytes = be64toh(*(uint64_t *) NLA_DATA(attr));
+			break;
+		case NFACCT_USE:
+			break;
+		}
+	}
+
+	printf("%s packets %lu bytes %lu\n", name, packets, bytes);
+done:
+	g_main_loop_quit(mainloop);
+}
+
+static void test_nfacct_new_callback(int error, uint16_t type, const void *data,
+						uint32_t len, void *user_data)
+{
+	if (error < 0) {
+		printf("error %d\n", error);
+		g_main_loop_quit(mainloop);
+	}
+
+	printf("okay\n");
+}
+
+static void append_attr_str(struct nlattr *attr,
+                                uint16_t type, size_t size, const char *str)
+{
+        char *dst;
+
+        attr->nla_len = NLA_HDRLEN + size;
+        attr->nla_type = NFACCT_NAME;
+
+        dst = (char *)NLA_DATA(attr);
+        strncpy(dst, str, size);
+        dst[size - 1] = '\0';
+}
+
+struct nfacctmsg {
+	struct nfgenmsg hdr;
+	struct nlattr attr;
+	unsigned char *buf[];
+};
+
+static void test_nfacct_new(struct netlink_info *netlink, const char *name)
+{
+	struct nfacctmsg *msg;
+	size_t len, name_len;
+
+	name_len = strlen(name) + 1;
+	len = sizeof(msg) + name_len;
+
+	msg = g_malloc0(len);
+
+	msg->hdr.nfgen_family = AF_UNSPEC;
+	msg->hdr.version = NFNETLINK_V0;
+	msg->hdr.res_id = 0;
+
+	append_attr_str(&msg->attr, NFACCT_NAME, name_len, name);
+
+	netlink_send(netlink,
+			NFNL_SUBSYS_ACCT << 8 | NFNL_MSG_ACCT_NEW,
+			NLM_F_CREATE | NLM_F_ACK, msg, len,
+			test_nfacct_new_callback, NULL, NULL);
+
+	g_free(msg);
+}
+
+static void test_nfacct_del(struct netlink_info *netlink, const char *name)
+{
+	struct nfacctmsg *msg;
+	size_t len, name_len;
+
+	name_len = strlen(name) + 1;
+	len = sizeof(msg) + name_len;
+
+	msg = g_malloc0(len);
+
+	msg->hdr.nfgen_family = AF_UNSPEC;
+	msg->hdr.version = NFNETLINK_V0;
+	msg->hdr.res_id = 0;
+
+	append_attr_str(&msg->attr, NFACCT_NAME, name_len, name);
+
+	netlink_send(netlink,
+			NFNL_SUBSYS_ACCT << 8 | NFNL_MSG_ACCT_DEL,
+			NLM_F_ACK, msg, len,
+			test_nfacct_new_callback, NULL, NULL);
+
+	g_free(msg);
+}
+
+static void test_nfacct_dump(struct netlink_info *netlink)
+{
+	struct nfgenmsg msg;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.nfgen_family = AF_UNSPEC;
+	msg.version = NFNETLINK_V0;
+	msg.res_id = 0;
+
+	netlink_send(netlink,
+			NFNL_SUBSYS_ACCT << 8 | NFNL_MSG_ACCT_GET,
+			NLM_F_DUMP , &msg, sizeof(msg),
+			test_nfacct_dump_callback, NULL, NULL);
+}
+
+static void test_case_2(void)
+{
+	struct netlink_info *netlink;
+
+	netlink = netlink_new(NETLINK_NETFILTER);
+
+	printf("\n");
+	netlink_set_debug(netlink, do_debug, "[NETLINK] ", NULL);
+
+	test_nfacct_new(netlink, "session-foo");
+	test_nfacct_dump(netlink);
+	test_nfacct_del(netlink, "session-foo");
+
+	mainloop = g_main_loop_new(NULL, FALSE);
+	g_main_loop_run(mainloop);
+	g_main_loop_unref(mainloop);
+
+	netlink_destroy(netlink);
+}
+
+
+static void nfacct_add_callback(int error, void *user_data)
+{
+}
+
+static void nfacct_get_callback(int error, const char *name,
+				uint64_t packets, uint64_t bytes,
+				void *user_data)
+{
+	printf("name %s\n", name);
+}
+
+static void nfacct_dump_callback(int error, const char *name,
+					uint64_t packets, uint64_t bytes,
+					void *user_data)
+{
+	printf("name %s\n", name);
+}
+
+static void nfacct_del_callback(int error, void *user_data)
+{
+	g_main_loop_quit(mainloop);
+}
+
+static void nfacct_case_1(void)
+{
+	struct nfacct_info *nfacct;
+
+	nfacct = nfacct_new();
+
+	nfacct_add(nfacct, "session-bar", nfacct_add_callback, NULL);
+	nfacct_get(nfacct, "session-bar", false, nfacct_get_callback, NULL);
+	nfacct_dump(nfacct, false, nfacct_dump_callback, NULL);
+	nfacct_del(nfacct, "session-bar", nfacct_del_callback, NULL);
+
+	mainloop = g_main_loop_new(NULL, FALSE);
+	g_main_loop_run(mainloop);
+	g_main_loop_unref(mainloop);
+
+	nfacct_destroy(nfacct);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
 
 	g_test_add_func("/netlink/Test case 1", test_case_1);
+	g_test_add_func("/netlink/Test case 2", test_case_2);
+	g_test_add_func("/nfacct/Test case 1", nfacct_case_1);
 
 	return g_test_run();
 }
