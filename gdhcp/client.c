@@ -1842,6 +1842,8 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 
 	max_len = len - pos;
 
+	debug(dhcp_client, "header %d sub-option max len %d", pos, max_len);
+
 	/* We have more sub-options in this packet. */
 	do {
 		option = dhcpv6_get_sub_option(&value[pos], max_len,
@@ -1853,7 +1855,7 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 		if (option == NULL)
 			break;
 
-		if (pos >= max_len)
+		if (pos >= len)
 			break;
 
 		switch (option_code) {
@@ -1904,7 +1906,7 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 
 		pos += 2 + 2 + option_len;
 
-	} while (option != NULL);
+	} while (pos < len);
 
 	if (addr_count > 0 && st == 0) {
 		/* We only support one address atm */
