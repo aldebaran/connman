@@ -431,6 +431,8 @@ int __connman_dhcpv6_start_release(struct connman_network *network,
 				dhcp_cb callback);
 int __connman_dhcpv6_start_pd(int index, GSList *prefixes, dhcp_cb callback);
 void __connman_dhcpv6_stop_pd(int index);
+int __connman_dhcpv6_start_pd_renew(struct connman_network *network,
+							dhcp_cb callback);
 
 int __connman_ipv4_init(void);
 void __connman_ipv4_cleanup(void);

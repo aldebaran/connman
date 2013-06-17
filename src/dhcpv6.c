@@ -1681,6 +1681,101 @@ static int dhcpv6_pd_rebind(struct connman_dhcpv6 *dhcp)
 	return g_dhcp_client_start(dhcp_client, NULL);
 }
 
+static void renew_pd_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	DBG("");
+
+	g_dhcpv6_client_reset_renew(dhcp_client);
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
+
+	re_pd_cb(dhcp_client, user_data);
+}
+
+static int dhcpv6_pd_renew(struct connman_dhcpv6 *dhcp)
+{
+	GDHCPClient *dhcp_client;
+	uint32_t T1, T2;
+
+	DBG("dhcp %p", dhcp);
+
+	dhcp_client = dhcp->dhcp_client;
+
+	g_dhcp_client_clear_requests(dhcp_client);
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SERVERID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
+
+	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL, NULL);
+	g_dhcpv6_client_set_pd(dhcp_client, &T1, &T2, dhcp->prefixes);
+
+	clear_callbacks(dhcp_client);
+
+	g_dhcp_client_register_event(dhcp_client, G_DHCP_CLIENT_EVENT_RENEW,
+					renew_pd_cb, dhcp);
+
+	return g_dhcp_client_start(dhcp_client, NULL);
+}
+
+/*
+ * Check if we need to restart the solicitation procedure. This
+ * is done if all the prefixes have expired.
+ */
+static int check_pd_restart(struct connman_dhcpv6 *dhcp)
+{
+	time_t current, expired;
+
+	g_dhcpv6_client_get_timeouts(dhcp->dhcp_client, NULL, NULL,
+				NULL, NULL, &expired);
+	current = time(NULL);
+
+	if (current > expired) {
+		DBG("expired by %d secs", (int)(current - expired));
+
+		g_timeout_add(0, dhcpv6_restart, dhcp);
+
+		return -ETIMEDOUT;
+	}
+
+	return 0;
+}
+
+static gboolean timeout_pd_rebind(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	if (check_pd_restart(dhcp) < 0)
+		return FALSE;
+
+	dhcp->RT = calc_delay(dhcp->RT, REB_MAX_RT);
+
+	DBG("rebind RT timeout %d msec", dhcp->RT);
+
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_pd_rebind, dhcp);
+
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
+
+	g_dhcp_client_start(dhcp->dhcp_client, NULL);
+
+	return FALSE;
+}
+
+static gboolean start_pd_rebind(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	dhcp->RT = REB_TIMEOUT * (1 + get_random());
+
+	DBG("rebind initial RT timeout %d msec", dhcp->RT);
+
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_pd_rebind, dhcp);
+
+	dhcpv6_pd_rebind(dhcp);
+
+	return FALSE;
+}
+
 static gboolean timeout_pd_rebind_confirm(gpointer user_data)
 {
 	struct connman_dhcpv6 *dhcp = user_data;
@@ -1732,6 +1827,106 @@ static gboolean start_pd_rebind_with_confirm(gpointer user_data)
 	dhcpv6_pd_rebind(dhcp);
 
 	return FALSE;
+}
+
+static gboolean timeout_pd_renew(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	if (check_pd_restart(dhcp) < 0)
+		return FALSE;
+
+	dhcp->RT = calc_delay(dhcp->RT, REN_MAX_RT);
+
+	DBG("renew RT timeout %d msec", dhcp->RT);
+
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_renew, dhcp);
+
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
+
+	g_dhcp_client_start(dhcp->dhcp_client, NULL);
+
+	return FALSE;
+}
+
+static gboolean start_pd_renew(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	dhcp->RT = REN_TIMEOUT * (1 + get_random());
+
+	DBG("renew initial RT timeout %d msec", dhcp->RT);
+
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_pd_renew, dhcp);
+
+	dhcpv6_pd_renew(dhcp);
+
+	return FALSE;
+}
+
+int __connman_dhcpv6_start_pd_renew(struct connman_network *network,
+				dhcp_cb callback)
+{
+	struct connman_dhcpv6 *dhcp;
+	uint32_t T1, T2;
+	time_t last_renew, last_rebind, current, expired;
+
+	dhcp = g_hash_table_lookup(network_pd_table, network);
+	if (dhcp == NULL)
+		return -ENOENT;
+
+	DBG("network %p dhcp %p", network, dhcp);
+
+	clear_timer(dhcp);
+
+	g_dhcpv6_client_get_timeouts(dhcp->dhcp_client, &T1, &T2,
+				&last_renew, &last_rebind, &expired);
+
+	current = time(NULL);
+
+	DBG("T1 %u T2 %u expires %lu current %lu", T1, T2,
+		(unsigned long)expired, current);
+
+	if (T1 == 0xffffffff)
+		/* RFC 3633, ch 9 */
+		return 0;
+
+	if (T1 == 0)
+		/* RFC 3633, ch 9
+		 * Client can choose the timeout.
+		 */
+		T1 = 120;
+
+	/* RFC 3315, 18.1.4, start solicit if expired */
+	if (current > expired) {
+		DBG("expired by %d secs", (int)(current - expired));
+		return -ETIMEDOUT;
+	}
+
+	dhcp->callback = callback;
+
+	if (T2 != 0xffffffff && T2 > 0 &&
+			(unsigned)current > (unsigned)last_rebind + T2) {
+		int timeout;
+
+		/* RFC 3315, chapter 18.1.3, start rebind */
+		if ((unsigned)current > (unsigned)last_renew + T1)
+			timeout = 0;
+		else
+			timeout = last_renew - current + T1;
+
+		/*
+		 * If we just did a renew, do not restart the rebind
+		 * immediately.
+		 */
+		dhcp->timeout = g_timeout_add_seconds(timeout, start_pd_rebind,
+						dhcp);
+	} else {
+		DBG("renew after %d secs", T1);
+
+		dhcp->timeout = g_timeout_add_seconds(T1, start_pd_renew, dhcp);
+	}
+	return 0;
 }
 
 static gboolean timeout_pd_request(gpointer user_data)
