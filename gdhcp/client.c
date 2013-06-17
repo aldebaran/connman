@@ -714,12 +714,84 @@ int g_dhcpv6_client_set_duid(GDHCPClient *dhcp_client, unsigned char *duid,
 	return 0;
 }
 
+int g_dhcpv6_client_set_pd(GDHCPClient *dhcp_client, uint32_t *T1,
+			uint32_t *T2, GSList *prefixes)
+{
+	uint8_t options[1452];
+	unsigned int max_buf = sizeof(options);
+	int len, count = g_slist_length(prefixes);
+
+	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
+		return -EINVAL;
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_IA_PD);
+
+	memset(options, 0, sizeof(options));
+
+	options[0] = dhcp_client->iaid >> 24;
+	options[1] = dhcp_client->iaid >> 16;
+	options[2] = dhcp_client->iaid >> 8;
+	options[3] = dhcp_client->iaid;
+
+	if (T1 != NULL) {
+		uint32_t t = htonl(*T1);
+		memcpy(&options[4], &t, 4);
+	}
+
+	if (T2 != NULL) {
+		uint32_t t = htonl(*T2);
+		memcpy(&options[8], &t, 4);
+	}
+
+	len = 12;
+
+	if (count > 0) {
+		GSList *list;
+
+		for (list = prefixes; list; list = list->next) {
+			GDHCPIAPrefix *prefix = list->data;
+			uint8_t sub_option[4+4+1+16];
+
+			if ((len + 2 + 2 + sizeof(sub_option)) >= max_buf) {
+				debug(dhcp_client,
+					"Too long dhcpv6 message "
+					"when writing IA prefix option");
+				return -EINVAL;
+			}
+
+			memset(&sub_option, 0, sizeof(sub_option));
+
+			/* preferred and validity time are left zero */
+
+			sub_option[8] = prefix->prefixlen;
+			memcpy(&sub_option[9], &prefix->prefix, 16);
+
+			copy_option(&options[len], G_DHCPV6_IA_PREFIX,
+				sizeof(sub_option), sub_option);
+			len += 2 + 2 + sizeof(sub_option);
+		}
+	}
+
+	g_dhcpv6_client_set_send(dhcp_client, G_DHCPV6_IA_PD,
+				options, len);
+
+	return 0;
+}
+
 uint32_t g_dhcpv6_client_get_iaid(GDHCPClient *dhcp_client)
 {
 	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
 		return 0;
 
 	return dhcp_client->iaid;
+}
+
+void g_dhcpv6_client_set_iaid(GDHCPClient *dhcp_client, uint32_t iaid)
+{
+	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
+		return;
+
+	dhcp_client->iaid = iaid;
 }
 
 void g_dhcpv6_client_create_iaid(GDHCPClient *dhcp_client, int index,
@@ -1703,6 +1775,33 @@ static inline uint16_t get_uint16(unsigned char *value)
 	return value[0] << 8 | value[1];
 }
 
+static GList *add_prefix(GDHCPClient *dhcp_client, GList *list,
+			struct in6_addr *addr,
+			unsigned char prefixlen, uint32_t preferred,
+			uint32_t valid)
+{
+	GDHCPIAPrefix *ia_prefix;
+
+	ia_prefix = g_try_new(GDHCPIAPrefix, 1);
+	if (ia_prefix == NULL)
+		return list;
+
+	if (dhcp_client->debug_func != NULL) {
+		char addr_str[INET6_ADDRSTRLEN + 1];
+		inet_ntop(AF_INET6, addr, addr_str, INET6_ADDRSTRLEN);
+		debug(dhcp_client, "prefix %s/%d preferred %u valid %u",
+			addr_str, prefixlen, preferred, valid);
+	}
+
+	memcpy(&ia_prefix->prefix, addr, sizeof(struct in6_addr));
+	ia_prefix->prefixlen = prefixlen;
+	ia_prefix->preferred = preferred;
+	ia_prefix->valid = valid;
+	ia_prefix->expire = time(NULL) + valid;
+
+	return g_list_prepend(list, ia_prefix);
+}
+
 static GList *get_addresses(GDHCPClient *dhcp_client,
 				int code, int len,
 				unsigned char *value,
@@ -1712,7 +1811,9 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 	struct in6_addr addr;
 	uint32_t iaid, T1 = 0, T2 = 0, preferred = 0, valid = 0;
 	uint16_t option_len, option_code, st = 0, max_len;
-	int addr_count = 0, i, pos;
+	int addr_count = 0, prefix_count = 0, i, pos;
+	unsigned char prefixlen;
+	unsigned int shortest_valid = 0;
 	uint8_t *option;
 	char *str;
 
@@ -1723,12 +1824,13 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 	if (dhcp_client->iaid != iaid)
 		return NULL;
 
-	if (code == G_DHCPV6_IA_NA) {
+	if (code == G_DHCPV6_IA_NA || code == G_DHCPV6_IA_PD) {
 		T1 = get_uint32(&value[4]);
 		T2 = get_uint32(&value[8]);
 
 		if (T1 > T2)
-			/* RFC 3315, 22.4 */
+			/* IA_NA: RFC 3315, 22.4 */
+			/* IA_PD: RFC 3633, ch 9 */
 			return NULL;
 
 		pos = 12;
@@ -1778,6 +1880,26 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 
 			*status = st;
 			break;
+
+		case G_DHCPV6_IA_PREFIX:
+			i = 0;
+			preferred = get_uint32(&option[i]);
+			i += 4;
+			valid = get_uint32(&option[i]);
+			i += 4;
+			prefixlen = option[i];
+			i += 1;
+			memcpy(&addr, &option[i], sizeof(addr));
+			i += sizeof(addr);
+			if (preferred < valid) {
+				/* RFC 3633, ch 10 */
+				list = add_prefix(dhcp_client, list, &addr,
+						prefixlen, preferred, valid);
+				if (shortest_valid > valid)
+					shortest_valid = valid;
+				prefix_count++;
+			}
+			break;
 		}
 
 		pos += 2 + 2 + option_len;
@@ -1796,7 +1918,7 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 		dhcp_client->T2 = T2;
 
 		inet_ntop(AF_INET6, &addr, addr_str, INET6_ADDRSTRLEN);
-		debug(dhcp_client, "count %d addr %s T1 %u T2 %u",
+		debug(dhcp_client, "address count %d addr %s T1 %u T2 %u",
 			addr_count, addr_str, T1, T2);
 
 		list = g_list_append(list, g_strdup(addr_str));
@@ -1810,6 +1932,24 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 
 		g_dhcpv6_client_set_expire(dhcp_client, valid);
 	}
+
+	if (prefix_count > 0 && list != NULL) {
+		/*
+		 * This means we have a list of prefixes to delegate.
+		 */
+		list = g_list_reverse(list);
+
+		debug(dhcp_client, "prefix count %d T1 %u T2 %u",
+			prefix_count, T1, T2);
+
+		dhcp_client->T1 = T1;
+		dhcp_client->T2 = T2;
+
+		g_dhcpv6_client_set_expire(dhcp_client, shortest_valid);
+	}
+
+	if (status != NULL && *status != 0)
+		debug(dhcp_client, "status %d", *status);
 
 	return list;
 }
@@ -1852,6 +1992,7 @@ static GList *get_dhcpv6_option_value_list(GDHCPClient *dhcp_client,
 
 	case G_DHCPV6_IA_NA:		/* RFC 3315, chapter 22.4 */
 	case G_DHCPV6_IA_TA:		/* RFC 3315, chapter 22.5 */
+	case G_DHCPV6_IA_PD:		/* RFC 3633, chapter 9 */
 		list = get_addresses(dhcp_client, code, len, value, status);
 		break;
 
@@ -2817,4 +2958,28 @@ void g_dhcp_client_set_debug(GDHCPClient *dhcp_client,
 
 	dhcp_client->debug_func = func;
 	dhcp_client->debug_data = user_data;
+}
+
+static GDHCPIAPrefix *copy_prefix(gpointer data)
+{
+	GDHCPIAPrefix *copy, *prefix = data;
+
+	copy = g_try_new(GDHCPIAPrefix, 1);
+	if (copy == NULL)
+		return NULL;
+
+	memcpy(copy, prefix, sizeof(GDHCPIAPrefix));
+
+	return copy;
+}
+
+GSList *g_dhcpv6_copy_prefixes(GSList *prefixes)
+{
+	GSList *copy = NULL;
+	GSList *list;
+
+	for (list = prefixes; list; list = list->next)
+		copy = g_slist_prepend(copy, copy_prefix(list->data));
+
+	return copy;
 }

@@ -23,6 +23,7 @@
 #define __G_DHCP_H
 
 #include <stdint.h>
+#include <arpa/inet.h>
 
 #include <glib.h>
 
@@ -83,11 +84,14 @@ typedef enum {
 #define G_DHCPV6_IA_TA		4
 #define G_DHCPV6_IAADDR		5
 #define G_DHCPV6_ORO		6
+#define G_DHCPV6_PREFERENCE     7
 #define G_DHCPV6_ELAPSED_TIME   8
 #define G_DHCPV6_STATUS_CODE	13
 #define G_DHCPV6_RAPID_COMMIT	14
 #define G_DHCPV6_DNS_SERVERS	23
 #define G_DHCPV6_DOMAIN_LIST	24
+#define G_DHCPV6_IA_PD		25
+#define G_DHCPV6_IA_PREFIX	26
 #define G_DHCPV6_SNTP_SERVERS	31
 
 #define G_DHCPV6_ERROR_SUCCESS	0
@@ -96,12 +100,26 @@ typedef enum {
 #define G_DHCPV6_ERROR_BINDING	3
 #define G_DHCPV6_ERROR_LINK	4
 #define G_DHCPV6_ERROR_MCAST	5
+#define G_DHCPV6_ERROR_NO_PREFIX 6
 
 typedef enum {
 	G_DHCPV6_DUID_LLT = 1,
 	G_DHCPV6_DUID_EN  = 2,
 	G_DHCPV6_DUID_LL  = 3,
 } GDHCPDuidType;
+
+typedef struct {
+	/*
+	 * Note that no field in this struct can be allocated
+	 * from heap or there will be a memory leak when the
+	 * struct is freed by client.c:remove_option_value()
+	 */
+	struct in6_addr prefix;
+	unsigned char prefixlen;
+	uint32_t preferred;
+	uint32_t valid;
+	time_t expire;
+} GDHCPIAPrefix;
 
 typedef void (*GDHCPClientEventFunc) (GDHCPClient *client, gpointer user_data);
 
@@ -142,6 +160,9 @@ int g_dhcpv6_create_duid(GDHCPDuidType duid_type, int index, int type,
 			unsigned char **duid, int *duid_len);
 int g_dhcpv6_client_set_duid(GDHCPClient *dhcp_client, unsigned char *duid,
 			int duid_len);
+int g_dhcpv6_client_set_pd(GDHCPClient *dhcp_client, uint32_t *T1, uint32_t *T2,
+			GSList *prefixes);
+GSList *g_dhcpv6_copy_prefixes(GSList *prefixes);
 void g_dhcpv6_client_set_send(GDHCPClient *dhcp_client, uint16_t option_code,
 			uint8_t *option_value, uint16_t option_len);
 uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client);
@@ -153,6 +174,7 @@ int g_dhcpv6_client_get_timeouts(GDHCPClient *dhcp_client,
 				time_t *last_renew, time_t *last_rebind,
 				time_t *expire);
 uint32_t g_dhcpv6_client_get_iaid(GDHCPClient *dhcp_client);
+void g_dhcpv6_client_set_iaid(GDHCPClient *dhcp_client, uint32_t iaid);
 int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
 			int code, uint32_t *T1, uint32_t *T2,
 			gboolean add_addresses, const char *address);
