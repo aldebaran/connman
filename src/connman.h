@@ -905,5 +905,32 @@ typedef int (* connman_nfacct_flush_cb_t) (int error, void *user_data);
 
 int __connman_nfacct_flush(connman_nfacct_flush_cb_t cb, void *user_data);
 
+struct nfacct_context;
+
+typedef void (* connman_nfacct_enable_cb_t) (int error,
+						struct nfacct_context *ctx,
+						void *user_data);
+typedef void (* connman_nfacct_disable_cb_t) (int error,
+						struct nfacct_context *ctx,
+						void *user_data);
+typedef void (* connman_nfacct_stats_cb_t) (struct nfacct_context *ctx,
+						uint64_t packets,
+						uint64_t bytes,
+						void *user_data);
+
+struct nfacct_context *__connman_nfacct_create_context(void);
+void __connman_nfacct_destroy_context(struct nfacct_context *ctx);
+
+int __connman_nfacct_add(struct nfacct_context *ctx, const char *name,
+				connman_nfacct_stats_cb_t cb,
+				void *user_data);
+int __connman_nfacct_enable(struct nfacct_context *ctx,
+				connman_nfacct_enable_cb_t cb,
+				void *user_data);
+int __connman_nfacct_disable(struct nfacct_context *ctx,
+				connman_nfacct_disable_cb_t cb,
+				void *user_data);
+
+
 int __connman_nfacct_init(void);
 void __connman_nfacct_cleanup(void);

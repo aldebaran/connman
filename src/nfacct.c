@@ -30,10 +30,228 @@
 
 static struct nfacct_info *nfacct;
 
+struct nfacct_rule {
+	char *name;
+	connman_nfacct_stats_cb_t cb;
+	void *user_data;
+};
+
+struct nfacct_context {
+	struct nfacct_info *nfacct;
+	GList *rules;
+	unsigned int pending;
+	int error;
+};
+
 struct nfacct_flush {
 	unsigned int pending;
 	int error;
 };
+
+static void cleanup_nfacct_rule(gpointer user_data)
+{
+	struct nfacct_rule *rule = user_data;
+
+	g_free(rule->name);
+	g_free(rule);
+}
+
+struct nfacct_context *__connman_nfacct_create_context(void)
+{
+	struct nfacct_context *ctx;
+
+	ctx = g_new0(struct nfacct_context, 1);
+
+	return ctx;
+}
+
+void __connman_nfacct_destroy_context(struct nfacct_context *ctx)
+{
+	g_list_free_full(ctx->rules, cleanup_nfacct_rule);
+	g_free(ctx);
+}
+
+int __connman_nfacct_add(struct nfacct_context *ctx, const char *name,
+				connman_nfacct_stats_cb_t cb,
+				void *user_data)
+{
+	struct nfacct_rule *rule = g_new0(struct nfacct_rule, 1);
+
+	rule->name = g_strdup(name);
+	rule->cb = cb;
+	rule->user_data = user_data;
+
+	ctx->rules = g_list_append(ctx->rules, rule);
+
+	return 0;
+}
+
+static void nfacct_enable_failed_cb(int error, void *user_data)
+{
+	struct cb_data *cbd = user_data;
+	connman_nfacct_enable_cb_t cb = cbd->cb;
+	struct nfacct_context *ctx = cbd->data;
+
+	DBG("");
+
+	user_data = cbd->user_data;
+	g_free(cbd);
+
+	ctx->pending--;
+
+	if (ctx->pending > 0)
+		return;
+
+	cb(ctx->error, ctx, user_data);
+}
+
+static void nfacct_handle_enable_error(struct nfacct_context *ctx,
+					connman_nfacct_enable_cb_t cb,
+					void *user_data)
+{
+	struct cb_data *cbd;
+	struct nfacct_rule *rule;
+	GList *list;
+	unsigned int id;
+
+	DBG("");
+
+	for (list = ctx->rules; list != NULL; list = list->next) {
+		rule = list->data;
+
+		DBG("%s", rule->name);
+		cbd = cb_data_new(cb, user_data);
+		cbd->data = ctx;
+		id = nfacct_del(nfacct, rule->name,
+						nfacct_enable_failed_cb, cbd);
+		if (id == 0) {
+			g_free(cbd);
+			continue;
+		}
+
+		ctx->pending++;
+	}
+}
+
+static void nfacct_enable_cb(int error, void *user_data)
+{
+	struct cb_data *cbd = user_data;
+	connman_nfacct_enable_cb_t cb = cbd->cb;
+	struct nfacct_context *ctx = cbd->data;
+
+	DBG("error %d pending %d", error, ctx->pending);
+
+	user_data = cbd->user_data;
+	g_free(cbd);
+
+	ctx->pending--;
+
+	if (error < 0)
+		ctx->error = error;
+
+	if (ctx->pending > 0)
+		return;
+
+	if (ctx->error < 0) {
+		nfacct_handle_enable_error(ctx, cb, user_data);
+		return;
+	}
+
+	cb(0, ctx, user_data);
+}
+
+static void nfacct_disable_cb(int error, void *user_data)
+{
+	struct cb_data *cbd = user_data;
+	connman_nfacct_disable_cb_t cb = cbd->cb;
+	struct nfacct_context *ctx = cbd->data;
+
+	DBG("error %d pending %d", error, ctx->pending);
+
+	user_data = cbd->user_data;
+	g_free(cbd);
+
+	ctx->pending--;
+
+	if (error < 0)
+		ctx->error = error;
+
+	if (ctx->pending > 0)
+		return;
+
+	cb(ctx->error, ctx, user_data);
+}
+
+int __connman_nfacct_enable(struct nfacct_context *ctx,
+				connman_nfacct_enable_cb_t cb,
+				void *user_data)
+{
+	struct cb_data *cbd;
+	struct nfacct_rule *rule;
+	GList *list;
+	unsigned int id;
+
+	DBG("");
+
+	for (list = ctx->rules; list != NULL; list = list->next) {
+		rule = list->data;
+
+		DBG("%s", rule->name);
+
+		cbd = cb_data_new(cb, user_data);
+		cbd->data = ctx;
+		id = nfacct_add(nfacct, rule->name, nfacct_enable_cb,
+							cbd);
+		if (id == 0)
+			goto err;
+
+		ctx->pending++;
+	}
+
+	return 0;
+
+err:
+	if (ctx->pending > 0) {
+		ctx->error = -ECOMM;
+		return 0;
+	}
+
+	g_free(cbd);
+
+	return -ECOMM;
+}
+
+int __connman_nfacct_disable(struct nfacct_context *ctx,
+				connman_nfacct_disable_cb_t cb,
+				void *user_data)
+{
+	struct cb_data *cbd;
+	struct nfacct_rule *rule;
+	GList *list;
+	unsigned int id;
+	int err = 0;
+
+	DBG("");
+
+	for (list = ctx->rules; list != NULL; list = list->next) {
+		rule = list->data;
+
+		DBG("%s", rule->name);
+		cbd = cb_data_new(cb, user_data);
+		cbd->data = ctx;
+		id = nfacct_del(nfacct, rule->name, nfacct_disable_cb,
+							cbd);
+		if (id == 0) {
+			err = -ECOMM;
+			g_free(cbd);
+			continue;
+		}
+
+		ctx->pending++;
+	}
+
+	return err;
+}
 
 static void nfacct_flush_del_cb(int error, void *user_data)
 {
