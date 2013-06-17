@@ -2493,3 +2493,65 @@ int __connman_inet_del_fwmark_rule(uint32_t table_id, int family, uint32_t fwmar
 {
 	return iprule_modify(RTM_DELRULE, family, table_id, fwmark);
 }
+
+int __connman_inet_add_default_to_table(uint32_t table_id, int ifindex,
+						const char *gateway)
+{
+	/* ip route add default via 1.2.3.4 dev wlan0 table 1234 */
+
+	struct __connman_inet_rtnl_handle rth;
+	unsigned char buf[sizeof(struct in6_addr)];
+	int ret, len;
+	int family = connman_inet_check_ipaddress(gateway);
+
+	switch (family) {
+	case AF_INET:
+		len = 4;
+		break;
+	case AF_INET6:
+		len = 16;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ret = inet_pton(family, gateway, buf);
+	if (ret <= 0)
+		return -EINVAL;
+
+	memset(&rth, 0, sizeof(rth));
+
+	rth.req.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+	rth.req.n.nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
+	rth.req.n.nlmsg_type = RTM_NEWROUTE;
+	rth.req.u.r.rt.rtm_family = family;
+	rth.req.u.r.rt.rtm_table = RT_TABLE_MAIN;
+	rth.req.u.r.rt.rtm_scope = RT_SCOPE_NOWHERE;
+	rth.req.u.r.rt.rtm_protocol = RTPROT_BOOT;
+	rth.req.u.r.rt.rtm_scope = RT_SCOPE_UNIVERSE;
+	rth.req.u.r.rt.rtm_type = RTN_UNICAST;
+
+	__connman_inet_rtnl_addattr_l(&rth.req.n, sizeof(rth.req), RTA_GATEWAY,
+								buf, len);
+	if (table_id < 256) {
+		rth.req.u.r.rt.rtm_table = table_id;
+	} else {
+		rth.req.u.r.rt.rtm_table = RT_TABLE_UNSPEC;
+		__connman_inet_rtnl_addattr32(&rth.req.n, sizeof(rth.req),
+							RTA_TABLE, table_id);
+	}
+
+	__connman_inet_rtnl_addattr32(&rth.req.n, sizeof(rth.req),
+							RTA_OIF, ifindex);
+
+	ret = __connman_inet_rtnl_open(&rth);
+	if (ret < 0)
+		goto done;
+
+	ret = __connman_inet_rtnl_send(&rth, &rth.req.n);
+
+done:
+	__connman_inet_rtnl_close(&rth);
+
+	return ret;
+}
