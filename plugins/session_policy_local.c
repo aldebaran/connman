@@ -227,6 +227,12 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 
 	DBG("session %p", policy->session);
 
+	if (err == -EIO) {
+		/* No SELinux support, drop back to UID/GID only mode */
+		finish_create(policy, cb, cbd->user_data);
+		goto done;
+	}
+
 	if (err < 0) {
 		failed_create(policy, cb, cbd->user_data, err);
 		goto done;
