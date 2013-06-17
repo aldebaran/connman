@@ -37,6 +37,9 @@ else
 gweb_sources += gweb/giognutls.h gweb/gionotls.c
 endif
 
+shared_sources = src/shared/util.h src/shared/util.c \
+		 src/shared/netlink.h src/shared/netlink.c
+
 if DATAFILES
 
 if NMCOMPAT
@@ -271,7 +274,7 @@ noinst_PROGRAMS += tools/supplicant-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-tool tools/private-network-test \
 			tools/session-test tools/iptables-unit \
-			tools/dnsproxy-test
+			tools/dnsproxy-test tools/netlink-test
 
 tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 			tools/supplicant-dbus.h tools/supplicant-dbus.c \
@@ -318,6 +321,9 @@ tools_iptables_unit_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ @XTABLES_LIBS@ -ldl
 
 tools_dnsproxy_test_SOURCES = tools/dnsproxy-test.c
 tools_dnsproxy_test_LDADD = @GLIB_LIBS@
+
+tools_netlink_test_SOURCES =$(shared_sources) tools/netlink-test.c
+tools_netlink_test_LDADD = @GLIB_LIBS@
 
 endif
 
