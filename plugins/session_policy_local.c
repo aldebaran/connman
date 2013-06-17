@@ -228,7 +228,7 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 	DBG("session %p", policy->session);
 
 	if (err < 0) {
-		failed_create(policy, cb, user_data, err);
+		failed_create(policy, cb, cbd->user_data, err);
 		goto done;
 	}
 
@@ -321,7 +321,7 @@ static void get_uid_reply(unsigned int uid, void *user_data, int err)
 	return;
 
 err:
-	failed_create(NULL, cb, user_data, err);
+	failed_create(NULL, cb, cbd->user_data, err);
 	g_free(cbd);
 	g_free(groups);
 }
