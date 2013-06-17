@@ -37,6 +37,7 @@ static GHashTable *session_hash;
 static connman_bool_t sessionmode;
 static struct connman_session *ecall_session;
 static GSList *policy_list;
+static uint32_t session_mark = 256;
 
 enum connman_session_trigger {
 	CONNMAN_SESSION_TRIGGER_UNKNOWN		= 0,
@@ -93,6 +94,9 @@ struct connman_session {
 	GSList *user_allowed_bearers;
 
 	connman_bool_t ecall;
+
+	struct nfacct_context *nfctx;
+	uint32_t mark;
 
 	GList *service_list;
 	GHashTable *service_hash;
@@ -263,9 +267,8 @@ static void free_session(struct connman_session *session)
 	g_free(session);
 }
 
-static void cleanup_session(gpointer user_data)
+static void cleanup_session_final(struct connman_session *session)
 {
-	struct connman_session *session = user_data;
 	struct session_info *info = session->info;
 
 	DBG("remove %s", session->session_path);
@@ -283,6 +286,31 @@ static void cleanup_session(gpointer user_data)
 	free_session(session);
 }
 
+static void nfacct_cleanup_cb(int error, struct nfacct_context *ctx,
+				void *user_data)
+{
+	struct connman_session *session = user_data;
+
+	DBG("");
+
+	__connman_nfacct_destroy_context(session->nfctx);
+
+	cleanup_session_final(session);
+}
+
+static void cleanup_session(gpointer user_data)
+{
+	struct connman_session *session = user_data;
+
+	DBG("remove %s", session->session_path);
+
+	if (session->nfctx != NULL)
+		__connman_nfacct_disable(session->nfctx, nfacct_cleanup_cb,
+						session);
+	else
+		cleanup_session_final(session);
+}
+
 static int assign_policy_plugin(struct connman_session *session)
 {
 	if (session->policy != NULL)
@@ -298,6 +326,7 @@ static int assign_policy_plugin(struct connman_session *session)
 
 struct creation_data {
 	DBusMessage *pending;
+	struct connman_session *session;
 
 	/* user config */
 	enum connman_session_type type;
@@ -1651,20 +1680,23 @@ static const GDBusMethodTable session_methods[] = {
 	{ },
 };
 
-static int session_create_cb(struct connman_session *session,
-				struct connman_session_config *config,
-				void *user_data, int err)
+static void session_nfacct_stats_cb(struct nfacct_context *ctx,
+					uint64_t packets, uint64_t bytes,
+					void *user_data)
 {
-	struct creation_data *creation_data = user_data;
-	DBusMessage *reply;
+	struct connman_session *session = user_data;
+
+	DBG("session %p", session);
+
+	/* XXX add accounting code here */
+}
+
+static int session_create_final(struct creation_data *creation_data,
+				struct connman_session *session)
+{
 	struct session_info *info, *info_last;
-
-	DBG("session %p config %p", session, config);
-
-	if (err != 0)
-		goto out;
-
-	session->policy_config = config;
+	DBusMessage *reply;
+	int err;
 
 	info = session->info;
 	info_last = session->info_last;
@@ -1688,7 +1720,7 @@ static int session_create_cb(struct connman_session *session,
 			session->user_allowed_bearers,
 			&info->config.allowed_bearers);
 	if (err < 0)
-		goto out;
+		goto err;
 
 	g_hash_table_replace(session_hash, session->session_path, session);
 
@@ -1701,7 +1733,7 @@ static int session_create_cb(struct connman_session *session,
 		connman_error("Failed to register %s", session->session_path);
 		g_hash_table_remove(session_hash, session->session_path);
 		err = -EINVAL;
-		goto out;
+		goto err;
 	}
 
 	reply = g_dbus_create_reply(creation_data->pending,
@@ -1722,12 +1754,93 @@ static int session_create_cb(struct connman_session *session,
 
 	session_changed(session, CONNMAN_SESSION_TRIGGER_SETTING);
 
-out:
-	if (err < 0) {
-		reply = __connman_error_failed(creation_data->pending, -err);
-		g_dbus_send_message(connection, reply);
+	cleanup_creation_data(creation_data);
+
+err:
+	return err;
+}
+
+static void session_nfacct_enable_cb(int err,
+					struct nfacct_context *ctx,
+					void *user_data)
+{
+	struct creation_data *creation_data = user_data;
+	struct connman_session *session = creation_data->session;
+	DBusMessage *reply;
+
+	DBG("");
+
+	if (err < 0)
+		goto err;
+
+	err = session_create_final(creation_data, session);
+	if (err < 0)
+		goto err;
+
+	return;
+
+err:
+	reply = __connman_error_failed(creation_data->pending, -err);
+	g_dbus_send_message(connection, reply);
+	creation_data->pending = NULL;
+
+	cleanup_session(creation_data->session);
+	cleanup_creation_data(creation_data);
+}
+
+static int session_policy_config_cb(struct connman_session *session,
+				struct connman_session_config *config,
+				void *user_data, int err)
+{
+	struct creation_data *creation_data = user_data;
+	char *input, *output;
+	DBusMessage *reply;
+
+	DBG("session %p config %p", session, config);
+
+	if (err < 0)
+		goto err;
+
+	session->policy_config = config;
+
+	session->mark = session_mark++;
+
+	session->nfctx = __connman_nfacct_create_context();
+	if (session->nfctx == NULL) {
+		err = -ENOMEM;
+		goto err;
 	}
 
+	input = g_strdup_printf("session-input-%d", session->mark);
+	err = __connman_nfacct_add(session->nfctx, input,
+					session_nfacct_stats_cb,
+					session);
+	g_free(input);
+	if (err < 0)
+		goto err;
+
+	output = g_strdup_printf("session-output-%d", session->mark);
+	err = __connman_nfacct_add(session->nfctx, output,
+					session_nfacct_stats_cb,
+					session);
+	g_free(output);
+	if (err < 0)
+		goto err;
+
+	err = __connman_nfacct_enable(session->nfctx,
+					session_nfacct_enable_cb,
+					creation_data);
+	if (err < 0)
+		goto err;
+
+	return -EINPROGRESS;
+
+err:
+	reply = __connman_error_failed(creation_data->pending, -err);
+	g_dbus_send_message(connection, reply);
+	creation_data->pending = NULL;
+
+	cleanup_session(session);
 	cleanup_creation_data(creation_data);
 
 	return err;
@@ -1856,6 +1969,7 @@ int __connman_session_create(DBusMessage *msg)
 		goto err;
 	}
 
+	creation_data->session = session;
 	session->session_path = session_path;
 
 	session->info = g_try_new0(struct session_info, 1);
@@ -1880,7 +1994,8 @@ int __connman_session_create(DBusMessage *msg)
 	if (err < 0)
 		goto err;
 
-	err = create_policy_config(session, session_create_cb, creation_data);
+	err = create_policy_config(session, session_policy_config_cb,
+					creation_data);
 	if (err < 0 && err != -EINPROGRESS)
 		return err;
 
