@@ -1346,7 +1346,7 @@ int connman_inet_create_tunnel(char **iface)
 
 struct rs_cb_data {
 	GIOChannel *channel;
-	__connman_inet_rs_cb_t callback;
+	void *callback;
 	struct sockaddr_in6 addr;
 	guint rs_timeout;
 	guint watch_id;
@@ -1390,7 +1390,8 @@ static gboolean rs_timeout_cb(gpointer user_data)
 		return FALSE;
 
 	if (data->callback != NULL)
-		data->callback(NULL, 0, data->user_data);
+		((__connman_inet_rs_cb_t)(data->callback))(NULL, 0,
+							data->user_data);
 
 	data->rs_timeout = 0;
 	rs_cleanup(data);
@@ -1422,7 +1423,8 @@ static int icmpv6_recv(int fd, gpointer user_data)
 
 	len = recvmsg(fd, &mhdr, 0);
 	if (len < 0) {
-		data->callback(NULL, 0, data->user_data);
+		((__connman_inet_rs_cb_t)(data->callback))(NULL, 0,
+							data->user_data);
 		rs_cleanup(data);
 		return -errno;
 	}
@@ -1433,7 +1435,7 @@ static int icmpv6_recv(int fd, gpointer user_data)
 	if (hdr->nd_ra_code != 0)
 		return 0;
 
-	data->callback(hdr, len, data->user_data);
+	((__connman_inet_rs_cb_t)(data->callback))(hdr, len, data->user_data);
 	rs_cleanup(data);
 
 	return len;
@@ -1796,6 +1798,125 @@ int __connman_inet_ipv6_send_ra(int index, struct in6_addr *src_addr,
 out:
 	close(sk);
 	return err;
+}
+
+void __connman_inet_ipv6_stop_recv_rs(void *context)
+{
+	if (context == NULL)
+		return;
+
+	rs_cleanup(context);
+}
+
+static int icmpv6_rs_recv(int fd, gpointer user_data)
+{
+	struct msghdr mhdr;
+	struct iovec iov;
+	unsigned char chdr[CMSG_BUF_LEN];
+	unsigned char buf[1540];
+	struct rs_cb_data *data = user_data;
+	struct nd_router_solicit *hdr;
+	struct sockaddr_in6 saddr;
+	ssize_t len;
+
+	DBG("");
+
+	iov.iov_len = sizeof(buf);
+	iov.iov_base = buf;
+
+	mhdr.msg_name = (void *)&saddr;
+	mhdr.msg_namelen = sizeof(struct sockaddr_in6);
+	mhdr.msg_iov = &iov;
+	mhdr.msg_iovlen = 1;
+	mhdr.msg_control = (void *)chdr;
+	mhdr.msg_controllen = CMSG_BUF_LEN;
+
+	len = recvmsg(fd, &mhdr, 0);
+	if (len < 0) {
+		((__connman_inet_recv_rs_cb_t)(data->callback))(NULL, 0,
+							data->user_data);
+		return -errno;
+	}
+
+	hdr = (struct nd_router_solicit *)buf;
+	DBG("code %d len %zd hdr %zd", hdr->nd_rs_code, len,
+				sizeof(struct nd_router_solicit));
+	if (hdr->nd_rs_code != 0)
+		return 0;
+
+	((__connman_inet_recv_rs_cb_t)(data->callback))(hdr, len,
+							data->user_data);
+	return len;
+}
+
+static gboolean icmpv6_rs_event(GIOChannel *chan, GIOCondition cond,
+								gpointer data)
+{
+	int fd, ret;
+
+	DBG("");
+
+	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
+		return FALSE;
+
+	fd = g_io_channel_unix_get_fd(chan);
+	ret = icmpv6_rs_recv(fd, data);
+	if (ret == 0)
+		return TRUE;
+
+	return FALSE;
+}
+
+int __connman_inet_ipv6_start_recv_rs(int index,
+					__connman_inet_recv_rs_cb_t callback,
+					void *user_data,
+					void **context)
+{
+	struct rs_cb_data *data;
+	struct icmp6_filter filter;
+	char addr_str[INET6_ADDRSTRLEN];
+	int sk, err;
+
+	data = g_try_malloc0(sizeof(struct rs_cb_data));
+	if (data == NULL)
+		return -ENOMEM;
+
+	data->callback = callback;
+	data->user_data = user_data;
+
+	sk = socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
+	if (sk < 0) {
+		g_free(data);
+		return -errno;
+	}
+
+	DBG("sock %d", sk);
+
+	ICMP6_FILTER_SETBLOCKALL(&filter);
+	ICMP6_FILTER_SETPASS(ND_ROUTER_SOLICIT, &filter);
+
+	setsockopt(sk, IPPROTO_ICMPV6, ICMP6_FILTER, &filter,
+						sizeof(struct icmp6_filter));
+
+	err = if_mc_group(sk, index, &in6addr_all_routers_mc, IPV6_JOIN_GROUP);
+	if (err < 0)
+		DBG("Cannot join mc %s %d/%s", inet_ntop(AF_INET6,
+			&in6addr_all_routers_mc, addr_str, INET6_ADDRSTRLEN),
+			err, strerror(-err));
+
+	data->channel = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(data->channel, TRUE);
+
+	g_io_channel_set_encoding(data->channel, NULL, NULL);
+	g_io_channel_set_buffered(data->channel, FALSE);
+
+	data->watch_id = g_io_add_watch(data->channel,
+			G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+			icmpv6_rs_event, data);
+
+	*context = data;
+
+	return 0;
 }
 
 GSList *__connman_inet_ipv6_get_prefixes(struct nd_router_advert *hdr,

@@ -154,6 +154,13 @@ int __connman_inet_ipv6_send_rs(int index, int timeout,
 int __connman_inet_ipv6_send_ra(int index, struct in6_addr *src_addr,
 				GSList *prefixes, int router_lifetime);
 
+typedef void (*__connman_inet_recv_rs_cb_t) (struct nd_router_solicit *reply,
+					unsigned int length, void *user_data);
+int __connman_inet_ipv6_start_recv_rs(int index,
+				__connman_inet_recv_rs_cb_t callback,
+				void *user_data, void **context);
+void __connman_inet_ipv6_stop_recv_rs(void *context);
+
 int __connman_refresh_rs_ipv6(struct connman_network *network, int index);
 
 GSList *__connman_inet_ipv6_get_prefixes(struct nd_router_advert *hdr,
