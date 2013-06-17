@@ -268,6 +268,11 @@ void __connman_tethering_set_enabled(void)
 		__connman_ipaddress_netmask_prefix_len(subnet_mask);
 	__connman_nat_enable(BRIDGE_NAME, start_ip, prefixlen);
 
+	err = __connman_ipv6pd_setup(BRIDGE_NAME);
+	if (err < 0 && err != -EINPROGRESS)
+		DBG("Cannot setup IPv6 prefix delegation %d/%s", err,
+			strerror(-err));
+
 	DBG("tethering started");
 }
 
@@ -276,6 +281,8 @@ void __connman_tethering_set_disabled(void)
 	int index;
 
 	DBG("enabled %d", tethering_enabled - 1);
+
+	__connman_ipv6pd_cleanup();
 
 	index = connman_inet_ifindex(BRIDGE_NAME);
 	__connman_dnsproxy_remove_listener(index);
