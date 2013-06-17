@@ -38,6 +38,7 @@ static connman_bool_t sessionmode;
 static struct connman_session *ecall_session;
 static GSList *policy_list;
 static uint32_t session_mark = 256;
+static struct firewall_context *global_firewall;
 
 enum connman_session_trigger {
 	CONNMAN_SESSION_TRIGGER_UNKNOWN		= 0,
@@ -238,6 +239,46 @@ static char *service2bearer(enum connman_service_type type)
 	}
 
 	return "";
+}
+
+static int init_firewall(void)
+{
+	struct firewall_context *fw;
+	int err;
+
+	fw = __connman_firewall_create();
+
+	err = __connman_firewall_add_rule(fw, "mangle", "INPUT",
+					"-j CONNMARK --restore-mark");
+	if (err < 0)
+		goto err;
+
+	err = __connman_firewall_add_rule(fw, "mangle", "POSTROUTING",
+					"-j CONNMARK --save-mark");
+	if (err < 0)
+		goto err;
+
+	err = __connman_firewall_enable(fw);
+	if (err < 0)
+		goto err;
+
+	global_firewall = fw;
+
+	return 0;
+
+err:
+	__connman_firewall_destroy(fw);
+
+	return err;
+}
+
+static void cleanup_firewall(void)
+{
+	if (global_firewall == NULL)
+		return;
+
+	__connman_firewall_disable(global_firewall);
+	__connman_firewall_destroy(global_firewall);
 }
 
 static int init_routing_table(struct connman_session *session)
@@ -2299,6 +2340,10 @@ int __connman_session_init(void)
 
 	DBG("");
 
+	err = init_firewall();
+	if (err < 0)
+		return err;
+
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -1;
@@ -2306,6 +2351,7 @@ int __connman_session_init(void)
 	err = connman_notifier_register(&session_notifier);
 	if (err < 0) {
 		dbus_connection_unref(connection);
+		cleanup_firewall();
 		return err;
 	}
 
@@ -2325,6 +2371,8 @@ void __connman_session_cleanup(void)
 
 	if (connection == NULL)
 		return;
+
+	cleanup_firewall();
 
 	connman_notifier_unregister(&session_notifier);
 
