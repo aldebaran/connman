@@ -1632,11 +1632,21 @@ static int if_mc_group(int sock, int ifindex, const struct in6_addr *mc_addr,
 
 	ret = setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
 			&val, sizeof(int));
-
-	if (ret < 0)
+	if (ret < 0) {
+		ret = -errno;
+		DBG("Cannot set IPV6_MULTICAST_LOOP %d/%s", ret,
+			strerror(-ret));
 		return ret;
+	}
 
-	return setsockopt(sock, IPPROTO_IPV6, cmd, &mreq, sizeof(mreq));
+	ret = setsockopt(sock, IPPROTO_IPV6, cmd, &mreq, sizeof(mreq));
+	if (ret < 0) {
+		ret = -errno;
+		DBG("Cannot set option %d %d/%s", cmd, ret, strerror(-ret));
+		return ret;
+	}
+
+	return 0;
 }
 
 int __connman_inet_ipv6_send_rs(int index, int timeout,
