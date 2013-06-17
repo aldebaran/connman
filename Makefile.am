@@ -87,7 +87,7 @@ MANUAL_PAGES =
 sbin_PROGRAMS = src/connmand
 
 src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gweb_sources) \
-			$(builtin_sources) src/connman.ver \
+			$(builtin_sources) $(shared_sources) src/connman.ver \
 			src/main.c src/connman.h src/log.c \
 			src/error.c src/plugin.c src/task.c \
 			src/device.c src/network.c src/connection.c \
@@ -102,7 +102,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gweb_sources) \
 			src/session.c src/tethering.c src/wpad.c src/wispr.c \
 			src/stats.c src/iptables.c src/dnsproxy.c src/6to4.c \
 			src/ippool.c src/bridge.c src/nat.c src/ipaddress.c \
-			src/inotify.c src/firewall.c
+			src/inotify.c src/firewall.c src/nfacct.c
 
 src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
 				@XTABLES_LIBS@ @GNUTLS_LIBS@ -lresolv -ldl -lrt

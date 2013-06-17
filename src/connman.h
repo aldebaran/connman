@@ -900,3 +900,10 @@ int __connman_firewall_disable(struct firewall_context *ctx);
 
 int __connman_firewall_init(void);
 void __connman_firewall_cleanup(void);
+
+typedef int (* connman_nfacct_flush_cb_t) (int error, void *user_data);
+
+int __connman_nfacct_flush(connman_nfacct_flush_cb_t cb, void *user_data);
+
+int __connman_nfacct_init(void);
+void __connman_nfacct_cleanup(void);
