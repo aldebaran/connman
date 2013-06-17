@@ -1658,8 +1658,6 @@ int __connman_inet_ipv6_send_rs(int index, int timeout,
 	struct in6_addr dst = in6addr_all_routers_mc;
 	int sk;
 
-	DBG("");
-
 	if (timeout <= 0)
 		return -EINVAL;
 
@@ -1674,6 +1672,8 @@ int __connman_inet_ipv6_send_rs(int index, int timeout,
 	sk = socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
 	if (sk < 0)
 		return -errno;
+
+	DBG("sock %d", sk);
 
 	ICMP6_FILTER_SETBLOCKALL(&filter);
 	ICMP6_FILTER_SETPASS(ND_ROUTER_ADVERT, &filter);
