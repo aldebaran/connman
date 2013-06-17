@@ -1929,6 +1929,54 @@ int __connman_dhcpv6_start_pd_renew(struct connman_network *network,
 	return 0;
 }
 
+static void release_pd_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	DBG("");
+}
+
+int __connman_dhcpv6_start_pd_release(struct connman_network *network,
+				dhcp_cb callback)
+{
+	struct connman_dhcpv6 *dhcp;
+	GDHCPClient *dhcp_client;
+	uint32_t T1, T2;
+
+	if (network_table == NULL)
+		return 0;   /* we are already released */
+
+	dhcp = g_hash_table_lookup(network_pd_table, network);
+	if (dhcp == NULL)
+		return -ENOENT;
+
+	DBG("network %p dhcp %p client %p", network, dhcp, dhcp->dhcp_client);
+
+	clear_timer(dhcp);
+
+	dhcp_client = dhcp->dhcp_client;
+	if (dhcp_client == NULL) {
+		DBG("DHCPv6 PD was not started");
+		return 0;
+	}
+
+	g_dhcp_client_clear_requests(dhcp_client);
+	g_dhcp_client_clear_values(dhcp_client);
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SERVERID);
+
+	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL, NULL);
+	g_dhcpv6_client_set_pd(dhcp_client, &T1, &T2, dhcp->prefixes);
+
+	clear_callbacks(dhcp_client);
+
+	g_dhcp_client_register_event(dhcp_client, G_DHCP_CLIENT_EVENT_RELEASE,
+					release_pd_cb, dhcp);
+
+	dhcp->dhcp_client = dhcp_client;
+
+	return g_dhcp_client_start(dhcp_client, NULL);
+}
+
 static gboolean timeout_pd_request(gpointer user_data)
 {
 	struct connman_dhcpv6 *dhcp = user_data;
@@ -2171,6 +2219,8 @@ void __connman_dhcpv6_stop_pd(int index)
 	network = __connman_service_get_network(service);
 	if (network == NULL)
 		return;
+
+	__connman_dhcpv6_start_pd_release(network, NULL);
 
 	if (g_hash_table_remove(network_pd_table, network) == TRUE)
 		connman_network_unref(network);
