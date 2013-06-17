@@ -2075,6 +2075,16 @@ static struct connman_notifier session_notifier = {
 	.ipconfig_changed	= ipconfig_changed,
 };
 
+static int session_nfacct_flush_cb(int error, void *user_data)
+{
+	if (error == 0)
+		return 0;
+
+	connman_error("Could not flush nfacct table: %s", strerror(-error));
+
+	return error;
+}
+
 int __connman_session_init(void)
 {
 	int err;
@@ -2095,6 +2105,9 @@ int __connman_session_init(void)
 						NULL, cleanup_session);
 
 	sessionmode = FALSE;
+
+	__connman_nfacct_flush(session_nfacct_flush_cb, NULL);
+
 	return 0;
 }
 
