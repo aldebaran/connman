@@ -57,6 +57,7 @@ struct connman_ipconfig {
 
 	int ipv6_privacy_config;
 	char *last_dhcp_address;
+	char **last_dhcpv6_prefixes;
 };
 
 struct connman_ipdevice {
@@ -1215,6 +1216,7 @@ void __connman_ipconfig_unref_debug(struct connman_ipconfig *ipconfig,
 	connman_ipaddress_free(ipconfig->system);
 	connman_ipaddress_free(ipconfig->address);
 	g_free(ipconfig->last_dhcp_address);
+	g_strfreev(ipconfig->last_dhcpv6_prefixes);
 	g_free(ipconfig);
 }
 
@@ -1462,6 +1464,24 @@ char *__connman_ipconfig_get_dhcp_address(struct connman_ipconfig *ipconfig)
 		return NULL;
 
 	return ipconfig->last_dhcp_address;
+}
+
+void __connman_ipconfig_set_dhcpv6_prefixes(struct connman_ipconfig *ipconfig,
+					char **prefixes)
+{
+	if (ipconfig == NULL)
+		return;
+
+	g_strfreev(ipconfig->last_dhcpv6_prefixes);
+	ipconfig->last_dhcpv6_prefixes = prefixes;
+}
+
+char **__connman_ipconfig_get_dhcpv6_prefixes(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig == NULL)
+		return NULL;
+
+	return ipconfig->last_dhcpv6_prefixes;
 }
 
 static void disable_ipv6(struct connman_ipconfig *ipconfig)
@@ -2151,16 +2171,30 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		ipconfig->method = CONNMAN_IPCONFIG_METHOD_OFF;
 
 	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+		gsize length;
+		char *pprefix;
+
 		if (ipconfig->method == CONNMAN_IPCONFIG_METHOD_AUTO ||
 			ipconfig->method == CONNMAN_IPCONFIG_METHOD_MANUAL) {
 			char *privacy;
-			char *pprefix = g_strdup_printf("%sprivacy", prefix);
+
+			pprefix = g_strdup_printf("%sprivacy", prefix);
 			privacy = g_key_file_get_string(keyfile, identifier,
 							pprefix, NULL);
 			ipconfig->ipv6_privacy_config = string2privacy(privacy);
 			g_free(pprefix);
 			g_free(privacy);
 		}
+
+		pprefix = g_strdup_printf("%sDHCP.LastPrefixes", prefix);
+		ipconfig->last_dhcpv6_prefixes =
+			g_key_file_get_string_list(keyfile, identifier, pprefix,
+						&length, NULL);
+		if (ipconfig->last_dhcpv6_prefixes != NULL && length == 0) {
+			g_free(ipconfig->last_dhcpv6_prefixes);
+			ipconfig->last_dhcpv6_prefixes = NULL;
+		}
+		g_free(pprefix);
 	}
 
 	g_free(method);
@@ -2229,6 +2263,19 @@ int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 			g_key_file_set_string(keyfile, identifier, key,
 					ipconfig->last_dhcp_address);
 		else
+			g_key_file_remove_key(keyfile, identifier, key, NULL);
+		g_free(key);
+
+		key = g_strdup_printf("%sDHCP.LastPrefixes", prefix);
+		if (ipconfig->last_dhcpv6_prefixes != NULL &&
+				ipconfig->last_dhcpv6_prefixes[0] != NULL) {
+			guint len =
+				g_strv_length(ipconfig->last_dhcpv6_prefixes);
+
+			g_key_file_set_string_list(keyfile, identifier, key,
+				(const gchar **)ipconfig->last_dhcpv6_prefixes,
+						len);
+		} else
 			g_key_file_remove_key(keyfile, identifier, key, NULL);
 		g_free(key);
 	}

@@ -379,6 +379,9 @@ const char *__connman_ipconfig_get_proxy_autoconfig(struct connman_ipconfig *ipc
 void __connman_ipconfig_set_dhcp_address(struct connman_ipconfig *ipconfig,
 					const char *address);
 char *__connman_ipconfig_get_dhcp_address(struct connman_ipconfig *ipconfig);
+void __connman_ipconfig_set_dhcpv6_prefixes(struct connman_ipconfig *ipconfig,
+					char **prefixes);
+char **__connman_ipconfig_get_dhcpv6_prefixes(struct connman_ipconfig *ipconfig);
 
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix);
