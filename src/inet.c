@@ -2494,11 +2494,9 @@ int __connman_inet_del_fwmark_rule(uint32_t table_id, int family, uint32_t fwmar
 	return iprule_modify(RTM_DELRULE, family, table_id, fwmark);
 }
 
-int __connman_inet_add_default_to_table(uint32_t table_id, int ifindex,
-						const char *gateway)
+static int iproute_default_modify(int cmd, uint32_t table_id, int ifindex,
+			const char *gateway)
 {
-	/* ip route add default via 1.2.3.4 dev wlan0 table 1234 */
-
 	struct __connman_inet_rtnl_handle rth;
 	unsigned char buf[sizeof(struct in6_addr)];
 	int ret, len;
@@ -2523,7 +2521,7 @@ int __connman_inet_add_default_to_table(uint32_t table_id, int ifindex,
 
 	rth.req.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
 	rth.req.n.nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
-	rth.req.n.nlmsg_type = RTM_NEWROUTE;
+	rth.req.n.nlmsg_type = cmd;
 	rth.req.u.r.rt.rtm_family = family;
 	rth.req.u.r.rt.rtm_table = RT_TABLE_MAIN;
 	rth.req.u.r.rt.rtm_scope = RT_SCOPE_NOWHERE;
@@ -2554,4 +2552,20 @@ done:
 	__connman_inet_rtnl_close(&rth);
 
 	return ret;
+}
+
+int __connman_inet_add_default_to_table(uint32_t table_id, int ifindex,
+						const char *gateway)
+{
+	/* ip route add default via 1.2.3.4 dev wlan0 table 1234 */
+
+	return iproute_default_modify(RTM_NEWROUTE, table_id, ifindex, gateway);
+}
+
+int __connman_inet_del_default_from_table(uint32_t table_id, int ifindex,
+						const char *gateway)
+{
+	/* ip route del default via 1.2.3.4 dev wlan0 table 1234 */
+
+	return iproute_default_modify(RTM_DELROUTE, table_id, ifindex, gateway);
 }

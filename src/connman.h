@@ -203,6 +203,7 @@ int __connman_inet_rtnl_addattr32(struct nlmsghdr *n, size_t maxlen,
 int __connman_inet_add_fwmark_rule(uint32_t table_id, int family, uint32_t fwmark);
 int __connman_inet_del_fwmark_rule(uint32_t table_id, int family, uint32_t fwmark);
 int __connman_inet_add_default_to_table(uint32_t table_id, int ifindex, const char *gateway);
+int __connman_inet_del_default_from_table(uint32_t table_id, int ifindex, const char *gateway);
 
 #include <connman/resolver.h>
 
