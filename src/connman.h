@@ -200,6 +200,9 @@ int __connman_inet_rtnl_addattr_l(struct nlmsghdr *n, size_t max_length,
 int __connman_inet_rtnl_addattr32(struct nlmsghdr *n, size_t maxlen,
 			int type, __u32 data);
 
+int __connman_inet_add_fwmark_rule(uint32_t table_id, int family, uint32_t fwmark);
+int __connman_inet_del_fwmark_rule(uint32_t table_id, int family, uint32_t fwmark);
+
 #include <connman/resolver.h>
 
 int __connman_resolver_init(connman_bool_t dnsproxy);

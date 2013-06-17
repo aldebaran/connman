@@ -46,6 +46,7 @@
 #include <linux/if_tun.h>
 #include <ctype.h>
 #include <ifaddrs.h>
+#include <linux/fib_rules.h>
 
 #include "connman.h"
 
@@ -2430,4 +2431,65 @@ int __connman_inet_get_interface_address(int index, int family, void *address)
 out:
 	freeifaddrs(ifaddr);
 	return err;
+}
+
+static int iprule_modify(int cmd, int family, uint32_t table_id,
+			uint32_t fwmark)
+{
+	struct __connman_inet_rtnl_handle rth;
+	int ret;
+
+	memset(&rth, 0, sizeof(rth));
+
+	rth.req.n.nlmsg_type = cmd;
+	rth.req.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+	rth.req.n.nlmsg_flags = NLM_F_REQUEST;
+	rth.req.u.r.rt.rtm_family = family;
+	rth.req.u.r.rt.rtm_protocol = RTPROT_BOOT;
+	rth.req.u.r.rt.rtm_scope = RT_SCOPE_UNIVERSE;
+	rth.req.u.r.rt.rtm_table = table_id;
+	rth.req.u.r.rt.rtm_type = RTN_UNSPEC;
+	rth.req.u.r.rt.rtm_flags = 0;
+
+	if (cmd == RTM_NEWRULE) {
+		rth.req.n.nlmsg_flags |= NLM_F_CREATE|NLM_F_EXCL;
+		rth.req.u.r.rt.rtm_type = RTN_UNICAST;
+	}
+
+	__connman_inet_rtnl_addattr32(&rth.req.n, sizeof(rth.req),
+							FRA_FWMARK, fwmark);
+
+	if (table_id < 256) {
+		rth.req.u.r.rt.rtm_table = table_id;
+	} else {
+		rth.req.u.r.rt.rtm_table = RT_TABLE_UNSPEC;
+		__connman_inet_rtnl_addattr32(&rth.req.n, sizeof(rth.req),
+						FRA_TABLE, table_id);
+	}
+
+	if (rth.req.u.r.rt.rtm_family == AF_UNSPEC)
+		rth.req.u.r.rt.rtm_family = AF_INET;
+
+	ret = __connman_inet_rtnl_open(&rth);
+	if (ret < 0)
+		goto done;
+
+	ret = __connman_inet_rtnl_send(&rth, &rth.req.n);
+
+done:
+	__connman_inet_rtnl_close(&rth);
+
+	return ret;
+}
+
+int __connman_inet_add_fwmark_rule(uint32_t table_id, int family, uint32_t fwmark)
+{
+	/* ip rule add fwmark 9876 table 1234 */
+
+	return iprule_modify(RTM_NEWRULE, family, table_id, fwmark);
+}
+
+int __connman_inet_del_fwmark_rule(uint32_t table_id, int family, uint32_t fwmark)
+{
+	return iprule_modify(RTM_DELRULE, family, table_id, fwmark);
 }
