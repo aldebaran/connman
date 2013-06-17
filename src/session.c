@@ -97,6 +97,8 @@ struct connman_session {
 
 	struct nfacct_context *nfctx;
 	uint32_t mark;
+	int index;
+	char *gateway;
 
 	GList *service_list;
 	GHashTable *service_hash;
@@ -238,6 +240,85 @@ static char *service2bearer(enum connman_service_type type)
 	return "";
 }
 
+static int init_routing_table(struct connman_session *session)
+{
+	int err;
+
+	if (session->policy_config->id_type == CONNMAN_SESSION_ID_TYPE_UNKNOWN)
+		return 0;
+
+	DBG("");
+
+	err = __connman_inet_add_fwmark_rule(session->mark,
+						AF_INET, session->mark);
+	if (err < 0)
+		return err;
+
+	err = __connman_inet_add_fwmark_rule(session->mark,
+						AF_INET6, session->mark);
+	if (err < 0)
+		__connman_inet_del_fwmark_rule(session->mark,
+						AF_INET, session->mark);
+
+	return err;
+}
+
+static void del_default_route(struct connman_session *session)
+{
+	if (session->gateway != NULL)
+		return;
+
+	DBG("index %d routing table %d default gateway %s",
+		session->index, session->mark, session->gateway);
+
+	__connman_inet_del_default_from_table(session->mark,
+					session->index, session->gateway);
+	g_free(session->gateway);
+	session->gateway = NULL;
+	session->index = -1;
+}
+
+static void add_default_route(struct connman_session *session)
+{
+	struct session_info *info = session->info;
+	struct connman_ipconfig *ipconfig;
+	int err;
+
+	if (info->entry == NULL)
+		return;
+
+	ipconfig = __connman_service_get_ip4config(info->entry->service);
+	session->index = __connman_ipconfig_get_index(ipconfig);
+	session->gateway = g_strdup(__connman_ipconfig_get_gateway(ipconfig));
+
+	DBG("index %d routing table %d default gateway %s",
+		session->index, session->mark, session->gateway);
+
+	err = __connman_inet_add_default_to_table(session->mark,
+					session->index, session->gateway);
+	if (err < 0)
+		DBG("session %p %s", session, strerror(-err));
+}
+
+static void cleanup_routing_table(struct connman_session *session)
+{
+	DBG("");
+
+	__connman_inet_del_fwmark_rule(session->mark,
+					AF_INET6, session->mark);
+
+	__connman_inet_del_fwmark_rule(session->mark,
+					AF_INET, session->mark);
+
+	del_default_route(session);
+}
+
+static void update_routing_table(struct connman_session *session)
+{
+	del_default_route(session);
+	add_default_route(session);
+}
+
 static void destroy_policy_config(struct connman_session *session)
 {
 	if (session->policy == NULL) {
@@ -263,6 +344,7 @@ static void free_session(struct connman_session *session)
 	g_free(session->notify_path);
 	g_free(session->info);
 	g_free(session->info_last);
+	g_free(session->gateway);
 
 	g_free(session);
 }
@@ -303,6 +385,8 @@ static void cleanup_session(gpointer user_data)
 	struct connman_session *session = user_data;
 
 	DBG("remove %s", session->session_path);
+
+	cleanup_routing_table(session);
 
 	if (session->nfctx != NULL)
 		__connman_nfacct_disable(session->nfctx, nfacct_cleanup_cb,
@@ -1160,6 +1244,8 @@ static void deselect_and_disconnect(struct connman_session *session)
 	deselect_service(info);
 
 	info->reason = CONNMAN_SESSION_REASON_FREE_RIDE;
+
+	update_routing_table(session);
 }
 
 static void select_connected_service(struct session_info *info,
@@ -1206,6 +1292,8 @@ static void select_service(struct session_info *info,
 		select_connected_service(info, entry);
 	else
 		select_offline_service(info, entry);
+
+	update_routing_table(entry->session);
 }
 
 static void select_and_connect(struct connman_session *session,
@@ -1773,6 +1861,10 @@ static void session_nfacct_enable_cb(int err,
 	if (err < 0)
 		goto err;
 
+	err = init_routing_table(session);
+	if (err < 0)
+		goto err;
+
 	err = session_create_final(creation_data, session);
 	if (err < 0)
 		goto err;
@@ -1804,6 +1896,7 @@ static int session_policy_config_cb(struct connman_session *session,
 	session->policy_config = config;
 
 	session->mark = session_mark++;
+	session->index = -1;
 
 	session->nfctx = __connman_nfacct_create_context();
 	if (session->nfctx == NULL) {
