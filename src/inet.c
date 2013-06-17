@@ -1457,7 +1457,8 @@ static gboolean icmpv6_event(GIOChannel *chan, GIOCondition cond,
 }
 
 /* Adapted from RFC 1071 "C" Implementation Example */
-static uint16_t csum(const void *phdr, const void *data, socklen_t datalen)
+static uint16_t csum(const void *phdr, const void *data, socklen_t datalen,
+		const void *extra_data, socklen_t extra_datalen)
 {
 	register unsigned long sum = 0;
 	socklen_t count;
@@ -1478,13 +1479,25 @@ static uint16_t csum(const void *phdr, const void *data, socklen_t datalen)
 		count -= 2;
 	}
 
+	if (extra_data != NULL) {
+		count = extra_datalen;
+		addr = (uint16_t *)extra_data;
+
+		while (count > 1) {
+			sum += *(addr++);
+			count -= 2;
+		}
+	}
+
 	while (sum >> 16)
 		sum = (sum & 0xffff) + (sum >> 16);
 
 	return (uint16_t)~sum;
 }
 
-static int ndisc_send_unspec(int type, int oif, const struct in6_addr *dest)
+static int ndisc_send_unspec(int type, int oif, const struct in6_addr *dest,
+			const struct in6_addr *source,
+			unsigned char *buf, size_t len, uint16_t lifetime)
 {
 	struct _phdr {
 		struct in6_addr src;
@@ -1500,16 +1513,17 @@ static int ndisc_send_unspec(int type, int oif, const struct in6_addr *dest)
 			struct icmp6_hdr icmp;
 			struct nd_neighbor_solicit ns;
 			struct nd_router_solicit rs;
+			struct nd_router_advert ra;
 		} i;
 	} frame;
 
 	struct msghdr msgh;
 	struct cmsghdr *cmsg;
 	struct in6_pktinfo *pinfo;
-	struct sockaddr_in6 dst;
+	struct sockaddr_in6 dst, src;
 	char cbuf[CMSG_SPACE(sizeof(*pinfo))];
-	struct iovec iov;
-	int fd, datalen, ret;
+	struct iovec iov[2];
+	int fd, datalen, ret, iovlen = 1;
 
 	DBG("");
 
@@ -1520,35 +1534,55 @@ static int ndisc_send_unspec(int type, int oif, const struct in6_addr *dest)
 	memset(&frame, 0, sizeof(frame));
 	memset(&dst, 0, sizeof(dst));
 
-	datalen = sizeof(frame.i.rs); /* 8, csum() safe */
+	if (type == ND_ROUTER_SOLICIT)
+		datalen = sizeof(frame.i.rs); /* 8, csum() safe */
+	else if (type == ND_ROUTER_ADVERT) {
+		datalen = sizeof(frame.i.ra); /* 16, csum() safe */
+		frame.i.ra.nd_ra_router_lifetime = htons(lifetime);
+	} else
+		return -EINVAL;
+
 	dst.sin6_addr = *dest;
+
+	if (source != NULL)
+		src.sin6_addr = *source;
+	else
+		src.sin6_addr = in6addr_any;
 
 	/* Fill in the IPv6 header */
 	frame.ip.ip6_vfc = 0x60;
-	frame.ip.ip6_plen = htons(datalen);
+	frame.ip.ip6_plen = htons(datalen + len);
 	frame.ip.ip6_nxt = IPPROTO_ICMPV6;
 	frame.ip.ip6_hlim = 255;
 	frame.ip.ip6_dst = dst.sin6_addr;
+	frame.ip.ip6_src = src.sin6_addr;
 	/* all other fields are already set to zero */
 
 	/* Prepare pseudo header for csum */
 	memset(&phdr, 0, sizeof(phdr));
 	phdr.dst = dst.sin6_addr;
-	phdr.plen = htonl(datalen);
+	phdr.src = src.sin6_addr;
+	phdr.plen = htonl(datalen + len);
 	phdr.nxt = IPPROTO_ICMPV6;
 
 	/* Fill in remaining ICMP header fields */
 	frame.i.icmp.icmp6_type = type;
-	frame.i.icmp.icmp6_cksum = csum(&phdr, &frame.i, datalen);
+	frame.i.icmp.icmp6_cksum = csum(&phdr, &frame.i, datalen, buf, len);
 
-	iov.iov_base = &frame;
-	iov.iov_len = sizeof(frame.ip) + datalen;
+	iov[0].iov_base = &frame;
+	iov[0].iov_len = sizeof(frame.ip) + datalen;
+
+	if (buf != NULL) {
+		iov[1].iov_base = buf;
+		iov[1].iov_len = len;
+		iovlen = 2;
+	}
 
 	dst.sin6_family = AF_INET6;
 	msgh.msg_name = &dst;
 	msgh.msg_namelen = sizeof(dst);
-	msgh.msg_iov = &iov;
-	msgh.msg_iovlen = 1;
+	msgh.msg_iov = iov;
+	msgh.msg_iovlen = iovlen;
 	msgh.msg_flags = 0;
 
 	memset(cbuf, 0, CMSG_SPACE(sizeof(*pinfo)));
@@ -1651,7 +1685,7 @@ int __connman_inet_ipv6_send_rs(int index, int timeout,
 			G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 			icmpv6_event, data);
 
-	ndisc_send_unspec(ND_ROUTER_SOLICIT, index, &dst);
+	ndisc_send_unspec(ND_ROUTER_SOLICIT, index, &dst, NULL, NULL, 0, 0);
 
 	return 0;
 }
