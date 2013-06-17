@@ -96,6 +96,8 @@ struct connman_session {
 
 	connman_bool_t ecall;
 
+	enum connman_session_id_type id_type;
+	struct firewall_context *fw;
 	struct nfacct_context *nfctx;
 	uint32_t mark;
 	int index;
@@ -281,6 +283,82 @@ static void cleanup_firewall(void)
 	__connman_firewall_destroy(global_firewall);
 }
 
+static int init_firewall_session(struct connman_session *session)
+{
+	struct firewall_context *fw;
+	int err;
+
+	if (session->policy_config->id_type == CONNMAN_SESSION_ID_TYPE_UNKNOWN)
+		return 0;
+
+	DBG("");
+
+	fw = __connman_firewall_create();
+	if (fw == NULL)
+		return -ENOMEM;
+
+	switch (session->policy_config->id_type) {
+	case CONNMAN_SESSION_ID_TYPE_UID:
+		err = __connman_firewall_add_rule(fw, "mangle", "OUTPUT",
+				"-m owner --uid-owner %s -j MARK --set-mark %d",
+						session->policy_config->id,
+						session->mark);
+		break;
+	case CONNMAN_SESSION_ID_TYPE_GID:
+		err = __connman_firewall_add_rule(fw, "mangle", "OUTPUT",
+				"-m owner --gid-owner %s -j MARK --set-mark %d",
+						session->policy_config->id,
+						session->mark);
+		break;
+	case CONNMAN_SESSION_ID_TYPE_LSM:
+	default:
+		err = -EINVAL;
+	}
+
+	if (err < 0)
+		goto err;
+
+	session->id_type = session->policy_config->id_type;
+
+	err = __connman_firewall_add_rule(fw, "filter", "INPUT",
+		"-m mark --mark %d -m nfacct --nfacct-name session-input-%d",
+		session->mark,
+		session->mark);
+	if (err < 0)
+		goto err;
+
+	err = __connman_firewall_add_rule(fw, "filter", "OUTPUT",
+		"-m mark --mark %d -m nfacct --nfacct-name session-output-%d",
+		session->mark,
+		session->mark);
+	if (err < 0)
+		goto err;
+
+	err = __connman_firewall_enable(fw);
+	if (err)
+		goto err;
+
+	session->fw = fw;
+
+	return 0;
+
+err:
+	__connman_firewall_destroy(fw);
+
+	return err;
+}
+
+static void cleanup_firewall_session(struct connman_session *session)
+{
+	if (session->fw == NULL)
+		return;
+
+	__connman_firewall_disable(session->fw);
+	__connman_firewall_destroy(session->fw);
+
+	session->fw = NULL;
+}
+
 static int init_routing_table(struct connman_session *session)
 {
 	int err;
@@ -428,6 +506,7 @@ static void cleanup_session(gpointer user_data)
 	DBG("remove %s", session->session_path);
 
 	cleanup_routing_table(session);
+	cleanup_firewall_session(session);
 
 	if (session->nfctx != NULL)
 		__connman_nfacct_disable(session->nfctx, nfacct_cleanup_cb,
@@ -1598,6 +1677,17 @@ int connman_session_config_update(struct connman_session *session)
 	 * might have changed. We can still optimize this later.
 	 */
 
+	if (session->id_type != session->policy_config->id_type) {
+		cleanup_firewall_session(session);
+		err = init_firewall_session(session);
+		if (err < 0) {
+			connman_session_destroy(session);
+			return err;
+		}
+
+		session->id_type = session->policy_config->id_type;
+	}
+
 	err = apply_policy_on_bearers(
 		session->policy_config->allowed_bearers,
 		session->user_allowed_bearers,
@@ -1827,6 +1917,8 @@ static int session_create_final(struct creation_data *creation_data,
 	DBusMessage *reply;
 	int err;
 
+	DBG("");
+
 	info = session->info;
 	info_last = session->info_last;
 
@@ -1899,6 +1991,10 @@ static void session_nfacct_enable_cb(int err,
 
 	DBG("");
 
+	if (err < 0)
+		goto err;
+
+	err = init_firewall_session(session);
 	if (err < 0)
 		goto err;
 
