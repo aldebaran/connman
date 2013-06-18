@@ -168,10 +168,12 @@ static void finish_create(struct policy_config *policy,
 				connman_session_config_func_t cb,
 				void *user_data)
 {
-	struct policy_group *group;
+	struct policy_group *group = NULL;
 	GSList *list;
 
-	group = g_hash_table_lookup(selinux_hash, policy->selinux);
+	if (policy->selinux != NULL)
+		group = g_hash_table_lookup(selinux_hash, policy->selinux);
+
 	if (group != NULL) {
 		set_policy(policy, group);
 
@@ -180,7 +182,9 @@ static void finish_create(struct policy_config *policy,
 		goto done;
 	}
 
-	group = g_hash_table_lookup(uid_hash, policy->uid);
+	if (policy->uid != NULL)
+		group = g_hash_table_lookup(uid_hash, policy->uid);
+
 	if (group != NULL) {
 		set_policy(policy, group);
 
