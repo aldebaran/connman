@@ -33,7 +33,8 @@ extern "C" {
  * @title: IP configuration premitives
  * @short_description: Functions for IP configuration handling
  */
-
+char* __connman_ipconfig_address_subnet(const char *address,
+					const char *netmask);
 enum connman_ipconfig_type {
 	CONNMAN_IPCONFIG_TYPE_UNKNOWN = 0,
 	CONNMAN_IPCONFIG_TYPE_ALL     = 0,

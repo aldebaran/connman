@@ -116,6 +116,23 @@ static void free_address_list(struct connman_ipdevice *ipdevice)
 	ipdevice->address_list = NULL;
 }
 
+char* __connman_ipconfig_address_subnet(const char *address,
+					const char *netmask)
+{
+	char *subnet = NULL;
+	struct in_addr ip_addr, ip_netmask, ip_subnet;
+
+	subnet = malloc(INET_ADDRSTRLEN);
+
+	inet_pton(AF_INET, address, &ip_addr);
+	inet_pton(AF_INET, netmask, &ip_netmask);
+	ip_subnet.s_addr = ip_addr.s_addr & ip_netmask.s_addr;
+
+	inet_ntop(AF_INET, &ip_subnet, subnet, INET_ADDRSTRLEN);
+
+	return subnet;
+}
+
 static struct connman_ipaddress *find_ipaddress(struct connman_ipdevice *ipdevice,
 				unsigned char prefixlen, const char *local)
 {
