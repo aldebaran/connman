@@ -32,6 +32,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 #include <glib.h>
 
@@ -146,7 +147,8 @@ static void test_nfacct_dump_callback(int error, uint16_t type, const void *data
 		}
 	}
 
-	printf("%s packets %lu bytes %lu\n", name, packets, bytes);
+	printf("%s packets %" PRIu64 " bytes %" PRIu64 "\n",
+		name, packets, bytes);
 done:
 	g_main_loop_quit(mainloop);
 }
