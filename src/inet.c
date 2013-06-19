@@ -2603,3 +2603,63 @@ int __connman_inet_del_default_from_table(uint32_t table_id, int ifindex,
 
 	return iproute_default_modify(RTM_DELROUTE, table_id, ifindex, gateway);
 }
+
+int __connman_inet_get_interface_ll_address(int index, int family,
+								void *address)
+{
+	struct ifaddrs *ifaddr, *ifa;
+	int err = -ENOENT;
+	char name[IF_NAMESIZE];
+
+	if (if_indextoname(index, name) == NULL)
+		return -EINVAL;
+
+	DBG("index %d interface %s", index, name);
+
+	if (getifaddrs(&ifaddr) < 0) {
+		err = -errno;
+		DBG("Cannot get addresses err %d/%s", err, strerror(-err));
+		return err;
+	}
+
+	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL)
+			continue;
+
+		if (strncmp(ifa->ifa_name, name, IF_NAMESIZE) == 0 &&
+					ifa->ifa_addr->sa_family == family) {
+			if (family == AF_INET) {
+				struct sockaddr_in *in4 = (struct sockaddr_in *)
+					ifa->ifa_addr;
+				if (in4->sin_addr.s_addr == INADDR_ANY)
+					continue;
+				if ((in4->sin_addr.s_addr & IN_CLASSB_NET) !=
+						((in_addr_t) 0xa9fe0000))
+					continue;
+				memcpy(address, &in4->sin_addr,
+							sizeof(struct in_addr));
+			} else if (family == AF_INET6) {
+				struct sockaddr_in6 *in6 =
+					(struct sockaddr_in6 *)ifa->ifa_addr;
+				if (memcmp(&in6->sin6_addr, &in6addr_any,
+						sizeof(struct in6_addr)) == 0)
+					continue;
+				if (!IN6_IS_ADDR_LINKLOCAL(&in6->sin6_addr))
+					continue;
+
+				memcpy(address, &in6->sin6_addr,
+						sizeof(struct in6_addr));
+			} else {
+				err = -EINVAL;
+				goto out;
+			}
+
+			err = 0;
+			break;
+		}
+	}
+
+out:
+	freeifaddrs(ifaddr);
+	return err;
+}
