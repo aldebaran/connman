@@ -177,72 +177,70 @@ static void append_attr_str(struct nlattr *attr,
         dst[size - 1] = '\0';
 }
 
-struct nfacctmsg {
-	struct nfgenmsg hdr;
-	struct nlattr attr;
-	unsigned char *buf[];
-};
-
 static void test_nfacct_new(struct netlink_info *netlink, const char *name)
 {
-	struct nfacctmsg *msg;
+	struct nfgenmsg *hdr;
 	size_t len, name_len;
 
 	name_len = strlen(name) + 1;
-	len = sizeof(msg) + name_len;
+	len = NLMSG_ALIGN(sizeof(struct nfgenmsg)) +
+		NLA_ALIGN(sizeof(struct nlattr)) +
+		name_len;
 
-	msg = g_malloc0(len);
+	hdr = g_malloc0(len);
 
-	msg->hdr.nfgen_family = AF_UNSPEC;
-	msg->hdr.version = NFNETLINK_V0;
-	msg->hdr.res_id = 0;
+	hdr->nfgen_family = AF_UNSPEC;
+	hdr->version = NFNETLINK_V0;
+	hdr->res_id = 0;
 
-	append_attr_str(&msg->attr, NFACCT_NAME, name_len, name);
+	append_attr_str(NLA_DATA(hdr), NFACCT_NAME, name_len, name);
 
 	netlink_send(netlink,
 			NFNL_SUBSYS_ACCT << 8 | NFNL_MSG_ACCT_NEW,
-			NLM_F_CREATE | NLM_F_ACK, msg, len,
+			NLM_F_CREATE | NLM_F_ACK, hdr, len,
 			test_nfacct_new_callback, NULL, NULL);
 
-	g_free(msg);
+	g_free(hdr);
 }
 
 static void test_nfacct_del(struct netlink_info *netlink, const char *name)
 {
-	struct nfacctmsg *msg;
+	struct nfgenmsg *hdr;
 	size_t len, name_len;
 
 	name_len = strlen(name) + 1;
-	len = sizeof(msg) + name_len;
+	len = NLMSG_ALIGN(sizeof(struct nfgenmsg)) +
+		NLA_ALIGN(sizeof(struct nlattr)) +
+		name_len;
 
-	msg = g_malloc0(len);
+	hdr = g_malloc0(len);
 
-	msg->hdr.nfgen_family = AF_UNSPEC;
-	msg->hdr.version = NFNETLINK_V0;
-	msg->hdr.res_id = 0;
+	hdr->nfgen_family = AF_UNSPEC;
+	hdr->version = NFNETLINK_V0;
+	hdr->res_id = 0;
 
-	append_attr_str(&msg->attr, NFACCT_NAME, name_len, name);
+	append_attr_str(NLA_DATA(hdr), NFACCT_NAME, name_len, name);
 
 	netlink_send(netlink,
 			NFNL_SUBSYS_ACCT << 8 | NFNL_MSG_ACCT_DEL,
-			NLM_F_ACK, msg, len,
+			NLM_F_ACK, hdr, len,
 			test_nfacct_new_callback, NULL, NULL);
 
-	g_free(msg);
+	g_free(hdr);
 }
 
 static void test_nfacct_dump(struct netlink_info *netlink)
 {
-	struct nfgenmsg msg;
+	struct nfgenmsg hdr;
 
-	memset(&msg, 0, sizeof(msg));
-	msg.nfgen_family = AF_UNSPEC;
-	msg.version = NFNETLINK_V0;
-	msg.res_id = 0;
+	memset(&hdr, 0, sizeof(hdr));
+	hdr.nfgen_family = AF_UNSPEC;
+	hdr.version = NFNETLINK_V0;
+	hdr.res_id = 0;
 
 	netlink_send(netlink,
 			NFNL_SUBSYS_ACCT << 8 | NFNL_MSG_ACCT_GET,
-			NLM_F_DUMP , &msg, sizeof(msg),
+			NLM_F_DUMP , &hdr, sizeof(hdr),
 			test_nfacct_dump_callback, NULL, NULL);
 }
 
