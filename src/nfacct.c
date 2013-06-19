@@ -24,6 +24,7 @@
 #endif
 
 #include <errno.h>
+#include <inttypes.h>
 
 #include "connman.h"
 #include "src/shared/nfacct.h"
@@ -288,7 +289,7 @@ static void nfacct_flush_cb(int error, const char *name,
 	connman_nfacct_flush_cb_t cb = cbd->cb;
 	unsigned int id;
 
-	DBG("name %s packets %lu bytes %lu", name, packets, bytes);
+	DBG("name %s packets %" PRIu64 " bytes %" PRIu64, name, packets, bytes);
 
 	if (error < 0) {
 		/*
