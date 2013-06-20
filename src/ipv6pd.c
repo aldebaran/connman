@@ -207,6 +207,7 @@ static void dhcpv6_callback(struct connman_network *network,
 
 static int setup_prefix_delegation(struct connman_service *service)
 {
+	struct connman_ipconfig *ipconfig;
 	char *interface;
 	int err = 0, ifindex;
 
@@ -230,6 +231,14 @@ static int setup_prefix_delegation(struct connman_service *service)
 	}
 
 	g_free(default_interface);
+
+	ipconfig = __connman_service_get_ip6config(service);
+	if (__connman_ipconfig_ipv6_is_enabled(ipconfig) == FALSE) {
+		g_free(interface);
+		default_interface = NULL;
+		return -EPFNOSUPPORT;
+	}
+
 	default_interface = interface;
 
 	if (default_interface != NULL) {
@@ -259,9 +268,45 @@ static void update_default_interface(struct connman_service *service)
 	setup_prefix_delegation(service);
 }
 
+static void update_ipconfig(struct connman_service *service,
+				struct connman_ipconfig *ipconfig)
+{
+	if (service == NULL || service != __connman_service_get_default())
+		return;
+
+	if (ipconfig != __connman_service_get_ip6config(service))
+		return;
+
+	if (__connman_ipconfig_ipv6_is_enabled(ipconfig) == FALSE) {
+		if (default_interface != NULL) {
+			int ifindex;
+
+			ifindex = connman_inet_ifindex(default_interface);
+			__connman_dhcpv6_stop_pd(ifindex);
+
+			g_free(default_interface);
+			default_interface = NULL;
+		}
+		DBG("No IPv6 support for interface %s",
+				__connman_ipconfig_get_ifname(ipconfig));
+		return;
+	}
+
+	/*
+	 * Did we had PD activated already? If not, then start it.
+	 */
+	if (default_interface == NULL) {
+		DBG("IPv6 ipconfig %p changed for interface %s", ipconfig,
+			__connman_ipconfig_get_ifname(ipconfig));
+
+		setup_prefix_delegation(service);
+	}
+}
+
 static struct connman_notifier pd_notifier = {
 	.name			= "IPv6 prefix delegation",
 	.default_changed	= update_default_interface,
+	.ipconfig_changed	= update_ipconfig,
 };
 
 int __connman_ipv6pd_setup(const char *bridge)
