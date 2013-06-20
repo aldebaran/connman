@@ -33,6 +33,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <errno.h>
 
 #include <glib.h>
 
@@ -68,8 +69,7 @@ static void getlink_callback(int error, uint16_t type, const void *data,
 	char ifname[IF_NAMESIZE];
 	uint32_t index, flags;
 
-	if (error)
-		goto done;
+	g_assert_cmpint(error, ==, 0);
 
 	bytes = len - NLMSG_ALIGN(sizeof(struct ifinfomsg));
 
@@ -90,7 +90,6 @@ static void getlink_callback(int error, uint16_t type, const void *data,
 
 	printf("index=%d flags=0x%08x name=%s\n", index, flags, ifname);
 
-done:
 	g_main_loop_quit(mainloop);
 }
 
@@ -125,8 +124,10 @@ static void test_nfacct_dump_callback(int error, uint16_t type, const void *data
 	char *name;
 	uint64_t packets, bytes;
 
-	if (error)
-		goto done;
+	if (error == EINVAL)
+		printf("nfnetlink_acct not loaded\n");
+
+	g_assert_cmpint(error, ==, 0);
 
 	attrlen = len - NLMSG_ALIGN(sizeof(struct nfgenmsg));
 
@@ -149,19 +150,17 @@ static void test_nfacct_dump_callback(int error, uint16_t type, const void *data
 
 	printf("%s packets %" PRIu64 " bytes %" PRIu64 "\n",
 		name, packets, bytes);
-done:
+
 	g_main_loop_quit(mainloop);
 }
 
-static void test_nfacct_new_callback(int error, uint16_t type, const void *data,
+static void test_nfacct_callback(int error, uint16_t type, const void *data,
 						uint32_t len, void *user_data)
 {
-	if (error < 0) {
-		printf("error %d\n", error);
-		g_main_loop_quit(mainloop);
-	}
+	if (error == EINVAL)
+		printf("nfnetlink_acct not loaded\n");
 
-	printf("okay\n");
+	g_assert_cmpint(error, ==,  0);
 }
 
 static void append_attr_str(struct nlattr *attr,
@@ -198,7 +197,7 @@ static void test_nfacct_new(struct netlink_info *netlink, const char *name)
 	netlink_send(netlink,
 			NFNL_SUBSYS_ACCT << 8 | NFNL_MSG_ACCT_NEW,
 			NLM_F_CREATE | NLM_F_ACK, hdr, len,
-			test_nfacct_new_callback, NULL, NULL);
+			test_nfacct_callback, NULL, NULL);
 
 	g_free(hdr);
 }
@@ -224,7 +223,7 @@ static void test_nfacct_del(struct netlink_info *netlink, const char *name)
 	netlink_send(netlink,
 			NFNL_SUBSYS_ACCT << 8 | NFNL_MSG_ACCT_DEL,
 			NLM_F_ACK, hdr, len,
-			test_nfacct_new_callback, NULL, NULL);
+			test_nfacct_callback, NULL, NULL);
 
 	g_free(hdr);
 }
@@ -267,37 +266,83 @@ static void test_case_2(void)
 
 static void nfacct_add_callback(int error, void *user_data)
 {
+	const char *name = user_data;
+
+	if (error == EINVAL)
+		printf("nfnetlink_acct not loaded\n");
+
+	g_assert_cmpint(error, ==, 0);
+
+	printf("nfacct_add: error %d name %s\n", error, name);
 }
 
 static void nfacct_get_callback(int error, const char *name,
 				uint64_t packets, uint64_t bytes,
 				void *user_data)
 {
-	printf("name %s\n", name);
+	const char *expected_name = user_data;
+
+	if (error == EINVAL)
+		printf("nfnetlink_acct not loaded\n");
+
+	g_assert_cmpint(error, ==, 0);
+
+	if (name == NULL) {
+		/* end of dump */
+		return;
+	}
+
+	printf("nfacct_get: error %d name %s packets %" PRIu64
+		" bytes %" PRIu64 "\n", error, name, packets, bytes);
+
+	g_assert_cmpstr(expected_name, ==,  name);
+	g_assert_cmpuint(packets, ==, 0);
+	g_assert_cmpuint(bytes, ==, 0);
 }
 
 static void nfacct_dump_callback(int error, const char *name,
 					uint64_t packets, uint64_t bytes,
 					void *user_data)
 {
-	printf("name %s\n", name);
+	const char *expected_name = user_data;
+
+	if (error == EINVAL)
+		printf("nfnetlink_acct not loaded\n");
+
+	g_assert_cmpint(error, ==, 0);
+
+	if (name == NULL) {
+		/* end of dump */
+		return;
+	}
+
+	printf("nfacct_dump: error %d name %s packets %" PRIu64
+		" bytes %" PRIu64 "\n", error, name, packets, bytes);
+
+	g_assert_cmpstr(expected_name, ==, name);
+	g_assert_cmpuint(packets, ==, 0);
+	g_assert_cmpuint(bytes, ==, 0);
 }
 
 static void nfacct_del_callback(int error, void *user_data)
 {
+	g_assert_cmpint(error, ==, 0);
+
 	g_main_loop_quit(mainloop);
 }
 
 static void nfacct_case_1(void)
 {
 	struct nfacct_info *nfacct;
+	char *name = "session-bar";
 
+	printf("\n");
 	nfacct = nfacct_new();
 
-	nfacct_add(nfacct, "session-bar", nfacct_add_callback, NULL);
-	nfacct_get(nfacct, "session-bar", false, nfacct_get_callback, NULL);
-	nfacct_dump(nfacct, false, nfacct_dump_callback, NULL);
-	nfacct_del(nfacct, "session-bar", nfacct_del_callback, NULL);
+	nfacct_add(nfacct, name, nfacct_add_callback, name);
+	nfacct_get(nfacct, name, false, nfacct_get_callback, name);
+	nfacct_dump(nfacct, false, nfacct_dump_callback, name);
+	nfacct_del(nfacct, name, nfacct_del_callback, name);
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 	g_main_loop_run(mainloop);
