@@ -147,8 +147,8 @@ static void nfacct_enable_cb(int error, void *user_data)
 
 	ctx->pending--;
 
-	if (error < 0)
-		ctx->error = error;
+	if (error != 0)
+		ctx->error = -error;
 
 	if (ctx->pending > 0)
 		return;
@@ -174,8 +174,8 @@ static void nfacct_disable_cb(int error, void *user_data)
 
 	ctx->pending--;
 
-	if (error < 0)
-		ctx->error = error;
+	if (error != 0)
+		ctx->error = -error;
 
 	if (ctx->pending > 0)
 		return;
@@ -264,8 +264,8 @@ static void nfacct_flush_del_cb(int error, void *user_data)
 
 	nff->pending--;
 
-	if (error < 0)
-		nff->error = error;
+	if (error != 0)
+		nff->error = -error;
 
 	/*
 	 * Wait for all pending commands before calling
@@ -291,12 +291,12 @@ static void nfacct_flush_cb(int error, const char *name,
 
 	DBG("name %s packets %" PRIu64 " bytes %" PRIu64, name, packets, bytes);
 
-	if (error < 0) {
+	if (error != 0) {
 		/*
 		 * We will only be called once with an error and
 		 * will be the first call.
 		 */
-		nff->error = error;
+		nff->error = -error;
 		goto out;
 	}
 

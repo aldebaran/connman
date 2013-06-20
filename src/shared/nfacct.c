@@ -212,7 +212,7 @@ static void nfacct_dump_callback(int error, uint16_t type, const void *data,
 	uint64_t packets = 0, bytes = 0;
 	char *name = NULL;
 
-	if (error < 0)
+	if (error != 0)
 		goto done;
 
 	for (attr = NFGEN_DATA(data); NLA_OK(attr, len);
@@ -266,7 +266,7 @@ static void nfacct_get_callback(int error, uint16_t type, const void *data,
 	uint64_t packets = 0, bytes = 0;
 	char *name = NULL;
 
-	if (error < 0)
+	if (error != 0)
 		goto done;
 
 	for (attr = NFGEN_DATA(data); NLA_OK(attr, len);
