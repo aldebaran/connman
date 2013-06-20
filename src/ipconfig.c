@@ -357,6 +357,21 @@ gboolean __connman_ipconfig_ipv6_privacy_enabled(struct connman_ipconfig *ipconf
 	return ipconfig->ipv6_privacy_config == 0 ? FALSE : TRUE;
 }
 
+gboolean __connman_ipconfig_ipv6_is_enabled(struct connman_ipconfig *ipconfig)
+{
+	struct connman_ipdevice *ipdevice;
+
+	if (ipconfig == NULL)
+		return FALSE;
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		return FALSE;
+
+	return get_ipv6_state(ipdevice->ifname);
+}
+
 static void free_ipdevice(gpointer data)
 {
 	struct connman_ipdevice *ipdevice = data;
