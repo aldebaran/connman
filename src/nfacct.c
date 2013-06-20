@@ -289,14 +289,19 @@ static void nfacct_flush_cb(int error, const char *name,
 	connman_nfacct_flush_cb_t cb = cbd->cb;
 	unsigned int id;
 
-	DBG("name %s packets %" PRIu64 " bytes %" PRIu64, name, packets, bytes);
-
 	if (error != 0) {
 		/*
 		 * We will only be called once with an error and
 		 * will be the first call.
 		 */
-		nff->error = -error;
+
+		/*
+		 * EINVAL tells us that there is no NFACCT sysbstem
+		 * that means we are probably running on a pre 3.2
+		 * kernel. Just ignore this.
+		 */
+		if (error != EINVAL)
+			nff->error = -error;
 		goto out;
 	}
 
@@ -317,6 +322,8 @@ static void nfacct_flush_cb(int error, const char *name,
 		 */
 		goto out;
 	}
+
+	DBG("name %s packets %" PRIu64 " bytes %" PRIu64, name, packets, bytes);
 
 	if (g_str_has_prefix(name, "session-") == FALSE)
 		return;
