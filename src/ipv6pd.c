@@ -269,6 +269,9 @@ int __connman_ipv6pd_setup(const char *bridge)
 	struct connman_service *service;
 	int err;
 
+	if (connman_inet_is_ipv6_supported() == FALSE)
+		return -EPFNOSUPPORT;
+
 	if (bridge_index >= 0) {
 		DBG("Prefix delegation already running");
 		return -EALREADY;
@@ -308,6 +311,9 @@ int __connman_ipv6pd_setup(const char *bridge)
 void __connman_ipv6pd_cleanup(void)
 {
 	int ifindex;
+
+	if (connman_inet_is_ipv6_supported() == FALSE)
+		return;
 
 	connman_notifier_unregister(&pd_notifier);
 
