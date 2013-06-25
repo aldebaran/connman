@@ -221,7 +221,9 @@ void __connman_tethering_set_enabled(void)
 	start_ip = __connman_ippool_get_start_ip(dhcp_ippool);
 	end_ip = __connman_ippool_get_end_ip(dhcp_ippool);
 
-	err = __connman_bridge_enable(BRIDGE_NAME, gateway, broadcast);
+	err = __connman_bridge_enable(BRIDGE_NAME, gateway,
+			__connman_ipaddress_netmask_prefix_len(subnet_mask),
+			broadcast);
 	if (err < 0 && err != -EALREADY) {
 		__connman_ippool_unref(dhcp_ippool);
 		__connman_bridge_remove(BRIDGE_NAME);

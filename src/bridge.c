@@ -111,8 +111,8 @@ int __connman_bridge_remove(const char *name)
 	return 0;
 }
 
-int __connman_bridge_enable(const char *name, const char *gateway,
-				const char *broadcast)
+int __connman_bridge_enable(const char *name, const char *ip_address,
+			int prefix_len, const char *broadcast)
 {
 	int err, index;
 
@@ -121,8 +121,8 @@ int __connman_bridge_enable(const char *name, const char *gateway,
 		return index;
 
 	err = __connman_inet_modify_address(RTM_NEWADDR,
-			NLM_F_REPLACE | NLM_F_ACK, index, AF_INET,
-					gateway, NULL, 24, broadcast);
+				NLM_F_REPLACE | NLM_F_ACK, index, AF_INET,
+				ip_address, NULL, prefix_len, broadcast);
 	if (err < 0)
 		return err;
 
