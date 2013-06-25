@@ -479,12 +479,12 @@ static void set_default_gateway(struct gateway_data *data,
 	}
 
 	if (do_ipv6 == TRUE && data->ipv6_gateway != NULL)
-		status6 = connman_inet_set_ipv6_gateway_address(index,
-						data->ipv6_gateway->gateway);
+		status6 = __connman_inet_add_default_to_table(RT_TABLE_MAIN,
+					index, data->ipv6_gateway->gateway);
 
 	if (do_ipv4 == TRUE && data->ipv4_gateway != NULL)
-		status4 = connman_inet_set_gateway_address(index,
-						data->ipv4_gateway->gateway);
+		status4 = __connman_inet_add_default_to_table(RT_TABLE_MAIN,
+					index, data->ipv4_gateway->gateway);
 
 	if (status4 < 0 || status6 < 0)
 		return;
