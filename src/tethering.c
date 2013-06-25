@@ -176,6 +176,7 @@ static void dhcp_server_stop(GDHCPServer *server)
 
 static void tethering_restart(struct connman_ippool *pool, void *user_data)
 {
+	DBG("pool %p", pool);
 	__connman_tethering_set_disabled();
 	__connman_tethering_set_enabled();
 }
