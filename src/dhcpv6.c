@@ -1356,8 +1356,6 @@ static void confirm_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	clear_timer(dhcp);
 
-	set_addresses(dhcp_client, dhcp);
-
 	g_dhcpv6_client_clear_retransmit(dhcp_client);
 
 	/*
@@ -1366,8 +1364,12 @@ static void confirm_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (status != 0) {
 		g_dhcp_client_unref(dhcp->dhcp_client);
 		start_solicitation(dhcp);
-	} else if (dhcp->callback != NULL)
-		dhcp->callback(dhcp->network, TRUE, NULL);
+	} else {
+		set_addresses(dhcp_client, dhcp);
+
+		if (dhcp->callback != NULL)
+			dhcp->callback(dhcp->network, TRUE, NULL);
+	}
 }
 
 static int dhcpv6_confirm(struct connman_dhcpv6 *dhcp)
