@@ -55,6 +55,11 @@
 #define CNF_MAX_RT	(4 * 1000)
 #define CNF_MAX_RD	(10 * 1000)
 
+enum request_type {
+	REQ_REQUEST = 1,
+	REQ_REBIND = 2,
+	REQ_RENEW = 3,
+};
 
 struct connman_dhcpv6 {
 	struct connman_network *network;
@@ -560,7 +565,8 @@ static int set_addresses(GDHCPClient *dhcp_client,
 	return 0;
 }
 
-static void re_cb(GDHCPClient *dhcp_client, gpointer user_data)
+static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
+		gpointer user_data)
 {
 	struct connman_dhcpv6 *dhcp = user_data;
 	uint16_t status;
@@ -596,7 +602,7 @@ static void rebind_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	g_dhcpv6_client_reset_renew(dhcp_client);
 	g_dhcpv6_client_clear_retransmit(dhcp_client);
 
-	re_cb(dhcp_client, user_data);
+	re_cb(REQ_REBIND, dhcp_client, user_data);
 }
 
 static int dhcpv6_rebind(struct connman_dhcpv6 *dhcp)
@@ -706,7 +712,7 @@ static void request_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	g_dhcpv6_client_clear_retransmit(dhcp_client);
 
-	re_cb(dhcp_client, user_data);
+	re_cb(REQ_REQUEST, dhcp_client, user_data);
 }
 
 static int dhcpv6_request(struct connman_dhcpv6 *dhcp,
@@ -778,7 +784,7 @@ static void renew_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	g_dhcpv6_client_reset_renew(dhcp_client);
 	g_dhcpv6_client_clear_retransmit(dhcp_client);
 
-	re_cb(dhcp_client, user_data);
+	re_cb(REQ_RENEW, dhcp_client, user_data);
 }
 
 static int dhcpv6_renew(struct connman_dhcpv6 *dhcp)
