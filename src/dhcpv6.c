@@ -85,6 +85,9 @@ static GHashTable *network_pd_table;
 
 static int dhcpv6_request(struct connman_dhcpv6 *dhcp, gboolean add_addresses);
 static int dhcpv6_pd_request(struct connman_dhcpv6 *dhcp);
+static gboolean start_solicitation(gpointer user_data);
+static int dhcpv6_renew(struct connman_dhcpv6 *dhcp);
+static int dhcpv6_rebind(struct connman_dhcpv6 *dhcp);
 
 static void clear_timer(struct connman_dhcpv6 *dhcp)
 {
@@ -565,6 +568,63 @@ static int set_addresses(GDHCPClient *dhcp_client,
 	return 0;
 }
 
+static gboolean timeout_request_resend(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	if (dhcp->request_count >= REQ_MAX_RC) {
+		DBG("max request retry attempts %d", dhcp->request_count);
+		dhcp->request_count = 0;
+		if (dhcp->callback != NULL)
+			dhcp->callback(dhcp->network, FALSE, NULL);
+		return FALSE;
+	}
+
+	dhcp->request_count++;
+
+	dhcp->RT = calc_delay(dhcp->RT, REQ_MAX_RT);
+	DBG("request resend RT timeout %d msec", dhcp->RT);
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_request_resend, dhcp);
+
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
+
+	g_dhcp_client_start(dhcp->dhcp_client, NULL);
+
+	return FALSE;
+}
+
+static gboolean request_resend(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
+
+	dhcp->RT = calc_delay(dhcp->RT, REQ_MAX_RT);
+	DBG("request resend RT timeout %d msec", dhcp->RT);
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_request_resend, dhcp);
+
+	dhcpv6_request(dhcp, TRUE);
+
+	return FALSE;
+}
+
+static void do_resend_request(struct connman_dhcpv6 *dhcp)
+{
+	if (dhcp->request_count >= REQ_MAX_RC) {
+		DBG("max request retry attempts %d", dhcp->request_count);
+		dhcp->request_count = 0;
+		if (dhcp->callback != NULL)
+			dhcp->callback(dhcp->network, FALSE, NULL);
+		return;
+	}
+
+	dhcp->request_count++;
+
+	dhcp->RT = calc_delay(dhcp->RT, REQ_MAX_RT);
+	DBG("resending request after %d msec", dhcp->RT);
+	dhcp->timeout = g_timeout_add(dhcp->RT, request_resend, dhcp);
+}
+
 static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 		gpointer user_data)
 {
@@ -584,10 +644,68 @@ static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 		return;
 	}
 
+	/*
+	 * RFC 3315, 18.1.8 handle the resend if error
+	 */
 	if (status  == G_DHCPV6_ERROR_BINDING) {
-		/* RFC 3315, 18.1.8 */
 		dhcpv6_request(dhcp, FALSE);
+	} else if (status  == G_DHCPV6_ERROR_MCAST) {
+		switch (req_type) {
+		case REQ_REQUEST:
+			dhcpv6_request(dhcp, TRUE);
+			break;
+		case REQ_REBIND:
+			dhcpv6_rebind(dhcp);
+			break;
+		case REQ_RENEW:
+			dhcpv6_renew(dhcp);
+			break;
+		}
+	} else if (status  == G_DHCPV6_ERROR_LINK) {
+		if (req_type == REQ_REQUEST) {
+			g_dhcp_client_unref(dhcp->dhcp_client);
+			start_solicitation(dhcp);
+		} else {
+			if (dhcp->callback != NULL)
+				dhcp->callback(dhcp->network, FALSE, NULL);
+		}
+	} else if (status  == G_DHCPV6_ERROR_FAILURE) {
+		if (req_type == REQ_REQUEST) {
+			/* Rate limit the resend of request message */
+			do_resend_request(dhcp);
+		} else {
+			if (dhcp->callback != NULL)
+				dhcp->callback(dhcp->network, FALSE, NULL);
+		}
 	} else {
+
+		/*
+		 * If we did not got any addresses, then re-send
+		 * a request.
+		 */
+		GList *option;
+
+		option = g_dhcp_client_get_option(dhcp->dhcp_client,
+						G_DHCPV6_IA_NA);
+		if (option == NULL) {
+			option = g_dhcp_client_get_option(dhcp->dhcp_client,
+							G_DHCPV6_IA_TA);
+			if (option == NULL) {
+				switch (req_type) {
+				case REQ_REQUEST:
+					dhcpv6_request(dhcp, TRUE);
+					break;
+				case REQ_REBIND:
+					dhcpv6_rebind(dhcp);
+					break;
+				case REQ_RENEW:
+					dhcpv6_renew(dhcp);
+					break;
+				}
+				return;
+			}
+		}
+
 		if (dhcp->callback != NULL)
 			dhcp->callback(dhcp->network,
 					status == 0 ? TRUE : FALSE, NULL);
