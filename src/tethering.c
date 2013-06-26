@@ -532,10 +532,10 @@ int __connman_tethering_init(void)
 
 void __connman_tethering_cleanup(void)
 {
-	DBG("");
+	DBG("enabled %d", tethering_enabled);
 
 	__sync_synchronize();
-	if (tethering_enabled == 0) {
+	if (tethering_enabled > 0) {
 		if (tethering_dhcp_server)
 			dhcp_server_stop(tethering_dhcp_server);
 		__connman_bridge_disable(BRIDGE_NAME);
