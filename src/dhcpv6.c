@@ -630,19 +630,10 @@ static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 {
 	struct connman_dhcpv6 *dhcp = user_data;
 	uint16_t status;
-	int ret;
-
-	ret = set_addresses(dhcp_client, dhcp);
 
 	status = g_dhcpv6_client_get_status(dhcp_client);
 
-	DBG("dhcpv6 cb msg %p ret %d status %d", dhcp, ret, status);
-
-	if (ret < 0) {
-		if (dhcp->callback != NULL)
-			dhcp->callback(dhcp->network, FALSE, NULL);
-		return;
-	}
+	DBG("dhcpv6 cb msg %p status %d", dhcp, status);
 
 	/*
 	 * RFC 3315, 18.1.8 handle the resend if error
@@ -705,6 +696,9 @@ static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 				return;
 			}
 		}
+
+		if (status == G_DHCPV6_ERROR_SUCCESS)
+			set_addresses(dhcp_client, dhcp);
 
 		if (dhcp->callback != NULL)
 			dhcp->callback(dhcp->network,
