@@ -63,6 +63,12 @@ struct oc_private_data {
 	void *user_data;
 };
 
+static void free_private_data(struct oc_private_data *data)
+{
+	g_free(data->if_name);
+	g_free(data);
+}
+
 static int task_append_config_data(struct vpn_provider *provider,
 					struct connman_task *task)
 {
@@ -208,6 +214,74 @@ static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 	connman_ipaddress_free(ipaddress);
 
 	return VPN_STATE_CONNECT;
+}
+
+static int run_connect(struct vpn_provider *provider,
+			struct connman_task *task, const char *if_name,
+			vpn_provider_connect_cb_t cb, void *user_data,
+			const char *vpncookie)
+{
+	const char *vpnhost, *cafile, *certsha1, *mtu;
+	int fd, err = 0, len;
+
+	vpnhost = vpn_provider_get_string(provider, "Host");
+
+	if (vpncookie == NULL) {
+		DBG("Cookie missing, cannot connect!");
+		err = -EINVAL;
+		goto done;
+	}
+
+	task_append_config_data(provider, task);
+
+	vpn_provider_set_string(provider, "OpenConnect.Cookie", vpncookie);
+
+	certsha1 = vpn_provider_get_string(provider,
+						"OpenConnect.ServerCert");
+	if (certsha1)
+		connman_task_add_argument(task, "--servercert",
+							(char *)certsha1);
+
+	cafile = vpn_provider_get_string(provider, "OpenConnect.CACert");
+	mtu = vpn_provider_get_string(provider, "VPN.MTU");
+
+	if (cafile)
+		connman_task_add_argument(task, "--cafile",
+							(char *)cafile);
+	if (mtu)
+		connman_task_add_argument(task, "--mtu", (char *)mtu);
+
+	connman_task_add_argument(task, "--syslog", NULL);
+	connman_task_add_argument(task, "--cookie-on-stdin", NULL);
+
+	connman_task_add_argument(task, "--script",
+				  SCRIPTDIR "/openconnect-script");
+
+	connman_task_add_argument(task, "--interface", if_name);
+
+	connman_task_add_argument(task, (char *)vpnhost, NULL);
+
+	err = connman_task_run(task, vpn_died, provider,
+			       &fd, NULL, NULL);
+	if (err < 0) {
+		connman_error("openconnect failed to start");
+		err = -EIO;
+		goto done;
+	}
+
+	len = strlen(vpncookie);
+	if (write(fd, vpncookie, len) != (ssize_t)len ||
+			write(fd, "\n", 1) != 1) {
+		connman_error("openconnect failed to take cookie on stdin");
+		err = -EIO;
+		goto done;
+	}
+
+done:
+	if (cb != NULL)
+		cb(provider, user_data, err);
+
+	return err;
 }
 
 static void request_input_append_informational(DBusMessageIter *iter,
@@ -373,80 +447,6 @@ static int request_cookie_input(struct vpn_provider *provider,
 	dbus_message_unref(message);
 
 	return -EINPROGRESS;
-}
-
-static int run_connect(struct vpn_provider *provider,
-			struct connman_task *task, const char *if_name,
-			vpn_provider_connect_cb_t cb, void *user_data,
-			const char *vpncookie)
-{
-	const char *vpnhost, *cafile, *certsha1, *mtu;
-	int fd, err = 0, len;
-
-	vpnhost = vpn_provider_get_string(provider, "Host");
-
-	if (vpncookie == NULL) {
-		DBG("Cookie missing, cannot connect!");
-		err = -EINVAL;
-		goto done;
-	}
-
-	task_append_config_data(provider, task);
-
-	vpn_provider_set_string(provider, "OpenConnect.Cookie", vpncookie);
-
-	certsha1 = vpn_provider_get_string(provider,
-						"OpenConnect.ServerCert");
-	if (certsha1)
-		connman_task_add_argument(task, "--servercert",
-							(char *)certsha1);
-
-	cafile = vpn_provider_get_string(provider, "OpenConnect.CACert");
-	mtu = vpn_provider_get_string(provider, "VPN.MTU");
-
-	if (cafile)
-		connman_task_add_argument(task, "--cafile",
-							(char *)cafile);
-	if (mtu)
-		connman_task_add_argument(task, "--mtu", (char *)mtu);
-
-	connman_task_add_argument(task, "--syslog", NULL);
-	connman_task_add_argument(task, "--cookie-on-stdin", NULL);
-
-	connman_task_add_argument(task, "--script",
-				  SCRIPTDIR "/openconnect-script");
-
-	connman_task_add_argument(task, "--interface", if_name);
-
-	connman_task_add_argument(task, (char *)vpnhost, NULL);
-
-	err = connman_task_run(task, vpn_died, provider,
-			       &fd, NULL, NULL);
-	if (err < 0) {
-		connman_error("openconnect failed to start");
-		err = -EIO;
-		goto done;
-	}
-
-	len = strlen(vpncookie);
-	if (write(fd, vpncookie, len) != (ssize_t)len ||
-			write(fd, "\n", 1) != 1) {
-		connman_error("openconnect failed to take cookie on stdin");
-		err = -EIO;
-		goto done;
-	}
-
-done:
-	if (cb != NULL)
-		cb(provider, user_data, err);
-
-	return err;
-}
-
-static void free_private_data(struct oc_private_data *data)
-{
-	g_free(data->if_name);
-	g_free(data);
 }
 
 static void request_input_cb(struct vpn_provider *provider,
