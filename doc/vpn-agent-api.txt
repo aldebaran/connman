@@ -70,10 +70,31 @@ Fields		string Username
 
 			Name of the VPN connection we are trying to connect to.
 
+		string OpenConnect.CACert
+
+			Informational field containing a path name for an
+			additional Certificate Authority file.
+
+		string OpenConnect.ClientCert
+
+			Informational field containing a pkcs11 URL or a path
+                        name for the client certificate.
+
 		string OpenConnect.Cookie
 
-			Return the OpenConnect cookie value that is used to
-			authenticate the user and is specific to this user.
+			Return the OpenConnect cookie value that is used for
+			authenticating the VPN session.
+
+		string OpenConnect.ServerCert
+
+			Return the OpenConnect server hash used to identify
+			the final server after possible web authentication
+			logins, selections and redirections.
+
+		string OpenConnect.VPNHost
+
+			Return the final VPN server to use after possible
+			web authentication logins, selections and redirections.
 
 Arguments	string Type
 

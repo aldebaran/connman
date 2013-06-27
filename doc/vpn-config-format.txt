@@ -45,14 +45,30 @@ VPN related parameters (M = mandatory, O = optional):
   For IPv6 addresses only prefix length is accepted like this 2001:db8::1/64
 
 OpenConnect VPN supports following options (see openconnect(8) for details):
- Option name            OpenConnect option   Description
- OpenConnect.ServerCert --servercert         Accept server's SSL certificate
-                                             only if its fingerprint matches
-                                             this value (SHA1) (M)
- OpenConnect.CACert     --cafile             Cert file for server
-                                             verification (M)
- VPN.MTU                --mtu                Request MTU from server as the
-                                             MTU of the tunnel (O)
+ Option name            OpenConnect option Description
+ OpenConnect.ServerCert --servercert       SHA1 certificate fingerprint of the
+                                           final VPN server after possible web
+                                           authentication login, selection and
+                                           redirection (O)
+ OpenConnect.CACert     --cafile           File containing other Certificate
+                                           Authorities in addition to the ones
+                                           in the system trust database (O)
+ OpenConnect.ClientCert --certificate      Client certificate file, if needed
+                                           by web authentication (O)
+ VPN.MTU                --mtu              Request MTU from server as the MTU
+                                           of the tunnel (O)
+ OpenConnect.Cookie     --cookie-on-stdin  Cookie received as a result of the
+                                           web authentication. As the cookie
+                                           lifetime can be very limited, it
+                                           does not usually make sense to add
+                                           it into the configuration file (O)
+ OpenConnect.VPNHost                       The final VPN server to use after
+                                           completing the web authentication.
+                                           Only usable for extremely simple VPN
+                                           configurations and should normally
+                                           be set only via the VPN Agent API.
+If OpenConnect.Cookie or OpenConnect.ServerCert are missing, the VPN Agent will
+be contacted to supply the information.
 
 OpenVPN VPN supports following options (see openvpn(8) for details):
  Option name            OpenVPN option   Description
