@@ -221,25 +221,22 @@ static int run_connect(struct vpn_provider *provider,
 			struct connman_task *task, const char *if_name,
 			vpn_provider_connect_cb_t cb, void *user_data)
 {
-	const char *vpnhost, *vpncookie, *certsha1, *mtu;
+	const char *vpnhost, *vpncookie, *servercert, *mtu;
 	int fd, err = 0, len;
 
 	vpnhost = vpn_provider_get_string(provider, "Host");
 	vpncookie = vpn_provider_get_string(provider, "OpenConnect.Cookie");
+	servercert = vpn_provider_get_string(provider,
+			"OpenConnect.ServerCert");
 
-	if (vpncookie == NULL) {
-		DBG("Cookie missing, cannot connect!");
+	if (vpncookie == NULL || servercert == NULL) {
 		err = -EINVAL;
 		goto done;
 	}
 
 	task_append_config_data(provider, task);
 
-	certsha1 = vpn_provider_get_string(provider,
-						"OpenConnect.ServerCert");
-	if (certsha1 != NULL)
-		connman_task_add_argument(task, "--servercert",
-							(char *)certsha1);
+	connman_task_add_argument(task, "--servercert", servercert);
 
 	mtu = vpn_provider_get_string(provider, "VPN.MTU");
 
@@ -310,7 +307,7 @@ static void request_input_append_mandatory(DBusMessageIter *iter,
 static void request_input_cookie_reply(DBusMessage *reply, void *user_data)
 {
 	struct oc_private_data *data = user_data;
-	char *cookie = NULL, *servercert = NULL;
+	char *cookie = NULL, *servercert = NULL, *vpnhost = NULL;
 	char *key;
 	DBusMessageIter iter, dict;
 
@@ -359,12 +356,24 @@ static void request_input_cookie_reply(DBusMessage *reply, void *user_data)
 			dbus_message_iter_get_basic(&value, &servercert);
 			vpn_provider_set_string(data->provider, key,
 					servercert);
+
+		} else if (g_str_equal(key, "OpenConnect.VPNHost")) {
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value)
+							!= DBUS_TYPE_STRING)
+				break;
+			dbus_message_iter_get_basic(&value, &vpnhost);
+			vpn_provider_set_string(data->provider, key, vpnhost);
 		}
 
 		dbus_message_iter_next(&dict);
 	}
 
-	if (cookie == NULL || servercert == NULL)
+	if (cookie == NULL || servercert == NULL || vpnhost == NULL)
 		goto err;
 
 	run_connect(data->provider, data->task, data->if_name, data->cb,
