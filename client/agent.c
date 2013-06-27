@@ -95,6 +95,11 @@ static struct agent_data agent_request = {
 static struct agent_input_data vpnagent_input_handler[] = {
 	{ "OpenConnect.Cookie", false, "OpenConnect Cookie? ",
 	  request_input_string_return },
+	{ "OpenConnect.ServerCert", false,
+	  "OpenConnect server certificate hash? ",
+	  request_input_string_return },
+	{ "OpenConnect.VPNHost", false, "OpenConnect VPN server? ",
+	  request_input_string_return },
 	{ "Username", false, "VPN username? ", request_input_string_return },
 	{ "Password", false, "VPN password? ", request_input_string_return },
 	{ },
