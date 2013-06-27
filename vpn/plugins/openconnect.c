@@ -57,6 +57,7 @@ struct {
 };
 
 struct oc_private_data {
+	struct vpn_provider *provider;
 	struct connman_task *task;
 	char *if_name;
 	vpn_provider_connect_cb_t cb;
@@ -312,29 +313,21 @@ static void request_input_append_mandatory(DBusMessageIter *iter,
 				DBUS_TYPE_STRING, &str);
 }
 
-struct request_input_reply {
-	struct vpn_provider *provider;
-	vpn_provider_auth_cb_t callback;
-	void *user_data;
-};
-
 static void request_input_cookie_reply(DBusMessage *reply, void *user_data)
 {
-	struct request_input_reply *cookie_reply = user_data;
-	const char *error = NULL;
+	struct oc_private_data *data = user_data;
 	char *cookie = NULL;
 	char *key;
 	DBusMessageIter iter, dict;
 
-	DBG("provider %p", cookie_reply->provider);
+	DBG("provider %p", data->provider);
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
-		error = dbus_message_get_error_name(reply);
-		goto done;
+		goto err;
 	}
 
 	if (vpn_agent_check_reply_has_dict(reply) == FALSE)
-		goto done;
+		goto err;
 
 	dbus_message_iter_init(reply, &iter);
 	dbus_message_iter_recurse(&iter, &dict);
@@ -362,30 +355,36 @@ static void request_input_cookie_reply(DBusMessage *reply, void *user_data)
 		dbus_message_iter_next(&dict);
 	}
 
-done:
-	cookie_reply->callback(cookie_reply->provider, cookie, error,
-				cookie_reply->user_data);
-	g_free(cookie_reply);
+	if (cookie == NULL)
+		goto err;
+
+	run_connect(data->provider, data->task, data->if_name, data->cb,
+		data->user_data, cookie);
+
+	free_private_data(data);
+
+	return;
+
+err:
+	vpn_provider_indicate_error(data->provider,
+			VPN_PROVIDER_ERROR_AUTH_FAILED);
+
+	free_private_data(data);
 }
 
-typedef void (* request_cb_t)(struct vpn_provider *provider,
-					const char *vpncookie,
-					const char *error, void *user_data);
-
 static int request_cookie_input(struct vpn_provider *provider,
-				request_cb_t callback, void *user_data)
+		struct oc_private_data *data)
 {
 	DBusMessage *message;
 	const char *path, *agent_sender, *agent_path;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	const char *str;
-	struct request_input_reply *cookie_reply;
 	int err;
 
 	connman_agent_get_info(&agent_sender, &agent_path);
 
-	if (provider == NULL || agent_path == NULL || callback == NULL)
+	if (provider == NULL || agent_path == NULL)
 		return -ESRCH;
 
 	message = dbus_message_new_method_call(agent_sender, agent_path,
@@ -424,46 +423,20 @@ static int request_cookie_input(struct vpn_provider *provider,
 
 	connman_dbus_dict_close(&iter, &dict);
 
-	cookie_reply = g_try_new0(struct request_input_reply, 1);
-	if (cookie_reply == NULL) {
-		dbus_message_unref(message);
-		return -ENOMEM;
-	}
-
-	cookie_reply->provider = provider;
-	cookie_reply->callback = callback;
-	cookie_reply->user_data = user_data;
-
 	err = connman_agent_queue_message(provider, message,
 			connman_timeout_input_request(),
-			request_input_cookie_reply, cookie_reply);
+			request_input_cookie_reply, data);
+
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending agent request", err);
 		dbus_message_unref(message);
-		g_free(cookie_reply);
+
 		return err;
 	}
 
 	dbus_message_unref(message);
 
 	return -EINPROGRESS;
-}
-
-static void request_input_cb(struct vpn_provider *provider,
-			const char *vpncookie,
-			const char *error, void *user_data)
-{
-	struct oc_private_data *data = user_data;
-
-	if (vpncookie == NULL)
-		DBG("Requesting cookie failed, error %s", error);
-	else if (error != NULL)
-		DBG("error %s", error);
-
-	run_connect(provider, data->task, data->if_name, data->cb,
-		data->user_data, vpncookie);
-
-	free_private_data(data);
 }
 
 static int oc_connect(struct vpn_provider *provider,
@@ -487,20 +460,21 @@ static int oc_connect(struct vpn_provider *provider,
 		if (data == NULL)
 			return -ENOMEM;
 
+		data->provider = provider;
 		data->task = task;
 		data->if_name = g_strdup(if_name);
 		data->cb = cb;
 		data->user_data = user_data;
 
-		err = request_cookie_input(provider, request_input_cb, data);
+		err = request_cookie_input(provider, data);
 		if (err != -EINPROGRESS) {
+			vpn_provider_indicate_error(data->provider,
+					VPN_PROVIDER_ERROR_LOGIN_FAILED);
 			free_private_data(data);
-			goto done;
 		}
 		return err;
 	}
 
-done:
 	return run_connect(provider, task, if_name, cb, user_data, vpncookie);
 }
 
