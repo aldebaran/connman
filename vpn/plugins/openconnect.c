@@ -224,7 +224,9 @@ static int run_connect(struct vpn_provider *provider,
 	const char *vpnhost, *vpncookie, *servercert, *mtu;
 	int fd, err = 0, len;
 
-	vpnhost = vpn_provider_get_string(provider, "Host");
+	vpnhost = vpn_provider_get_string(provider, "OpenConnect.VPNHost");
+	if (vpnhost == NULL)
+		vpnhost = vpn_provider_get_string(provider, "Host");
 	vpncookie = vpn_provider_get_string(provider, "OpenConnect.Cookie");
 	servercert = vpn_provider_get_string(provider,
 			"OpenConnect.ServerCert");
@@ -432,6 +434,9 @@ static int request_cookie_input(struct vpn_provider *provider,
 				(void *)str);
 
 	connman_dbus_dict_append_dict(&dict, "OpenConnect.ServerCert",
+			request_input_append_mandatory, NULL);
+
+	connman_dbus_dict_append_dict(&dict, "OpenConnect.VPNHost",
 			request_input_append_mandatory, NULL);
 
 	connman_dbus_dict_append_dict(&dict, "OpenConnect.Cookie",
