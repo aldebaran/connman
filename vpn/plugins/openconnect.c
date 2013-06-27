@@ -221,7 +221,7 @@ static int run_connect(struct vpn_provider *provider,
 			struct connman_task *task, const char *if_name,
 			vpn_provider_connect_cb_t cb, void *user_data)
 {
-	const char *vpnhost, *vpncookie, *cafile, *certsha1, *mtu;
+	const char *vpnhost, *vpncookie, *certsha1, *mtu;
 	int fd, err = 0, len;
 
 	vpnhost = vpn_provider_get_string(provider, "Host");
@@ -237,17 +237,13 @@ static int run_connect(struct vpn_provider *provider,
 
 	certsha1 = vpn_provider_get_string(provider,
 						"OpenConnect.ServerCert");
-	if (certsha1)
+	if (certsha1 != NULL)
 		connman_task_add_argument(task, "--servercert",
 							(char *)certsha1);
 
-	cafile = vpn_provider_get_string(provider, "OpenConnect.CACert");
 	mtu = vpn_provider_get_string(provider, "VPN.MTU");
 
-	if (cafile)
-		connman_task_add_argument(task, "--cafile",
-							(char *)cafile);
-	if (mtu)
+	if (mtu != NULL)
 		connman_task_add_argument(task, "--mtu", (char *)mtu);
 
 	connman_task_add_argument(task, "--syslog", NULL);
