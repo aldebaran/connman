@@ -210,8 +210,24 @@ static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 	return VPN_STATE_CONNECT;
 }
 
-static void request_input_append_cookie(DBusMessageIter *iter,
-							void *user_data)
+static void request_input_append_informational(DBusMessageIter *iter,
+		void *user_data)
+{
+	const char *str;
+
+	str = "string";
+	connman_dbus_dict_append_basic(iter, "Type", DBUS_TYPE_STRING, &str);
+
+	str = "informational";
+	connman_dbus_dict_append_basic(iter, "Requirement", DBUS_TYPE_STRING,
+			&str);
+
+	str = user_data;
+	connman_dbus_dict_append_basic(iter, "Value", DBUS_TYPE_STRING, &str);
+}
+
+static void request_input_append_mandatory(DBusMessageIter *iter,
+		void *user_data)
 {
 	char *str = "string";
 
@@ -289,6 +305,7 @@ static int request_cookie_input(struct vpn_provider *provider,
 	const char *path, *agent_sender, *agent_path;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
+	const char *str;
 	struct request_input_reply *cookie_reply;
 	int err;
 
@@ -311,8 +328,23 @@ static int request_cookie_input(struct vpn_provider *provider,
 
 	connman_dbus_dict_open(&iter, &dict);
 
+	str = vpn_provider_get_string(provider, "OpenConnect.CACert");
+	if (str != NULL)
+		connman_dbus_dict_append_dict(&dict, "OpenConnect.CACert",
+				request_input_append_informational,
+				(void *)str);
+
+	str = vpn_provider_get_string(provider, "OpenConnect.ClientCert");
+	if (str != NULL)
+		connman_dbus_dict_append_dict(&dict, "OpenConnect.ClientCert",
+				request_input_append_informational,
+				(void *)str);
+
+	connman_dbus_dict_append_dict(&dict, "OpenConnect.ServerCert",
+			request_input_append_mandatory, NULL);
+
 	connman_dbus_dict_append_dict(&dict, "OpenConnect.Cookie",
-			request_input_append_cookie, provider);
+			request_input_append_mandatory, NULL);
 
 	vpn_agent_append_host_and_name(&dict, provider);
 
