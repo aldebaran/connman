@@ -310,7 +310,7 @@ static void request_input_append_mandatory(DBusMessageIter *iter,
 static void request_input_cookie_reply(DBusMessage *reply, void *user_data)
 {
 	struct oc_private_data *data = user_data;
-	char *cookie = NULL;
+	char *cookie = NULL, *servercert = NULL;
 	char *key;
 	DBusMessageIter iter, dict;
 
@@ -346,12 +346,25 @@ static void request_input_cookie_reply(DBusMessage *reply, void *user_data)
 			dbus_message_iter_get_basic(&value, &cookie);
 			vpn_provider_set_string_hide_value(data->provider,
 					key, cookie);
+
+		} else if (g_str_equal(key, "OpenConnect.ServerCert")) {
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value)
+							!= DBUS_TYPE_STRING)
+				break;
+			dbus_message_iter_get_basic(&value, &servercert);
+			vpn_provider_set_string(data->provider, key,
+					servercert);
 		}
 
 		dbus_message_iter_next(&dict);
 	}
 
-	if (cookie == NULL)
+	if (cookie == NULL || servercert == NULL)
 		goto err;
 
 	run_connect(data->provider, data->task, data->if_name, data->cb,
@@ -439,7 +452,7 @@ static int oc_connect(struct vpn_provider *provider,
 			struct connman_task *task, const char *if_name,
 			vpn_provider_connect_cb_t cb, void *user_data)
 {
-	const char *vpnhost, *vpncookie;
+	const char *vpnhost, *vpncookie, *servercert;
 	int err;
 
 	vpnhost = vpn_provider_get_string(provider, "Host");
@@ -449,7 +462,9 @@ static int oc_connect(struct vpn_provider *provider,
 	}
 
 	vpncookie = vpn_provider_get_string(provider, "OpenConnect.Cookie");
-	if (vpncookie == NULL) {
+	servercert = vpn_provider_get_string(provider,
+			"OpenConnect.ServerCert");
+	if (vpncookie == NULL || servercert == NULL) {
 		struct oc_private_data *data;
 
 		data = g_try_new0(struct oc_private_data, 1);
