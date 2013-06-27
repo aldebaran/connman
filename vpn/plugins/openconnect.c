@@ -219,13 +219,13 @@ static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 
 static int run_connect(struct vpn_provider *provider,
 			struct connman_task *task, const char *if_name,
-			vpn_provider_connect_cb_t cb, void *user_data,
-			const char *vpncookie)
+			vpn_provider_connect_cb_t cb, void *user_data)
 {
-	const char *vpnhost, *cafile, *certsha1, *mtu;
+	const char *vpnhost, *vpncookie, *cafile, *certsha1, *mtu;
 	int fd, err = 0, len;
 
 	vpnhost = vpn_provider_get_string(provider, "Host");
+	vpncookie = vpn_provider_get_string(provider, "OpenConnect.Cookie");
 
 	if (vpncookie == NULL) {
 		DBG("Cookie missing, cannot connect!");
@@ -234,8 +234,6 @@ static int run_connect(struct vpn_provider *provider,
 	}
 
 	task_append_config_data(provider, task);
-
-	vpn_provider_set_string(provider, "OpenConnect.Cookie", vpncookie);
 
 	certsha1 = vpn_provider_get_string(provider,
 						"OpenConnect.ServerCert");
@@ -350,6 +348,8 @@ static void request_input_cookie_reply(DBusMessage *reply, void *user_data)
 							!= DBUS_TYPE_STRING)
 				break;
 			dbus_message_iter_get_basic(&value, &cookie);
+			vpn_provider_set_string_hide_value(data->provider,
+					key, cookie);
 		}
 
 		dbus_message_iter_next(&dict);
@@ -359,7 +359,7 @@ static void request_input_cookie_reply(DBusMessage *reply, void *user_data)
 		goto err;
 
 	run_connect(data->provider, data->task, data->if_name, data->cb,
-		data->user_data, cookie);
+		data->user_data);
 
 	free_private_data(data);
 
@@ -475,7 +475,7 @@ static int oc_connect(struct vpn_provider *provider,
 		return err;
 	}
 
-	return run_connect(provider, task, if_name, cb, user_data, vpncookie);
+	return run_connect(provider, task, if_name, cb, user_data);
 }
 
 static int oc_save(struct vpn_provider *provider, GKeyFile *keyfile)
