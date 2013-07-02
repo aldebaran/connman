@@ -145,7 +145,7 @@ static int set_attr_name(struct nfgenmsg *msg, const char *name)
 	return 0;
 }
 
-static void nfacct_add_callback(int error, uint16_t type, const void *data,
+static void nfacct_add_callback(unsigned int error, uint16_t type, const void *data,
 				uint32_t len, void *user_data)
 {
 	struct cb_data *cbd = user_data;
@@ -203,7 +203,7 @@ static void parse_nlattr_acct(const struct nlattr *attr,
 	}
 }
 
-static void nfacct_dump_callback(int error, uint16_t type, const void *data,
+static void nfacct_dump_callback(unsigned int error, uint16_t type, const void *data,
 				uint32_t len, void *user_data)
 {
 	struct cb_data *cbd = user_data;
@@ -257,7 +257,7 @@ unsigned int nfacct_dump(struct nfacct_info *nfacct, bool zero,
 	return id;
 }
 
-static void nfacct_get_callback(int error, uint16_t type, const void *data,
+static void nfacct_get_callback(unsigned int error, uint16_t type, const void *data,
 				uint32_t len, void *user_data)
 {
 	struct cb_data *cbd = user_data;
@@ -313,7 +313,7 @@ unsigned int nfacct_get(struct nfacct_info *nfacct, const char *name, bool zero,
 	return id;
 }
 
-static void nfacct_del_callback(int error, uint16_t type, const void *data,
+static void nfacct_del_callback(unsigned int error, uint16_t type, const void *data,
 				uint32_t len, void *user_data)
 {
 	struct cb_data *cbd = user_data;

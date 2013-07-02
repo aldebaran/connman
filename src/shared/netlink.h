@@ -25,7 +25,7 @@
 #include <stdbool.h>
 
 typedef void (*netlink_debug_func_t) (const char *str, void *user_data);
-typedef void (*netlink_command_func_t) (int error,
+typedef void (*netlink_command_func_t) (unsigned int error,
 						uint16_t type, const void *data,
 						uint32_t len, void *user_data);
 typedef void (*netlink_notify_func_t) (uint16_t type, const void *data,

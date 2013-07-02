@@ -60,7 +60,7 @@ static void do_debug(const char *str, void *user_data)
 	printf("%s%s\n", prefix, str);
 }
 
-static void getlink_callback(int error, uint16_t type, const void *data,
+static void getlink_callback(unsigned int error, uint16_t type, const void *data,
 						uint32_t len, void *user_data)
 {
 	const struct ifinfomsg *ifi = data;
@@ -69,7 +69,7 @@ static void getlink_callback(int error, uint16_t type, const void *data,
 	char ifname[IF_NAMESIZE];
 	uint32_t index, flags;
 
-	g_assert_cmpint(error, ==, 0);
+	g_assert_cmpuint(error, ==, 0);
 
 	bytes = len - NLMSG_ALIGN(sizeof(struct ifinfomsg));
 
@@ -115,7 +115,7 @@ static void test_case_1(void)
 	netlink_destroy(netlink);
 }
 
-static void test_nfacct_dump_callback(int error, uint16_t type, const void *data,
+static void test_nfacct_dump_callback(unsigned int error, uint16_t type, const void *data,
 						uint32_t len, void *user_data)
 {
 	const struct nfgenmsg *msg = data;
@@ -127,7 +127,7 @@ static void test_nfacct_dump_callback(int error, uint16_t type, const void *data
 	if (error == EINVAL)
 		printf("nfnetlink_acct not loaded\n");
 
-	g_assert_cmpint(error, ==, 0);
+	g_assert_cmpuint(error, ==, 0);
 
 	attrlen = len - NLMSG_ALIGN(sizeof(struct nfgenmsg));
 
@@ -154,13 +154,13 @@ static void test_nfacct_dump_callback(int error, uint16_t type, const void *data
 	g_main_loop_quit(mainloop);
 }
 
-static void test_nfacct_callback(int error, uint16_t type, const void *data,
+static void test_nfacct_callback(unsigned int error, uint16_t type, const void *data,
 						uint32_t len, void *user_data)
 {
 	if (error == EINVAL)
 		printf("nfnetlink_acct not loaded\n");
 
-	g_assert_cmpint(error, ==,  0);
+	g_assert_cmpuint(error, ==, 0);
 }
 
 static void append_attr_str(struct nlattr *attr,
