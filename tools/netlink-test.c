@@ -264,19 +264,19 @@ static void test_case_2(void)
 }
 
 
-static void nfacct_add_callback(int error, void *user_data)
+static void nfacct_add_callback(unsigned int error, void *user_data)
 {
 	const char *name = user_data;
 
 	if (error == EINVAL)
 		printf("nfnetlink_acct not loaded\n");
 
-	g_assert_cmpint(error, ==, 0);
+	g_assert_cmpuint(error, ==, 0);
 
 	printf("nfacct_add: error %d name %s\n", error, name);
 }
 
-static void nfacct_get_callback(int error, const char *name,
+static void nfacct_get_callback(unsigned int error, const char *name,
 				uint64_t packets, uint64_t bytes,
 				void *user_data)
 {
@@ -285,7 +285,7 @@ static void nfacct_get_callback(int error, const char *name,
 	if (error == EINVAL)
 		printf("nfnetlink_acct not loaded\n");
 
-	g_assert_cmpint(error, ==, 0);
+	g_assert_cmpuint(error, ==, 0);
 
 	if (name == NULL) {
 		/* end of dump */
@@ -300,7 +300,7 @@ static void nfacct_get_callback(int error, const char *name,
 	g_assert_cmpuint(bytes, ==, 0);
 }
 
-static void nfacct_dump_callback(int error, const char *name,
+static void nfacct_dump_callback(unsigned int error, const char *name,
 					uint64_t packets, uint64_t bytes,
 					void *user_data)
 {
@@ -309,7 +309,7 @@ static void nfacct_dump_callback(int error, const char *name,
 	if (error == EINVAL)
 		printf("nfnetlink_acct not loaded\n");
 
-	g_assert_cmpint(error, ==, 0);
+	g_assert_cmpuint(error, ==, 0);
 
 	if (name == NULL) {
 		/* end of dump */
@@ -324,9 +324,9 @@ static void nfacct_dump_callback(int error, const char *name,
 	g_assert_cmpuint(bytes, ==, 0);
 }
 
-static void nfacct_del_callback(int error, void *user_data)
+static void nfacct_del_callback(unsigned int error, void *user_data)
 {
-	g_assert_cmpint(error, ==, 0);
+	g_assert_cmpuint(error, ==, 0);
 
 	g_main_loop_quit(mainloop);
 }

@@ -22,14 +22,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef void (*nfacct_add_func_t) (int error, void *user_data);
-typedef void (*nfacct_get_func_t) (int error, const char *name,
+typedef void (*nfacct_add_func_t) (unsigned int error, void *user_data);
+typedef void (*nfacct_get_func_t) (unsigned int error, const char *name,
 					uint64_t packets, uint64_t bytes,
 					void *user_data);
-typedef void (*nfacct_dump_func_t) (int error, const char *name,
+typedef void (*nfacct_dump_func_t) (unsigned int error, const char *name,
 					uint64_t packets, uint64_t bytes,
 					void *user_data);
-typedef void (*nfacct_del_func_t) (int error, void *user_data);
+typedef void (*nfacct_del_func_t) (unsigned int error, void *user_data);
 
 struct nfacct_info;
 

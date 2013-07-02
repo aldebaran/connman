@@ -88,7 +88,7 @@ int __connman_nfacct_add(struct nfacct_context *ctx, const char *name,
 	return 0;
 }
 
-static void nfacct_enable_failed_cb(int error, void *user_data)
+static void nfacct_enable_failed_cb(unsigned int error, void *user_data)
 {
 	struct cb_data *cbd = user_data;
 	connman_nfacct_enable_cb_t cb = cbd->cb;
@@ -135,7 +135,7 @@ static void nfacct_handle_enable_error(struct nfacct_context *ctx,
 	}
 }
 
-static void nfacct_enable_cb(int error, void *user_data)
+static void nfacct_enable_cb(unsigned int error, void *user_data)
 {
 	struct cb_data *cbd = user_data;
 	connman_nfacct_enable_cb_t cb = cbd->cb;
@@ -162,7 +162,7 @@ static void nfacct_enable_cb(int error, void *user_data)
 	cb(0, ctx, user_data);
 }
 
-static void nfacct_disable_cb(int error, void *user_data)
+static void nfacct_disable_cb(unsigned int error, void *user_data)
 {
 	struct cb_data *cbd = user_data;
 	connman_nfacct_disable_cb_t cb = cbd->cb;
@@ -255,7 +255,7 @@ int __connman_nfacct_disable(struct nfacct_context *ctx,
 	return err;
 }
 
-static void nfacct_flush_del_cb(int error, void *user_data)
+static void nfacct_flush_del_cb(unsigned int error, void *user_data)
 {
 	struct cb_data *cbd = user_data;
 	struct nfacct_flush *nff = cbd->data;
@@ -281,7 +281,7 @@ static void nfacct_flush_del_cb(int error, void *user_data)
 	g_free(cbd);
 }
 
-static void nfacct_flush_cb(int error, const char *name,
+static void nfacct_flush_cb(unsigned int error, const char *name,
 				uint64_t packets, uint64_t bytes,
 				void *user_data)
 {
