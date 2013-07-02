@@ -97,6 +97,7 @@ struct wifi_data {
 	connman_bool_t disconnecting;
 	connman_bool_t tethering;
 	connman_bool_t bridged;
+	connman_bool_t interface_ready;
 	const char *bridge;
 	int index;
 	unsigned flags;
@@ -773,24 +774,9 @@ static void interface_autoscan_callback(int result,
 	}
 }
 
-static void interface_create_callback(int result,
-					GSupplicantInterface *interface,
-							void *user_data)
+static void finalize_interface_creation(struct wifi_data *wifi)
 {
-	struct wifi_data *wifi = user_data;
-
-	DBG("result %d ifname %s, wifi %p", result,
-				g_supplicant_interface_get_ifname(interface),
-				wifi);
-
-	if (result < 0 || wifi == NULL)
-		return;
-
-	wifi->interface = interface;
-	g_supplicant_interface_set_data(interface, wifi);
-
-	if (g_supplicant_interface_get_ready(interface) == FALSE)
-		return;
+	GSupplicantInterface *interface = wifi->interface;
 
 	DBG("interface is ready wifi %p tethering %d", wifi, wifi->tethering);
 
@@ -809,6 +795,28 @@ static void interface_create_callback(int result,
 				interface_autoscan_callback, wifi) < 0) {
 		DBG("Could not enable Autoscan, falling back...");
 		setup_autoscan(wifi);
+	}
+}
+
+static void interface_create_callback(int result,
+					GSupplicantInterface *interface,
+							void *user_data)
+{
+	struct wifi_data *wifi = user_data;
+
+	DBG("result %d ifname %s, wifi %p", result,
+				g_supplicant_interface_get_ifname(interface),
+				wifi);
+
+	if (result < 0 || wifi == NULL)
+		return;
+
+	wifi->interface = interface;
+	g_supplicant_interface_set_data(interface, wifi);
+
+	if (g_supplicant_interface_get_ready(interface) == TRUE) {
+		wifi->interface_ready = TRUE;
+		finalize_interface_creation(wifi);
 	}
 }
 
@@ -1562,10 +1570,18 @@ static void interface_state(GSupplicantInterface *interface)
 	if (wifi == NULL)
 		return;
 
-	network = wifi->network;
 	device = wifi->device;
+	if (device == NULL)
+		return;
 
-	if (device == NULL || network == NULL)
+	if (g_supplicant_interface_get_ready(interface) == TRUE &&
+					wifi->interface_ready == FALSE) {
+		wifi->interface_ready = TRUE;
+		finalize_interface_creation(wifi);
+	}
+
+	network = wifi->network;
+	if (network == NULL)
 		return;
 
 	switch (state) {
