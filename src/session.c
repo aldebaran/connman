@@ -487,7 +487,7 @@ static void cleanup_session_final(struct connman_session *session)
 	free_session(session);
 }
 
-static void nfacct_cleanup_cb(int error, struct nfacct_context *ctx,
+static void nfacct_cleanup_cb(unsigned int error, struct nfacct_context *ctx,
 				void *user_data)
 {
 	struct connman_session *session = user_data;
@@ -1981,18 +1981,21 @@ err:
 	return err;
 }
 
-static void session_nfacct_enable_cb(int err,
+static void session_nfacct_enable_cb(unsigned int error,
 					struct nfacct_context *ctx,
 					void *user_data)
 {
 	struct creation_data *creation_data = user_data;
 	struct connman_session *session = creation_data->session;
 	DBusMessage *reply;
+	int err;
 
 	DBG("");
 
-	if (err < 0)
+	if (error != 0) {
+		err = -error;
 		goto err;
+	}
 
 	err = init_firewall_session(session);
 	if (err < 0)
@@ -2420,14 +2423,14 @@ static struct connman_notifier session_notifier = {
 	.ipconfig_changed	= ipconfig_changed,
 };
 
-static int session_nfacct_flush_cb(int error, void *user_data)
+static int session_nfacct_flush_cb(unsigned int error, void *user_data)
 {
 	if (error == 0)
 		return 0;
 
-	connman_error("Could not flush nfacct table: %s", strerror(-error));
+	connman_error("Could not flush nfacct table: %s", strerror(error));
 
-	return error;
+	return -error;
 }
 
 int __connman_session_init(void)

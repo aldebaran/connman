@@ -924,16 +924,16 @@ int __connman_firewall_disable(struct firewall_context *ctx);
 int __connman_firewall_init(void);
 void __connman_firewall_cleanup(void);
 
-typedef int (* connman_nfacct_flush_cb_t) (int error, void *user_data);
+typedef int (* connman_nfacct_flush_cb_t) (unsigned int error, void *user_data);
 
 int __connman_nfacct_flush(connman_nfacct_flush_cb_t cb, void *user_data);
 
 struct nfacct_context;
 
-typedef void (* connman_nfacct_enable_cb_t) (int error,
+typedef void (* connman_nfacct_enable_cb_t) (unsigned int error,
 						struct nfacct_context *ctx,
 						void *user_data);
-typedef void (* connman_nfacct_disable_cb_t) (int error,
+typedef void (* connman_nfacct_disable_cb_t) (unsigned int error,
 						struct nfacct_context *ctx,
 						void *user_data);
 typedef void (* connman_nfacct_stats_cb_t) (struct nfacct_context *ctx,

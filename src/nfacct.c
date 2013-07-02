@@ -42,12 +42,12 @@ struct nfacct_context {
 	struct nfacct_info *nfacct;
 	GList *rules;
 	unsigned int pending;
-	int error;
+	unsigned int error;
 };
 
 struct nfacct_flush {
 	unsigned int pending;
-	int error;
+	unsigned int error;
 };
 
 static void cleanup_nfacct_rule(gpointer user_data)
@@ -149,12 +149,12 @@ static void nfacct_enable_cb(unsigned int error, void *user_data)
 	ctx->pending--;
 
 	if (error != 0)
-		ctx->error = -error;
+		ctx->error = error;
 
 	if (ctx->pending > 0)
 		return;
 
-	if (ctx->error < 0) {
+	if (ctx->error != 0) {
 		nfacct_handle_enable_error(ctx, cb, user_data);
 		return;
 	}
