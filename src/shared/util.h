@@ -21,6 +21,8 @@
  *
  */
 
+#include <glib.h>
+
 typedef void (*util_debug_func_t)(const char *str, void *user_data);
 
 void util_debug(util_debug_func_t function, void *user_data,
@@ -29,3 +31,20 @@ void util_debug(util_debug_func_t function, void *user_data,
 
 void util_hexdump(const char dir, const unsigned char *buf, size_t len,
 				util_debug_func_t function, void *user_data);
+
+struct cb_data {
+	void *cb;
+	void *user_data;
+	void *data;
+};
+
+static inline struct cb_data *cb_data_new(void *cb, void *user_data)
+{
+	struct cb_data *ret;
+
+	ret = g_new0(struct cb_data, 1);
+	ret->cb = cb;
+	ret->user_data = user_data;
+
+	return ret;
+}

@@ -28,6 +28,7 @@
 
 #include "connman.h"
 #include "src/shared/nfacct.h"
+#include "src/shared/util.h"
 
 static struct nfacct_info *nfacct;
 

@@ -42,6 +42,8 @@
 #include <connman/dbus.h>
 #include <connman/inotify.h>
 
+#include "src/shared/util.h"
+
 #define POLICYDIR STORAGEDIR "/session_policy_local"
 
 #define MODE		(S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | \

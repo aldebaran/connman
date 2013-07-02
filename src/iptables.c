@@ -35,6 +35,7 @@
 #include <linux/netfilter_ipv4/ip_tables.h>
 
 #include "connman.h"
+#include "src/shared/util.h"
 
 /*
  * Some comments on how the iptables API works (some of them from the
