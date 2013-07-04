@@ -1403,12 +1403,6 @@ static int dhcpv6_confirm(struct connman_dhcpv6 *dhcp)
 
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_RAPID_COMMIT);
-	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
-	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DOMAIN_LIST);
-	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
-
-	g_dhcpv6_client_set_oro(dhcp_client, 3, G_DHCPV6_DNS_SERVERS,
-				G_DHCPV6_DOMAIN_LIST, G_DHCPV6_SNTP_SERVERS);
 
 	ipconfig_ipv6 = __connman_service_get_ip6config(service);
 	dhcp->use_ta = __connman_ipconfig_ipv6_privacy_enabled(ipconfig_ipv6);
