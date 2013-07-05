@@ -478,6 +478,23 @@ static int set_addresses(GDHCPClient *dhcp_client,
 		return -EINVAL;
 	}
 
+	/*
+	 * Check domains before nameservers so that the nameserver append
+	 * function will update domain list in service.c
+	 */
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCPV6_DOMAIN_LIST);
+	entries = g_list_length(option);
+	if (entries > 0) {
+		char **domains = g_try_new0(char *, entries + 1);
+		if (domains != NULL) {
+			for (i = 0, list = option; list;
+						list = list->next, i++)
+				domains[i] = g_strdup(list->data);
+			__connman_service_update_search_domains(service, domains);
+			g_strfreev(domains);
+		}
+	}
+
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCPV6_DNS_SERVERS);
 	entries = g_list_length(option);
 
