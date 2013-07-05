@@ -32,6 +32,7 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+#include <resolv.h>
 
 #include <netpacket/packet.h>
 #include <netinet/if_ether.h>
@@ -1956,6 +1957,34 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 	return list;
 }
 
+static GList *get_domains(int maxlen, unsigned char *value)
+
+{
+	GList *list = NULL;
+	int pos = 0;
+	unsigned char *c;
+	char dns_name[NS_MAXDNAME + 1];
+
+	if (value == NULL || maxlen < 3)
+		return NULL;
+
+	while (pos < maxlen) {
+		strncpy(dns_name, (char *)&value[pos], NS_MAXDNAME);
+
+		c = (unsigned char *)dns_name;
+		while (c && *c) {
+			int jump;
+			jump = *c;
+			*c = '.';
+			c += jump + 1;
+		}
+		list = g_list_prepend(list, g_strdup(&dns_name[1]));
+		pos += (char *)c - dns_name + 1;
+	}
+
+	return g_list_reverse(list);
+}
+
 static GList *get_dhcpv6_option_value_list(GDHCPClient *dhcp_client,
 					int code, int len,
 					unsigned char *value,
@@ -1996,6 +2025,10 @@ static GList *get_dhcpv6_option_value_list(GDHCPClient *dhcp_client,
 	case G_DHCPV6_IA_TA:		/* RFC 3315, chapter 22.5 */
 	case G_DHCPV6_IA_PD:		/* RFC 3633, chapter 9 */
 		list = get_addresses(dhcp_client, code, len, value, status);
+		break;
+
+	case G_DHCPV6_DOMAIN_LIST:
+		list = get_domains(len, value);
 		break;
 
 	default:
