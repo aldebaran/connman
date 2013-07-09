@@ -35,6 +35,7 @@ static GHashTable *nat_hash;
 struct connman_nat {
 	char *address;
 	unsigned char prefixlen;
+	struct firewall_context *fw;
 
 	char *interface;
 };
@@ -73,33 +74,23 @@ static int enable_nat(struct connman_nat *nat)
 					nat->address,
 					nat->prefixlen,
 					nat->interface);
-	err = __connman_iptables_append("nat", "POSTROUTING", cmd);
+
+	err = __connman_firewall_add_rule(nat->fw, "nat",
+				"POSTROUTING", cmd);
 	g_free(cmd);
 	if (err < 0)
 		return err;
 
-	return __connman_iptables_commit("nat");
+	return __connman_firewall_enable(nat->fw);
 }
 
 static void disable_nat(struct connman_nat *nat)
 {
-	char *cmd;
-	int err;
-
 	if (nat->interface == NULL)
 		return;
 
 	/* Disable masquerading */
-	cmd = g_strdup_printf("-s %s/%d -o %s -j MASQUERADE",
-					nat->address,
-					nat->prefixlen,
-					nat->interface);
-	err = __connman_iptables_delete("nat", "POSTROUTING", cmd);
-	g_free(cmd);
-	if (err < 0)
-		return;
-
-	__connman_iptables_commit("nat");
+	__connman_firewall_disable(nat->fw);
 }
 
 int __connman_nat_enable(const char *name, const char *address,
@@ -115,12 +106,12 @@ int __connman_nat_enable(const char *name, const char *address,
 	}
 
 	nat = g_try_new0(struct connman_nat, 1);
-	if (nat == NULL) {
-		if (g_hash_table_size(nat_hash) == 0)
-			enable_ip_forward(FALSE);
+	if (nat == NULL)
+		goto err;
 
-		return -ENOMEM;
-	}
+	nat->fw = __connman_firewall_create();
+	if (nat->fw == NULL)
+		goto err;
 
 	nat->address = g_strdup(address);
 	nat->prefixlen = prefixlen;
@@ -128,6 +119,15 @@ int __connman_nat_enable(const char *name, const char *address,
 	g_hash_table_replace(nat_hash, g_strdup(name), nat);
 
 	return enable_nat(nat);
+
+err:
+	if (nat != NULL)
+		__connman_firewall_destroy(nat->fw);
+
+	if (g_hash_table_size(nat_hash) == 0)
+		enable_ip_forward(FALSE);
+
+	return -ENOMEM;
 }
 
 void __connman_nat_disable(const char *name)
@@ -184,6 +184,7 @@ static void cleanup_nat(gpointer data)
 {
 	struct connman_nat *nat = data;
 
+	__connman_firewall_destroy(nat->fw);
 	g_free(nat->address);
 	g_free(nat->interface);
 	g_free(nat);
