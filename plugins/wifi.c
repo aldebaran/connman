@@ -324,12 +324,16 @@ static int add_scan_param(gchar *hex_ssid, char *raw_ssid, int ssid_len,
 		 * used or are using multiple wifi cards, so in that case
 		 * you might have multiple service files for same AP.
 		 */
-		if (is_duplicate(scan_data->ssids, ssid, j) == TRUE)
+		if (is_duplicate(scan_data->ssids, ssid, j) == TRUE) {
+			if (hex_ssid != NULL)
+				g_free(ssid);
 			return 0;
+		}
 
 		scan_ssid = g_try_new(struct scan_ssid, 1);
 		if (scan_ssid == NULL) {
-			g_free(ssid);
+			if (hex_ssid != NULL)
+				g_free(ssid);
 			return -ENOMEM;
 		}
 
