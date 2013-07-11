@@ -231,7 +231,7 @@ GSList *__connman_timeserver_get_all(struct connman_service *service)
 	return g_slist_reverse(list);
 }
 
-static gboolean ts_recheck(void *user_data)
+static gboolean ts_recheck(gpointer user_data)
 {
 	GSList *ts;
 
