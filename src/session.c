@@ -1240,7 +1240,7 @@ static connman_bool_t explicit_disconnect(struct session_info *info)
 struct pending_data {
 	unsigned int timeout;
 	struct service_entry *entry;
-	gboolean (*cb)(gpointer);
+	GSourceFunc cb;
 };
 
 static void pending_timeout_free(gpointer data, gpointer user_data)
@@ -1280,7 +1280,7 @@ static gboolean pending_timeout_cb(gpointer data)
 }
 
 static connman_bool_t pending_timeout_add(unsigned int seconds,
-					gboolean (*cb)(gpointer),
+					GSourceFunc cb,
 					struct service_entry *entry)
 {
 	struct pending_data *pending = g_try_new0(struct pending_data, 1);
