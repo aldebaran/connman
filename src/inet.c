@@ -456,6 +456,9 @@ int connman_inet_clear_ipv6_address(int index, const char *address,
 
 	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
 
+	if (address == NULL)
+		return -EINVAL;
+
 	err = __connman_inet_modify_address(RTM_DELADDR, 0, index, AF_INET6,
 				address, NULL, prefix_len, NULL);
 	if (err < 0) {
@@ -478,6 +481,9 @@ int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress)
 	peer = ipaddress->peer;
 
 	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
+
+	if (address == NULL)
+		return -EINVAL;
 
 	err = __connman_inet_modify_address(RTM_DELADDR, 0, index, AF_INET,
 				address, peer, prefix_len, broadcast);
