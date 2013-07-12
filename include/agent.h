@@ -22,6 +22,8 @@
 #ifndef __CONNMAN_AGENT_H
 #define __CONNMAN_AGENT_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

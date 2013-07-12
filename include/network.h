@@ -23,6 +23,7 @@
 #ifndef __CONNMAN_NETWORK_H
 #define __CONNMAN_NETWORK_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include <connman/types.h>

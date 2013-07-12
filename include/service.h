@@ -22,6 +22,7 @@
 #ifndef __CONNMAN_SERVICE_H
 #define __CONNMAN_SERVICE_H
 
+#include <stdbool.h>
 #include <connman/types.h>
 
 #ifdef __cplusplus

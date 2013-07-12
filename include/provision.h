@@ -22,6 +22,8 @@
 #ifndef __CONNMAN_PROVISION_H
 #define __CONNMAN_PROVISION_H
 
+#include <stdbool.h>
+
 #include <connman/types.h>
 
 #ifdef __cplusplus
