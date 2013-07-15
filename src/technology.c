@@ -1696,14 +1696,35 @@ int __connman_technology_update_rfkill(unsigned int index,
 		return 0;
 
 	/*
-	 * Depending on softblocked state we unblock/block according to
-	 * persistent state.
+	 * State diagram how to set the block status from individual
+	 * technology status fields:
+	 *
+	 *   enabled  |  softblocked  |  offline  |    is
+	 *            |               |           |  blocked
+	 * -----------+---------------+-----------+----------
+	 *     no     |      no       |    no     |   yes
+	 *     yes    |      no       |    no     |   no
+	 *     no     |      yes      |    no     |   yes
+	 *     yes    |      yes      |    no     |   yes
+	 *     no     |      no       |    yes    |   yes
+	 *     yes    |      no       |    yes    |   no
+	 *     no     |      yes      |    yes    |   yes
+	 *     yes    |      yes      |    yes    |   yes
+	 *
+	 * The enabled is controlled by dbus API (typically
+	 * from UI). softblocked is set either by dbus API or by
+	 * external event. Offline (flight mode) is set via dbus
+	 * API.
 	 */
-	if (technology->softblocked == TRUE &&
-				technology->enable_persistent == TRUE)
+
+	DBG("type %d enabled %d soft %d hard %d blocked %d",
+		type, technology->enabled,
+		technology->softblocked, technology->hardblocked,
+		!(technology->enabled && !technology->softblocked));
+
+	if (technology->enabled && !technology->softblocked)
 		return __connman_rfkill_block(type, FALSE);
-	else if (technology->softblocked == FALSE &&
-				technology->enable_persistent == FALSE)
+	else
 		return __connman_rfkill_block(type, TRUE);
 
 	return 0;
