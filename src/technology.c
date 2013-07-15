@@ -1596,6 +1596,9 @@ softblock_change:
 		} else {
 			DBG("%s is switched on.", get_name(technology->type));
 			technology_dbus_register(technology);
+
+			if (global_offlinemode)
+				__connman_rfkill_block(technology->type, TRUE);
 		}
 	}
 
