@@ -1,3 +1,15 @@
+ver 1.16:
+	Fix issue with missing signals during connection changes.
+	Fix issue with missing notification of proxy properties.
+	Fix issue with missing DHCPv6 domain list option.
+	Fix issue with missing DHCPv6 release message.
+	Fix issue with missing DHCPv6 error handling.
+	Fix issue with wrong IPCMv6 checksum calculation.
+	Fix issue with wrong service disconnect state.
+	Fix issue with failure to enable offline mode.
+	Add support for Netfilter Accounting (NFACCT).
+	Add support for IPv6 prefix delegation handling.
+
 ver 1.15:
 	Fix issue with missing cleanup for IPv4-LL handling.
 	Fix issue with missing property update for domain names.
