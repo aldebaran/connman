@@ -1593,8 +1593,10 @@ softblock_change:
 		if (technology->hardblocked == TRUE) {
 			DBG("%s is switched off.", get_name(technology->type));
 			technology_dbus_unregister(technology);
-		} else
+		} else {
+			DBG("%s is switched on.", get_name(technology->type));
 			technology_dbus_register(technology);
+		}
 	}
 
 	return technology->hardblocked;
