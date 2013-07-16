@@ -26,50 +26,47 @@
 #include "../src/connman.h"
 
 struct test_session;
+struct test_fix;
 
 struct test_manager {
 	char *state;
 };
+
+typedef void (* util_test_func_t) (struct test_fix *fix);
 
 struct test_fix {
 	gpointer user_data;
 
 	GMainLoop *main_loop;
 	DBusConnection *main_connection;
-	guint watch;
-	guint manager_watch;
+	unsigned int watch;
+	unsigned int manager_watch;
 
 	struct test_manager manager;
-	GSourceFunc manager_changed;
+	util_test_func_t manager_changed;
 
 	/* session test cases */
 	unsigned int max_sessions;
 	struct test_session *session;
 };
 
-/* utils.c */
-typedef void (* util_test_setup_cb) (struct test_fix *fix,
-					gconstpointer data);
-typedef void (* util_test_teardown_cb) (struct test_fix *fix,
-					gconstpointer data);
-
-gboolean util_quit_loop(gpointer fix);
-guint util_idle_call(struct test_fix *fix, GSourceFunc func,
-			GDestroyNotify notify);
-guint util_call(struct test_fix *fix, GSourceFunc func,
-		GDestroyNotify notify);
-void util_test_add(const char *test_name, GSourceFunc test_func,
-			util_test_setup_cb setup_cb,
-			util_test_teardown_cb teardown_cb);
-void util_setup(struct test_fix *fix, gconstpointer data);
-void util_teardown(struct test_fix *fix, gconstpointer data);
+void util_quit_loop(struct test_fix *fix);
+void util_idle_call(struct test_fix *fix, util_test_func_t func,
+			util_test_func_t destroy);
+void util_call(struct test_fix *fix, util_test_func_t func,
+		util_test_func_t destroy);
+void util_test_add(const char *test_name, util_test_func_t test,
+			util_test_func_t setup,
+			util_test_func_t teardown);
+void util_setup(struct test_fix *fix);
+void util_teardown(struct test_fix *fix);
 
 void util_session_create(struct test_fix *fix, unsigned int max_sessions);
-void util_session_destroy(gpointer fix);
+void util_session_destroy(struct test_fix *fix);
 void util_session_init(struct test_session *session);
 void util_session_cleanup(struct test_session *session);
 
-typedef void (* notify_cb) (struct test_session *session);
+typedef void (* notify_func_t) (struct test_session *session);
 
 enum connman_session_state {
 	CONNMAN_SESSION_STATE_DISCONNECTED   = 0,
@@ -88,14 +85,14 @@ struct test_session_info {
 };
 
 struct test_session {
-	gpointer user_data;
+	void *user_data;
 
 	struct test_fix *fix;
 	DBusConnection *connection;
 
 	char *session_path;
 	char *notify_path;
-	notify_cb notify;
+	notify_func_t notify;
 
 	struct test_session_info *info;
 };

@@ -27,32 +27,66 @@
 
 #include <gdbus.h>
 
+#include "../src/shared/util.h"
 #include "session-test.h"
 
 #define ENABLE_WRAPPER 1
 #define PROPERTY_CHANGED		"PropertyChanged"
 
-gboolean util_quit_loop(gpointer data)
+void util_quit_loop(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
-
 	g_main_loop_quit(fix->main_loop);
+}
+
+static gboolean func_cb(gpointer data)
+{
+	struct cb_data *cbd = data;
+	util_test_func_t cb = cbd->cb;
+	struct test_fix *fix = cbd->user_data;
+
+	(*cb)(fix);
 
 	return FALSE;
 }
 
-guint util_idle_call(struct test_fix *fix, GSourceFunc func,
-			GDestroyNotify notify)
+static void destroy_cb(gpointer data)
 {
+	struct cb_data *cbd = data;
+	util_test_func_t cb = cbd->data;
+	struct test_fix *fix = cbd->user_data;
+
+	if (cb != NULL)
+		(*cb)(fix);
+
+	g_free(cbd);
+}
+
+void util_call(struct test_fix *fix, util_test_func_t func,
+		util_test_func_t destroy)
+{
+	struct cb_data *cbd = cb_data_new(func, fix);
 	GSource *source;
-	guint id;
+
+	cbd->data = destroy;
+
+	source = g_timeout_source_new(0);
+	g_source_set_callback(source, func_cb, cbd, destroy_cb);
+	g_source_attach(source, g_main_loop_get_context(fix->main_loop));
+	g_source_unref(source);
+}
+
+void util_idle_call(struct test_fix *fix, util_test_func_t func,
+			util_test_func_t destroy)
+{
+	struct cb_data *cbd = cb_data_new(func, fix);
+	GSource *source;
+
+	cbd->data = destroy;
 
 	source = g_idle_source_new();
-	g_source_set_callback(source, func, fix, notify);
-	id = g_source_attach(source, g_main_loop_get_context(fix->main_loop));
+	g_source_set_callback(source, func_cb, cbd, destroy_cb);
+	g_source_attach(source, g_main_loop_get_context(fix->main_loop));
 	g_source_unref(source);
-
-	return id;
 }
 
 static void connman_died(DBusConnection *connection, void *user_data)
@@ -110,23 +144,12 @@ static gboolean handle_manager_changed(DBusConnection *connection,
 	return TRUE;
 }
 
-guint util_call(struct test_fix *fix, GSourceFunc func,
-		GDestroyNotify notify)
+static struct test_fix *create_fix(void)
 {
-	GSource *source;
-	guint id;
-
-	source = g_timeout_source_new(0);
-	g_source_set_callback(source, func, fix, notify);
-	id = g_source_attach(source, g_main_loop_get_context(fix->main_loop));
-	g_source_unref(source);
-
-	return id;
-}
-
-void util_setup(struct test_fix *fix, gconstpointer data)
-{
+	struct test_fix *fix;
 	DBusMessage *msg;
+
+	fix = g_new0(struct test_fix, 1);
 
 	fix->main_loop = g_main_loop_new(NULL, FALSE);
 	fix->main_connection = g_dbus_setup_private(DBUS_BUS_SYSTEM,
@@ -146,9 +169,11 @@ void util_setup(struct test_fix *fix, gconstpointer data)
 	msg = manager_get_properties(fix->main_connection);
 	manager_parse_properties(msg, &fix->manager);
 	dbus_message_unref(msg);
+
+	return fix;
 }
 
-void util_teardown(struct test_fix *fix, gconstpointer data)
+static void cleanup_fix(struct test_fix *fix)
 {
 	g_dbus_remove_watch(fix->main_connection, fix->watch);
 	g_dbus_remove_watch(fix->main_connection, fix->manager_watch);
@@ -156,14 +181,29 @@ void util_teardown(struct test_fix *fix, gconstpointer data)
 	dbus_connection_unref(fix->main_connection);
 
 	g_main_loop_unref(fix->main_loop);
+
+	g_free(fix);
 }
 
-static void util_wrapper(struct test_fix *fix, gconstpointer data)
+struct test_data_cb {
+	util_test_func_t func;
+	util_test_func_t setup;
+	util_test_func_t teardown;
+};
+
+static void run_test_cb(gconstpointer data)
 {
-	GSourceFunc func = data;
+	const struct test_data_cb *cbd = data;
+	struct test_fix *fix;
+
+	fix = create_fix();
+
+	util_call(fix, cbd->setup, NULL);
+	g_main_loop_run(fix->main_loop);
+
 #if ENABLE_WRAPPER
 	if (g_test_trap_fork(60 * 1000 * 1000, 0) == TRUE) {
-		util_call(fix, func, NULL);
+		util_call(fix, cbd->func, NULL);
 		g_main_loop_run(fix->main_loop);
 		exit(0);
 	}
@@ -173,14 +213,23 @@ static void util_wrapper(struct test_fix *fix, gconstpointer data)
 	util_call(fix, func, NULL);
 	g_main_loop_run(fix->main_loop);
 #endif
+
+	util_call(fix, cbd->teardown, NULL);
+	g_main_loop_run(fix->main_loop);
+
+	cleanup_fix(fix);
 }
 
-void util_test_add(const char *test_name, GSourceFunc test_func,
-			util_test_setup_cb setup_cb,
-			util_test_teardown_cb teardown_cb)
+void util_test_add(const char *test_name, util_test_func_t test_func,
+		util_test_func_t setup, util_test_func_t teardown)
 {
-	g_test_add(test_name, struct test_fix, test_func,
-		setup_cb, util_wrapper, teardown_cb);
+	struct test_data_cb *cbd = g_new0(struct test_data_cb, 1);
+
+	cbd->func = test_func;
+	cbd->setup = setup;
+	cbd->teardown = teardown;
+
+	g_test_add_data_func_full(test_name, cbd, run_test_cb, g_free);
 }
 
 void util_session_create(struct test_fix *fix, unsigned int max_sessions)
@@ -198,10 +247,8 @@ void util_session_create(struct test_fix *fix, unsigned int max_sessions)
 	}
 }
 
-void util_session_destroy(gpointer data)
+void util_session_destroy(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
-
 	unsigned int i;
 
 	for (i = 0; i < fix->max_sessions; i++) {

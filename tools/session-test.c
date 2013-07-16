@@ -58,9 +58,8 @@ static struct test_session *get_session(struct test_session *session,
 	return &session->fix->session[index];
 }
 
-static gboolean test_session_create_no_notify(gpointer data)
+static void test_session_create_no_notify(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
 	DBusMessage *msg;
 
 	util_session_create(fix, 1);
@@ -73,13 +72,10 @@ static gboolean test_session_create_no_notify(gpointer data)
 	dbus_message_unref(msg);
 
 	util_idle_call(fix, util_quit_loop, util_session_destroy);
-
-	return FALSE;
 }
 
-static gboolean test_session_destroy_no_notify(gpointer data)
+static void test_session_destroy_no_notify(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
 	DBusMessage *msg;
 
 	util_session_create(fix, 1);
@@ -88,8 +84,6 @@ static gboolean test_session_destroy_no_notify(gpointer data)
 	g_assert(msg == NULL);
 
 	util_idle_call(fix, util_quit_loop, util_session_destroy);
-
-	return FALSE;
 }
 
 static void test_session_create_notify(struct test_session *session)
@@ -99,9 +93,8 @@ static void test_session_create_notify(struct test_session *session)
 	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
 }
 
-static gboolean test_session_create(gpointer data)
+static void test_session_create(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
 	struct test_session *session;
 	DBusMessage *msg;
 	int err;
@@ -122,13 +115,10 @@ static gboolean test_session_create(gpointer data)
 	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
 
 	dbus_message_unref(msg);
-
-	return FALSE;
 }
 
-static gboolean test_session_create_destroy(gpointer data)
+static void test_session_create_destroy(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
 	struct test_session *session;
 
 	util_session_create(fix, 1);
@@ -140,13 +130,10 @@ static gboolean test_session_create_destroy(gpointer data)
 	util_session_cleanup(fix->session);
 
 	util_idle_call(fix, util_quit_loop, util_session_destroy);
-
-	return FALSE;
 }
 
-static gboolean test_session_create_already_exists(gpointer data)
+static void test_session_create_already_exists(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
 	struct test_session *session0, *session1;
 	DBusMessage *msg;
 
@@ -167,8 +154,6 @@ static gboolean test_session_create_already_exists(gpointer data)
 	util_session_cleanup(session0);
 
 	util_idle_call(fix, util_quit_loop, util_session_destroy);
-
-	return FALSE;
 }
 
 static void test_session_create_many_notify(struct test_session *session)
@@ -187,9 +172,8 @@ static void test_session_create_many_notify(struct test_session *session)
 	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
 }
 
-static gboolean test_session_create_many(gpointer data)
+static void test_session_create_many(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
 	struct test_session *session;
 	unsigned int i, max;
 
@@ -207,8 +191,6 @@ static gboolean test_session_create_many(gpointer data)
 
 		util_session_init(session);
 	}
-
-	return FALSE;
 }
 
 static void set_session_mode(struct test_fix *fix,
@@ -235,9 +217,8 @@ static void test_session_connect_notify(struct test_session *session)
 	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
 }
 
-static gboolean test_session_connect(gpointer data)
+static void test_session_connect(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
 	struct test_session *session;
 	DBusMessage *msg;
 
@@ -253,8 +234,6 @@ static gboolean test_session_connect(gpointer data)
 	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
 
 	dbus_message_unref(msg);
-
-	return FALSE;
 }
 
 static void test_session_disconnect_notify(struct test_session *session)
@@ -269,9 +248,8 @@ static void test_session_disconnect_notify(struct test_session *session)
 	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
 }
 
-static gboolean test_session_disconnect(gpointer data)
+static void test_session_disconnect(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
 	struct test_session *session;
 	DBusMessage *msg;
 
@@ -285,8 +263,6 @@ static gboolean test_session_disconnect(gpointer data)
 	msg = session_disconnect(session->connection, session);
 	g_assert(msg != NULL);
 	dbus_message_unref(msg);
-
-	return FALSE;
 }
 
 static void test_session_connect_disconnect_notify(struct test_session *session)
@@ -342,9 +318,8 @@ static void test_session_connect_disconnect_notify(struct test_session *session)
 	}
 }
 
-static gboolean test_session_connect_disconnect(gpointer data)
+static void test_session_connect_disconnect(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
 	struct test_session *session;
 
 	/*
@@ -374,8 +349,6 @@ static gboolean test_session_connect_disconnect(gpointer data)
 	util_session_init(session);
 
 	set_session_state(session, TEST_SESSION_STATE_0);
-
-	return FALSE;
 }
 
 static void test_session_connect_free_ride_notify(struct test_session *session)
@@ -454,9 +427,8 @@ static void test_session_connect_free_ride_notify(struct test_session *session)
 	}
 }
 
-static gboolean test_session_connect_free_ride(gpointer data)
+static void test_session_connect_free_ride(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
 	struct test_session *session0, *session1;
 
 	/*
@@ -496,8 +468,6 @@ static gboolean test_session_connect_free_ride(gpointer data)
 	util_session_init(session1);
 
 	set_session_state(session0, TEST_SESSION_STATE_0);
-
-	return FALSE;
 }
 
 static void policy_save(GKeyFile *keyfile, char *pathname)
@@ -605,9 +575,8 @@ static void test_session_policy_notify(struct test_session *session)
 	}
 }
 
-static gboolean test_session_policy(gpointer data)
+static void test_session_policy(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
 	struct test_session *session;
 
 	/*
@@ -639,8 +608,6 @@ static gboolean test_session_policy(gpointer data)
 	util_session_init(session);
 
 	set_session_state(session, TEST_SESSION_STATE_0);
-
-	return FALSE;
 }
 
 static connman_bool_t is_online(struct test_fix *fix)
@@ -651,59 +618,38 @@ static connman_bool_t is_online(struct test_fix *fix)
 	return FALSE;
 }
 
-static gboolean enable_session_mode(gpointer data)
+static void enable_session_mode(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
-
 	set_session_mode(fix, TRUE);
 
 	if (is_online(fix) == FALSE)
 		util_idle_call(fix, util_quit_loop, NULL);
-
-	return FALSE;
 }
 
-static gboolean manager_state_changed(gpointer data)
+static void manager_state_changed(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
-
 	if (is_online(fix) == FALSE) {
 		fix->manager_changed = NULL;
 		util_idle_call(fix, util_quit_loop, NULL);
 	}
-
-	return FALSE;
 }
 
-static gboolean disable_session_mode(gpointer data)
+static void disable_session_mode(struct test_fix *fix)
 {
-	struct test_fix *fix = data;
-
 	set_session_mode(fix, FALSE);
-
-	return FALSE;
 }
 
-static void setup_cb(struct test_fix *fix, gconstpointer data)
+static void setup_cb(struct test_fix *fix)
 {
 	fix->manager_changed = manager_state_changed;
 
-	util_setup(fix, data);
 	util_call(fix, enable_session_mode, NULL);
-
-	g_main_loop_run(fix->main_loop);
-
-	fix->manager_changed = NULL;
 }
 
-static void teardown_cb(struct test_fix *fix, gconstpointer data)
+static void teardown_cb(struct test_fix *fix)
 {
 	util_call(fix, disable_session_mode, NULL);
 	util_idle_call(fix, util_quit_loop, NULL);
-
-	g_main_loop_run(fix->main_loop);
-
-	util_teardown(fix, data);
 }
 
 int main(int argc, char *argv[])
