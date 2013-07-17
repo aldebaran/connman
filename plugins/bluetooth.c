@@ -77,7 +77,7 @@ static const char *proxy_get_string(GDBusProxy *proxy, const char *property)
 static connman_bool_t proxy_get_bool(GDBusProxy *proxy, const char *property)
 {
 	DBusMessageIter iter;
-	connman_bool_t value;
+	dbus_bool_t value;
 
 	if (g_dbus_proxy_get_property(proxy, property, &iter) == FALSE)
 		return FALSE;
@@ -495,7 +495,7 @@ out:
 static int bluetooth_device_enable(struct connman_device *device)
 {
 	GDBusProxy *proxy = connman_device_get_data(device);
-	connman_bool_t device_powered = TRUE;
+	dbus_bool_t device_powered = TRUE;
 	const char *path;
 
 	if (proxy == NULL)
@@ -556,7 +556,7 @@ out:
 static int bluetooth_device_disable(struct connman_device *device)
 {
 	GDBusProxy *proxy = connman_device_get_data(device);
-	connman_bool_t device_powered = FALSE;
+	dbus_bool_t device_powered = FALSE;
 	const char *path;
 
 	if (proxy == NULL)

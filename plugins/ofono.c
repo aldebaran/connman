@@ -565,7 +565,7 @@ static void context_set_active_reply(struct modem_data *modem,
 }
 
 static int context_set_active(struct modem_data *modem,
-				connman_bool_t active)
+				dbus_bool_t active)
 {
 	int err;
 
@@ -616,7 +616,7 @@ static void cdma_cm_set_powered_reply(struct modem_data *modem,
 				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
 }
 
-static int cdma_cm_set_powered(struct modem_data *modem, connman_bool_t powered)
+static int cdma_cm_set_powered(struct modem_data *modem, dbus_bool_t powered)
 {
 	int err;
 
@@ -644,7 +644,7 @@ static int modem_set_online(struct modem_data *modem, connman_bool_t online)
 				NULL);
 }
 
-static int cm_set_powered(struct modem_data *modem, connman_bool_t powered)
+static int cm_set_powered(struct modem_data *modem, dbus_bool_t powered)
 {
 	int err;
 
@@ -662,7 +662,7 @@ static int cm_set_powered(struct modem_data *modem, connman_bool_t powered)
 	return err;
 }
 
-static int modem_set_powered(struct modem_data *modem, connman_bool_t powered)
+static int modem_set_powered(struct modem_data *modem, dbus_bool_t powered)
 {
 	int err;
 
