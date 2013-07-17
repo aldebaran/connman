@@ -22,6 +22,8 @@
 #ifndef __VPN_PROVIDER_H
 #define __VPN_PROVIDER_H
 
+#include <stdbool.h>
+
 #include <glib.h>
 #include <connman/types.h>
 

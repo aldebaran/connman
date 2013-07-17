@@ -19,6 +19,8 @@
  *
  */
 
+#include <stdbool.h>
+
 #include <glib.h>
 
 #define VPN_API_SUBJECT_TO_CHANGE
