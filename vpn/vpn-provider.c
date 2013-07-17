@@ -1346,6 +1346,7 @@ static void append_properties(DBusMessageIter *iter,
 	DBusMessageIter dict;
 	GHashTableIter hash;
 	gpointer value, key;
+	dbus_bool_t immutable;
 
 	connman_dbus_dict_open(iter, &dict);
 
@@ -1369,8 +1370,9 @@ static void append_properties(DBusMessageIter *iter,
 		connman_dbus_dict_append_basic(&dict, "Domain",
 					DBUS_TYPE_STRING, &provider->domain);
 
+	immutable = provider->immutable;
 	connman_dbus_dict_append_basic(&dict, "Immutable", DBUS_TYPE_BOOLEAN,
-					&provider->immutable);
+					&immutable);
 
 	if (provider->family == AF_INET)
 		connman_dbus_dict_append_dict(&dict, "IPv4", append_ipv4,
