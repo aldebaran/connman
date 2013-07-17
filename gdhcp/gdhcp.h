@@ -22,6 +22,7 @@
 #ifndef __G_DHCP_H
 #define __G_DHCP_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <arpa/inet.h>
 
