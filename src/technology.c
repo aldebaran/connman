@@ -278,7 +278,7 @@ done:
 
 static void tethering_changed(struct connman_technology *technology)
 {
-	connman_bool_t tethering = technology->tethering;
+	dbus_bool_t tethering = technology->tethering;
 
 	connman_dbus_property_changed_basic(technology->path,
 				CONNMAN_TECHNOLOGY_INTERFACE, "Tethering",
@@ -571,6 +571,7 @@ static void append_properties(DBusMessageIter *iter,
 		struct connman_technology *technology)
 {
 	DBusMessageIter dict;
+	dbus_bool_t val;
 	const char *str;
 
 	connman_dbus_dict_open(iter, &dict);
@@ -586,17 +587,20 @@ static void append_properties(DBusMessageIter *iter,
 						DBUS_TYPE_STRING, &str);
 
 	__sync_synchronize();
+	val = technology->enabled;
 	connman_dbus_dict_append_basic(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN,
-					&technology->enabled);
+					&val);
 
+	val = technology->connected;
 	connman_dbus_dict_append_basic(&dict, "Connected",
 					DBUS_TYPE_BOOLEAN,
-					&technology->connected);
+					&val);
 
+	val = technology->tethering;
 	connman_dbus_dict_append_basic(&dict, "Tethering",
 					DBUS_TYPE_BOOLEAN,
-					&technology->tethering);
+					&val);
 
 	if (technology->tethering_ident != NULL)
 		connman_dbus_dict_append_basic(&dict, "TetheringIdentifier",
@@ -1383,6 +1387,8 @@ int __connman_technology_remove_device(struct connman_device *device)
 
 static void powered_changed(struct connman_technology *technology)
 {
+	dbus_bool_t enabled;
+
 	if (technology->dbus_registered == FALSE)
 		return;
 
@@ -1397,9 +1403,10 @@ static void powered_changed(struct connman_technology *technology)
 	}
 
 	__sync_synchronize();
+	enabled = technology->enabled;
 	connman_dbus_property_changed_basic(technology->path,
 			CONNMAN_TECHNOLOGY_INTERFACE, "Powered",
-			DBUS_TYPE_BOOLEAN, &technology->enabled);
+			DBUS_TYPE_BOOLEAN, &enabled);
 }
 
 static int technology_enabled(struct connman_technology *technology)
@@ -1523,6 +1530,7 @@ void __connman_technology_set_connected(enum connman_service_type type,
 		connman_bool_t connected)
 {
 	struct connman_technology *technology;
+	dbus_bool_t val;
 
 	technology = technology_find(type);
 	if (technology == NULL)
@@ -1532,9 +1540,10 @@ void __connman_technology_set_connected(enum connman_service_type type,
 
 	technology->connected = connected;
 
+	val = connected;
 	connman_dbus_property_changed_basic(technology->path,
 			CONNMAN_TECHNOLOGY_INTERFACE, "Connected",
-			DBUS_TYPE_BOOLEAN, &connected);
+			DBUS_TYPE_BOOLEAN, &val);
 }
 
 static connman_bool_t technology_apply_rfkill_change(struct connman_technology *technology,

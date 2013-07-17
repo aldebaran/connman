@@ -39,7 +39,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	connman_bool_t offlinemode, sessionmode;
+	dbus_bool_t offlinemode, sessionmode;
 	const char *str;
 
 	DBG("conn %p", conn);
@@ -96,7 +96,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 	type = dbus_message_iter_get_arg_type(&value);
 
 	if (g_str_equal(name, "OfflineMode") == TRUE) {
-		connman_bool_t offlinemode;
+		dbus_bool_t offlinemode;
 
 		if (type != DBUS_TYPE_BOOLEAN)
 			return __connman_error_invalid_arguments(msg);
@@ -105,7 +105,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		__connman_technology_set_offlinemode(offlinemode);
 	} else if (g_str_equal(name, "SessionMode") == TRUE) {
-		connman_bool_t sessionmode;
+		dbus_bool_t sessionmode;
 
 		if (type != DBUS_TYPE_BOOLEAN)
 			return __connman_error_invalid_arguments(msg);

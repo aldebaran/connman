@@ -1377,28 +1377,34 @@ static void strength_changed(struct connman_service *service)
 
 static void favorite_changed(struct connman_service *service)
 {
+	dbus_bool_t favorite;
+
 	if (service->path == NULL)
 		return;
 
 	if (allow_property_changed(service) == FALSE)
 		return;
 
+	favorite = service->favorite;
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Favorite",
-					DBUS_TYPE_BOOLEAN, &service->favorite);
+					DBUS_TYPE_BOOLEAN, &favorite);
 }
 
 static void immutable_changed(struct connman_service *service)
 {
+	dbus_bool_t immutable;
+
 	if (service->path == NULL)
 		return;
 
 	if (allow_property_changed(service) == FALSE)
 		return;
 
+	immutable = service->immutable;
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Immutable",
-					DBUS_TYPE_BOOLEAN, &service->immutable);
+					DBUS_TYPE_BOOLEAN, &immutable);
 }
 
 static void roaming_changed(struct connman_service *service)
@@ -1416,15 +1422,18 @@ static void roaming_changed(struct connman_service *service)
 
 static void autoconnect_changed(struct connman_service *service)
 {
+	dbus_bool_t autoconnect;
+
 	if (service->path == NULL)
 		return;
 
 	if (allow_property_changed(service) == FALSE)
 		return;
 
+	autoconnect = service->autoconnect;
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "AutoConnect",
-				DBUS_TYPE_BOOLEAN, &service->autoconnect);
+				DBUS_TYPE_BOOLEAN, &autoconnect);
 }
 
 static void append_security(DBusMessageIter *iter, void *user_data)
@@ -2149,6 +2158,7 @@ connman_bool_t __connman_service_session_dec(struct connman_service *service)
 static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 					struct connman_service *service)
 {
+	dbus_bool_t val;
 	const char *str;
 	GSList *list;
 
@@ -2174,18 +2184,21 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 		connman_dbus_dict_append_basic(dict, "Strength",
 					DBUS_TYPE_BYTE, &service->strength);
 
+	val = service->favorite;
 	connman_dbus_dict_append_basic(dict, "Favorite",
-					DBUS_TYPE_BOOLEAN, &service->favorite);
+					DBUS_TYPE_BOOLEAN, &val);
 
+	val = service->immutable;
 	connman_dbus_dict_append_basic(dict, "Immutable",
-					DBUS_TYPE_BOOLEAN, &service->immutable);
+					DBUS_TYPE_BOOLEAN, &val);
 
 	if (service->favorite == TRUE)
-		connman_dbus_dict_append_basic(dict, "AutoConnect",
-				DBUS_TYPE_BOOLEAN, &service->autoconnect);
+		val = service->autoconnect;
 	else
-		connman_dbus_dict_append_basic(dict, "AutoConnect",
-					DBUS_TYPE_BOOLEAN, &service->favorite);
+		val = service->favorite;
+
+	connman_dbus_dict_append_basic(dict, "AutoConnect",
+				DBUS_TYPE_BOOLEAN, &val);
 
 	if (service->name != NULL)
 		connman_dbus_dict_append_basic(dict, "Name",
@@ -2199,8 +2212,9 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		val = service->roaming;
 		connman_dbus_dict_append_basic(dict, "Roaming",
-					DBUS_TYPE_BOOLEAN, &service->roaming);
+					DBUS_TYPE_BOOLEAN, &val);
 
 		connman_dbus_dict_append_dict(dict, "Ethernet",
 						append_ethernet, service);

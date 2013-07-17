@@ -2283,14 +2283,17 @@ connman_bool_t __connman_session_mode()
 
 void __connman_session_set_mode(connman_bool_t enable)
 {
+	dbus_bool_t mode;
+
 	DBG("enable %d", enable);
 
 	if (sessionmode != enable) {
 		sessionmode = enable;
 
+		mode = sessionmode;
 		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "SessionMode",
-				DBUS_TYPE_BOOLEAN, &sessionmode);
+				DBUS_TYPE_BOOLEAN, &mode);
 	}
 
 	if (sessionmode == TRUE)
