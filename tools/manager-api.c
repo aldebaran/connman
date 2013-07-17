@@ -216,8 +216,10 @@ DBusMessage *manager_destroy_session(DBusConnection *connection,
 DBusMessage *manager_set_session_mode(DBusConnection *connection,
 					connman_bool_t enable)
 {
+	dbus_bool_t val = enable;
+
 	return set_property(connection, "SessionMode",
-				DBUS_TYPE_BOOLEAN, &enable);
+				DBUS_TYPE_BOOLEAN, &val);
 }
 
 int manager_parse_properties(DBusMessage *msg,
