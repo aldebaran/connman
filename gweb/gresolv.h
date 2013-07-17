@@ -22,6 +22,7 @@
 #ifndef __G_RESOLV_H
 #define __G_RESOLV_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include <glib.h>

@@ -19,6 +19,8 @@
  *
  */
 
+#include <stdbool.h>
+
 #include <glib.h>
 
 gboolean g_io_channel_supports_tls(void);

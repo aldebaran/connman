@@ -22,6 +22,7 @@
 #ifndef __G_WEB_H
 #define __G_WEB_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include <glib.h>
