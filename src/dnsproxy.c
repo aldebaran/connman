@@ -164,7 +164,7 @@ struct cache_data {
 
 struct cache_entry {
 	char *key;
-	int want_refresh;
+	connman_bool_t want_refresh;
 	int hits;
 	struct cache_data *ipv4;
 	struct cache_data *ipv6;
@@ -687,14 +687,14 @@ static uint16_t cache_check_validity(char *question, uint16_t type,
 				struct cache_entry *entry)
 {
 	time_t current_time = time(NULL);
-	int want_refresh = 0;
+	connman_bool_t want_refresh = FALSE;
 
 	/*
 	 * if we have a popular entry, we want a refresh instead of
 	 * total destruction of the entry.
 	 */
 	if (entry->hits > 2)
-		want_refresh = 1;
+		want_refresh = TRUE;
 
 	cache_enforce_validity(entry);
 
@@ -705,7 +705,7 @@ static uint16_t cache_check_validity(char *question, uint16_t type,
 					"timeout" : "entry missing", question);
 
 			if (want_refresh)
-				entry->want_refresh = 1;
+				entry->want_refresh = TRUE;
 
 			/*
 			 * We do not remove cache entry if there is still
@@ -725,7 +725,7 @@ static uint16_t cache_check_validity(char *question, uint16_t type,
 					"timeout" : "entry missing", question);
 
 			if (want_refresh)
-				entry->want_refresh = 1;
+				entry->want_refresh = TRUE;
 
 			if (cache_check_is_valid(entry->ipv4, current_time)
 					== FALSE && want_refresh == FALSE) {
@@ -1257,7 +1257,7 @@ static gboolean cache_invalidate_entry(gpointer key, gpointer value,
 
 	/* if anything is not expired, mark the entry for refresh */
 	if (entry->hits > 0 && (entry->ipv4 || entry->ipv6))
-		entry->want_refresh = 1;
+		entry->want_refresh = TRUE;
 
 	/* delete the cached data */
 	if (entry->ipv4) {
@@ -1301,14 +1301,14 @@ static void cache_refresh_entry(struct cache_entry *entry)
 	cache_enforce_validity(entry);
 
 	if (entry->hits > 2 && entry->ipv4 == NULL)
-		entry->want_refresh = 1;
+		entry->want_refresh = TRUE;
 	if (entry->hits > 2 && entry->ipv6 == NULL)
-		entry->want_refresh = 1;
+		entry->want_refresh = TRUE;
 
 	if (entry->want_refresh) {
 		char *c;
 		char dns_name[NS_MAXDNAME + 1];
-		entry->want_refresh = 0;
+		entry->want_refresh = FALSE;
 
 		/* turn a DNS name into a hostname with dots */
 		strncpy(dns_name, entry->key, NS_MAXDNAME);
@@ -1484,7 +1484,7 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 
 		entry->key = g_strdup(question);
 		entry->ipv4 = entry->ipv6 = NULL;
-		entry->want_refresh = 0;
+		entry->want_refresh = FALSE;
 		entry->hits = 0;
 
 		if (type == 1)
@@ -1972,7 +1972,7 @@ hangup:
 	if ((condition & G_IO_OUT) && !server->connected) {
 		GSList *list;
 		GList *domains;
-		int no_request_sent = TRUE;
+		connman_bool_t no_request_sent = TRUE;
 		struct server_data *udp_server;
 
 		udp_server = find_server(server->index, server->server,
@@ -2637,7 +2637,8 @@ static gboolean read_tcp_data(struct tcp_partial_client_data *client,
 	int client_sk, err;
 	unsigned int msg_len;
 	GSList *list;
-	int waiting_for_connect = FALSE, qtype = 0;
+	connman_bool_t waiting_for_connect = FALSE;
+	int qtype = 0;
 	struct cache_entry *entry;
 
 	client_sk = g_io_channel_unix_get_fd(client->channel);
