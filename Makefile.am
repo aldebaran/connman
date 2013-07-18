@@ -25,7 +25,10 @@ local_headers = $(foreach file,$(include_HEADERS) $(nodist_include_HEADERS) \
 			$(noinst_HEADERS), include/connman/$(notdir $(file)))
 
 
-gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
+noinst_LTLIBRARIES += gdbus/libgdbus-internal.la
+
+gdbus_libgdbus_internal_la_SOURCES = gdbus/gdbus.h \
+				gdbus/mainloop.c gdbus/watch.c \
 				gdbus/object.c gdbus/client.c gdbus/polkit.c
 
 gdhcp_sources = gdhcp/gdhcp.h gdhcp/common.h gdhcp/common.c gdhcp/client.c \
@@ -225,11 +228,6 @@ vpn_connman_vpnd_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ \
 endif
 
 EXTRA_DIST += vpn/vpn-dbus.conf vpn/vpn-polkit.conf
-
-noinst_LTLIBRARIES += gdbus/libgdbus-internal.la
-gdbus_libgdbus_internal_la_SOURCES = $(gdbus_sources)
-gdbus_libgdbus_internal_la_LDFLAGS = $(AM_LDFLAGS) @DBUS_LIBS@ @GLIB_LIBS@
-gdbus_libgdbus_internal_la_CFLAGS = $(AM_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 script_DATA =
 script_PROGRAMS =
