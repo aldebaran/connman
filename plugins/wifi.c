@@ -1216,6 +1216,8 @@ static void connect_callback(int result, GSupplicantInterface *interface,
 		connman_network_set_error(network,
 					CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
 	}
+
+	connman_network_unref(network);
 }
 
 static GSupplicantSecurity network_security(const char *security)
@@ -1327,7 +1329,7 @@ static int network_connect(struct connman_network *network)
 	if (wifi->disconnecting == TRUE)
 		wifi->pending_network = network;
 	else {
-		wifi->network = network;
+		wifi->network = connman_network_ref(network);
 		wifi->retries = 0;
 
 		return g_supplicant_interface_connect(interface, ssid,
