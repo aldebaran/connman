@@ -384,7 +384,7 @@ static int init_routing_table(struct connman_session *session)
 
 static void del_default_route(struct connman_session *session)
 {
-	if (session->gateway != NULL)
+	if (session->gateway == NULL)
 		return;
 
 	DBG("index %d routing table %d default gateway %s",
