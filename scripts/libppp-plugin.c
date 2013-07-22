@@ -107,7 +107,7 @@ static int ppp_get_secret(char *username, char *password)
 	reply = dbus_connection_send_with_reply_and_block(connection,
 								msg, -1, &err);
 	if (reply == NULL) {
-		if (dbus_error_is_set(&err) == TRUE)
+		if (dbus_error_is_set(&err))
 			dbus_error_free(&err);
 
 		dbus_message_unref(msg);
@@ -118,10 +118,8 @@ static int ppp_get_secret(char *username, char *password)
 
 	dbus_error_init(&err);
 
-	if (dbus_message_get_args(reply, &err, DBUS_TYPE_STRING, &user,
-						DBUS_TYPE_STRING, &pass,
-						DBUS_TYPE_INVALID) == FALSE) {
-		if (dbus_error_is_set(&err) == TRUE)
+	if (!dbus_message_get_args(reply, &err, DBUS_TYPE_STRING, &user, DBUS_TYPE_STRING, &pass, DBUS_TYPE_INVALID)) {
+		if (dbus_error_is_set(&err))
 			dbus_error_free(&err);
 
 		dbus_message_unref(reply);
@@ -193,7 +191,7 @@ static void ppp_up(void *data, int arg)
 		if (ipcp_gotoptions[0].dnsaddr[1]) {
 			inet_ntop(AF_INET, &ipcp_gotoptions[0].dnsaddr[1],
 							buf, INET_ADDRSTRLEN);
-			if (add_blank == TRUE)
+			if (add_blank)
 				strcat(dns, " ");
 
 			strcat(dns, buf);
@@ -296,7 +294,7 @@ int plugin_init(void)
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
 	if (connection == NULL) {
-		if (dbus_error_is_set(&error) == TRUE)
+		if (dbus_error_is_set(&error))
 			dbus_error_free(&error);
 
 		ppp_exit(NULL, 0);

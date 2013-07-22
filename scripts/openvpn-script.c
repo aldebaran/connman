@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
 	if (conn == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
+		if (dbus_error_is_set(&error)) {
 			print("%s", error.message);
 			dbus_error_free(&error);
 		} else
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	if (dbus_connection_send(conn, msg, NULL) == FALSE) {
+	if (!dbus_connection_send(conn, msg, NULL)) {
 		print("Failed to send message");
 		goto out;
 	}
