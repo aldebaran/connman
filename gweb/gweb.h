@@ -39,12 +39,12 @@ typedef struct _GWeb GWeb;
 typedef struct _GWebResult GWebResult;
 typedef struct _GWebParser GWebParser;
 
-typedef gboolean (*GWebResultFunc)(GWebResult *result, gpointer user_data);
+typedef bool (*GWebResultFunc)(GWebResult *result, gpointer user_data);
 
-typedef gboolean (*GWebRouteFunc)(const char *addr, int ai_family,
+typedef bool (*GWebRouteFunc)(const char *addr, int ai_family,
 		int if_index, gpointer user_data);
 
-typedef gboolean (*GWebInputFunc)(const guint8 **data, gsize *length,
+typedef bool (*GWebInputFunc)(const guint8 **data, gsize *length,
 							gpointer user_data);
 
 typedef void (*GWebDebugFunc)(const char *str, gpointer user_data);
@@ -56,24 +56,24 @@ void g_web_unref(GWeb *web);
 
 void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data);
 
-gboolean g_web_supports_tls(void);
+bool g_web_supports_tls(void);
 
-gboolean g_web_set_proxy(GWeb *web, const char *proxy);
+bool g_web_set_proxy(GWeb *web, const char *proxy);
 
-gboolean g_web_set_address_family(GWeb *web, int family);
+bool g_web_set_address_family(GWeb *web, int family);
 
-gboolean g_web_add_nameserver(GWeb *web, const char *address);
+bool g_web_add_nameserver(GWeb *web, const char *address);
 
-gboolean g_web_set_accept(GWeb *web, const char *format, ...)
+bool g_web_set_accept(GWeb *web, const char *format, ...)
 				__attribute__((format(printf, 2, 3)));
-gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
+bool g_web_set_user_agent(GWeb *web, const char *format, ...)
 				__attribute__((format(printf, 2, 3)));
-gboolean g_web_set_ua_profile(GWeb *web, const char *profile);
+bool g_web_set_ua_profile(GWeb *web, const char *profile);
 
-gboolean g_web_set_http_version(GWeb *web, const char *version);
+bool g_web_set_http_version(GWeb *web, const char *version);
 
-void g_web_set_close_connection(GWeb *web, gboolean enabled);
-gboolean g_web_get_close_connection(GWeb *web);
+void g_web_set_close_connection(GWeb *web, bool enabled);
+bool g_web_get_close_connection(GWeb *web);
 
 guint g_web_request_get(GWeb *web, const char *url,
 				GWebResultFunc func, GWebRouteFunc route,
@@ -85,13 +85,13 @@ guint g_web_request_post_file(GWeb *web, const char *url,
 				const char *type, const char *file,
 				GWebResultFunc func, gpointer user_data);
 
-gboolean g_web_cancel_request(GWeb *web, guint id);
+bool g_web_cancel_request(GWeb *web, guint id);
 
 guint16 g_web_result_get_status(GWebResult *result);
 
-gboolean g_web_result_get_header(GWebResult *result,
+bool g_web_result_get_header(GWebResult *result,
 				const char *header, const char **value);
-gboolean g_web_result_get_chunk(GWebResult *result,
+bool g_web_result_get_chunk(GWebResult *result,
 				const guint8 **chunk, gsize *length);
 
 typedef void (*GWebParserFunc)(const char *str, gpointer user_data);

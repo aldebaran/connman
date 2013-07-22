@@ -44,7 +44,7 @@ struct sort_result {
 	int dst_scope;
 	int src_label;
 	int dst_label;
-	gboolean reachable;
+	bool reachable;
 	union {
 		struct sockaddr sa;
 		struct sockaddr_in sin;
@@ -191,7 +191,7 @@ static void find_srcaddr(struct sort_result *res)
 		return;
 	}
 
-	res->reachable = TRUE;
+	res->reachable = true;
 	close(fd);
 }
 
@@ -280,21 +280,21 @@ static const struct gai_table gai_precedences[] = {
 static unsigned char v4mapped[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				    0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 };
 
-static gboolean mask_compare(const unsigned char *one,
+static bool mask_compare(const unsigned char *one,
 					const unsigned char *two, int mask)
 {
 	if (mask > 8) {
 		if (memcmp(one, two, mask / 8))
-			return FALSE;
+			return false;
 		one += mask / 8;
 		two += mask / 8;
 		mask %= 8;
 	}
 
 	if (mask && ((*one ^ *two) >> (8 - mask)))
-		return FALSE;
+		return false;
 
-	return TRUE;
+	return true;
 }
 
 static int match_gai_table(struct sockaddr *sa, const struct gai_table *tbl)
@@ -930,17 +930,17 @@ void g_resolv_set_debug(GResolv *resolv, GResolvDebugFunc func,
 	resolv->debug_data = user_data;
 }
 
-gboolean g_resolv_add_nameserver(GResolv *resolv, const char *address,
+bool g_resolv_add_nameserver(GResolv *resolv, const char *address,
 					uint16_t port, unsigned long flags)
 {
 	struct resolv_nameserver *nameserver;
 
 	if (resolv == NULL)
-		return FALSE;
+		return false;
 
 	nameserver = g_try_new0(struct resolv_nameserver, 1);
 	if (nameserver == NULL)
-		return FALSE;
+		return false;
 
 	nameserver->address = g_strdup(address);
 	nameserver->port = port;
@@ -949,7 +949,7 @@ gboolean g_resolv_add_nameserver(GResolv *resolv, const char *address,
 
 	if (connect_udp_channel(nameserver) < 0) {
 		free_nameserver(nameserver);
-		return FALSE;
+		return false;
 	}
 
 	resolv->nameserver_list = g_list_append(resolv->nameserver_list,
@@ -957,7 +957,7 @@ gboolean g_resolv_add_nameserver(GResolv *resolv, const char *address,
 
 	debug(resolv, "setting nameserver %s", address);
 
-	return TRUE;
+	return true;
 }
 
 void g_resolv_flush_nameservers(GResolv *resolv)
@@ -1079,7 +1079,7 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 	return lookup->id;
 }
 
-gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
+bool g_resolv_cancel_lookup(GResolv *resolv, guint id)
 {
 	struct resolv_lookup *lookup;
 	GList *list;
@@ -1090,7 +1090,7 @@ gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
 				GUINT_TO_POINTER(id), compare_lookup_id);
 
 	if (list == NULL)
-		return FALSE;
+		return false;
 
 	lookup = list->data;
 
@@ -1099,18 +1099,18 @@ gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
 	g_queue_remove(resolv->lookup_queue, lookup);
 	destroy_lookup(lookup);
 
-	return TRUE;
+	return true;
 }
 
-gboolean g_resolv_set_address_family(GResolv *resolv, int family)
+bool g_resolv_set_address_family(GResolv *resolv, int family)
 {
 	if (resolv == NULL)
-		return FALSE;
+		return false;
 
 	if (family != AF_UNSPEC && family != AF_INET && family != AF_INET6)
-		return FALSE;
+		return false;
 
 	resolv->result_family = family;
 
-	return TRUE;
+	return true;
 }

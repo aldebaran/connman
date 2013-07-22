@@ -58,7 +58,7 @@ struct _GWebResult {
 	guint16 status;
 	const guint8 *buffer;
 	gsize length;
-	gboolean use_chunk;
+	bool use_chunk;
 	gchar *last_key;
 	GHashTable *headers;
 };
@@ -85,10 +85,10 @@ struct web_session {
 	gsize receive_space;
 	GString *send_buffer;
 	GString *current_header;
-	gboolean header_done;
-	gboolean body_done;
-	gboolean more_data;
-	gboolean request_started;
+	bool header_done;
+	bool body_done;
+	bool more_data;
+	bool request_started;
 
 	enum chunk_state chunck_state;
 	gsize chunk_size;
@@ -122,7 +122,7 @@ struct _GWeb {
 	char *user_agent;
 	char *user_agent_profile;
 	char *http_version;
-	gboolean close_connection;
+	bool close_connection;
 
 	GWebDebugFunc debug_func;
 	gpointer debug_data;
@@ -237,7 +237,7 @@ GWeb *g_web_new(int index)
 
 	web->accept_option = g_strdup("*/*");
 	web->user_agent = g_strdup_printf("GWeb/%s", VERSION);
-	web->close_connection = FALSE;
+	web->close_connection = false;
 
 	return web;
 }
@@ -274,7 +274,7 @@ void g_web_unref(GWeb *web)
 	g_free(web);
 }
 
-gboolean g_web_supports_tls(void)
+bool g_web_supports_tls(void)
 {
 	return g_io_channel_supports_tls();
 }
@@ -290,10 +290,10 @@ void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data)
 	g_resolv_set_debug(web->resolv, func, user_data);
 }
 
-gboolean g_web_set_proxy(GWeb *web, const char *proxy)
+bool g_web_set_proxy(GWeb *web, const char *proxy)
 {
 	if (web == NULL)
-		return FALSE;
+		return false;
 
 	g_free(web->proxy);
 
@@ -305,35 +305,35 @@ gboolean g_web_set_proxy(GWeb *web, const char *proxy)
 		debug(web, "setting proxy %s", web->proxy);
 	}
 
-	return TRUE;
+	return true;
 }
 
-gboolean g_web_set_address_family(GWeb *web, int family)
+bool g_web_set_address_family(GWeb *web, int family)
 {
 	if (web == NULL)
-		return FALSE;
+		return false;
 
 	if (family != AF_UNSPEC && family != AF_INET && family != AF_INET6)
-		return FALSE;
+		return false;
 
 	web->family = family;
 
 	g_resolv_set_address_family(web->resolv, family);
 
-	return TRUE;
+	return true;
 }
 
-gboolean g_web_add_nameserver(GWeb *web, const char *address)
+bool g_web_add_nameserver(GWeb *web, const char *address)
 {
 	if (web == NULL)
-		return FALSE;
+		return false;
 
 	g_resolv_add_nameserver(web->resolv, address, 53, 0);
 
-	return TRUE;
+	return true;
 }
 
-static gboolean set_accept_option(GWeb *web, const char *format, va_list args)
+static bool set_accept_option(GWeb *web, const char *format, va_list args)
 {
 	g_free(web->accept_option);
 
@@ -345,16 +345,16 @@ static gboolean set_accept_option(GWeb *web, const char *format, va_list args)
 		debug(web, "setting accept %s", web->accept_option);
 	}
 
-	return TRUE;
+	return true;
 }
 
-gboolean g_web_set_accept(GWeb *web, const char *format, ...)
+bool g_web_set_accept(GWeb *web, const char *format, ...)
 {
 	va_list args;
-	gboolean result;
+	bool result;
 
 	if (web == NULL)
-		return FALSE;
+		return false;
 
 	va_start(args, format);
 	result = set_accept_option(web, format, args);
@@ -363,7 +363,7 @@ gboolean g_web_set_accept(GWeb *web, const char *format, ...)
 	return result;
 }
 
-static gboolean set_user_agent(GWeb *web, const char *format, va_list args)
+static bool set_user_agent(GWeb *web, const char *format, va_list args)
 {
 	g_free(web->user_agent);
 
@@ -375,16 +375,16 @@ static gboolean set_user_agent(GWeb *web, const char *format, va_list args)
 		debug(web, "setting user agent %s", web->user_agent);
 	}
 
-	return TRUE;
+	return true;
 }
 
-gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
+bool g_web_set_user_agent(GWeb *web, const char *format, ...)
 {
 	va_list args;
-	gboolean result;
+	bool result;
 
 	if (web == NULL)
-		return FALSE;
+		return false;
 
 	va_start(args, format);
 	result = set_user_agent(web, format, args);
@@ -393,23 +393,23 @@ gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
 	return result;
 }
 
-gboolean g_web_set_ua_profile(GWeb *web, const char *profile)
+bool g_web_set_ua_profile(GWeb *web, const char *profile)
 {
 	if (web == NULL)
-		return FALSE;
+		return false;
 
 	g_free(web->user_agent_profile);
 
 	web->user_agent_profile = g_strdup(profile);
 	debug(web, "setting user agent profile %s", web->user_agent);
 
-	return TRUE;
+	return true;
 }
 
-gboolean g_web_set_http_version(GWeb *web, const char *version)
+bool g_web_set_http_version(GWeb *web, const char *version)
 {
 	if (web == NULL)
-		return FALSE;
+		return false;
 
 	g_free(web->http_version);
 
@@ -421,10 +421,10 @@ gboolean g_web_set_http_version(GWeb *web, const char *version)
 		debug(web, "setting HTTP version %s", web->http_version);
 	}
 
-	return TRUE;
+	return true;
 }
 
-void g_web_set_close_connection(GWeb *web, gboolean enabled)
+void g_web_set_close_connection(GWeb *web, bool enabled)
 {
 	if (web == NULL)
 		return;
@@ -432,10 +432,10 @@ void g_web_set_close_connection(GWeb *web, gboolean enabled)
 	web->close_connection = enabled;
 }
 
-gboolean g_web_get_close_connection(GWeb *web)
+bool g_web_get_close_connection(GWeb *web)
 {
 	if (web == NULL)
-		return FALSE;
+		return false;
 
 	return web->close_connection;
 }
@@ -460,25 +460,25 @@ static inline void call_route_func(struct web_session *session)
 				session->web->index, session->user_data);
 }
 
-static gboolean process_send_buffer(struct web_session *session)
+static bool process_send_buffer(struct web_session *session)
 {
 	GString *buf;
 	gsize count, bytes_written;
 	GIOStatus status;
 
 	if (session == NULL)
-		return FALSE;
+		return false;
 
 	buf = session->send_buffer;
 	count = buf->len;
 
 	if (count == 0) {
-		if (session->request_started == TRUE &&
-					session->more_data == FALSE &&
+		if (session->request_started &&
+					!session->more_data &&
 					session->fd == -1)
-			session->body_done = TRUE;
+			session->body_done = true;
 
-		return FALSE;
+		return false;
 	}
 
 	status = g_io_channel_write_chars(session->transport_channel,
@@ -488,28 +488,28 @@ static gboolean process_send_buffer(struct web_session *session)
 					status, count, bytes_written);
 
 	if (status != G_IO_STATUS_NORMAL && status != G_IO_STATUS_AGAIN)
-		return FALSE;
+		return false;
 
 	g_string_erase(buf, 0, bytes_written);
 
-	return TRUE;
+	return true;
 }
 
-static gboolean process_send_file(struct web_session *session)
+static bool process_send_file(struct web_session *session)
 {
 	int sk;
 	off_t offset;
 	ssize_t bytes_sent;
 
 	if (session->fd == -1)
-		return FALSE;
+		return false;
 
-	if (session->request_started == FALSE || session->more_data == TRUE)
-		return FALSE;
+	if (!session->request_started || session->more_data)
+		return false;
 
 	sk = g_io_channel_unix_get_fd(session->transport_channel);
 	if (sk < 0)
-		return FALSE;
+		return false;
 
 	offset = session->offset;
 
@@ -519,17 +519,17 @@ static gboolean process_send_file(struct web_session *session)
 			errno, session->length, bytes_sent);
 
 	if (bytes_sent < 0 && errno != EAGAIN)
-		return FALSE;
+		return false;
 
 	session->offset = offset;
 	session->length -= bytes_sent;
 
 	if (session->length == 0) {
-		session->body_done = TRUE;
-		return FALSE;
+		session->body_done = true;
+		return false;
 	}
 
-	return TRUE;
+	return true;
 }
 
 static void process_next_chunk(struct web_session *session)
@@ -539,7 +539,7 @@ static void process_next_chunk(struct web_session *session)
 	gsize length;
 
 	if (session->input_func == NULL) {
-		session->more_data = FALSE;
+		session->more_data = false;
 		return;
 	}
 
@@ -552,7 +552,7 @@ static void process_next_chunk(struct web_session *session)
 		g_string_append(buf, "\r\n");
 	}
 
-	if (session->more_data == FALSE)
+	if (!session->more_data)
 		g_string_append(buf, "0\r\n\r\n");
 }
 
@@ -599,25 +599,25 @@ static void start_request(struct web_session *session)
 		g_string_append_printf(buf, "Content-Type: %s\r\n",
 							session->content_type);
 		if (session->input_func == NULL) {
-			session->more_data = FALSE;
+			session->more_data = false;
 			length = session->length;
 		} else
 			session->more_data = session->input_func(&body, &length,
 							session->user_data);
-		if (session->more_data == FALSE)
+		if (!session->more_data)
 			g_string_append_printf(buf, "Content-Length: %zu\r\n",
 									length);
 		else
 			g_string_append(buf, "Transfer-Encoding: chunked\r\n");
 	}
 
-	if (session->web->close_connection == TRUE)
+	if (session->web->close_connection)
 		g_string_append(buf, "Connection: close\r\n");
 
 	g_string_append(buf, "\r\n");
 
 	if (session->content_type != NULL && length > 0) {
-		if (session->more_data == TRUE) {
+		if (session->more_data) {
 			g_string_append_printf(buf, "%zx\r\n", length);
 			g_string_append_len(buf, (char *) body, length);
 			g_string_append(buf, "\r\n");
@@ -636,21 +636,21 @@ static gboolean send_data(GIOChannel *channel, GIOCondition cond,
 		return FALSE;
 	}
 
-	if (process_send_buffer(session) == TRUE)
+	if (process_send_buffer(session))
 		return TRUE;
 
-	if (process_send_file(session) == TRUE)
+	if (process_send_file(session))
 		return TRUE;
 
-	if (session->request_started == FALSE) {
-		session->request_started = TRUE;
+	if (!session->request_started) {
+		session->request_started = true;
 		start_request(session);
-	} else if (session->more_data == TRUE)
+	} else if (session->more_data)
 		process_next_chunk(session);
 
 	process_send_buffer(session);
 
-	if (session->body_done == TRUE) {
+	if (session->body_done) {
 		session->send_watch = 0;
 		return FALSE;
 	}
@@ -760,7 +760,7 @@ static int handle_body(struct web_session *session,
 
 	debug(session->web, "[body] length %zu", len);
 
-	if (session->result.use_chunk == FALSE) {
+	if (!session->result.use_chunk) {
 		if (len > 0) {
 			session->result.buffer = buf;
 			session->result.length = len;
@@ -888,7 +888,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 	session->receive_buffer[bytes_read] = '\0';
 
-	if (session->header_done == TRUE) {
+	if (session->header_done) {
 		if (handle_body(session, session->receive_buffer,
 							bytes_read) < 0) {
 			session->transport_watch = 0;
@@ -928,14 +928,14 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 		if (session->current_header->len == 0) {
 			char *val;
 
-			session->header_done = TRUE;
+			session->header_done = true;
 
 			val = g_hash_table_lookup(session->result.headers,
 							"Transfer-Encoding");
 			if (val != NULL) {
 				val = g_strrstr(val, "chunked");
 				if (val != NULL) {
-					session->result.use_chunk = TRUE;
+					session->result.use_chunk = true;
 
 					session->chunck_state = CHUNK_SIZE;
 					session->chunk_left = 0;
@@ -1297,8 +1297,8 @@ static guint do_request(GWeb *web, const char *url,
 	session->receive_space = DEFAULT_BUFFER_SIZE;
 	session->send_buffer = g_string_sized_new(0);
 	session->current_header = g_string_sized_new(0);
-	session->header_done = FALSE;
-	session->body_done = FALSE;
+	session->header_done = false;
+	session->body_done = false;
 
 	if (session->address == NULL && inet_aton(session->host, NULL) == 0) {
 		session->resolv_action = g_resolv_lookup_hostname(web->resolv,
@@ -1380,12 +1380,12 @@ guint g_web_request_post_file(GWeb *web, const char *url,
 	return ret;
 }
 
-gboolean g_web_cancel_request(GWeb *web, guint id)
+bool g_web_cancel_request(GWeb *web, guint id)
 {
 	if (web == NULL)
-		return FALSE;
+		return false;
 
-	return TRUE;
+	return true;
 }
 
 guint16 g_web_result_get_status(GWebResult *result)
@@ -1396,38 +1396,38 @@ guint16 g_web_result_get_status(GWebResult *result)
 	return result->status;
 }
 
-gboolean g_web_result_get_chunk(GWebResult *result,
+bool g_web_result_get_chunk(GWebResult *result,
 				const guint8 **chunk, gsize *length)
 {
 	if (result == NULL)
-		return FALSE;
+		return false;
 
 	if (chunk == NULL)
-		return FALSE;
+		return false;
 
 	*chunk = result->buffer;
 
 	if (length != NULL)
 		*length = result->length;
 
-	return TRUE;
+	return true;
 }
 
-gboolean g_web_result_get_header(GWebResult *result,
+bool g_web_result_get_header(GWebResult *result,
 				const char *header, const char **value)
 {
 	if (result == NULL)
-		return FALSE;
+		return false;
 
 	if (value == NULL)
-		return FALSE;
+		return false;
 
 	*value = g_hash_table_lookup(result->headers, header);
 
 	if (*value == NULL)
-		return FALSE;
+		return false;
 
-	return TRUE;
+	return true;
 }
 
 struct _GWebParser {
@@ -1437,7 +1437,7 @@ struct _GWebParser {
 	const char *token_str;
 	size_t token_len;
 	size_t token_pos;
-	gboolean intoken;
+	bool intoken;
 	GString *content;
 	GWebParserFunc func;
 	gpointer user_data;
@@ -1469,7 +1469,7 @@ GWebParser *g_web_parser_new(const char *begin, const char *end,
 	parser->token_len = strlen(parser->token_str);
 	parser->token_pos = 0;
 
-	parser->intoken = FALSE;
+	parser->intoken = false;
 	parser->content = g_string_sized_new(0);
 
 	return parser;
@@ -1516,13 +1516,13 @@ void g_web_parser_feed_data(GWebParser *parser,
 
 			pos = memchr(ptr, chr, length);
 			if (pos == NULL) {
-				if (parser->intoken == TRUE)
+				if (parser->intoken)
 					g_string_append_len(parser->content,
 							(gchar *) ptr, length);
 				break;
 			}
 
-			if (parser->intoken == TRUE)
+			if (parser->intoken)
 				g_string_append_len(parser->content,
 						(gchar *) ptr, (pos - ptr) + 1);
 
@@ -1533,7 +1533,7 @@ void g_web_parser_feed_data(GWebParser *parser,
 			continue;
 		}
 
-		if (parser->intoken == TRUE)
+		if (parser->intoken)
 			g_string_append_c(parser->content, ptr[0]);
 
 		if (ptr[0] != chr) {
@@ -1550,11 +1550,11 @@ void g_web_parser_feed_data(GWebParser *parser,
 		parser->token_pos++;
 
 		if (parser->token_pos == parser->token_len) {
-			if (parser->intoken == FALSE) {
+			if (!parser->intoken) {
 				g_string_append(parser->content,
 							parser->token_str);
 
-				parser->intoken = TRUE;
+				parser->intoken = true;
 				parser->token_str = parser->end_token;
 				parser->token_len = strlen(parser->end_token);
 				parser->token_pos = 0;
@@ -1566,7 +1566,7 @@ void g_web_parser_feed_data(GWebParser *parser,
 					parser->func(str, parser->user_data);
 				g_free(str);
 
-				parser->intoken = FALSE;
+				parser->intoken = false;
 				parser->token_str = parser->begin_token;
 				parser->token_len = strlen(parser->begin_token);
 				parser->token_pos = 0;

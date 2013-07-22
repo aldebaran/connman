@@ -25,9 +25,9 @@
 
 #include "giognutls.h"
 
-gboolean g_io_channel_supports_tls(void)
+bool g_io_channel_supports_tls(void)
 {
-	return FALSE;
+	return false;
 }
 
 GIOChannel *g_io_channel_gnutls_new(int fd)

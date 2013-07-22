@@ -59,16 +59,16 @@ void g_resolv_unref(GResolv *resolv);
 void g_resolv_set_debug(GResolv *resolv,
 				GResolvDebugFunc func, gpointer user_data);
 
-gboolean g_resolv_add_nameserver(GResolv *resolv, const char *address,
+bool g_resolv_add_nameserver(GResolv *resolv, const char *address,
 					uint16_t port, unsigned long flags);
 void g_resolv_flush_nameservers(GResolv *resolv);
 
 guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 				GResolvResultFunc func, gpointer user_data);
 
-gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id);
+bool g_resolv_cancel_lookup(GResolv *resolv, guint id);
 
-gboolean g_resolv_set_address_family(GResolv *resolv, int family);
+bool g_resolv_set_address_family(GResolv *resolv, int family);
 
 #ifdef __cplusplus
 }

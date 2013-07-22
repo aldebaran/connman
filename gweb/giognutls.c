@@ -43,8 +43,8 @@ struct _GIOGnuTLSChannel {
 	gint fd;
 	gnutls_certificate_credentials_t cred;
 	gnutls_session_t session;
-	gboolean established;
-	gboolean again;
+	bool established;
+	bool again;
 };
 
 struct _GIOGnuTLSWatch {
@@ -58,7 +58,7 @@ static volatile int global_init_done = 0;
 
 static inline void g_io_gnutls_global_init(void)
 {
-	if (__sync_bool_compare_and_swap(&global_init_done, 0, 1) == TRUE)
+	if (__sync_bool_compare_and_swap(&global_init_done, 0, 1))
 		gnutls_global_init();
 }
 
@@ -69,7 +69,7 @@ static GIOStatus check_handshake(GIOChannel *channel, GError **err)
 
 	DBG("channel %p", channel);
 
-	if (gnutls_channel->established == TRUE)
+	if (gnutls_channel->established)
 		return G_IO_STATUS_NORMAL;
 
 again:
@@ -78,7 +78,7 @@ again:
 	if (result == GNUTLS_E_INTERRUPTED || result == GNUTLS_E_AGAIN) {
 		GIOFlags flags = g_io_channel_get_flags(channel);
 
-		if (gnutls_channel->again == TRUE)
+		if (gnutls_channel->again)
 			return G_IO_STATUS_AGAIN;
 
 		if (flags & G_IO_FLAG_NONBLOCK)
@@ -93,7 +93,7 @@ again:
 		return G_IO_STATUS_ERROR;
 	}
 
-	gnutls_channel->established = TRUE;
+	gnutls_channel->established = true;
 
 	DBG("handshake done");
 
@@ -121,14 +121,14 @@ again:
 	DBG("result %zd", result);
 
 	if (result == GNUTLS_E_REHANDSHAKE) {
-		gnutls_channel->established = FALSE;
+		gnutls_channel->established = false;
 		goto again;
 	}
 
 	if (result == GNUTLS_E_INTERRUPTED || result == GNUTLS_E_AGAIN) {
 		GIOFlags flags = g_io_channel_get_flags(channel);
 
-		if (gnutls_channel->again == TRUE)
+		if (gnutls_channel->again)
 			return G_IO_STATUS_AGAIN;
 
 		if (flags & G_IO_FLAG_NONBLOCK)
@@ -172,14 +172,14 @@ again:
 	DBG("result %zd", result);
 
 	if (result == GNUTLS_E_REHANDSHAKE) {
-		gnutls_channel->established = FALSE;
+		gnutls_channel->established = false;
 		goto again;
 	}
 
 	if (result == GNUTLS_E_INTERRUPTED || result == GNUTLS_E_AGAIN) {
 		GIOFlags flags = g_io_channel_get_flags(channel);
 
-		if (gnutls_channel->again == TRUE)
+		if (gnutls_channel->again)
 			return G_IO_STATUS_AGAIN;
 
 		if (flags & G_IO_FLAG_NONBLOCK)
@@ -215,7 +215,7 @@ static GIOStatus g_io_gnutls_close(GIOChannel *channel, GError **err)
 
 	DBG("channel %p", channel);
 
-	if (gnutls_channel->established == TRUE)
+	if (gnutls_channel->established)
 		gnutls_bye(gnutls_channel->session, GNUTLS_SHUT_RDWR);
 
 	if (close(gnutls_channel->fd) < 0) {
@@ -379,9 +379,9 @@ static ssize_t g_io_gnutls_push_func(gnutls_transport_ptr_t transport_data,
 	result = write(gnutls_channel->fd, buf, count);
 
 	if (result < 0 && errno == EAGAIN)
-		gnutls_channel->again = TRUE;
+		gnutls_channel->again = true;
 	else
-		gnutls_channel->again = FALSE;
+		gnutls_channel->again = false;
 
 	DBG("result %zd", result);
 
@@ -399,18 +399,18 @@ static ssize_t g_io_gnutls_pull_func(gnutls_transport_ptr_t transport_data,
 	result = read(gnutls_channel->fd, buf, count);
 
 	if (result < 0 && errno == EAGAIN)
-		gnutls_channel->again = TRUE;
+		gnutls_channel->again = true;
 	else
-		gnutls_channel->again = FALSE;
+		gnutls_channel->again = false;
 
 	DBG("result %zd", result);
 
 	return result;
 }
 
-gboolean g_io_channel_supports_tls(void)
+bool g_io_channel_supports_tls(void)
 {
-	return TRUE;
+	return true;
 }
 
 GIOChannel *g_io_channel_gnutls_new(int fd)
