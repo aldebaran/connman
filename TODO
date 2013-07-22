@@ -77,16 +77,6 @@ Core
  level of systemd integration or other factors.
 
 
-- Clean up type definitions
-
-   Priority: Medium
-   Complexity: C1
-
-   Go through variable types and use the following:
-   * bool from <stdbool.h> instead of connman_bool_t and gboolean, in the
-     latter case in those places it makes sense
-
-
 - Clean up data structure usage
 
    Priority: Medium
