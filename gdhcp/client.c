@@ -2139,10 +2139,10 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 
 	dhcp_client->status_code = 0;
 
-	if (dhcp_client->listen_mode == L2)
+	if (dhcp_client->listen_mode == L2) {
 		re = dhcp_recv_l2_packet(&packet,
 					dhcp_client->listener_sockfd);
-	else if (dhcp_client->listen_mode == L3) {
+	} else if (dhcp_client->listen_mode == L3) {
 		if (dhcp_client->type == G_DHCP_IPV6) {
 			re = dhcpv6_recv_l3_packet(&packet6, buf, sizeof(buf),
 						dhcp_client->listener_sockfd);
@@ -2159,8 +2159,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	} else if (dhcp_client->listen_mode == L_ARP) {
 		ipv4ll_recv_arp_packet(dhcp_client);
 		return TRUE;
-	}
-	else
+	} else
 		re = -EIO;
 
 	if (re < 0)
@@ -2483,7 +2482,7 @@ static gboolean ipv4ll_announce_timeout(gpointer dhcp_data)
 	debug(dhcp_client, "request timeout (retries %d)",
 	       dhcp_client->retry_times);
 
-	if (dhcp_client->retry_times != ANNOUNCE_NUM){
+	if (dhcp_client->retry_times != ANNOUNCE_NUM) {
 		dhcp_client->retry_times++;
 		send_announce_packet(dhcp_client);
 		return FALSE;
@@ -2847,7 +2846,8 @@ static uint8_t *alloc_dhcp_option(int code, const uint8_t *data, unsigned size)
 	return storage;
 }
 
-static uint8_t *alloc_dhcp_data_option(int code, const uint8_t *data, unsigned size)
+static uint8_t *alloc_dhcp_data_option(int code, const uint8_t *data,
+					unsigned size)
 {
 	return alloc_dhcp_option(code, data, MIN(size, 255));
 }

@@ -677,65 +677,65 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	lease = find_lease_by_mac(dhcp_server, packet.chaddr);
 
 	switch (type) {
-		case DHCPDISCOVER:
-			debug(dhcp_server, "Received DISCOVER");
+	case DHCPDISCOVER:
+		debug(dhcp_server, "Received DISCOVER");
 
-			send_offer(dhcp_server, &packet, lease, requested_nip);
+		send_offer(dhcp_server, &packet, lease, requested_nip);
 		break;
-		case DHCPREQUEST:
-			debug(dhcp_server, "Received REQUEST NIP %d",
+	case DHCPREQUEST:
+		debug(dhcp_server, "Received REQUEST NIP %d",
 							requested_nip);
-			if (requested_nip == 0) {
-				requested_nip = packet.ciaddr;
-				if (requested_nip == 0)
-					break;
-			}
-
-			if (lease && requested_nip == lease->lease_nip) {
-				debug(dhcp_server, "Sending ACK");
-				send_ACK(dhcp_server, &packet,
-						lease->lease_nip);
+		if (requested_nip == 0) {
+			requested_nip = packet.ciaddr;
+			if (requested_nip == 0)
 				break;
-			}
+		}
 
-			if (server_id_option || lease == NULL) {
-				debug(dhcp_server, "Sending NAK");
-				send_NAK(dhcp_server, &packet);
-			}
+		if (lease && requested_nip == lease->lease_nip) {
+			debug(dhcp_server, "Sending ACK");
+			send_ACK(dhcp_server, &packet,
+				lease->lease_nip);
+			break;
+		}
+
+		if (server_id_option || lease == NULL) {
+			debug(dhcp_server, "Sending NAK");
+			send_NAK(dhcp_server, &packet);
+		}
 
 		break;
-		case DHCPDECLINE:
-			debug(dhcp_server, "Received DECLINE");
+	case DHCPDECLINE:
+		debug(dhcp_server, "Received DECLINE");
 
-			if (server_id_option == NULL)
-				break;
+		if (server_id_option == NULL)
+			break;
 
-			if (request_ip_option == NULL)
-				break;
+		if (request_ip_option == NULL)
+			break;
 
-			if (lease == NULL)
-				break;
+		if (lease == NULL)
+			break;
 
-			if (requested_nip == lease->lease_nip)
-				remove_lease(dhcp_server, lease);
+		if (requested_nip == lease->lease_nip)
+			remove_lease(dhcp_server, lease);
 
 		break;
-		case DHCPRELEASE:
-			debug(dhcp_server, "Received RELEASE");
+	case DHCPRELEASE:
+		debug(dhcp_server, "Received RELEASE");
 
-			if (server_id_option == NULL)
-				break;
+		if (server_id_option == NULL)
+			break;
 
-			if (lease == NULL)
-				break;
+		if (lease == NULL)
+			break;
 
-			if (packet.ciaddr == lease->lease_nip)
-				lease_set_expire(dhcp_server, lease,
-								time(NULL));
+		if (packet.ciaddr == lease->lease_nip)
+			lease_set_expire(dhcp_server, lease,
+					time(NULL));
 		break;
-		case DHCPINFORM:
-			debug(dhcp_server, "Received INFORM");
-			send_inform(dhcp_server, &packet);
+	case DHCPINFORM:
+		debug(dhcp_server, "Received INFORM");
+		send_inform(dhcp_server, &packet);
 		break;
 	}
 
@@ -876,7 +876,8 @@ int g_dhcp_server_set_ip_range(GDHCPServer *dhcp_server,
 	return 0;
 }
 
-void g_dhcp_server_set_lease_time(GDHCPServer *dhcp_server, unsigned int lease_time)
+void g_dhcp_server_set_lease_time(GDHCPServer *dhcp_server,
+					unsigned int lease_time)
 {
 	if (dhcp_server == NULL)
 		return;
