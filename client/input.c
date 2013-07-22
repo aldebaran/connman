@@ -219,7 +219,7 @@ int __connmanctl_input_init(int argc, char *argv[])
 			err = __connmanctl_commands(connection, help, 1);
 		else
 			err = __connmanctl_commands(connection, argv + 1,
-					argc -1);
+					argc - 1);
 	}
 
 	if (err == -EINPROGRESS) {
