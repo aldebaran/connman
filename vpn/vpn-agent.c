@@ -35,7 +35,7 @@
 #include "vpn-agent.h"
 #include "vpn.h"
 
-connman_bool_t vpn_agent_check_reply_has_dict(DBusMessage *reply)
+bool vpn_agent_check_reply_has_dict(DBusMessage *reply)
 {
 	const char *signature = DBUS_TYPE_ARRAY_AS_STRING
 		DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -43,8 +43,8 @@ connman_bool_t vpn_agent_check_reply_has_dict(DBusMessage *reply)
 		DBUS_TYPE_VARIANT_AS_STRING
 		DBUS_DICT_ENTRY_END_CHAR_AS_STRING;
 
-	if (dbus_message_has_signature(reply, signature) == TRUE)
-		return TRUE;
+	if (dbus_message_has_signature(reply, signature))
+		return true;
 
 	connman_warn("Reply %s to %s from %s has wrong signature %s",
 			signature,
@@ -52,7 +52,7 @@ connman_bool_t vpn_agent_check_reply_has_dict(DBusMessage *reply)
 			dbus_message_get_sender(reply),
 			dbus_message_get_signature(reply));
 
-	return FALSE;
+	return false;
 }
 
 static void request_input_append_name(DBusMessageIter *iter, void *user_data)

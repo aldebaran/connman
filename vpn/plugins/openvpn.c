@@ -84,7 +84,7 @@ static struct nameserver_entry *ov_append_dns_entries(const char *key,
 	struct nameserver_entry *entry = NULL;
 	gchar **options;
 
-	if (g_str_has_prefix(key, "foreign_option_") == FALSE)
+	if (!g_str_has_prefix(key, "foreign_option_"))
 		return NULL;
 
 	options = g_strsplit(value, " ", 3);
@@ -112,7 +112,7 @@ static char *ov_get_domain_name(const char *key, const char *value)
 	gchar **options;
 	char *domain = NULL;
 
-	if (g_str_has_prefix(key, "foreign_option_") == FALSE)
+	if (!g_str_has_prefix(key, "foreign_option_"))
 		return NULL;
 
 	options = g_strsplit(value, " ", 3);
@@ -201,7 +201,7 @@ static int ov_notify(DBusMessage *msg, struct vpn_provider *provider)
 			peer = g_strdup(value);
 		}
 
-		if (g_str_has_prefix(key, "route_") == TRUE)
+		if (g_str_has_prefix(key, "route_"))
 			vpn_provider_append_route(provider, key, value);
 
 		if ((ns_entry = ov_append_dns_entries(key, value)) != NULL)

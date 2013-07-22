@@ -726,20 +726,20 @@ static void rtnl_route(struct nlmsghdr *hdr)
 	}
 }
 
-static connman_bool_t is_route_rtmsg(struct rtmsg *msg)
+static bool is_route_rtmsg(struct rtmsg *msg)
 {
 
 	if (msg->rtm_table != RT_TABLE_MAIN)
-		return FALSE;
+		return false;
 
 	if (msg->rtm_protocol != RTPROT_BOOT &&
 			msg->rtm_protocol != RTPROT_KERNEL)
-		return FALSE;
+		return false;
 
 	if (msg->rtm_type != RTN_UNICAST)
-		return FALSE;
+		return false;
 
-	return TRUE;
+	return true;
 }
 
 static void rtnl_newroute(struct nlmsghdr *hdr)

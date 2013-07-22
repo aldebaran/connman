@@ -132,7 +132,7 @@ static DBusMessage *l2tp_get_sec(struct connman_task *task,
 	const char *user, *passwd;
 	struct vpn_provider *provider = user_data;
 
-	if (dbus_message_get_no_reply(msg) == FALSE) {
+	if (!dbus_message_get_no_reply(msg)) {
 		DBusMessage *reply;
 
 		user = vpn_provider_get_string(provider, "L2TP.User");
@@ -265,19 +265,19 @@ static int l2tp_notify(DBusMessage *msg, struct vpn_provider *provider)
 static int l2tp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 {
 	const char *option;
-	connman_bool_t l2tp_option, pppd_option;
+	bool l2tp_option, pppd_option;
 	int i;
 
 	for (i = 0; i < (int)ARRAY_SIZE(pppd_options); i++) {
-		l2tp_option = pppd_option = FALSE;
+		l2tp_option = pppd_option = false;
 
 		if (strncmp(pppd_options[i].cm_opt, "L2TP.", 5) == 0)
-			l2tp_option = TRUE;
+			l2tp_option = true;
 
 		if (strncmp(pppd_options[i].cm_opt, "PPPD.", 5) == 0)
-			pppd_option = TRUE;
+			pppd_option = true;
 
-		if (l2tp_option == TRUE || pppd_option == TRUE) {
+		if (l2tp_option || pppd_option) {
 			option = vpn_provider_get_string(provider,
 						pppd_options[i].cm_opt);
 			if (option == NULL) {
@@ -287,7 +287,7 @@ static int l2tp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 				 */
 				char *l2tp_str;
 
-				if (pppd_option == FALSE)
+				if (!pppd_option)
 					continue;
 
 				l2tp_str = g_strdup_printf("L2TP.%s",
@@ -508,7 +508,7 @@ static void request_input_reply(DBusMessage *reply, void *user_data)
 		goto done;
 	}
 
-	if (vpn_agent_check_reply_has_dict(reply) == FALSE)
+	if (!vpn_agent_check_reply_has_dict(reply))
 		goto done;
 
 	dbus_message_iter_init(reply, &iter);

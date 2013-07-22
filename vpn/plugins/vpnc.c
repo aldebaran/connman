@@ -57,7 +57,7 @@ struct {
 	const char *vpnc_opt;
 	const char *vpnc_default;
 	int type;
-	connman_bool_t cm_save;
+	bool cm_save;
 } vpnc_options[] = {
 	{ "Host", "IPSec gateway", NULL, OPT_STRING, TRUE },
 	{ "VPNC.IPSec.ID", "IPSec ID", NULL, OPT_STRING, TRUE },
@@ -129,8 +129,8 @@ static int vc_notify(DBusMessage *msg, struct vpn_provider *provider)
 		if (!strcmp(key, "CISCO_DEF_DOMAIN"))
 			vpn_provider_set_domain(provider, value);
 
-		if (g_str_has_prefix(key, "CISCO_SPLIT_INC") == TRUE ||
-			g_str_has_prefix(key, "CISCO_IPV6_SPLIT_INC") == TRUE)
+		if (g_str_has_prefix(key, "CISCO_SPLIT_INC") ||
+			g_str_has_prefix(key, "CISCO_IPV6_SPLIT_INC"))
 			vpn_provider_append_route(provider, key, value);
 
 		dbus_message_iter_next(&dict);
@@ -217,10 +217,10 @@ static int vc_write_config_data(struct vpn_provider *provider, int fd)
 	for (i = 0; i < (int)ARRAY_SIZE(vpnc_options); i++) {
 		opt_s = vpn_provider_get_string(provider,
 					vpnc_options[i].cm_opt);
-		if (opt_s == FALSE)
+		if (!opt_s)
 			opt_s = vpnc_options[i].vpnc_default;
 
-		if (opt_s == FALSE)
+		if (!opt_s)
 			continue;
 
 		if (vpnc_options[i].type == OPT_STRING) {
@@ -246,7 +246,7 @@ static int vc_save(struct vpn_provider *provider, GKeyFile *keyfile)
 	for (i = 0; i < (int)ARRAY_SIZE(vpnc_options); i++) {
 		if (strncmp(vpnc_options[i].cm_opt, "VPNC.", 5) == 0) {
 
-			if (vpnc_options[i].cm_save == FALSE)
+			if (!vpnc_options[i].cm_save)
 				continue;
 
 			option = vpn_provider_get_string(provider,

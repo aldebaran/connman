@@ -34,7 +34,7 @@ extern "C" {
 
 void vpn_agent_append_host_and_name(DBusMessageIter *iter,
 				struct vpn_provider *provider);
-connman_bool_t vpn_agent_check_reply_has_dict(DBusMessage *reply);
+bool vpn_agent_check_reply_has_dict(DBusMessage *reply);
 void vpn_agent_append_user_info(DBusMessageIter *iter,
 				struct vpn_provider *provider,
 				const char *username_str);

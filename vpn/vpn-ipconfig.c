@@ -47,7 +47,7 @@ struct vpn_ipconfig {
 	int refcount;
 	int index;
 	int family;
-	connman_bool_t enabled;
+	bool enabled;
 	struct connman_ipaddress *address;
 	struct connman_ipaddress *system;
 };
@@ -287,7 +287,7 @@ static struct vpn_ipconfig *create_ipv6config(int index)
 	ipv6config->refcount = 1;
 
 	ipv6config->index = index;
-	ipv6config->enabled = FALSE;
+	ipv6config->enabled = false;
 	ipv6config->family = AF_INET6;
 
 	ipv6config->address = connman_ipaddress_alloc(AF_INET6);
@@ -319,7 +319,7 @@ struct vpn_ipconfig *__vpn_ipconfig_create(int index, int family)
 	ipconfig->refcount = 1;
 
 	ipconfig->index = index;
-	ipconfig->enabled = FALSE;
+	ipconfig->enabled = false;
 	ipconfig->family = family;
 
 	ipconfig->address = connman_ipaddress_alloc(AF_INET);

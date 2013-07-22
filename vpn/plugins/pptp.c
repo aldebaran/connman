@@ -96,7 +96,7 @@ static DBusMessage *pptp_get_sec(struct connman_task *task,
 	struct vpn_provider *provider = user_data;
 	DBusMessage *reply;
 
-	if (dbus_message_get_no_reply(msg) == TRUE)
+	if (dbus_message_get_no_reply(msg))
 		return NULL;
 
 	user = vpn_provider_get_string(provider, "PPTP.User");
@@ -224,19 +224,19 @@ static int pptp_notify(DBusMessage *msg, struct vpn_provider *provider)
 static int pptp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 {
 	const char *option;
-	connman_bool_t pptp_option, pppd_option;
+	bool pptp_option, pppd_option;
 	int i;
 
 	for (i = 0; i < (int)ARRAY_SIZE(pptp_options); i++) {
-		pptp_option = pppd_option = FALSE;
+		pptp_option = pppd_option = false;
 
 		if (strncmp(pptp_options[i].cm_opt, "PPTP.", 5) == 0)
-			pptp_option = TRUE;
+			pptp_option = true;
 
 		if (strncmp(pptp_options[i].cm_opt, "PPPD.", 5) == 0)
-			pppd_option = TRUE;
+			pppd_option = true;
 
-		if (pptp_option == TRUE || pppd_option == TRUE) {
+		if (pptp_option || pppd_option) {
 			option = vpn_provider_get_string(provider,
 							pptp_options[i].cm_opt);
 			if (option == NULL) {
@@ -246,7 +246,7 @@ static int pptp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 				 */
 				char *pptp_str;
 
-				if (pppd_option == FALSE)
+				if (!pppd_option)
 					continue;
 
 				pptp_str = g_strdup_printf("PPTP.%s",
@@ -300,7 +300,7 @@ static void request_input_reply(DBusMessage *reply, void *user_data)
 		goto done;
 	}
 
-	if (vpn_agent_check_reply_has_dict(reply) == FALSE)
+	if (!vpn_agent_check_reply_has_dict(reply))
 		goto done;
 
 	dbus_message_iter_init(reply, &iter);

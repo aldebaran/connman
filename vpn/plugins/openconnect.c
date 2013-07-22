@@ -172,8 +172,8 @@ static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 			domain = g_strdup(value);
 		}
 
-		if (g_str_has_prefix(key, "CISCO_SPLIT_INC") == TRUE ||
-			g_str_has_prefix(key, "CISCO_IPV6_SPLIT_INC") == TRUE)
+		if (g_str_has_prefix(key, "CISCO_SPLIT_INC") ||
+			g_str_has_prefix(key, "CISCO_IPV6_SPLIT_INC"))
 			vpn_provider_append_route(provider, key, value);
 
 		dbus_message_iter_next(&dict);
@@ -319,7 +319,7 @@ static void request_input_cookie_reply(DBusMessage *reply, void *user_data)
 		goto err;
 	}
 
-	if (vpn_agent_check_reply_has_dict(reply) == FALSE)
+	if (!vpn_agent_check_reply_has_dict(reply))
 		goto err;
 
 	dbus_message_iter_init(reply, &iter);
