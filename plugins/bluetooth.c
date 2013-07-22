@@ -105,6 +105,7 @@ static bool proxy_get_nap(GDBusProxy *proxy)
 
                 dbus_message_iter_next(&value);
         }
+
         return false;
 }
 
@@ -241,7 +242,9 @@ static int bluetooth_pan_connect(struct connman_network *network)
 
 	path = g_dbus_proxy_get_path(pan->btnetwork_proxy);
 
-	if (!g_dbus_proxy_method_call(pan->btnetwork_proxy, "Connect", pan_connect_append, pan_connect_cb, g_strdup(path), g_free))
+	if (!g_dbus_proxy_method_call(pan->btnetwork_proxy, "Connect",
+			pan_connect_append, pan_connect_cb,
+			g_strdup(path), g_free))
 		return -EIO;
 
 	connman_network_set_associating(pan->network, true);
@@ -283,7 +286,8 @@ static int bluetooth_pan_disconnect(struct connman_network *network)
 
 	path = g_dbus_proxy_get_path(pan->btnetwork_proxy);
 
-	if (!g_dbus_proxy_method_call(pan->btnetwork_proxy, "Disconnect", NULL, pan_disconnect_cb, g_strdup(path), g_free))
+	if (!g_dbus_proxy_method_call(pan->btnetwork_proxy, "Disconnect",
+			NULL, pan_disconnect_cb, g_strdup(path), g_free))
 		return -EIO;
 
        return -EINPROGRESS;
@@ -637,7 +641,7 @@ static void tethering_create_cb(DBusMessage *message, void *user_data)
 		const char *dbus_error = dbus_message_get_error_name(message);
 
 		DBG("%s tethering failed: %s",
-				tethering->enable ? "enable": "disable",
+				tethering->enable ? "enable" : "disable",
 				dbus_error);
 		return;
 	}
@@ -843,7 +847,7 @@ static int bluetooth_tech_set_tethering(struct connman_technology *technology,
 			i++;
 	}
 
-	DBG("%s %d device(s)", enabled ? "enabled": "disabled", i);
+	DBG("%s %d device(s)", enabled ? "enabled" : "disabled", i);
 
 	if (i == 0)
 		return -ENODEV;

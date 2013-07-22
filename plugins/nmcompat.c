@@ -253,7 +253,9 @@ static int nmcompat_init(void)
 		return -1;
 	}
 
-	if (!g_dbus_register_interface(connection, NM_PATH, DBUS_PROPERTIES_INTERFACE, methods, signals, NULL, NULL, NULL)) {
+	if (!g_dbus_register_interface(connection, NM_PATH,
+					DBUS_PROPERTIES_INTERFACE, methods,
+					signals, NULL, NULL, NULL)) {
 		connman_error("nmcompat: failed to register "
 						DBUS_PROPERTIES_INTERFACE);
 		return -1;

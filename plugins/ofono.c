@@ -278,8 +278,7 @@ static void set_connected(struct modem_data *modem)
 
 	method = modem->context->ipv4_method;
 	if (method == CONNMAN_IPCONFIG_METHOD_FIXED ||
-			method == CONNMAN_IPCONFIG_METHOD_DHCP)
-	{
+			method == CONNMAN_IPCONFIG_METHOD_DHCP)	{
 		connman_service_create_ip4config(service, index);
 		connman_network_set_index(modem->network, index);
 
@@ -404,7 +403,8 @@ static int set_property(struct modem_data *modem,
 	dbus_message_iter_init_append(message, &iter);
 	connman_dbus_property_append_basic(&iter, property, type, value);
 
-	if (!dbus_connection_send_with_reply(connection, message, &modem->call_set_property, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+					&modem->call_set_property, TIMEOUT)) {
 		connman_error("Failed to change property: %s %s.%s",
 				path, interface, property);
 		dbus_message_unref(message);
@@ -498,7 +498,8 @@ static int get_properties(const char *path, const char *interface,
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (!dbus_connection_send_with_reply(connection, message, &modem->call_get_properties, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+					&modem->call_get_properties, TIMEOUT)) {
 		connman_error("Failed to call %s.GetProperties()", interface);
 		dbus_message_unref(message);
 		return -EINVAL;
@@ -1222,9 +1223,9 @@ static gboolean context_changed(DBusConnection *conn,
 			if (!modem->attached)
 				return TRUE;
 
-			if (!has_interface(modem->interfaces, OFONO_API_NETREG)) {
+			if (!has_interface(modem->interfaces,
+						OFONO_API_NETREG))
 				return TRUE;
-			}
 
 			add_network(modem);
 
@@ -1307,7 +1308,8 @@ static int cm_get_contexts(struct modem_data *modem)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (!dbus_connection_send_with_reply(connection, message, &modem->call_get_contexts, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+					&modem->call_get_contexts, TIMEOUT)) {
 		connman_error("Failed to call GetContexts()");
 		dbus_message_unref(message);
 		return -EINVAL;
@@ -1702,9 +1704,8 @@ static void cm_update_attached(struct modem_data *modem,
 		return;
 	}
 
-	if (!has_interface(modem->interfaces, OFONO_API_NETREG)) {
+	if (!has_interface(modem->interfaces, OFONO_API_NETREG))
 		return;
-	}
 
 	netreg_get_properties(modem);
 }
@@ -1872,7 +1873,7 @@ static int cdma_cm_get_properties(struct modem_data *modem)
 }
 
 static void sim_update_imsi(struct modem_data *modem,
-				DBusMessageIter* value)
+				DBusMessageIter *value)
 {
 	char *imsi;
 
@@ -2044,25 +2045,20 @@ static void modem_update_interfaces(struct modem_data *modem,
 			netreg_get_properties(modem);
 	}
 
-	if (api_added(old_ifaces, new_ifaces, OFONO_API_CDMA_NETREG)) {
+	if (api_added(old_ifaces, new_ifaces, OFONO_API_CDMA_NETREG))
 		cdma_netreg_get_properties(modem);
-	}
 
-	if (api_removed(old_ifaces, new_ifaces, OFONO_API_CM)) {
+	if (api_removed(old_ifaces, new_ifaces, OFONO_API_CM))
 		remove_cm_context(modem, modem->context->path);
-	}
 
-	if (api_removed(old_ifaces, new_ifaces, OFONO_API_CDMA_CM)) {
+	if (api_removed(old_ifaces, new_ifaces, OFONO_API_CDMA_CM))
 		remove_cm_context(modem, modem->context->path);
-	}
 
-	if (api_removed(old_ifaces, new_ifaces, OFONO_API_NETREG)) {
+	if (api_removed(old_ifaces, new_ifaces, OFONO_API_NETREG))
 		remove_network(modem);
-	}
 
-	if (api_removed(old_ifaces, new_ifaces, OFONO_API_CDMA_NETREG)) {
+	if (api_removed(old_ifaces, new_ifaces, OFONO_API_CDMA_NETREG))
 		remove_network(modem);
-	}
 }
 
 static gboolean modem_changed(DBusConnection *conn, DBusMessage *message,
@@ -2356,7 +2352,8 @@ static int manager_get_modems(void)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT)) {
 		connman_error("Failed to call GetModems()");
 		dbus_message_unref(message);
 		return -EINVAL;

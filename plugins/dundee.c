@@ -266,7 +266,8 @@ static int set_property(struct dundee_data *info,
 	dbus_message_iter_init_append(message, &iter);
 	connman_dbus_property_append_basic(&iter, property, type, value);
 
-	if (!dbus_connection_send_with_reply(connection, message, &info->call, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&info->call, TIMEOUT)) {
 		connman_error("Failed to change property: %s %s",
 				info->path, property);
 		dbus_message_unref(message);
@@ -761,7 +762,8 @@ static int manager_get_devices(void)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT)) {
 		connman_error("Failed to call GetDevices()");
 		dbus_message_unref(message);
 		return -EINVAL;

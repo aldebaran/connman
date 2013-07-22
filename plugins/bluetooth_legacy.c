@@ -117,7 +117,8 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 		goto err;
 	}
 
-	if (!dbus_message_get_args(reply, &error, DBUS_TYPE_STRING, &interface, DBUS_TYPE_INVALID)) {
+	if (!dbus_message_get_args(reply, &error, DBUS_TYPE_STRING,
+					&interface, DBUS_TYPE_INVALID)) {
 		if (dbus_error_is_set(&error)) {
 			connman_error("%s", error.message);
 			dbus_error_free(&error);
@@ -173,7 +174,8 @@ static int pan_connect(struct connman_network *network)
 	dbus_message_append_args(message, DBUS_TYPE_STRING, &uuid,
 							DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT * 10)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT * 10)) {
 		connman_error("Failed to connect service");
 		dbus_message_unref(message);
 		return -EINVAL;
@@ -249,7 +251,8 @@ static int pan_disconnect(struct connman_network *network)
 
 	dbus_message_append_args(message, DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT)) {
 		connman_error("Failed to disconnect service");
 		dbus_message_unref(message);
 		return -EINVAL;
@@ -479,7 +482,8 @@ static void add_network(const char *path)
 
 	dbus_message_set_auto_start(message, FALSE);
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT)) {
 		connman_error("Failed to get network properties for %s", path);
 		goto done;
 	}
@@ -841,7 +845,9 @@ static void list_adapters_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	if (!dbus_message_get_args(reply, &error, DBUS_TYPE_ARRAY, DBUS_TYPE_OBJECT_PATH, &adapters, &num_adapters, DBUS_TYPE_INVALID)) {
+	if (!dbus_message_get_args(reply, &error, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_OBJECT_PATH, &adapters,
+			&num_adapters, DBUS_TYPE_INVALID)) {
 		if (dbus_error_is_set(&error)) {
 			connman_error("%s", error.message);
 			dbus_error_free(&error);
@@ -1158,7 +1164,8 @@ static void server_register(const char *path, const char *uuid,
 		dbus_message_append_args(message, DBUS_TYPE_STRING, &bridge,
 							DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT)) {
 		connman_error("Failed to enable PAN server");
 		dbus_message_unref(message);
 		return;

@@ -67,7 +67,8 @@ static void create_config_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	if (!dbus_message_get_args(reply, NULL, DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID))
+	if (!dbus_message_get_args(reply, NULL, DBUS_TYPE_OBJECT_PATH,
+					&path, DBUS_TYPE_INVALID))
 		goto done;
 
 	g_free(current_config);
@@ -351,7 +352,8 @@ static void request_lookup_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	if (!dbus_message_get_args(reply, NULL, DBUS_TYPE_STRING, &proxy, DBUS_TYPE_INVALID))
+	if (!dbus_message_get_args(reply, NULL, DBUS_TYPE_STRING,
+					&proxy, DBUS_TYPE_INVALID))
 		proxy = NULL;
 
 done:

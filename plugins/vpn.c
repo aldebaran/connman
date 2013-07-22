@@ -526,7 +526,8 @@ static int connect_provider(struct connection_data *data, void *user_data)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, DBUS_TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, DBUS_TIMEOUT)) {
 		connman_error("Unable to call %s.%s()",
 			VPN_CONNECTION_INTERFACE, VPN_CONNECT);
 		dbus_message_unref(message);
@@ -738,7 +739,8 @@ static int get_connections(void *user_data)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, DBUS_TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, DBUS_TIMEOUT)) {
 		connman_error("Unable to call %s.%s()", VPN_MANAGER_INTERFACE,
 							GET_CONNECTIONS);
 		dbus_message_unref(message);
@@ -782,7 +784,8 @@ static void remove_connection_reply(DBusPendingCall *call, void *user_data)
 		 * If the returned error is NotFound, it means that we
 		 * have actually removed the provider in vpnd already.
 		 */
-		if (!dbus_error_has_name(&error, CONNMAN_ERROR_INTERFACE".NotFound"))
+		if (!dbus_error_has_name(&error,
+				CONNMAN_ERROR_INTERFACE".NotFound"))
 			connman_error("%s", error.message);
 
 		dbus_error_free(&error);
@@ -828,7 +831,8 @@ static int provider_remove(struct connman_provider *provider)
 	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &data->path,
 				NULL);
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, DBUS_TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, DBUS_TIMEOUT)) {
 		connman_error("Unable to call %s.%s()", VPN_MANAGER_INTERFACE,
 							VPN_REMOVE);
 		dbus_message_unref(message);
@@ -898,7 +902,8 @@ static int disconnect_provider(struct connection_data *data)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, DBUS_TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, DBUS_TIMEOUT)) {
 		connman_error("Unable to call %s.%s()",
 			VPN_CONNECTION_INTERFACE, VPN_DISCONNECT);
 		dbus_message_unref(message);
@@ -1215,15 +1220,14 @@ static int create_configuration(DBusMessage *msg, connection_ready_cb callback)
 		case DBUS_TYPE_STRING:
 			dbus_message_iter_get_basic(&value, &item_value);
 
-			if (g_str_equal(key, "Type")) {
+			if (g_str_equal(key, "Type"))
 				type = (const char *)item_value;
-			} else if (g_str_equal(key, "Name")) {
+			else if (g_str_equal(key, "Name"))
 				name = (const char *)item_value;
-			} else if (g_str_equal(key, "Host")) {
+			else if (g_str_equal(key, "Host"))
 				host = (const char *)item_value;
-			} else if (g_str_equal(key, "VPN.Domain")) {
+			else if (g_str_equal(key, "VPN.Domain"))
 				domain = (const char *)item_value;
-			}
 
 			DBG("%s %s", key, (char *)item_value);
 

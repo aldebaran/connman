@@ -431,7 +431,8 @@ static int eth_set_tethering(struct connman_technology *technology,
 				const char *identifier, const char *passphrase,
 				const char *bridge, bool enabled)
 {
-	if (!connman_technology_is_tethering_allowed(CONNMAN_SERVICE_TYPE_ETHERNET))
+	if (!connman_technology_is_tethering_allowed(
+			CONNMAN_SERVICE_TYPE_ETHERNET))
 		return 0;
 
 	DBG("bridge %s enabled %d", bridge, enabled);

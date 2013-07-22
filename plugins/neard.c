@@ -476,7 +476,7 @@ static DBusMessage *release_method(DBusConnection *dbus_conn,
 }
 
 static const GDBusMethodTable neard_methods[] = {
-{ GDBUS_ASYNC_METHOD("RequestOOB",
+	{ GDBUS_ASYNC_METHOD("RequestOOB",
 		GDBUS_ARGS({ "data", "a{sv}" }),
 		GDBUS_ARGS({ "data", "a{sv}" }), request_oob_method) },
 	{ GDBUS_ASYNC_METHOD("PushOOB",
@@ -533,12 +533,14 @@ static void register_agent(void)
 	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH,
 			&path, DBUS_TYPE_STRING, &type, DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(connection, message, &register_call, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&register_call, TIMEOUT)) {
 		dbus_message_unref(message);
 		goto out;
 	}
 
-	if (!dbus_pending_call_set_notify(register_call, register_agent_cb, NULL, NULL))
+	if (!dbus_pending_call_set_notify(register_call,
+						register_agent_cb, NULL, NULL))
 		cleanup_register_call();
 
 out:
