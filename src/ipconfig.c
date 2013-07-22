@@ -985,7 +985,8 @@ const char *__connman_ipconfig_get_local(struct connman_ipconfig *ipconfig)
 	return ipconfig->address->local;
 }
 
-void __connman_ipconfig_set_local(struct connman_ipconfig *ipconfig, const char *address)
+void __connman_ipconfig_set_local(struct connman_ipconfig *ipconfig,
+					const char *address)
 {
 	if (ipconfig->address == NULL)
 		return;
@@ -1002,7 +1003,8 @@ const char *__connman_ipconfig_get_peer(struct connman_ipconfig *ipconfig)
 	return ipconfig->address->peer;
 }
 
-void __connman_ipconfig_set_peer(struct connman_ipconfig *ipconfig, const char *address)
+void __connman_ipconfig_set_peer(struct connman_ipconfig *ipconfig,
+					const char *address)
 {
 	if (ipconfig->address == NULL)
 		return;
@@ -1019,7 +1021,8 @@ const char *__connman_ipconfig_get_broadcast(struct connman_ipconfig *ipconfig)
 	return ipconfig->address->broadcast;
 }
 
-void __connman_ipconfig_set_broadcast(struct connman_ipconfig *ipconfig, const char *broadcast)
+void __connman_ipconfig_set_broadcast(struct connman_ipconfig *ipconfig,
+					const char *broadcast)
 {
 	if (ipconfig->address == NULL)
 		return;
@@ -1036,7 +1039,8 @@ const char *__connman_ipconfig_get_gateway(struct connman_ipconfig *ipconfig)
 	return ipconfig->address->gateway;
 }
 
-void __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig, const char *gateway)
+void __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
+					const char *gateway)
 {
 	DBG("");
 
@@ -1093,7 +1097,8 @@ unsigned char __connman_ipconfig_get_prefixlen(struct connman_ipconfig *ipconfig
 	return ipconfig->address->prefixlen;
 }
 
-void __connman_ipconfig_set_prefixlen(struct connman_ipconfig *ipconfig, unsigned char prefixlen)
+void __connman_ipconfig_set_prefixlen(struct connman_ipconfig *ipconfig,
+					unsigned char prefixlen)
 {
 	if (ipconfig->address == NULL)
 		return;
@@ -1330,7 +1335,8 @@ int __connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 	return 0;
 }
 
-enum connman_ipconfig_method __connman_ipconfig_get_method(struct connman_ipconfig *ipconfig)
+enum connman_ipconfig_method __connman_ipconfig_get_method(
+				struct connman_ipconfig *ipconfig)
 {
 	if (ipconfig == NULL)
 		return CONNMAN_IPCONFIG_METHOD_UNKNOWN;

@@ -141,8 +141,7 @@ static GIOStatus rfkill_process(GIOChannel *chan)
 	return status;
 }
 
-static gboolean rfkill_event(GIOChannel *chan,
-				GIOCondition cond, gpointer data)
+static gboolean rfkill_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
 		return FALSE;

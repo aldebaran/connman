@@ -295,7 +295,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &strval);
 
 		if (__connman_timezone_change(strval) < 0)
-                        return __connman_error_invalid_arguments(msg);
+			return __connman_error_invalid_arguments(msg);
 	} else if (g_str_equal(name, "TimezoneUpdates")) {
 		const char *strval;
 		enum timezone_updates newval;

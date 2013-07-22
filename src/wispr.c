@@ -133,7 +133,7 @@ static void free_wispr_routes(struct connman_wispr_portal_context *wp_context)
 		DBG("free route to %s if %d type %d", route->address,
 				route->if_index, wp_context->type);
 
-		switch(wp_context->type) {
+		switch (wp_context->type) {
 		case CONNMAN_IPCONFIG_TYPE_IPV4:
 			connman_inet_del_host_route(route->if_index,
 					route->address);
@@ -155,7 +155,8 @@ static void free_wispr_routes(struct connman_wispr_portal_context *wp_context)
 	}
 }
 
-static void free_connman_wispr_portal_context(struct connman_wispr_portal_context *wp_context)
+static void free_connman_wispr_portal_context(
+		struct connman_wispr_portal_context *wp_context)
 {
 	DBG("context %p", wp_context);
 
@@ -476,7 +477,7 @@ static bool wispr_route_request(const char *address, int ai_family,
 		return false;
 	}
 
-	switch(wp_context->type) {
+	switch (wp_context->type) {
 	case CONNMAN_IPCONFIG_TYPE_IPV4:
 		result = connman_inet_add_host_route(if_index, address,
 				gateway);
@@ -501,7 +502,8 @@ static bool wispr_route_request(const char *address, int ai_family,
 	return true;
 }
 
-static void wispr_portal_request_portal(struct connman_wispr_portal_context *wp_context)
+static void wispr_portal_request_portal(
+		struct connman_wispr_portal_context *wp_context)
 {
 	DBG("");
 
@@ -715,8 +717,7 @@ static bool wispr_portal_web_result(GWebResult *result, gpointer user_data)
 						&str)) {
 			portal_manage_status(result, wp_context);
 			return false;
-		}
-		else
+		} else
 			__connman_agent_request_browser(wp_context->service,
 					wispr_portal_browser_reply_cb,
 					wp_context->redirect_url, wp_context);
@@ -724,7 +725,8 @@ static bool wispr_portal_web_result(GWebResult *result, gpointer user_data)
 		break;
 	case 302:
 		if (!g_web_supports_tls() ||
-				!g_web_result_get_header(result, "Location", &redirect)) {
+			!g_web_result_get_header(result, "Location",
+							&redirect)) {
 
 			__connman_agent_request_browser(wp_context->service,
 					wispr_portal_browser_reply_cb,

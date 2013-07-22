@@ -92,7 +92,7 @@ GKeyFile *__connman_storage_load_global(void)
 	GKeyFile *keyfile = NULL;
 
 	pathname = g_strdup_printf("%s/%s", STORAGEDIR, SETTINGS);
-	if(pathname == NULL)
+	if (pathname == NULL)
 		return NULL;
 
 	keyfile = storage_load(pathname);
@@ -108,7 +108,7 @@ int __connman_storage_save_global(GKeyFile *keyfile)
 	int ret;
 
 	pathname = g_strdup_printf("%s/%s", STORAGEDIR, SETTINGS);
-	if(pathname == NULL)
+	if (pathname == NULL)
 		return -ENOMEM;
 
 	ret = storage_save(keyfile, pathname);
@@ -123,7 +123,7 @@ void __connman_storage_delete_global(void)
 	gchar *pathname;
 
 	pathname = g_strdup_printf("%s/%s", STORAGEDIR, SETTINGS);
-	if(pathname == NULL)
+	if (pathname == NULL)
 		return;
 
 	storage_delete(pathname);
@@ -137,7 +137,7 @@ GKeyFile *__connman_storage_load_config(const char *ident)
 	GKeyFile *keyfile = NULL;
 
 	pathname = g_strdup_printf("%s/%s.config", STORAGEDIR, ident);
-	if(pathname == NULL)
+	if (pathname == NULL)
 		return NULL;
 
 	keyfile = storage_load(pathname);
@@ -169,7 +169,7 @@ GKeyFile *__connman_storage_open_service(const char *service_id)
 	GKeyFile *keyfile = NULL;
 
 	pathname = g_strdup_printf("%s/%s/%s", STORAGEDIR, service_id, SETTINGS);
-	if(pathname == NULL)
+	if (pathname == NULL)
 		return NULL;
 
 	keyfile =  storage_load(pathname);
@@ -248,7 +248,7 @@ GKeyFile *connman_storage_load_service(const char *service_id)
 	GKeyFile *keyfile = NULL;
 
 	pathname = g_strdup_printf("%s/%s/%s", STORAGEDIR, service_id, SETTINGS);
-	if(pathname == NULL)
+	if (pathname == NULL)
 		return NULL;
 
 	keyfile =  storage_load(pathname);
@@ -263,12 +263,12 @@ int __connman_storage_save_service(GKeyFile *keyfile, const char *service_id)
 	gchar *pathname, *dirname;
 
 	dirname = g_strdup_printf("%s/%s", STORAGEDIR, service_id);
-	if(dirname == NULL)
+	if (dirname == NULL)
 		return -ENOMEM;
 
 	/* If the dir doesn't exist, create it */
 	if (!g_file_test(dirname, G_FILE_TEST_IS_DIR)) {
-		if(mkdir(dirname, MODE) < 0) {
+		if (mkdir(dirname, MODE) < 0) {
 			if (errno != EEXIST) {
 				g_free(dirname);
 				return -errno;
@@ -293,7 +293,7 @@ static bool remove_file(const char *service_id, const char *file)
 	bool ret = false;
 
 	pathname = g_strdup_printf("%s/%s/%s", STORAGEDIR, service_id, file);
-	if(pathname == NULL)
+	if (pathname == NULL)
 		return false;
 
 	if (!g_file_test(pathname, G_FILE_TEST_EXISTS)) {
@@ -313,7 +313,7 @@ static bool remove_dir(const char *service_id)
 	bool ret = false;
 
 	pathname = g_strdup_printf("%s/%s", STORAGEDIR, service_id);
-	if(pathname == NULL)
+	if (pathname == NULL)
 		return false;
 
 	if (!g_file_test(pathname, G_FILE_TEST_EXISTS)) {

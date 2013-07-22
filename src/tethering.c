@@ -133,7 +133,7 @@ static void dhcp_server_error(GDHCPServerError error)
 }
 
 static GDHCPServer *dhcp_server_start(const char *bridge,
-				const char *router, const char* subnet,
+				const char *router, const char *subnet,
 				const char *start_ip, const char *end_ip,
 				unsigned int lease_time, const char *dns)
 {

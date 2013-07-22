@@ -1411,8 +1411,7 @@ static void rtnl_message(void *buf, size_t len)
 	}
 }
 
-static gboolean netlink_event(GIOChannel *chan,
-				GIOCondition cond, gpointer data)
+static gboolean netlink_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	unsigned char buf[4096];
 	struct sockaddr_nl nladdr;

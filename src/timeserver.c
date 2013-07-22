@@ -83,7 +83,8 @@ static char **load_timeservers()
 	return servers;
 }
 
-static void resolv_result(GResolvResultStatus status, char **results, gpointer user_data)
+static void resolv_result(GResolvResultStatus status, char **results,
+				gpointer user_data)
 {
 	int i;
 
@@ -326,7 +327,7 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 
 	ts_recheck_enable();
 
-        __connman_timeserver_sync_next();
+	__connman_timeserver_sync_next();
 
 	return 0;
 }

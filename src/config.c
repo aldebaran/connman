@@ -979,7 +979,8 @@ static void provision_service_wifi(gpointer key,
 		__connman_service_set_string(service, "Phase2", config->phase2);
 
 	if (config->passphrase != NULL)
-		__connman_service_set_string(service, "Passphrase", config->passphrase);
+		__connman_service_set_string(service, "Passphrase",
+						config->passphrase);
 
 	if (config->hidden)
 		__connman_service_set_hidden(service);

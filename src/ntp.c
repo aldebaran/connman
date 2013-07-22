@@ -471,7 +471,7 @@ void __connman_ntp_stop()
 	if (poll_id > 0)
 		g_source_remove(poll_id);
 
-        reset_timeout();
+	reset_timeout();
 
 	if (channel_watch > 0) {
 		g_source_remove(channel_watch);

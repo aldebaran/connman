@@ -692,7 +692,7 @@ int __connman_stats_service_register(struct connman_service *service)
 
 	/* If the dir doesn't exist, create it */
 	if (!g_file_test(dir, G_FILE_TEST_IS_DIR)) {
-		if(mkdir(dir, MODE) < 0) {
+		if (mkdir(dir, MODE) < 0) {
 			if (errno != EEXIST) {
 				g_free(dir);
 

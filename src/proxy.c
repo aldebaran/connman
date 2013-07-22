@@ -165,7 +165,7 @@ void connman_proxy_lookup_cancel(unsigned int token)
 }
 
 void connman_proxy_driver_lookup_notify(struct connman_service *service,
-                                        const char *url, const char *result)
+					const char *url, const char *result)
 {
 	GSList *list, *matches = NULL;
 

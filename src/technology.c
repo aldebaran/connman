@@ -1033,7 +1033,7 @@ static DBusMessage *scan(DBusConnection *conn, DBusMessage *msg, void *data)
 	struct connman_technology *technology = data;
 	int err;
 
-	DBG ("technology %p request from %s", technology,
+	DBG("technology %p request from %s", technology,
 			dbus_message_get_sender(msg));
 
 	dbus_message_ref(msg);
@@ -1071,7 +1071,10 @@ static bool technology_dbus_register(struct connman_technology *technology)
 				 technology->hardblocked))
 		return true;
 
-	if (!g_dbus_register_interface(connection, technology->path, CONNMAN_TECHNOLOGY_INTERFACE, technology_methods, technology_signals, NULL, technology, NULL)) {
+	if (!g_dbus_register_interface(connection, technology->path,
+					CONNMAN_TECHNOLOGY_INTERFACE,
+					technology_methods, technology_signals,
+					NULL, technology, NULL)) {
 		connman_error("Failed to register %s", technology->path);
 		return false;
 	}
@@ -1254,7 +1257,7 @@ void __connman_technology_add_interface(enum connman_service_type type,
 	     tech_drivers = g_slist_next(tech_drivers)) {
 		driver = tech_drivers->data;
 
-		if(driver->add_interface != NULL)
+		if (driver->add_interface != NULL)
 			driver->add_interface(technology, index, name, ident);
 	}
 
@@ -1299,7 +1302,7 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 	     tech_drivers = g_slist_next(tech_drivers)) {
 		driver = tech_drivers->data;
 
-		if(driver->remove_interface != NULL)
+		if (driver->remove_interface != NULL)
 			driver->remove_interface(technology, index);
 	}
 }

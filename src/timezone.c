@@ -140,7 +140,7 @@ static int compare_file(void *src_map, struct stat *src_st,
 	if (dst_map == NULL || dst_map == MAP_FAILED) {
 		close(fd);
 		return -1;
-        }
+	}
 
 	result = memcmp(src_map, dst_map, src_st->st_size);
 

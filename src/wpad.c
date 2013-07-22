@@ -53,7 +53,7 @@ static void free_wpad(gpointer data)
 
 	g_strfreev(wpad->addrlist);
 	g_free(wpad->hostname);
-        g_free(wpad);
+	g_free(wpad);
 }
 
 static void download_pac(struct connman_wpad *wpad, const char *target)

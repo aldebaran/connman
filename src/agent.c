@@ -87,13 +87,17 @@ static int agent_send_next_request(void)
 	agent_request = agent_queue->data;
 	agent_queue = g_list_remove(agent_queue, agent_request);
 
-	if (!dbus_connection_send_with_reply(connection, agent_request->msg, &agent_request->call, agent_request->timeout))
+	if (!dbus_connection_send_with_reply(connection, agent_request->msg,
+						&agent_request->call,
+						agent_request->timeout))
 		goto fail;
 
 	if (agent_request->call == NULL)
 		goto fail;
 
-	if (!dbus_pending_call_set_notify(agent_request->call, agent_receive_message, agent_request, NULL))
+	if (!dbus_pending_call_set_notify(agent_request->call,
+						agent_receive_message,
+						agent_request, NULL))
 		goto fail;
 
 	dbus_message_unref(agent_request->msg);

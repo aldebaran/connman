@@ -169,9 +169,9 @@ int __connman_provider_connect(struct connman_provider *provider)
 
 	DBG("provider %p", provider);
 
-	if (provider->driver != NULL && provider->driver->connect != NULL) {
+	if (provider->driver != NULL && provider->driver->connect != NULL)
 		err = provider->driver->connect(provider);
-	} else
+	else
 		return -EOPNOTSUPP;
 
 	if (err < 0) {
@@ -411,7 +411,7 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 	return driver->create(msg, connection_ready);
 }
 
-const char * __connman_provider_get_ident(struct connman_provider *provider)
+const char *__connman_provider_get_ident(struct connman_provider *provider)
 {
 	if (provider == NULL)
 		return NULL;
@@ -552,7 +552,7 @@ int connman_provider_set_domain(struct connman_provider *provider,
 }
 
 int connman_provider_set_nameservers(struct connman_provider *provider,
-					char * const * nameservers)
+					char * const *nameservers)
 {
 	int i;
 

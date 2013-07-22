@@ -1349,8 +1349,7 @@ static int icmpv6_recv(int fd, gpointer user_data)
 	return len;
 }
 
-static gboolean icmpv6_event(GIOChannel *chan, GIOCondition cond,
-								gpointer data)
+static gboolean icmpv6_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	int fd, ret;
 

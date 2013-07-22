@@ -1458,7 +1458,7 @@ static void append_security(DBusMessageIter *iter, void *user_data)
 		case CONNMAN_SERVICE_SECURITY_RSN:
 			str = "wps";
 			dbus_message_iter_append_basic(iter,
-			        DBUS_TYPE_STRING, &str);
+						DBUS_TYPE_STRING, &str);
 			break;
 		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
 		case CONNMAN_SERVICE_SECURITY_NONE:
@@ -3010,11 +3010,10 @@ int __connman_service_reset_ipconfig(struct connman_service *service,
 		__connman_network_clear_ipconfig(service->network, ipconfig);
 	__connman_ipconfig_unref(ipconfig);
 
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
 		service->ipconfig_ipv4 = new_ipconfig;
-	} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
 		service->ipconfig_ipv6 = new_ipconfig;
-	}
 
 	__connman_ipconfig_enable(new_ipconfig);
 
@@ -3414,7 +3413,7 @@ static void preferred_tech_add_by_type(gpointer data, gpointer user_data)
 	}
 }
 
-static GList* preferred_tech_list_get(void)
+static GList *preferred_tech_list_get(void)
 {
 	unsigned int *tech_array;
 	struct preferred_tech_data tech_data = { 0, };
@@ -3484,7 +3483,7 @@ static bool auto_connect_service(GList *services,
 	if (service != NULL) {
 
 		DBG("service %p %s %s", service, service->name,
-				(preferred)? "preferred": "auto");
+				(preferred) ? "preferred" : "auto");
 
 		service->userconnect = false;
 		__connman_service_connect(service);
@@ -4016,28 +4015,32 @@ static DBusMessage *move_service(DBusConnection *conn,
 	 */
 	if (target4 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (service6 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (!check_suitable_state(target->state_ipv6, service->state_ipv6))
+			if (!check_suitable_state(target->state_ipv6,
+							service->state_ipv6))
 				return __connman_error_invalid_service(msg);
 		}
 	}
 
 	if (target6 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (service4 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (!check_suitable_state(target->state_ipv4, service->state_ipv4))
+			if (!check_suitable_state(target->state_ipv4,
+							service->state_ipv4))
 				return __connman_error_invalid_service(msg);
 		}
 	}
 
 	if (service4 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (target6 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (!check_suitable_state(target->state_ipv6, service->state_ipv6))
+			if (!check_suitable_state(target->state_ipv6,
+							service->state_ipv6))
 				return __connman_error_invalid_service(msg);
 		}
 	}
 
 	if (service6 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (target4 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (!check_suitable_state(target->state_ipv4, service->state_ipv4))
+			if (!check_suitable_state(target->state_ipv4,
+							service->state_ipv4))
 				return __connman_error_invalid_service(msg);
 		}
 	}
@@ -4628,7 +4631,8 @@ bool __connman_service_is_connected_state(struct connman_service *service,
 
 	return false;
 }
-enum connman_service_security __connman_service_get_security(struct connman_service *service)
+enum connman_service_security __connman_service_get_security(
+				struct connman_service *service)
 {
 	if (service == NULL)
 		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
@@ -4653,9 +4657,9 @@ bool __connman_service_wps_enabled(struct connman_service *service)
 }
 
 void __connman_service_mark_dirty()
- {
+{
 	services_dirty = true;
- }
+}
 
 /**
  * __connman_service_set_favorite_delayed:
@@ -4712,7 +4716,7 @@ int __connman_service_set_favorite(struct connman_service *service,
 
 bool connman_service_get_favorite(struct connman_service *service)
 {
-       return service->favorite;
+	return service->favorite;
 }
 
 int __connman_service_set_immutable(struct connman_service *service,
@@ -4899,7 +4903,7 @@ static int check_wpspin(struct connman_service *service, const char *wpspin)
 	return 0;
 }
 
-static void request_input_cb (struct connman_service *service,
+static void request_input_cb(struct connman_service *service,
 			bool values_received,
 			const char *name, int name_len,
 			const char *identity, const char *passphrase,
@@ -4909,7 +4913,7 @@ static void request_input_cb (struct connman_service *service,
 	struct connman_device *device;
 	int err = 0;
 
-	DBG ("RequestInput return, %p", service);
+	DBG("RequestInput return, %p", service);
 
 	if (error != NULL) {
 		DBG("error: %s", error);
@@ -5019,7 +5023,7 @@ static int service_update_preferred_order(struct connman_service *default_servic
 	int i;
 
 	if (default_service == NULL || default_service == new_service ||
-			default_service->state != new_state )
+			default_service->state != new_state)
 		return 0;
 
 	tech_array = connman_setting_get_uint_list("PreferredTechnologies");

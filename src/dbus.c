@@ -183,11 +183,13 @@ void connman_dbus_property_append_array(DBusMessageIter *iter,
 
 	switch (type) {
 	case DBUS_TYPE_STRING:
-		variant_sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING;
+		variant_sig = DBUS_TYPE_ARRAY_AS_STRING
+				DBUS_TYPE_STRING_AS_STRING;
 		array_sig = DBUS_TYPE_STRING_AS_STRING;
 		break;
 	case DBUS_TYPE_OBJECT_PATH:
-		variant_sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING;
+		variant_sig = DBUS_TYPE_ARRAY_AS_STRING
+				DBUS_TYPE_OBJECT_PATH_AS_STRING;
 		array_sig = DBUS_TYPE_OBJECT_PATH_AS_STRING;
 		break;
 	case DBUS_TYPE_DICT_ENTRY:

@@ -73,11 +73,11 @@ struct connman_dhcpv6 {
 	guint timeout;		/* operation timeout in msec */
 	guint MRD;		/* max operation timeout in msec */
 	guint RT;		/* in msec */
-	bool use_ta;	/* set to TRUE if IPv6 privacy is enabled */
+	bool use_ta;		/* set to TRUE if IPv6 privacy is enabled */
 	GSList *prefixes;	/* network prefixes from radvd or dhcpv6 pd */
 	int request_count;	/* how many times REQUEST have been sent */
-	bool stateless;	/* TRUE if stateless DHCPv6 is used */
-	bool started;	/* TRUE if we have DHCPv6 started */
+	bool stateless;		/* TRUE if stateless DHCPv6 is used */
+	bool started;		/* TRUE if we have DHCPv6 started */
 };
 
 static GHashTable *network_table;

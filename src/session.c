@@ -825,9 +825,9 @@ static void append_ipconfig_ipv4(DBusMessageIter *iter, void *user_data)
 	if (service == NULL)
 		return;
 
-	if (!__connman_service_is_connected_state(service, CONNMAN_IPCONFIG_TYPE_IPV4)) {
+	if (!__connman_service_is_connected_state(service,
+						CONNMAN_IPCONFIG_TYPE_IPV4))
 		return;
-	}
 
 	ipconfig_ipv4 = __connman_service_get_ip4config(service);
 	if (ipconfig_ipv4 == NULL)
@@ -844,9 +844,9 @@ static void append_ipconfig_ipv6(DBusMessageIter *iter, void *user_data)
 	if (service == NULL)
 		return;
 
-	if (!__connman_service_is_connected_state(service, CONNMAN_IPCONFIG_TYPE_IPV6)) {
+	if (!__connman_service_is_connected_state(service,
+						CONNMAN_IPCONFIG_TYPE_IPV6))
 		return;
-	}
 
 	ipconfig_ipv4 = __connman_service_get_ip4config(service);
 	ipconfig_ipv6 = __connman_service_get_ip6config(service);
@@ -1444,7 +1444,8 @@ static void select_and_connect(struct connman_session *session,
 	}
 }
 
-static struct service_entry *create_service_entry(struct connman_session * session,
+static struct service_entry *create_service_entry(
+					struct connman_session * session,
 					struct connman_service *service,
 					const char *name,
 					enum connman_service_state state)
@@ -1605,7 +1606,8 @@ static void session_changed(struct connman_session *session,
 
 		if (info->config.type != info_last->config.type) {
 			if (info->state >= CONNMAN_SESSION_STATE_CONNECTED &&
-					!is_type_matching_state(&info->state, info->config.type))
+					!is_type_matching_state(&info->state,
+							info->config.type))
 				deselect_and_disconnect(session);
 		}
 
@@ -1645,15 +1647,13 @@ static void session_changed(struct connman_session *session,
 	case CONNMAN_SESSION_TRIGGER_SERVICE:
 		if (info->entry != NULL &&
 			(is_connecting(info->entry->state) ||
-				is_connected(info->entry->state))) {
+				is_connected(info->entry->state)))
 			break;
-		}
 
 		deselect_and_disconnect(session);
 
-		if (info->reason == CONNMAN_SESSION_REASON_FREE_RIDE) {
+		if (info->reason == CONNMAN_SESSION_REASON_FREE_RIDE)
 			select_and_connect(session, info->reason);
-		}
 
 		break;
 	}
@@ -1944,7 +1944,10 @@ static int session_create_final(struct creation_data *creation_data,
 
 	DBG("add %s", session->session_path);
 
-	if (!g_dbus_register_interface(connection, session->session_path, CONNMAN_SESSION_INTERFACE, session_methods, NULL, NULL, session, NULL)) {
+	if (!g_dbus_register_interface(connection, session->session_path,
+					CONNMAN_SESSION_INTERFACE,
+					session_methods, NULL, NULL,
+					session, NULL)) {
 		connman_error("Failed to register %s", session->session_path);
 		g_hash_table_remove(session_hash, session->session_path);
 		err = -EINVAL;
@@ -2122,7 +2125,7 @@ int __connman_session_create(DBusMessage *msg)
 		case DBUS_TYPE_ARRAY:
 			if (g_str_equal(key, "AllowedBearers")) {
 				err = parse_bearers(&value,
-						&creation_data->allowed_bearers);
+					&creation_data->allowed_bearers);
 				if (err < 0)
 					goto err;
 

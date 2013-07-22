@@ -39,8 +39,8 @@
 
 #include "connman.h"
 
-#define DEFAULT_INPUT_REQUEST_TIMEOUT 120 * 1000
-#define DEFAULT_BROWSER_LAUNCH_TIMEOUT 300 * 1000
+#define DEFAULT_INPUT_REQUEST_TIMEOUT (120 * 1000)
+#define DEFAULT_BROWSER_LAUNCH_TIMEOUT (300 * 1000)
 
 #define MAINFILE "main.conf"
 #define CONFIGMAINFILE CONFIGDIR "/" MAINFILE
@@ -151,8 +151,7 @@ static uint *parse_service_types(char **str_list, gsize len)
 
 	i = 0;
 	j = 0;
-	while (str_list[i] != NULL)
-	{
+	while (str_list[i] != NULL) {
 		type = __connman_service_string2type(str_list[i]);
 
 		if (type != CONNMAN_SERVICE_TYPE_UNKNOWN) {
@@ -557,11 +556,13 @@ unsigned int *connman_setting_get_uint_list(const char *key)
 	return NULL;
 }
 
-unsigned int connman_timeout_input_request(void) {
+unsigned int connman_timeout_input_request(void)
+{
 	return connman_settings.timeout_inputreq;
 }
 
-unsigned int connman_timeout_browser_launch(void) {
+unsigned int connman_timeout_browser_launch(void)
+{
 	return connman_settings.timeout_browserlaunch;
 }
 

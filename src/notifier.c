@@ -112,7 +112,7 @@ static const char *evaluate_notifier_state(void)
 	if (__connman_notifier_is_connected())
 		return "ready";
 
-	if ( __connman_technology_get_offlinemode())
+	if (__connman_technology_get_offlinemode())
 		return "offline";
 
 	return "idle";

@@ -105,7 +105,8 @@ static void request_input_passphrase_reply(DBusMessage *reply, void *user_data)
 
 		} else if (g_str_equal(key, "Passphrase")) {
 			dbus_message_iter_next(&entry);
-			if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
 				break;
 			dbus_message_iter_recurse(&entry, &value);
 			dbus_message_iter_get_basic(&value, &passphrase);
@@ -443,15 +444,14 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 	if (__connman_service_get_security(service) !=
 			CONNMAN_SERVICE_SECURITY_NONE) {
 		connman_dbus_dict_append_dict(&dict, "Passphrase",
-					request_input_append_passphrase, service);
+				request_input_append_passphrase, service);
 
 		previous_passphrase_handler(&dict, service);
 	}
 
-	if (__connman_service_wps_enabled(service)) {
-	    connman_dbus_dict_append_dict(&dict, "WPS",
+	if (__connman_service_wps_enabled(service))
+		connman_dbus_dict_append_dict(&dict, "WPS",
 				request_input_append_wps, NULL);
-	}
 
 	connman_dbus_dict_close(&iter, &dict);
 

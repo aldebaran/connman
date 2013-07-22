@@ -1049,7 +1049,8 @@ const char *__connman_network_get_type(struct connman_network *network)
  *
  * Get type of network
  */
-enum connman_network_type connman_network_get_type(struct connman_network *network)
+enum connman_network_type connman_network_get_type(
+				struct connman_network *network)
 {
 	return network->type;
 }
@@ -1443,7 +1444,7 @@ void connman_network_clear_hidden(void *user_data)
 }
 
 int connman_network_connect_hidden(struct connman_network *network,
-			char *identity, char* passphrase, void *user_data)
+			char *identity, char *passphrase, void *user_data)
 {
 	int err = 0;
 	struct connman_service *service;
@@ -1514,9 +1515,8 @@ int __connman_network_connect(struct connman_network *network)
 	if (err < 0) {
 		if (err == -EINPROGRESS)
 			connman_network_set_associating(network, true);
-		else {
+		else
 			network->connecting = false;
-		}
 
 		return err;
 	}

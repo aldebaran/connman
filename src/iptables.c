@@ -179,7 +179,7 @@ static GHashTable *table_hash = NULL;
 static bool debug_enabled = false;
 
 typedef int (*iterate_entries_cb_t)(struct ipt_entry *entry, int builtin,
-					unsigned int hook,size_t size,
+					unsigned int hook, size_t size,
 					unsigned int offset, void *user_data);
 
 static unsigned int next_hook_entry_index(unsigned int *valid_hooks)
@@ -234,9 +234,8 @@ static int iterate_entries(struct ipt_entry *entries,
 		if (h == NF_INET_NUMHOOKS)
 			hook = h;
 
-		if (h < NF_INET_NUMHOOKS && underflow[h] <= offset) {
+		if (h < NF_INET_NUMHOOKS && underflow[h] <= offset)
 			h = next_hook_entry_index(&valid_hooks);
-		}
 
 		err = cb(entry, builtin, hook, size, offset, user_data);
 		if (err < 0)
@@ -448,7 +447,8 @@ static void update_targets_reference(struct connman_iptables *table,
 	}
 
 	if (is_fallthrough(modified_entry)) {
-		t = (struct xt_standard_target *) ipt_get_target(modified_entry->entry);
+		t = (struct xt_standard_target *)
+			ipt_get_target(modified_entry->entry);
 
 		t->verdict = entry_before->offset +
 			modified_entry->entry->target_offset +
@@ -1238,7 +1238,7 @@ static void dump_target(struct ipt_entry *entry)
 		xt_t = xtables_find_target(IPT_STANDARD_TARGET,
 						XTF_LOAD_MUST_SUCCEED);
 
-		if(xt_t->print != NULL)
+		if (xt_t->print != NULL)
 			xt_t->print(NULL, target, 1);
 	} else {
 		xt_t = xtables_find_target(target->u.user.name, XTF_TRY_LOAD);
@@ -1247,7 +1247,7 @@ static void dump_target(struct ipt_entry *entry)
 			return;
 		}
 
-		if(xt_t->print != NULL) {
+		if (xt_t->print != NULL) {
 			DBG("\ttarget ");
 			xt_t->print(NULL, target, 1);
 		}
@@ -1274,7 +1274,7 @@ static void dump_match(struct ipt_entry *entry)
 	if (xt_m == NULL)
 		goto out;
 
-	if(xt_m->print != NULL) {
+	if (xt_m->print != NULL) {
 		DBG("\tmatch ");
 		xt_m->print(NULL, match, 1);
 
@@ -1672,7 +1672,8 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 	return xt_m;
 }
 
-static int parse_ip_and_mask(const char *str, struct in_addr *ip, struct in_addr *mask)
+static int parse_ip_and_mask(const char *str, struct in_addr *ip,
+				struct in_addr *mask)
 {
 	char **tokens;
 	uint32_t prefixlength;
@@ -2313,7 +2314,7 @@ int __connman_iptables_commit(const char *table_name)
 	g_free(repl);
 
 	if (err < 0)
-	    return err;
+		return err;
 
 	g_hash_table_remove(table_hash, table_name);
 
@@ -2341,7 +2342,7 @@ static int iterate_chains_cb(struct ipt_entry *entry, int builtin,
 	target = ipt_get_target(entry);
 
 	if (!g_strcmp0(target->u.user.name, IPT_ERROR_TARGET))
-		(*cb)((const char*)target->data, cbd->user_data);
+		(*cb)((const char *)target->data, cbd->user_data);
 	else if (builtin >= 0)
 		(*cb)(hooknames[builtin], cbd->user_data);
 

@@ -48,7 +48,9 @@ struct connman_device {
 	int refcount;
 	enum connman_device_type type;
 	enum connman_pending_type powered_pending;	/* Indicates a pending
-							enable/disable request */
+							 * enable/disable
+							 * request
+							 */
 	bool powered;
 	bool scanning;
 	bool disconnected;
@@ -127,7 +129,8 @@ static const char *type2string(enum connman_device_type type)
 	return NULL;
 }
 
-enum connman_service_type __connman_device_get_service_type(struct connman_device *device)
+enum connman_service_type __connman_device_get_service_type(
+				struct connman_device *device)
 {
 	enum connman_device_type type = connman_device_get_type(device);
 
