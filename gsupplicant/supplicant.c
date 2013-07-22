@@ -236,9 +236,9 @@ static GSupplicantMode string2mode(const char *mode)
 	if (mode == NULL)
 		return G_SUPPLICANT_MODE_UNKNOWN;
 
-	if (g_str_equal(mode, "infrastructure") == TRUE)
+	if (g_str_equal(mode, "infrastructure"))
 		return G_SUPPLICANT_MODE_INFRA;
-	else if (g_str_equal(mode, "ad-hoc") == TRUE)
+	else if (g_str_equal(mode, "ad-hoc"))
 		return G_SUPPLICANT_MODE_IBSS;
 
 	return G_SUPPLICANT_MODE_UNKNOWN;
@@ -283,27 +283,27 @@ static GSupplicantState string2state(const char *state)
 	if (state == NULL)
 		return G_SUPPLICANT_STATE_UNKNOWN;
 
-	if (g_str_equal(state, "unknown") == TRUE)
+	if (g_str_equal(state, "unknown"))
 		return G_SUPPLICANT_STATE_UNKNOWN;
-	else if (g_str_equal(state, "interface_disabled") == TRUE)
+	else if (g_str_equal(state, "interface_disabled"))
 		return G_SUPPLICANT_STATE_DISABLED;
-	else if (g_str_equal(state, "disconnected") == TRUE)
+	else if (g_str_equal(state, "disconnected"))
 		return G_SUPPLICANT_STATE_DISCONNECTED;
-	else if (g_str_equal(state, "inactive") == TRUE)
+	else if (g_str_equal(state, "inactive"))
 		return G_SUPPLICANT_STATE_INACTIVE;
-	else if (g_str_equal(state, "scanning") == TRUE)
+	else if (g_str_equal(state, "scanning"))
 		return G_SUPPLICANT_STATE_SCANNING;
-	else if (g_str_equal(state, "authenticating") == TRUE)
+	else if (g_str_equal(state, "authenticating"))
 		return G_SUPPLICANT_STATE_AUTHENTICATING;
-	else if (g_str_equal(state, "associating") == TRUE)
+	else if (g_str_equal(state, "associating"))
 		return G_SUPPLICANT_STATE_ASSOCIATING;
-	else if (g_str_equal(state, "associated") == TRUE)
+	else if (g_str_equal(state, "associated"))
 		return G_SUPPLICANT_STATE_ASSOCIATED;
-	else if (g_str_equal(state, "group_handshake") == TRUE)
+	else if (g_str_equal(state, "group_handshake"))
 		return G_SUPPLICANT_STATE_GROUP_HANDSHAKE;
-	else if (g_str_equal(state, "4way_handshake") == TRUE)
+	else if (g_str_equal(state, "4way_handshake"))
 		return G_SUPPLICANT_STATE_4WAY_HANDSHAKE;
-	else if (g_str_equal(state, "completed") == TRUE)
+	else if (g_str_equal(state, "completed"))
 		return G_SUPPLICANT_STATE_COMPLETED;
 
 	return G_SUPPLICANT_STATE_UNKNOWN;
@@ -311,7 +311,7 @@ static GSupplicantState string2state(const char *state)
 
 static void callback_system_ready(void)
 {
-	if (system_ready == TRUE)
+	if (system_ready)
 		return;
 
 	system_ready = TRUE;
@@ -446,7 +446,7 @@ static void remove_interface(gpointer data)
                 interface->scan_callback = NULL;
                 interface->scan_data = NULL;
 
-		if (interface->scanning == TRUE) {
+		if (interface->scanning) {
 			interface->scanning = FALSE;
 			callback_scan_finished(interface);
 		}
@@ -1065,7 +1065,7 @@ static char *create_name(unsigned char *ssid, int ssid_len)
 
 	while (remaining_bytes != 0) {
 		if (g_utf8_validate(remainder, remaining_bytes,
-					&invalid) == TRUE) {
+					&invalid)) {
 			break;
 		}
 
@@ -1267,21 +1267,21 @@ static void bss_wpa(const char *key, DBusMessageIter *iter,
 	if (g_strcmp0(key, "KeyMgmt") == 0) {
 		supplicant_dbus_array_foreach(iter, bss_keymgmt, &value);
 
-		if (bss->rsn_selected == TRUE)
+		if (bss->rsn_selected)
 			bss->rsn_keymgmt = value;
 		else
 			bss->wpa_keymgmt = value;
 	} else if (g_strcmp0(key, "Group") == 0) {
 		supplicant_dbus_array_foreach(iter, bss_group, &value);
 
-		if (bss->rsn_selected == TRUE)
+		if (bss->rsn_selected)
 			bss->rsn_group = value;
 		else
 			bss->wpa_group = value;
 	} else if (g_strcmp0(key, "Pairwise") == 0) {
 		supplicant_dbus_array_foreach(iter, bss_pairwise, &value);
 
-		if (bss->rsn_selected == TRUE)
+		if (bss->rsn_selected)
 			bss->rsn_pairwise = value;
 		else
 			bss->wpa_pairwise = value;
@@ -1420,11 +1420,11 @@ static void bss_compute_security(struct g_supplicant_bss *bss)
 				G_SUPPLICANT_KEYMGMT_WPA_PSK_256))
 		bss->psk = TRUE;
 
-	if (bss->ieee8021x == TRUE)
+	if (bss->ieee8021x)
 		bss->security = G_SUPPLICANT_SECURITY_IEEE8021X;
-	else if (bss->psk == TRUE)
+	else if (bss->psk)
 		bss->security = G_SUPPLICANT_SECURITY_PSK;
-	else if (bss->privacy == TRUE)
+	else if (bss->privacy)
 		bss->security = G_SUPPLICANT_SECURITY_WEP;
 	else
 		bss->security = G_SUPPLICANT_SECURITY_NONE;
@@ -1708,8 +1708,8 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		dbus_message_iter_get_basic(iter, &scanning);
 		interface->scanning = scanning;
 
-		if (interface->ready == TRUE) {
-			if (interface->scanning == TRUE)
+		if (interface->ready) {
+			if (interface->scanning)
 				callback_scan_started(interface);
 			else
 				callback_scan_finished(interface);
@@ -2019,7 +2019,7 @@ static void signal_scan_done(const char *path, DBusMessageIter *iter)
 	 * If scan is unsuccessful return -EIO else get the scanned BSSs
 	 * and update the network details accordingly
 	 */
-	if (success == FALSE) {
+	if (!success) {
 		if (interface->scan_callback != NULL)
 			interface->scan_callback(-EIO, interface,
 						interface->scan_data);
@@ -2303,16 +2303,14 @@ static DBusHandlerResult g_supplicant_filter(DBusConnection *conn,
 	if (path == NULL)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	if (dbus_message_iter_init(message, &iter) == FALSE)
+	if (!dbus_message_iter_init(message, &iter))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	for (i = 0; signal_map[i].interface != NULL; i++) {
-		if (dbus_message_has_interface(message,
-					signal_map[i].interface) == FALSE)
+		if (!dbus_message_has_interface(message, signal_map[i].interface))
 			continue;
 
-		if (dbus_message_has_member(message,
-					signal_map[i].member) == FALSE)
+		if (!dbus_message_has_member(message, signal_map[i].member))
 			continue;
 
 		signal_map[i].function(path, &iter);
@@ -2367,7 +2365,7 @@ int g_supplicant_set_country(const char *alpha2,
 
 	SUPPLICANT_DBG("Country setting %s", alpha2);
 
-	if (system_available == FALSE)
+	if (!system_available)
 		return -EFAULT;
 
 	regdom = dbus_malloc0(sizeof(*regdom));
@@ -2479,7 +2477,7 @@ static void interface_create_result(const char *error,
 		goto done;
 	}
 
-	if (system_available == FALSE) {
+	if (!system_available) {
 		err = -EFAULT;
 		goto done;
 	}
@@ -2564,7 +2562,7 @@ static void interface_get_result(const char *error,
 	return;
 
 create:
-	if (system_available == FALSE) {
+	if (!system_available) {
 		err = -EFAULT;
 		goto done;
 	}
@@ -2607,7 +2605,7 @@ int g_supplicant_interface_create(const char *ifname, const char *driver,
 	if (ifname == NULL)
 		return -EINVAL;
 
-	if (system_available == FALSE)
+	if (!system_available)
 		return -EFAULT;
 
 	data = dbus_malloc0(sizeof(*data));
@@ -2638,7 +2636,7 @@ static void interface_remove_result(const char *error,
 		goto done;
 	}
 
-	if (system_available == FALSE) {
+	if (!system_available) {
 		err = -EFAULT;
 		goto done;
 	}
@@ -2675,7 +2673,7 @@ int g_supplicant_interface_remove(GSupplicantInterface *interface,
 	if (interface == NULL)
 		return -EINVAL;
 
-	if (system_available == FALSE)
+	if (!system_available)
 		return -EFAULT;
 
 	data = dbus_malloc0(sizeof(*data));
@@ -2705,7 +2703,7 @@ static void interface_scan_result(const char *error,
 	}
 
 	/* A non ready interface cannot send/receive anything */
-	if (data->interface->ready == FALSE)
+	if (!data->interface->ready)
 		err = -ENOLINK;
 
 	if (err != 0) {
@@ -2853,10 +2851,10 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 	if (interface == NULL)
 		return -EINVAL;
 
-	if (system_available == FALSE)
+	if (!system_available)
 		return -EFAULT;
 
-	if (interface->scanning == TRUE)
+	if (interface->scanning)
 		return -EALREADY;
 
 	switch (interface->state) {
@@ -3141,7 +3139,7 @@ static void add_network_security_psk(DBusMessageIter *dict,
 	if (ssid->passphrase && strlen(ssid->passphrase) > 0) {
 		const char *key = "psk";
 
-		if (is_psk_raw_key(ssid->passphrase) == TRUE) {
+		if (is_psk_raw_key(ssid->passphrase)) {
 			unsigned char data[32];
 			unsigned char *datap = data;
 
@@ -3239,7 +3237,7 @@ static void add_network_security_peap(DBusMessageIter *dict,
 
 	}
 
-	if (g_str_has_prefix(ssid->phase2_auth, "EAP-") == TRUE) {
+	if (g_str_has_prefix(ssid->phase2_auth, "EAP-")) {
 		phase2_auth = g_strdup_printf("autheap=%s",
 					ssid->phase2_auth + strlen("EAP-"));
 	} else
@@ -3543,7 +3541,7 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 	if (interface == NULL)
 		return -EINVAL;
 
-	if (system_available == FALSE)
+	if (!system_available)
 		return -EFAULT;
 
 	/* TODO: Check if we're already connected and switch */
@@ -3557,7 +3555,7 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 	data->ssid = ssid;
 	data->user_data = user_data;
 
-	if (ssid->use_wps == TRUE) {
+	if (ssid->use_wps) {
 		g_free(interface->wps_cred.key);
 		memset(&interface->wps_cred, 0,
 				sizeof(struct _GSupplicantWpsCredentials));
@@ -3665,7 +3663,7 @@ int g_supplicant_interface_disconnect(GSupplicantInterface *interface,
 	if (interface == NULL)
 		return -EINVAL;
 
-	if (system_available == FALSE)
+	if (!system_available)
 		return -EFAULT;
 
 	data = dbus_malloc0(sizeof(*data));
@@ -3722,8 +3720,7 @@ int g_supplicant_register(const GSupplicantCallbacks *callbacks)
 	if (connection == NULL)
 		return -EIO;
 
-	if (dbus_connection_add_filter(connection,
-				g_supplicant_filter, NULL, NULL) == FALSE) {
+	if (!dbus_connection_add_filter(connection, g_supplicant_filter, NULL, NULL)) {
 		dbus_connection_unref(connection);
 		connection = NULL;
 		return -EIO;
@@ -3749,7 +3746,7 @@ int g_supplicant_register(const GSupplicantCallbacks *callbacks)
 	dbus_connection_flush(connection);
 
 	if (dbus_bus_name_has_owner(connection,
-					SUPPLICANT_SERVICE, NULL) == TRUE) {
+					SUPPLICANT_SERVICE, NULL)) {
 		system_available = TRUE;
 		supplicant_dbus_property_get_all(SUPPLICANT_PATH,
 						SUPPLICANT_INTERFACE,
@@ -3804,7 +3801,7 @@ void g_supplicant_unregister(const GSupplicantCallbacks *callbacks)
 		bss_mapping = NULL;
 	}
 
-	if (system_available == TRUE)
+	if (system_available)
 		callback_system_killed();
 
 	if (interface_table != NULL) {
