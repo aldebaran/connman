@@ -31,7 +31,7 @@
 
 #include "connman.h"
 
-static connman_bool_t connman_state_idle;
+static bool connman_state_idle;
 static DBusMessage *session_mode_pending = NULL;
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -79,7 +79,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (dbus_message_iter_init(msg, &iter) == FALSE)
+	if (!dbus_message_iter_init(msg, &iter))
 		return __connman_error_invalid_arguments(msg);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
@@ -95,7 +95,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	type = dbus_message_iter_get_arg_type(&value);
 
-	if (g_str_equal(name, "OfflineMode") == TRUE) {
+	if (g_str_equal(name, "OfflineMode")) {
 		dbus_bool_t offlinemode;
 
 		if (type != DBUS_TYPE_BOOLEAN)
@@ -104,7 +104,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &offlinemode);
 
 		__connman_technology_set_offlinemode(offlinemode);
-	} else if (g_str_equal(name, "SessionMode") == TRUE) {
+	} else if (g_str_equal(name, "SessionMode")) {
 		dbus_bool_t sessionmode;
 
 		if (type != DBUS_TYPE_BOOLEAN)
@@ -117,7 +117,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		__connman_session_set_mode(sessionmode);
 
-		if (sessionmode == TRUE && connman_state_idle == FALSE) {
+		if (sessionmode && !connman_state_idle) {
 			session_mode_pending = dbus_message_ref(msg);
 			return NULL;
 		}
@@ -181,14 +181,14 @@ static void session_mode_notify(void)
 	session_mode_pending = NULL;
 }
 
-static void idle_state(connman_bool_t idle)
+static void idle_state(bool idle)
 {
 
 	DBG("idle %d", idle);
 
 	connman_state_idle = idle;
 
-	if (connman_state_idle == FALSE || session_mode_pending == NULL)
+	if (!connman_state_idle || session_mode_pending == NULL)
 		return;
 
 	session_mode_notify();
@@ -227,7 +227,7 @@ static DBusMessage *connect_provider(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (__connman_session_mode() == TRUE) {
+	if (__connman_session_mode()) {
 		connman_info("Session mode enabled: "
 				"direct provider connect disabled");
 
@@ -475,7 +475,7 @@ int __connman_manager_init(void)
 					manager_methods,
 					manager_signals, NULL, NULL, NULL);
 
-	connman_state_idle = TRUE;
+	connman_state_idle = true;
 
 	return 0;
 }

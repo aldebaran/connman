@@ -60,7 +60,7 @@ static char *default_blacklist[] = {
 };
 
 static struct {
-	connman_bool_t bg_scan;
+	bool bg_scan;
 	char **pref_timeservers;
 	unsigned int *auto_connect;
 	unsigned int *preferred_techs;
@@ -68,10 +68,10 @@ static struct {
 	unsigned int timeout_inputreq;
 	unsigned int timeout_browserlaunch;
 	char **blacklisted_interfaces;
-	connman_bool_t allow_hostname_updates;
-	connman_bool_t single_tech;
+	bool allow_hostname_updates;
+	bool single_tech;
 	char **tethering_technologies;
-	connman_bool_t persistent_tethering_mode;
+	bool persistent_tethering_mode;
 } connman_settings  = {
 	.bg_scan = TRUE,
 	.pref_timeservers = NULL,
@@ -208,17 +208,17 @@ static void check_config(GKeyFile *config)
 	keys = g_key_file_get_keys(config, "General", NULL, NULL);
 
 	for (j = 0; keys != NULL && keys[j] != NULL; j++) {
-		connman_bool_t found;
+		bool found;
 		int i;
 
-		found = FALSE;
+		found = false;
 		for (i = 0; supported_options[i] != NULL; i++) {
 			if (g_strcmp0(keys[j], supported_options[i]) == 0) {
-				found = TRUE;
+				found = true;
 				break;
 			}
 		}
-		if (found == FALSE && supported_options[i] == NULL)
+		if (!found && supported_options[i] == NULL)
 			connman_warn("Unknown option %s in %s",
 						keys[j], MAINFILE);
 	}
@@ -229,7 +229,7 @@ static void check_config(GKeyFile *config)
 static void parse_config(GKeyFile *config)
 {
 	GError *error = NULL;
-	gboolean boolean;
+	bool boolean;
 	char **timeservers;
 	char **interfaces;
 	char **str_list;
@@ -453,12 +453,12 @@ static gchar *option_plugin = NULL;
 static gchar *option_nodevice = NULL;
 static gchar *option_noplugin = NULL;
 static gchar *option_wifi = NULL;
-static gboolean option_detach = TRUE;
-static gboolean option_dnsproxy = TRUE;
-static gboolean option_backtrace = TRUE;
-static gboolean option_version = FALSE;
+static bool option_detach = true;
+static bool option_dnsproxy = true;
+static bool option_backtrace = true;
+static bool option_version = false;
 
-static gboolean parse_debug(const char *key, const char *value,
+static bool parse_debug(const char *key, const char *value,
 					gpointer user_data, GError **error)
 {
 	if (value)
@@ -466,7 +466,7 @@ static gboolean parse_debug(const char *key, const char *value,
 	else
 		option_debug = g_strdup("*");
 
-	return TRUE;
+	return true;
 }
 
 static GOptionEntry options[] = {
@@ -512,35 +512,35 @@ const char *connman_option_get_string(const char *key)
 	return NULL;
 }
 
-connman_bool_t connman_setting_get_bool(const char *key)
+bool connman_setting_get_bool(const char *key)
 {
-	if (g_str_equal(key, CONF_BG_SCAN) == TRUE)
+	if (g_str_equal(key, CONF_BG_SCAN))
 		return connman_settings.bg_scan;
 
-	if (g_str_equal(key, CONF_ALLOW_HOSTNAME_UPDATES) == TRUE)
+	if (g_str_equal(key, CONF_ALLOW_HOSTNAME_UPDATES))
 		return connman_settings.allow_hostname_updates;
 
-	if (g_str_equal(key, CONF_SINGLE_TECH) == TRUE)
+	if (g_str_equal(key, CONF_SINGLE_TECH))
 		return connman_settings.single_tech;
 
-	if (g_str_equal(key, CONF_PERSISTENT_TETHERING_MODE) == TRUE)
+	if (g_str_equal(key, CONF_PERSISTENT_TETHERING_MODE))
 		return connman_settings.persistent_tethering_mode;
 
-	return FALSE;
+	return false;
 }
 
 char **connman_setting_get_string_list(const char *key)
 {
-	if (g_str_equal(key, CONF_PREF_TIMESERVERS) == TRUE)
+	if (g_str_equal(key, CONF_PREF_TIMESERVERS))
 		return connman_settings.pref_timeservers;
 
-	if (g_str_equal(key, CONF_FALLBACK_NAMESERVERS) == TRUE)
+	if (g_str_equal(key, CONF_FALLBACK_NAMESERVERS))
 		return connman_settings.fallback_nameservers;
 
-	if (g_str_equal(key, CONF_BLACKLISTED_INTERFACES) == TRUE)
+	if (g_str_equal(key, CONF_BLACKLISTED_INTERFACES))
 		return connman_settings.blacklisted_interfaces;
 
-	if (g_str_equal(key, CONF_TETHERING_TECHNOLOGIES) == TRUE)
+	if (g_str_equal(key, CONF_TETHERING_TECHNOLOGIES))
 		return connman_settings.tethering_technologies;
 
 	return NULL;
@@ -548,10 +548,10 @@ char **connman_setting_get_string_list(const char *key)
 
 unsigned int *connman_setting_get_uint_list(const char *key)
 {
-	if (g_str_equal(key, CONF_AUTO_CONNECT) == TRUE)
+	if (g_str_equal(key, CONF_AUTO_CONNECT))
 		return connman_settings.auto_connect;
 
-	if (g_str_equal(key, CONF_PREFERRED_TECHS) == TRUE)
+	if (g_str_equal(key, CONF_PREFERRED_TECHS))
 		return connman_settings.preferred_techs;
 
 	return NULL;
@@ -576,7 +576,7 @@ int main(int argc, char *argv[])
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
 
-	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
+	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		if (error != NULL) {
 			g_printerr("%s\n", error->message);
 			g_error_free(error);
@@ -587,12 +587,12 @@ int main(int argc, char *argv[])
 
 	g_option_context_free(context);
 
-	if (option_version == TRUE) {
+	if (option_version) {
 		printf("%s\n", VERSION);
 		exit(0);
 	}
 
-	if (option_detach == TRUE) {
+	if (option_detach) {
 		if (daemon(0, 0)) {
 			perror("Can't start daemon");
 			exit(1);
@@ -621,7 +621,7 @@ int main(int argc, char *argv[])
 
 	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, CONNMAN_SERVICE, &err);
 	if (conn == NULL) {
-		if (dbus_error_is_set(&err) == TRUE) {
+		if (dbus_error_is_set(&err)) {
 			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);
 		} else

@@ -196,7 +196,7 @@ int __connman_provider_remove_by_path(const char *path)
 	DBG("path %s", path);
 
 	g_hash_table_iter_init(&iter, provider_hash);
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		const char *srv_path;
 		provider = value;
 
@@ -223,7 +223,7 @@ int __connman_provider_remove_by_path(const char *path)
 }
 
 static int set_connected(struct connman_provider *provider,
-					connman_bool_t connected)
+					bool connected)
 {
 	struct connman_service *service = provider->vpn_service;
 	struct connman_ipconfig *ipconfig;
@@ -233,7 +233,7 @@ static int set_connected(struct connman_provider *provider,
 
 	ipconfig = __connman_service_get_ipconfig(service, provider->family);
 
-	if (connected == TRUE) {
+	if (connected) {
 		if (ipconfig == NULL) {
 			provider_indicate_state(provider,
 						CONNMAN_SERVICE_STATE_FAILURE);
@@ -274,12 +274,12 @@ int connman_provider_set_state(struct connman_provider *provider,
 	case CONNMAN_PROVIDER_STATE_UNKNOWN:
 		return -EINVAL;
 	case CONNMAN_PROVIDER_STATE_IDLE:
-		return set_connected(provider, FALSE);
+		return set_connected(provider, false);
 	case CONNMAN_PROVIDER_STATE_CONNECT:
 		return provider_indicate_state(provider,
 					CONNMAN_SERVICE_STATE_ASSOCIATION);
 	case CONNMAN_PROVIDER_STATE_READY:
-		return set_connected(provider, TRUE);
+		return set_connected(provider, true);
 	case CONNMAN_PROVIDER_STATE_DISCONNECT:
 		return provider_indicate_state(provider,
 					CONNMAN_SERVICE_STATE_DISCONNECT);
@@ -318,16 +318,16 @@ int connman_provider_indicate_error(struct connman_provider *provider,
 int connman_provider_create_service(struct connman_provider *provider)
 {
 	if (provider->vpn_service != NULL) {
-		connman_bool_t connected;
+		bool connected;
 
 		connected = __connman_service_is_connected_state(
 			provider->vpn_service, CONNMAN_IPCONFIG_TYPE_IPV4);
-		if (connected == TRUE)
+		if (connected)
 			return -EALREADY;
 
 		connected = __connman_service_is_connected_state(
 			provider->vpn_service, CONNMAN_IPCONFIG_TYPE_IPV6);
-		if (connected == TRUE)
+		if (connected)
 			return -EALREADY;
 
 		return 0;
@@ -348,7 +348,7 @@ int connman_provider_create_service(struct connman_provider *provider)
 }
 
 int connman_provider_set_immutable(struct connman_provider *provider,
-						connman_bool_t immutable)
+						bool immutable)
 {
 	if (provider == NULL)
 		return -EINVAL;
@@ -374,7 +374,7 @@ static void connection_ready(DBusMessage *msg, int error_code, void *user_data)
 
 	if (error_code != 0) {
 		reply = __connman_error_failed(msg, -error_code);
-		if (g_dbus_send_message(connection, reply) == FALSE)
+		if (!g_dbus_send_message(connection, reply))
 			DBG("reply %p send failed", reply);
 	} else {
 		const char *path;
@@ -437,16 +437,16 @@ const char *connman_provider_get_string(struct connman_provider *provider,
 	return NULL;
 }
 
-connman_bool_t
+bool
 __connman_provider_check_routes(struct connman_provider *provider)
 {
 	if (provider == NULL)
-		return FALSE;
+		return false;
 
 	if (provider->driver != NULL && provider->driver->check_routes)
 		return provider->driver->check_routes(provider);
 
-	return FALSE;
+	return false;
 }
 
 void *connman_provider_get_data(struct connman_provider *provider)
@@ -565,7 +565,7 @@ int connman_provider_set_nameservers(struct connman_provider *provider,
 
 	for (i = 0; nameservers[i] != NULL; i++)
 		__connman_service_nameserver_append(provider->vpn_service,
-						nameservers[i], FALSE);
+						nameservers[i], false);
 
 	return 0;
 }
@@ -619,11 +619,11 @@ static void provider_disconnect_all(gpointer key, gpointer value,
 	connman_provider_disconnect(provider);
 }
 
-static void provider_offline_mode(connman_bool_t enabled)
+static void provider_offline_mode(bool enabled)
 {
 	DBG("enabled %d", enabled);
 
-	if (enabled == TRUE)
+	if (enabled)
 		g_hash_table_foreach(provider_hash, provider_disconnect_all,
 									NULL);
 
@@ -686,7 +686,7 @@ static struct connman_provider *provider_get(int index)
 
 	g_hash_table_iter_init(&iter, provider_hash);
 
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct connman_provider *provider = value;
 
 		if (provider->index == index)

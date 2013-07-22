@@ -40,7 +40,7 @@ struct connman_nat {
 	char *interface;
 };
 
-static int enable_ip_forward(connman_bool_t enable)
+static int enable_ip_forward(bool enable)
 {
 	FILE *f;
 
@@ -48,7 +48,7 @@ static int enable_ip_forward(connman_bool_t enable)
 	if (f == NULL)
 		return -errno;
 
-	if (enable == TRUE)
+	if (enable)
 		fprintf(f, "1");
 	else
 		fprintf(f, "0");
@@ -100,7 +100,7 @@ int __connman_nat_enable(const char *name, const char *address,
 	int err;
 
 	if (g_hash_table_size(nat_hash) == 0) {
-		err = enable_ip_forward(TRUE);
+		err = enable_ip_forward(true);
 		if (err < 0)
 			return err;
 	}
@@ -125,7 +125,7 @@ err:
 		__connman_firewall_destroy(nat->fw);
 
 	if (g_hash_table_size(nat_hash) == 0)
-		enable_ip_forward(FALSE);
+		enable_ip_forward(false);
 
 	return -ENOMEM;
 }
@@ -143,7 +143,7 @@ void __connman_nat_disable(const char *name)
 	g_hash_table_remove(nat_hash, name);
 
 	if (g_hash_table_size(nat_hash) == 0)
-		enable_ip_forward(FALSE);
+		enable_ip_forward(false);
 }
 
 static void update_default_interface(struct connman_service *service)
@@ -162,7 +162,7 @@ static void update_default_interface(struct connman_service *service)
 
 	g_hash_table_iter_init(&iter, nat_hash);
 
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		const char *name = key;
 		struct connman_nat *nat = value;
 

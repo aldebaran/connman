@@ -429,7 +429,7 @@ static void get_connection_unix_user_reply(DBusPendingCall *call,
 		goto done;
 	}
 
-	if (dbus_message_has_signature(reply, "u") == FALSE) {
+	if (!dbus_message_has_signature(reply, "u")) {
 		DBG("Message signature is wrong");
 		err = -EINVAL;
 		goto done;
@@ -474,8 +474,7 @@ int connman_dbus_get_connection_unix_user(DBusConnection *connection,
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &bus_name,
 					DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(connection, msg,
-						&call, -1) == FALSE) {
+	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
 		DBG("Failed to execute method call");
 		err = -EINVAL;
 		goto err;
@@ -555,7 +554,7 @@ static void selinux_get_context_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	if (dbus_message_has_signature(reply, "ay") == FALSE) {
+	if (!dbus_message_has_signature(reply, "ay")) {
 		DBG("Message signature is wrong");
 		err = -EINVAL;
 		goto done;
@@ -604,8 +603,7 @@ int connman_dbus_get_selinux_context(DBusConnection *connection,
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &service,
 					DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(connection, msg,
-						&call, -1) == FALSE) {
+	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
 		DBG("Failed to execute method call");
 		err = -EINVAL;
 		goto err;

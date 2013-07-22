@@ -75,7 +75,7 @@ static int chain_to_index(const char *chain_name)
 
 static int managed_chain_to_index(const char *chain_name)
 {
-	if (g_str_has_prefix(chain_name, CHAIN_PREFIX) == FALSE)
+	if (!g_str_has_prefix(chain_name, CHAIN_PREFIX))
 		return -1;
 
 	return chain_to_index(chain_name + strlen(CHAIN_PREFIX));

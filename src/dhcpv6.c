@@ -73,17 +73,17 @@ struct connman_dhcpv6 {
 	guint timeout;		/* operation timeout in msec */
 	guint MRD;		/* max operation timeout in msec */
 	guint RT;		/* in msec */
-	gboolean use_ta;	/* set to TRUE if IPv6 privacy is enabled */
+	bool use_ta;	/* set to TRUE if IPv6 privacy is enabled */
 	GSList *prefixes;	/* network prefixes from radvd or dhcpv6 pd */
 	int request_count;	/* how many times REQUEST have been sent */
-	gboolean stateless;	/* TRUE if stateless DHCPv6 is used */
-	gboolean started;	/* TRUE if we have DHCPv6 started */
+	bool stateless;	/* TRUE if stateless DHCPv6 is used */
+	bool started;	/* TRUE if we have DHCPv6 started */
 };
 
 static GHashTable *network_table;
 static GHashTable *network_pd_table;
 
-static int dhcpv6_request(struct connman_dhcpv6 *dhcp, gboolean add_addresses);
+static int dhcpv6_request(struct connman_dhcpv6 *dhcp, bool add_addresses);
 static int dhcpv6_pd_request(struct connman_dhcpv6 *dhcp);
 static gboolean start_solicitation(gpointer user_data);
 static int dhcpv6_renew(struct connman_dhcpv6 *dhcp);
@@ -135,26 +135,26 @@ static void dhcpv6_free(struct connman_dhcpv6 *dhcp)
 
 	dhcp->nameservers = NULL;
 	dhcp->timeservers = NULL;
-	dhcp->started = FALSE;
+	dhcp->started = false;
 
 	g_slist_free_full(dhcp->prefixes, free_prefix);
 }
 
-static gboolean compare_string_arrays(char **array_a, char **array_b)
+static bool compare_string_arrays(char **array_a, char **array_b)
 {
 	int i;
 
 	if (array_a == NULL || array_b == NULL)
-		return FALSE;
+		return false;
 
 	if (g_strv_length(array_a) != g_strv_length(array_b))
-		return FALSE;
+		return false;
 
 	for (i = 0; array_a[i] != NULL && array_b[i] != NULL; i++)
 		if (g_strcmp0(array_a[i], array_b[i]) != 0)
-			return FALSE;
+			return false;
 
-	return TRUE;
+	return true;
 }
 
 static void dhcpv6_debug(const char *str, void *data)
@@ -305,12 +305,12 @@ static void info_req_cb(GDHCPClient *dhcp_client, gpointer user_data)
 			nameservers[i] = g_strdup(list->data);
 	}
 
-	if (compare_string_arrays(nameservers, dhcp->nameservers) == FALSE) {
+	if (!compare_string_arrays(nameservers, dhcp->nameservers)) {
 		if (dhcp->nameservers != NULL) {
 			for (i = 0; dhcp->nameservers[i] != NULL; i++)
 				__connman_service_nameserver_remove(service,
 							dhcp->nameservers[i],
-							FALSE);
+							false);
 			g_strfreev(dhcp->nameservers);
 		}
 
@@ -320,7 +320,7 @@ static void info_req_cb(GDHCPClient *dhcp_client, gpointer user_data)
 					dhcp->nameservers[i] != NULL; i++)
 			__connman_service_nameserver_append(service,
 						dhcp->nameservers[i],
-						FALSE);
+						false);
 	} else
 		g_strfreev(nameservers);
 
@@ -334,7 +334,7 @@ static void info_req_cb(GDHCPClient *dhcp_client, gpointer user_data)
 			timeservers[i] = g_strdup(list->data);
 	}
 
-	if (compare_string_arrays(timeservers, dhcp->timeservers) == FALSE) {
+	if (!compare_string_arrays(timeservers, dhcp->timeservers)) {
 		if (dhcp->timeservers != NULL) {
 			for (i = 0; dhcp->timeservers[i] != NULL; i++)
 				__connman_service_timeserver_remove(service,
@@ -504,12 +504,12 @@ static int set_addresses(GDHCPClient *dhcp_client,
 			nameservers[i] = g_strdup(list->data);
 	}
 
-	if (compare_string_arrays(nameservers, dhcp->nameservers) == FALSE) {
+	if (!compare_string_arrays(nameservers, dhcp->nameservers)) {
 		if (dhcp->nameservers != NULL) {
 			for (i = 0; dhcp->nameservers[i] != NULL; i++)
 				__connman_service_nameserver_remove(service,
 							dhcp->nameservers[i],
-							FALSE);
+							false);
 			g_strfreev(dhcp->nameservers);
 		}
 
@@ -519,7 +519,7 @@ static int set_addresses(GDHCPClient *dhcp_client,
 					dhcp->nameservers[i] != NULL; i++)
 			__connman_service_nameserver_append(service,
 							dhcp->nameservers[i],
-							FALSE);
+							false);
 	} else
 		g_strfreev(nameservers);
 
@@ -533,7 +533,7 @@ static int set_addresses(GDHCPClient *dhcp_client,
 			timeservers[i] = g_strdup(list->data);
 	}
 
-	if (compare_string_arrays(timeservers, dhcp->timeservers) == FALSE) {
+	if (!compare_string_arrays(timeservers, dhcp->timeservers)) {
 		if (dhcp->timeservers != NULL) {
 			for (i = 0; dhcp->timeservers[i] != NULL; i++)
 				__connman_service_timeserver_remove(service,
@@ -620,7 +620,7 @@ static gboolean request_resend(gpointer user_data)
 	DBG("request resend RT timeout %d msec", dhcp->RT);
 	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_request_resend, dhcp);
 
-	dhcpv6_request(dhcp, TRUE);
+	dhcpv6_request(dhcp, true);
 
 	return FALSE;
 }
@@ -656,11 +656,11 @@ static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 	 * RFC 3315, 18.1.8 handle the resend if error
 	 */
 	if (status  == G_DHCPV6_ERROR_BINDING) {
-		dhcpv6_request(dhcp, FALSE);
+		dhcpv6_request(dhcp, false);
 	} else if (status  == G_DHCPV6_ERROR_MCAST) {
 		switch (req_type) {
 		case REQ_REQUEST:
-			dhcpv6_request(dhcp, TRUE);
+			dhcpv6_request(dhcp, true);
 			break;
 		case REQ_REBIND:
 			dhcpv6_rebind(dhcp);
@@ -701,7 +701,7 @@ static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 			if (option == NULL) {
 				switch (req_type) {
 				case REQ_REQUEST:
-					dhcpv6_request(dhcp, TRUE);
+					dhcpv6_request(dhcp, true);
 					break;
 				case REQ_REBIND:
 					dhcpv6_rebind(dhcp);
@@ -754,7 +754,7 @@ static int dhcpv6_rebind(struct connman_dhcpv6 *dhcp)
 
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
-			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
+			dhcp->use_ta ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
 			NULL, NULL, FALSE, NULL);
 
 	clear_callbacks(dhcp_client);
@@ -845,7 +845,7 @@ static void request_cb(GDHCPClient *dhcp_client, gpointer user_data)
 }
 
 static int dhcpv6_request(struct connman_dhcpv6 *dhcp,
-			gboolean add_addresses)
+			bool add_addresses)
 {
 	GDHCPClient *dhcp_client;
 	uint32_t T1, T2;
@@ -868,7 +868,7 @@ static int dhcpv6_request(struct connman_dhcpv6 *dhcp,
 	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL, NULL);
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
-			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
+			dhcp->use_ta ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
 			&T1, &T2, add_addresses, NULL);
 
 	clear_callbacks(dhcp_client);
@@ -939,7 +939,7 @@ static int dhcpv6_renew(struct connman_dhcpv6 *dhcp)
 	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL, NULL);
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
-			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
+			dhcp->use_ta ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
 			&T1, &T2, TRUE, NULL);
 
 	clear_callbacks(dhcp_client);
@@ -1073,7 +1073,7 @@ int __connman_dhcpv6_start_release(struct connman_network *network,
 	DBG("network %p dhcp %p client %p stateless %d", network, dhcp,
 					dhcp->dhcp_client, dhcp->stateless);
 
-	if (dhcp->stateless == TRUE)
+	if (dhcp->stateless)
 		return -EINVAL;
 
 	clear_timer(dhcp);
@@ -1098,7 +1098,7 @@ int __connman_dhcpv6_start_release(struct connman_network *network,
 
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
-			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
+			dhcp->use_ta ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
 			NULL, NULL, TRUE, NULL);
 
 	clear_callbacks(dhcp_client);
@@ -1193,7 +1193,7 @@ int __connman_dhcpv6_start_info(struct connman_network *network,
 
 	if (network_table != NULL) {
 		dhcp = g_hash_table_lookup(network_table, network);
-		if (dhcp != NULL && dhcp->started == TRUE)
+		if (dhcp != NULL && dhcp->started)
 			return -EBUSY;
 	}
 
@@ -1203,8 +1203,8 @@ int __connman_dhcpv6_start_info(struct connman_network *network,
 
 	dhcp->network = network;
 	dhcp->callback = callback;
-	dhcp->stateless = TRUE;
-	dhcp->started = TRUE;
+	dhcp->stateless = true;
+	dhcp->started = true;
 
 	connman_network_ref(network);
 
@@ -1242,7 +1242,7 @@ static void advertise_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	dhcp->request_count = 1;
 
-	dhcpv6_request(dhcp, TRUE);
+	dhcpv6_request(dhcp, true);
 }
 
 static void solicitation_cb(GDHCPClient *dhcp_client, gpointer user_data)
@@ -1324,7 +1324,7 @@ static int dhcpv6_solicitation(struct connman_dhcpv6 *dhcp)
 	dhcp->use_ta = __connman_ipconfig_ipv6_privacy_enabled(ipconfig_ipv6);
 
 	g_dhcpv6_client_set_ia(dhcp_client, index,
-			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
+			dhcp->use_ta ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
 			NULL, NULL, FALSE, NULL);
 
 	clear_callbacks(dhcp_client);
@@ -1425,7 +1425,7 @@ static int dhcpv6_confirm(struct connman_dhcpv6 *dhcp)
 	dhcp->use_ta = __connman_ipconfig_ipv6_privacy_enabled(ipconfig_ipv6);
 
 	g_dhcpv6_client_set_ia(dhcp_client, index,
-			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
+			dhcp->use_ta ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
 			NULL, NULL, TRUE,
 			__connman_ipconfig_get_dhcp_address(ipconfig_ipv6));
 
@@ -1505,7 +1505,7 @@ int __connman_dhcpv6_start(struct connman_network *network,
 
 	if (network_table != NULL) {
 		dhcp = g_hash_table_lookup(network_table, network);
-		if (dhcp != NULL && dhcp->started == TRUE)
+		if (dhcp != NULL && dhcp->started)
 			return -EBUSY;
 	}
 
@@ -1520,7 +1520,7 @@ int __connman_dhcpv6_start(struct connman_network *network,
 	dhcp->network = network;
 	dhcp->callback = callback;
 	dhcp->prefixes = prefixes;
-	dhcp->started = TRUE;
+	dhcp->started = true;
 
 	connman_network_ref(network);
 
@@ -1560,7 +1560,7 @@ void __connman_dhcpv6_stop(struct connman_network *network)
 	if (network_table == NULL)
 		return;
 
-	if (g_hash_table_remove(network_table, network) == TRUE)
+	if (g_hash_table_remove(network_table, network))
 		connman_network_unref(network);
 }
 
@@ -2284,7 +2284,7 @@ int __connman_dhcpv6_start_pd(int index, GSList *prefixes, dhcp_cb callback)
 
 	if (network_pd_table != NULL) {
 		dhcp = g_hash_table_lookup(network_pd_table, network);
-		if (dhcp != NULL && dhcp->started == TRUE)
+		if (dhcp != NULL && dhcp->started)
 			return -EBUSY;
 	}
 
@@ -2294,7 +2294,7 @@ int __connman_dhcpv6_start_pd(int index, GSList *prefixes, dhcp_cb callback)
 
 	dhcp->network = network;
 	dhcp->callback = callback;
-	dhcp->started = TRUE;
+	dhcp->started = true;
 
 	if (prefixes == NULL) {
 		/*
@@ -2353,7 +2353,7 @@ void __connman_dhcpv6_stop_pd(int index)
 
 	__connman_dhcpv6_start_pd_release(network, NULL);
 
-	if (g_hash_table_remove(network_pd_table, network) == TRUE)
+	if (g_hash_table_remove(network_pd_table, network))
 		connman_network_unref(network);
 }
 

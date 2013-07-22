@@ -87,16 +87,13 @@ static int agent_send_next_request(void)
 	agent_request = agent_queue->data;
 	agent_queue = g_list_remove(agent_queue, agent_request);
 
-	if (dbus_connection_send_with_reply(connection, agent_request->msg,
-					&agent_request->call,
-					agent_request->timeout)	== FALSE)
+	if (!dbus_connection_send_with_reply(connection, agent_request->msg, &agent_request->call, agent_request->timeout))
 		goto fail;
 
 	if (agent_request->call == NULL)
 		goto fail;
 
-	if (dbus_pending_call_set_notify(agent_request->call,
-			agent_receive_message, agent_request, NULL) == FALSE)
+	if (!dbus_pending_call_set_notify(agent_request->call, agent_receive_message, agent_request, NULL))
 		goto fail;
 
 	dbus_message_unref(agent_request->msg);
@@ -147,9 +144,9 @@ static void agent_receive_message(DBusPendingCall *call, void *user_data)
 	queue_data->call = NULL;
 
 	if (dbus_message_is_error(reply,
-			"org.freedesktop.DBus.Error.Timeout") == TRUE ||
+			"org.freedesktop.DBus.Error.Timeout") ||
 			dbus_message_is_error(reply,
-			"org.freedesktop.DBus.Error.TimedOut") == TRUE) {
+			"org.freedesktop.DBus.Error.TimedOut")) {
 		agent_send_cancel(queue_data->user_context);
 	}
 
@@ -307,7 +304,7 @@ struct report_error_data {
 static void report_error_reply(DBusMessage *reply, void *user_data)
 {
 	struct report_error_data *report_error = user_data;
-	gboolean retry = FALSE;
+	bool retry = false;
 	const char *dbus_err;
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
@@ -315,7 +312,7 @@ static void report_error_reply(DBusMessage *reply, void *user_data)
 		if (dbus_err != NULL &&
 			strcmp(dbus_err,
 				CONNMAN_AGENT_INTERFACE ".Error.Retry") == 0)
-			retry = TRUE;
+			retry = true;
 	}
 
 	report_error->callback(report_error->user_context, retry,

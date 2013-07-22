@@ -293,7 +293,7 @@ int connman_task_run(struct connman_task *task,
 			int *stdin_fd, int *stdout_fd, int *stderr_fd)
 {
 	GSpawnFlags flags = G_SPAWN_DO_NOT_REAP_CHILD;
-	gboolean result;
+	bool result;
 	char **argv, **envp;
 
 	DBG("task %p", task);
@@ -340,7 +340,7 @@ int connman_task_run(struct connman_task *task,
 	result = g_spawn_async_with_pipes(NULL, argv, envp, flags,
 					task_setup, task, &task->pid,
 					stdin_fd, stdout_fd, stderr_fd, NULL);
-	if (result == FALSE) {
+	if (!result) {
 		connman_error("Failed to spawn %s", argv[0]);
 		return -EIO;
 	}
@@ -419,8 +419,7 @@ static DBusHandlerResult task_filter(DBusConnection *conn,
 	if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_METHOD_CALL)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	if (dbus_message_has_interface(message,
-					CONNMAN_TASK_INTERFACE) == FALSE)
+	if (!dbus_message_has_interface(message, CONNMAN_TASK_INTERFACE))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	path = dbus_message_get_path(message);
@@ -443,7 +442,7 @@ static DBusHandlerResult task_filter(DBusConnection *conn,
 		reply = notify->func(task, message, notify->data);
 
 send_reply:
-	if (dbus_message_get_no_reply(message) == FALSE &&
+	if (!dbus_message_get_no_reply(message) &&
 						reply == NULL) {
 
 		reply = dbus_message_new_method_return(message);

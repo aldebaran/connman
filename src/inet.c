@@ -360,9 +360,9 @@ done:
 	return err;
 }
 
-connman_bool_t connman_inet_is_cfg80211(int index)
+bool connman_inet_is_cfg80211(int index)
 {
-	connman_bool_t result = FALSE;
+	bool result = false;
 	char phy80211_path[PATH_MAX];
 	struct stat st;
 	struct ifreq ifr;
@@ -370,7 +370,7 @@ connman_bool_t connman_inet_is_cfg80211(int index)
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
-		return FALSE;
+		return false;
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_ifindex = index;
@@ -382,7 +382,7 @@ connman_bool_t connman_inet_is_cfg80211(int index)
 				"/sys/class/net/%s/phy80211", ifr.ifr_name);
 
 	if (stat(phy80211_path, &st) == 0 && (st.st_mode & S_IFDIR))
-		result = TRUE;
+		result = true;
 
 done:
 	close(sk);
@@ -1041,7 +1041,7 @@ out:
 	return err;
 }
 
-connman_bool_t connman_inet_compare_subnet(int index, const char *host)
+bool connman_inet_compare_subnet(int index, const char *host)
 {
 	struct ifreq ifr;
 	struct in_addr _host_addr;
@@ -1052,7 +1052,7 @@ connman_bool_t connman_inet_compare_subnet(int index, const char *host)
 	DBG("host %s", host);
 
 	if (host == NULL)
-		return FALSE;
+		return false;
 
 	if (inet_aton(host, &_host_addr) == 0)
 		return -1;
@@ -1060,19 +1060,19 @@ connman_bool_t connman_inet_compare_subnet(int index, const char *host)
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
-		return FALSE;
+		return false;
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_ifindex = index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
 		close(sk);
-		return FALSE;
+		return false;
 	}
 
 	if (ioctl(sk, SIOCGIFNETMASK, &ifr) < 0) {
 		close(sk);
-		return FALSE;
+		return false;
 	}
 
 	netmask = (struct sockaddr_in *)&ifr.ifr_netmask;
@@ -1080,7 +1080,7 @@ connman_bool_t connman_inet_compare_subnet(int index, const char *host)
 
 	if (ioctl(sk, SIOCGIFADDR, &ifr) < 0) {
 		close(sk);
-		return FALSE;
+		return false;
 	}
 
 	close(sk);
@@ -2414,7 +2414,7 @@ int connman_inet_check_ipaddress(const char *host)
 }
 
 /* Check routine modified from ics-dhcp 4.2.3-P2 */
-connman_bool_t connman_inet_check_hostname(const char *ptr, size_t len)
+bool connman_inet_check_hostname(const char *ptr, size_t len)
 {
 	const char *p;
 
@@ -2422,7 +2422,7 @@ connman_bool_t connman_inet_check_hostname(const char *ptr, size_t len)
 	 * Not empty or complete length not over 255 characters.
 	 */
 	if ((len == 0) || (len > 256))
-		return FALSE;
+		return false;
 
 	/*
 	 * Consists of [[:alnum:]-]+ labels separated by [.]
@@ -2435,7 +2435,7 @@ connman_bool_t connman_inet_check_hostname(const char *ptr, size_t len)
 			 * Not allowed at begin or end of a label.
 			 */
 			if (((p - ptr) == 0) || (len == 0) || (p[1] == '.'))
-				return FALSE;
+				return false;
 
 		} else if (*p == '.') {
 			/*
@@ -2445,7 +2445,7 @@ connman_bool_t connman_inet_check_hostname(const char *ptr, size_t len)
 			size_t d = p - ptr;
 
 			if ((d <= 0) || (d >= 64))
-				return FALSE;
+				return false;
 
 			ptr = p + 1; /* Jump to the next label */
 
@@ -2453,11 +2453,11 @@ connman_bool_t connman_inet_check_hostname(const char *ptr, size_t len)
 			/*
 			 * Also numbers at the begin are fine
 			 */
-			return FALSE;
+			return false;
 		}
 	}
 
-	return TRUE;
+	return true;
 }
 
 char **__connman_inet_get_running_interfaces(void)
@@ -2538,16 +2538,16 @@ error:
 	return NULL;
 }
 
-connman_bool_t connman_inet_is_ipv6_supported()
+bool connman_inet_is_ipv6_supported()
 {
 	int sk;
 
 	sk = socket(PF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
-		return FALSE;
+		return false;
 
 	close(sk);
-	return TRUE;
+	return true;
 }
 
 int __connman_inet_get_interface_address(int index, int family, void *address)

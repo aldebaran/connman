@@ -34,7 +34,7 @@
 #define STATUS_URL_IPV6  "http://ipv6.connman.net/online/status.html"
 
 struct connman_wispr_message {
-	gboolean has_error;
+	bool has_error;
 	const char *current_element;
 	int message_type;
 	int response_code;
@@ -92,7 +92,7 @@ struct connman_wispr_portal {
 	struct connman_wispr_portal_context *ipv6_context;
 };
 
-static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data);
+static bool wispr_portal_web_result(GWebResult *result, gpointer user_data);
 
 static GHashTable *wispr_portal_list = NULL;
 
@@ -100,7 +100,7 @@ static void connman_wispr_message_init(struct connman_wispr_message *msg)
 {
 	DBG("");
 
-	msg->has_error = FALSE;
+	msg->has_error = false;
 	msg->current_element = NULL;
 
 	msg->message_type = -1;
@@ -330,8 +330,7 @@ static void xml_wispr_text_handler(GMarkupParseContext *context,
 		return;
 
 	for (i = 0; wispr_element_map[i].str; i++) {
-		if (g_str_equal(wispr_element_map[i].str,
-					msg->current_element) == FALSE)
+		if (!g_str_equal(wispr_element_map[i].str, msg->current_element))
 			continue;
 
 		switch (wispr_element_map[i].element) {
@@ -380,7 +379,7 @@ static void xml_wispr_error_handler(GMarkupParseContext *context,
 {
 	struct connman_wispr_message *msg = user_data;
 
-	msg->has_error = TRUE;
+	msg->has_error = true;
 }
 
 static const GMarkupParser xml_wispr_parser_handlers = {
@@ -395,7 +394,7 @@ static void xml_wispr_parser_callback(const char *str, gpointer user_data)
 {
 	struct connman_wispr_portal_context *wp_context = user_data;
 	GMarkupParseContext *parser_context = NULL;
-	gboolean result;
+	bool result;
 
 	DBG("");
 
@@ -405,7 +404,7 @@ static void xml_wispr_parser_callback(const char *str, gpointer user_data)
 
 	result = g_markup_parse_context_parse(parser_context,
 					str, strlen(str), NULL);
-	if (result == TRUE)
+	if (result)
 		g_markup_parse_context_end_parse(parser_context, NULL);
 
 	g_markup_parse_context_free(parser_context);
@@ -434,19 +433,19 @@ static void portal_manage_status(GWebResult *result,
 
 	/* We currently don't do anything with this info */
 	if (g_web_result_get_header(result, "X-ConnMan-Client-IP",
-				&str) == TRUE)
+				&str))
 		connman_info("Client-IP: %s", str);
 
 	if (g_web_result_get_header(result, "X-ConnMan-Client-Country",
-				&str) == TRUE)
+				&str))
 		connman_info("Client-Country: %s", str);
 
 	if (g_web_result_get_header(result, "X-ConnMan-Client-Region",
-				&str) == TRUE)
+				&str))
 		connman_info("Client-Region: %s", str);
 
 	if (g_web_result_get_header(result, "X-ConnMan-Client-Timezone",
-				&str) == TRUE)
+				&str))
 		connman_info("Client-Timezone: %s", str);
 
 	free_connman_wispr_portal_context(wp_context);
@@ -455,7 +454,7 @@ static void portal_manage_status(GWebResult *result,
 					CONNMAN_SERVICE_STATE_ONLINE, type);
 }
 
-static gboolean wispr_route_request(const char *address, int ai_family,
+static bool wispr_route_request(const char *address, int ai_family,
 		int if_index, gpointer user_data)
 {
 	int result = -1;
@@ -469,12 +468,12 @@ static gboolean wispr_route_request(const char *address, int ai_family,
 	DBG("address %s if %d gw %s", address, if_index, gateway);
 
 	if (gateway == NULL)
-		return FALSE;
+		return false;
 
 	route = g_try_new0(struct wispr_route, 1);
 	if (route == 0) {
 		DBG("could not create struct");
-		return FALSE;
+		return false;
 	}
 
 	switch(wp_context->type) {
@@ -492,14 +491,14 @@ static gboolean wispr_route_request(const char *address, int ai_family,
 
 	if (result < 0) {
 		g_free(route);
-		return FALSE;
+		return false;
 	}
 
 	route->address = g_strdup(address);
 	route->if_index = if_index;
 	wp_context->route_list = g_slist_prepend(wp_context->route_list, route);
 
-	return TRUE;
+	return true;
 }
 
 static void wispr_portal_request_portal(struct connman_wispr_portal_context *wp_context)
@@ -516,7 +515,7 @@ static void wispr_portal_request_portal(struct connman_wispr_portal_context *wp_
 		wispr_portal_error(wp_context);
 }
 
-static gboolean wispr_input(const guint8 **data, gsize *length,
+static bool wispr_input(const guint8 **data, gsize *length,
 						gpointer user_data)
 {
 	struct connman_wispr_portal_context *wp_context = user_data;
@@ -544,11 +543,11 @@ static gboolean wispr_input(const guint8 **data, gsize *length,
 	*data = (guint8 *) wp_context->wispr_formdata;
 	*length = count;
 
-	return FALSE;
+	return false;
 }
 
 static void wispr_portal_browser_reply_cb(struct connman_service *service,
-					connman_bool_t authentication_done,
+					bool authentication_done,
 					const char *error, void *user_data)
 {
 	struct connman_wispr_portal_context *wp_context = user_data;
@@ -558,7 +557,7 @@ static void wispr_portal_browser_reply_cb(struct connman_service *service,
 	if (service == NULL || wp_context == NULL)
 		return;
 
-	if (authentication_done == FALSE) {
+	if (!authentication_done) {
 		wispr_portal_error(wp_context);
 		free_wispr_routes(wp_context);
 		return;
@@ -569,10 +568,10 @@ static void wispr_portal_browser_reply_cb(struct connman_service *service,
 }
 
 static void wispr_portal_request_wispr_login(struct connman_service *service,
-				connman_bool_t success,
+				bool success,
 				const char *ssid, int ssid_len,
 				const char *username, const char *password,
-				gboolean wps, const char *wpspin,
+				bool wps, const char *wpspin,
 				const char *error, void *user_data)
 {
 	struct connman_wispr_portal_context *wp_context = user_data;
@@ -608,7 +607,7 @@ static void wispr_portal_request_wispr_login(struct connman_service *service,
 	connman_wispr_message_init(&wp_context->wispr_msg);
 }
 
-static gboolean wispr_manage_message(GWebResult *result,
+static bool wispr_manage_message(GWebResult *result,
 			struct connman_wispr_portal_context *wp_context)
 {
 	DBG("Message type: %s (%d)",
@@ -663,7 +662,7 @@ static gboolean wispr_manage_message(GWebResult *result,
 
 			wispr_portal_request_portal(wp_context);
 
-			return TRUE;
+			return true;
 		} else
 			wispr_portal_error(wp_context);
 
@@ -672,10 +671,10 @@ static gboolean wispr_manage_message(GWebResult *result,
 		break;
 	}
 
-	return FALSE;
+	return false;
 }
 
-static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
+static bool wispr_portal_web_result(GWebResult *result, gpointer user_data)
 {
 	struct connman_wispr_portal_context *wp_context = user_data;
 	const char *redirect = NULL;
@@ -692,13 +691,13 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 		if (length > 0) {
 			g_web_parser_feed_data(wp_context->wispr_parser,
 								chunk, length);
-			return TRUE;
+			return true;
 		}
 
 		g_web_parser_end_data(wp_context->wispr_parser);
 
 		if (wp_context->wispr_msg.message_type >= 0) {
-			if (wispr_manage_message(result, wp_context) == TRUE)
+			if (wispr_manage_message(result, wp_context))
 				goto done;
 		}
 	}
@@ -713,9 +712,9 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 			break;
 
 		if (g_web_result_get_header(result, "X-ConnMan-Status",
-						&str) == TRUE) {
+						&str)) {
 			portal_manage_status(result, wp_context);
-			return FALSE;
+			return false;
 		}
 		else
 			__connman_agent_request_browser(wp_context->service,
@@ -724,9 +723,8 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 
 		break;
 	case 302:
-		if (g_web_supports_tls() == FALSE ||
-				g_web_result_get_header(result, "Location",
-							&redirect) == FALSE) {
+		if (!g_web_supports_tls() ||
+				!g_web_result_get_header(result, "Location", &redirect)) {
 
 			__connman_agent_request_browser(wp_context->service,
 					wispr_portal_browser_reply_cb,
@@ -749,7 +747,7 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 						wp_context->type) == 0) {
 			wispr_portal_error(wp_context);
 			free_connman_wispr_portal_context(wp_context);
-			return FALSE;
+			return false;
 		}
 
 		break;
@@ -761,7 +759,7 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 	wp_context->request_id = 0;
 done:
 	wp_context->wispr_msg.message_type = -1;
-	return FALSE;
+	return false;
 }
 
 static void proxy_callback(const char *proxy, void *user_data)

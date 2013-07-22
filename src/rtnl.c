@@ -85,25 +85,25 @@ static void free_interface(gpointer data)
 	g_free(interface);
 }
 
-static connman_bool_t ether_blacklisted(const char *name)
+static bool ether_blacklisted(const char *name)
 {
 	if (name == NULL)
-		return TRUE;
+		return true;
 
-	if (__connman_device_isfiltered(name) == TRUE)
-		return TRUE;
+	if (__connman_device_isfiltered(name))
+		return true;
 
-	return FALSE;
+	return false;
 }
 
-static connman_bool_t wext_interface(char *ifname)
+static bool wext_interface(char *ifname)
 {
 	struct iwreq wrq;
 	int fd, err;
 
 	fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (fd < 0)
-		return FALSE;
+		return false;
 
 	memset(&wrq, 0, sizeof(wrq));
 	strncpy(wrq.ifr_name, ifname, IFNAMSIZ);
@@ -113,18 +113,18 @@ static connman_bool_t wext_interface(char *ifname)
 	close(fd);
 
 	if (err < 0)
-		return FALSE;
+		return false;
 
-	return TRUE;
+	return true;
 }
 
 static void read_uevent(struct interface_data *interface)
 {
 	char *filename, line[128];
-	connman_bool_t found_devtype;
+	bool found_devtype;
 	FILE *f;
 
-	if (ether_blacklisted(interface->name) == TRUE) {
+	if (ether_blacklisted(interface->name)) {
 		interface->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 		interface->device_type = CONNMAN_DEVICE_TYPE_UNKNOWN;
 	} else {
@@ -142,7 +142,7 @@ static void read_uevent(struct interface_data *interface)
 	if (f == NULL)
 		return;
 
-	found_devtype = FALSE;
+	found_devtype = false;
 	while (fgets(line, sizeof(line), f)) {
 		char *pos;
 
@@ -154,7 +154,7 @@ static void read_uevent(struct interface_data *interface)
 		if (strncmp(line, "DEVTYPE=", 8) != 0)
 			continue;
 
-		found_devtype = TRUE;
+		found_devtype = true;
 
 		if (strcmp(line + 8, "wlan") == 0) {
 			interface->service_type = CONNMAN_SERVICE_TYPE_WIFI;
@@ -353,7 +353,7 @@ static const char *operstate2str(unsigned char operstate)
 	return "";
 }
 
-static connman_bool_t extract_link(struct ifinfomsg *msg, int bytes,
+static bool extract_link(struct ifinfomsg *msg, int bytes,
 				struct ether_addr *address, const char **ifname,
 				unsigned int *mtu, unsigned char *operstate,
 				struct rtnl_link_stats *stats)
@@ -387,11 +387,11 @@ static connman_bool_t extract_link(struct ifinfomsg *msg, int bytes,
 		case IFLA_LINKMODE:
 			break;
 		case IFLA_WIRELESS:
-			return FALSE;
+			return false;
 		}
 	}
 
-	return TRUE;
+	return true;
 }
 
 static void process_newlink(unsigned short type, int index, unsigned flags,
@@ -408,8 +408,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	GSList *list;
 
 	memset(&stats, 0, sizeof(stats));
-	if (extract_link(msg, bytes, &address, &ifname, &mtu, &operstate,
-					&stats) == FALSE)
+	if (!extract_link(msg, bytes, &address, &ifname, &mtu, &operstate, &stats))
 		return;
 
 	snprintf(ident, 13, "%02x%02x%02x%02x%02x%02x",
@@ -500,8 +499,7 @@ static void process_dellink(unsigned short type, int index, unsigned flags,
 	GSList *list;
 
 	memset(&stats, 0, sizeof(stats));
-	if (extract_link(msg, bytes, NULL, &ifname, NULL, &operstate,
-					&stats) == FALSE)
+	if (!extract_link(msg, bytes, NULL, &ifname, NULL, &operstate, &stats))
 		return;
 
 	if (operstate != 0xff)
@@ -1074,20 +1072,20 @@ static void rtnl_route(struct nlmsghdr *hdr)
 	}
 }
 
-static connman_bool_t is_route_rtmsg(struct rtmsg *msg)
+static bool is_route_rtmsg(struct rtmsg *msg)
 {
 
 	if (msg->rtm_table != RT_TABLE_MAIN)
-		return FALSE;
+		return false;
 
 	if (msg->rtm_protocol != RTPROT_BOOT &&
 			msg->rtm_protocol != RTPROT_KERNEL)
-		return FALSE;
+		return false;
 
 	if (msg->rtm_type != RTN_UNICAST)
-		return FALSE;
+		return false;
 
-	return TRUE;
+	return true;
 }
 
 static void rtnl_newroute(struct nlmsghdr *hdr)

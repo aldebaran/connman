@@ -155,7 +155,7 @@ static gboolean rfkill_event(GIOChannel *chan,
 
 static GIOChannel *channel = NULL;
 
-int __connman_rfkill_block(enum connman_service_type type, connman_bool_t block)
+int __connman_rfkill_block(enum connman_service_type type, bool block)
 {
 	uint8_t rfkill_type;
 	struct rfkill_event event;

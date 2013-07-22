@@ -46,9 +46,9 @@ static void *rs_context;
 
 static int setup_prefix_delegation(struct connman_service *service);
 static void dhcpv6_callback(struct connman_network *network,
-			connman_bool_t success, gpointer data);
+			bool success, gpointer data);
 
-static int enable_ipv6_forward(connman_bool_t enable)
+static int enable_ipv6_forward(bool enable)
 {
 	FILE *f;
 
@@ -56,7 +56,7 @@ static int enable_ipv6_forward(connman_bool_t enable)
 	if (f == NULL)
 		return -errno;
 
-	if (enable == TRUE)
+	if (enable)
 		fprintf(f, "1");
 	else
 		fprintf(f, "0");
@@ -81,7 +81,7 @@ static void start_ra(int ifindex, GSList *prefix)
 
 	prefixes = g_dhcpv6_copy_prefixes(prefix);
 
-	enable_ipv6_forward(TRUE);
+	enable_ipv6_forward(true);
 
 	if (timer_ra > 0)
 		g_source_remove(timer_ra);
@@ -100,7 +100,7 @@ static void stop_ra(int ifindex)
 		timer_ra = 0;
 	}
 
-	enable_ipv6_forward(FALSE);
+	enable_ipv6_forward(false);
 
 	if (prefixes != NULL) {
 		g_slist_free_full(prefixes, g_free);
@@ -147,11 +147,11 @@ static gboolean do_setup(gpointer data)
 }
 
 static void dhcpv6_renew_callback(struct connman_network *network,
-				connman_bool_t success, gpointer data)
+				bool success, gpointer data)
 {
 	DBG("network %p success %d data %p", network, success, data);
 
-	if (success == TRUE)
+	if (success)
 		dhcpv6_callback(network, success, data);
 	else
 		setup_prefix_delegation(__connman_service_get_default());
@@ -174,13 +174,13 @@ static void cleanup(void)
 }
 
 static void dhcpv6_callback(struct connman_network *network,
-			connman_bool_t success, gpointer data)
+			bool success, gpointer data)
 {
 	GSList *prefix_list = data;
 
 	DBG("network %p success %d data %p", network, success, data);
 
-	if (success == FALSE) {
+	if (!success) {
 		DBG("Prefix delegation request failed");
 		cleanup();
 		return;
@@ -202,7 +202,7 @@ static void dhcpv6_callback(struct connman_network *network,
 
 	if (__connman_dhcpv6_start_pd_renew(network,
 					dhcpv6_renew_callback) == -ETIMEDOUT)
-		dhcpv6_renew_callback(network, FALSE, NULL);
+		dhcpv6_renew_callback(network, false, NULL);
 }
 
 static int setup_prefix_delegation(struct connman_service *service)
@@ -233,7 +233,7 @@ static int setup_prefix_delegation(struct connman_service *service)
 	g_free(default_interface);
 
 	ipconfig = __connman_service_get_ip6config(service);
-	if (__connman_ipconfig_ipv6_is_enabled(ipconfig) == FALSE) {
+	if (!__connman_ipconfig_ipv6_is_enabled(ipconfig)) {
 		g_free(interface);
 		default_interface = NULL;
 		return -EPFNOSUPPORT;
@@ -277,7 +277,7 @@ static void update_ipconfig(struct connman_service *service,
 	if (ipconfig != __connman_service_get_ip6config(service))
 		return;
 
-	if (__connman_ipconfig_ipv6_is_enabled(ipconfig) == FALSE) {
+	if (!__connman_ipconfig_ipv6_is_enabled(ipconfig)) {
 		if (default_interface != NULL) {
 			int ifindex;
 
@@ -314,7 +314,7 @@ int __connman_ipv6pd_setup(const char *bridge)
 	struct connman_service *service;
 	int err;
 
-	if (connman_inet_is_ipv6_supported() == FALSE)
+	if (!connman_inet_is_ipv6_supported())
 		return -EPFNOSUPPORT;
 
 	if (bridge_index >= 0) {
@@ -357,7 +357,7 @@ void __connman_ipv6pd_cleanup(void)
 {
 	int ifindex;
 
-	if (connman_inet_is_ipv6_supported() == FALSE)
+	if (!connman_inet_is_ipv6_supported())
 		return;
 
 	connman_notifier_unregister(&pd_notifier);

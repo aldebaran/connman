@@ -72,7 +72,7 @@ static void dhcp_free(struct connman_dhcp *dhcp)
  * service state due to the IP configuration change implied by this
  * invalidation.
  */
-static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
+static void dhcp_invalidate(struct connman_dhcp *dhcp, bool callback)
 {
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig;
@@ -106,7 +106,7 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 	if (dhcp->nameservers != NULL) {
 		for (i = 0; dhcp->nameservers[i] != NULL; i++) {
 			__connman_service_nameserver_remove(service,
-						dhcp->nameservers[i], FALSE);
+						dhcp->nameservers[i], false);
 		}
 	}
 
@@ -140,7 +140,7 @@ static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("No lease available");
 
-	dhcp_invalidate(dhcp, TRUE);
+	dhcp_invalidate(dhcp, true);
 }
 
 static void lease_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
@@ -149,7 +149,7 @@ static void lease_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("Lease lost");
 
-	dhcp_invalidate(dhcp, TRUE);
+	dhcp_invalidate(dhcp, true);
 }
 
 static void ipv4ll_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
@@ -158,27 +158,27 @@ static void ipv4ll_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("Lease lost");
 
-	dhcp_invalidate(dhcp, TRUE);
+	dhcp_invalidate(dhcp, true);
 }
 
 
-static gboolean compare_string_arrays(char **array_a, char **array_b)
+static bool compare_string_arrays(char **array_a, char **array_b)
 {
 	int i;
 
 	if (array_a == NULL || array_b == NULL)
-		return FALSE;
+		return false;
 
 	if (g_strv_length(array_a) != g_strv_length(array_b))
-		return FALSE;
+		return false;
 
 	for (i = 0; array_a[i] != NULL &&
 			     array_b[i] != NULL; i++) {
 		if (g_strcmp0(array_a[i], array_b[i]) != 0)
-			return FALSE;
+			return false;
 	}
 
-	return TRUE;
+	return true;
 }
 
 static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
@@ -193,7 +193,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	struct connman_ipconfig *ipconfig;
 	struct connman_service *service;
 	unsigned char prefixlen, c_prefixlen;
-	gboolean ip_change;
+	bool ip_change;
 	int i;
 
 	DBG("Lease available");
@@ -235,16 +235,16 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	if (address != NULL && c_address != NULL &&
 					g_strcmp0(address, c_address) != 0)
-		ip_change = TRUE;
+		ip_change = true;
 	else if (gateway != NULL && c_gateway != NULL &&
 					g_strcmp0(gateway, c_gateway) != 0)
-		ip_change = TRUE;
+		ip_change = true;
 	else if (prefixlen != c_prefixlen)
-		ip_change = TRUE;
+		ip_change = true;
 	else if (c_address == NULL || c_gateway == NULL)
-		ip_change = TRUE;
+		ip_change = true;
 	else
-		ip_change = FALSE;
+		ip_change = false;
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DNS_SERVER);
 	ns_entries = g_list_length(option);
@@ -259,7 +259,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (option != NULL)
 		domainname = g_strdup(option->data);
 
-	if (connman_setting_get_bool("AllowHostnameUpdates") == TRUE) {
+	if (connman_setting_get_bool("AllowHostnameUpdates")) {
 		option = g_dhcp_client_get_option(dhcp_client,
 						G_DHCP_HOST_NAME);
 		if (option != NULL)
@@ -281,17 +281,17 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	__connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_DHCP);
 
-	if (ip_change == TRUE) {
+	if (ip_change) {
 		__connman_ipconfig_set_local(ipconfig, address);
 		__connman_ipconfig_set_prefixlen(ipconfig, prefixlen);
 		__connman_ipconfig_set_gateway(ipconfig, gateway);
 	}
 
-	if (compare_string_arrays(nameservers, dhcp->nameservers) == FALSE) {
+	if (!compare_string_arrays(nameservers, dhcp->nameservers)) {
 		if (dhcp->nameservers != NULL) {
 			for (i = 0; dhcp->nameservers[i] != NULL; i++) {
 				__connman_service_nameserver_remove(service,
-						dhcp->nameservers[i], FALSE);
+						dhcp->nameservers[i], false);
 			}
 			g_strfreev(dhcp->nameservers);
 		}
@@ -301,13 +301,13 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		for (i = 0; dhcp->nameservers != NULL &&
 					dhcp->nameservers[i] != NULL; i++) {
 			__connman_service_nameserver_append(service,
-						dhcp->nameservers[i], FALSE);
+						dhcp->nameservers[i], false);
 		}
 	} else {
 		g_strfreev(nameservers);
 	}
 
-	if (compare_string_arrays(timeservers, dhcp->timeservers) == FALSE) {
+	if (!compare_string_arrays(timeservers, dhcp->timeservers)) {
 		if (dhcp->timeservers != NULL) {
 			for (i = 0; dhcp->timeservers[i] != NULL; i++) {
 				__connman_service_timeserver_remove(service,
@@ -342,7 +342,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (hostname != NULL)
 		__connman_utsname_set_hostname(hostname);
 
-	if (ip_change == TRUE)
+	if (ip_change)
 		dhcp_valid(dhcp);
 
 	__connman_6to4_probe(service);
@@ -480,7 +480,7 @@ static void remove_network(gpointer user_data)
 
 	DBG("dhcp %p", dhcp);
 
-	dhcp_invalidate(dhcp, FALSE);
+	dhcp_invalidate(dhcp, false);
 	dhcp_release(dhcp);
 
 	g_free(dhcp);
@@ -513,7 +513,7 @@ void __connman_dhcp_stop(struct connman_network *network)
 	if (network_table == NULL)
 		return;
 
-	if (g_hash_table_remove(network_table, network) == TRUE)
+	if (g_hash_table_remove(network_table, network))
 		connman_network_unref(network);
 }
 

@@ -524,7 +524,7 @@ bool netlink_cancel(struct netlink_info *netlink, unsigned int id)
 
 	g_hash_table_remove(netlink->command_lookup, GUINT_TO_POINTER(id));
 
-	if (g_queue_remove(netlink->command_queue, command) == FALSE) {
+	if (!g_queue_remove(netlink->command_queue, command)) {
 		g_hash_table_remove(netlink->command_pending,
 					GUINT_TO_POINTER(command->seq));
 	}

@@ -224,7 +224,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (dbus_message_iter_init(msg, &iter) == FALSE)
+	if (!dbus_message_iter_init(msg, &iter))
 		return __connman_error_invalid_arguments(msg);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
@@ -240,7 +240,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	type = dbus_message_iter_get_arg_type(&value);
 
-	if (g_str_equal(name, "Time") == TRUE) {
+	if (g_str_equal(name, "Time")) {
 		struct timeval tv;
 		dbus_uint64_t newval;
 
@@ -261,7 +261,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_CLOCK_INTERFACE, "Time",
 				DBUS_TYPE_UINT64, &newval);
-	} else if (g_str_equal(name, "TimeUpdates") == TRUE) {
+	} else if (g_str_equal(name, "TimeUpdates")) {
 		const char *strval;
 		enum time_updates newval;
 
@@ -283,7 +283,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_CLOCK_INTERFACE, "TimeUpdates",
 				DBUS_TYPE_STRING, &strval);
-	} else if (g_str_equal(name, "Timezone") == TRUE) {
+	} else if (g_str_equal(name, "Timezone")) {
 		const char *strval;
 
 		if (type != DBUS_TYPE_STRING)
@@ -296,7 +296,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		if (__connman_timezone_change(strval) < 0)
                         return __connman_error_invalid_arguments(msg);
-	} else if (g_str_equal(name, "TimezoneUpdates") == TRUE) {
+	} else if (g_str_equal(name, "TimezoneUpdates")) {
 		const char *strval;
 		enum timezone_updates newval;
 
@@ -318,7 +318,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_CLOCK_INTERFACE, "TimezoneUpdates",
 				DBUS_TYPE_STRING, &strval);
-	} else if (g_str_equal(name, "Timeservers") == TRUE) {
+	} else if (g_str_equal(name, "Timeservers")) {
 		DBusMessageIter entry;
 		char **str = NULL;
 		GSList *list = NULL;

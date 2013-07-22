@@ -326,7 +326,7 @@ static void nfacct_flush_cb(unsigned int error, const char *name,
 
 	DBG("name %s packets %" PRIu64 " bytes %" PRIu64, name, packets, bytes);
 
-	if (g_str_has_prefix(name, "session-") == FALSE)
+	if (!g_str_has_prefix(name, "session-"))
 		return;
 
 	id = nfacct_del(nfacct, name, nfacct_flush_del_cb, cbd);

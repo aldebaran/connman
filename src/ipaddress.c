@@ -86,19 +86,19 @@ unsigned char __connman_ipaddress_netmask_prefix_len(const char *netmask)
 	return bits;
 }
 
-static gboolean check_ipv6_address(const char *address)
+static bool check_ipv6_address(const char *address)
 {
 	unsigned char buf[sizeof(struct in6_addr)];
 	int err;
 
 	if (address == NULL)
-		return FALSE;
+		return false;
 
 	err = inet_pton(AF_INET6, address, buf);
 	if (err > 0)
-		return TRUE;
+		return true;
 
-	return FALSE;
+	return false;
 }
 
 int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
@@ -109,7 +109,7 @@ int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
 	if (ipaddress == NULL)
 		return -EINVAL;
 
-	if (check_ipv6_address(address) == FALSE)
+	if (!check_ipv6_address(address))
 		return -EINVAL;
 
 	DBG("prefix_len %d address %s gateway %s",

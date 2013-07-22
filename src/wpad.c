@@ -194,7 +194,7 @@ void __connman_wpad_stop(struct connman_service *service)
 	if (index < 0)
 		return;
 
-	if (g_hash_table_remove(wpad_list, GINT_TO_POINTER(index)) == TRUE)
+	if (g_hash_table_remove(wpad_list, GINT_TO_POINTER(index)))
 		connman_service_unref(service);
 }
 

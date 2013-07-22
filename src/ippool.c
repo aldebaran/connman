@@ -170,7 +170,7 @@ static uint32_t get_free_block(unsigned int size)
 	struct address_info *info;
 	uint32_t block;
 	GSList *list;
-	connman_bool_t collision;
+	bool collision;
 
 	/*
 	 * Instead starting always from the 16 bit block, we start
@@ -188,17 +188,17 @@ static uint32_t get_free_block(unsigned int size)
 		block = next_block(last_block);
 
 	do {
-		collision = FALSE;
+		collision = false;
 		for (list = allocated_blocks; list != NULL; list = list->next) {
 			info = list->data;
 
 			if (info->start <= block && block <= info->end) {
-				collision = TRUE;
+				collision = true;
 				break;
 			}
 		}
 
-		if (collision == FALSE)
+		if (!collision)
 			return block;
 
 		block = next_block(block);
@@ -221,7 +221,7 @@ static struct address_info *lookup_info(int index, uint32_t start)
 	return NULL;
 }
 
-static connman_bool_t is_private_address(uint32_t address)
+static bool is_private_address(uint32_t address)
 {
 	unsigned int a, b;
 
@@ -230,9 +230,9 @@ static connman_bool_t is_private_address(uint32_t address)
 
 	if (a == 10 || (a == 192 && b == 168) ||
 					(a == 172 && (b >= 16 && b <= 31)))
-		return TRUE;
+		return true;
 
-	return FALSE;
+	return false;
 }
 
 void __connman_ippool_newaddr(int index, const char *address,
@@ -247,7 +247,7 @@ void __connman_ippool_newaddr(int index, const char *address,
 		return;
 
 	start = ntohl(inp.s_addr);
-	if (is_private_address(start) == FALSE)
+	if (!is_private_address(start))
 		return;
 
 	if (prefixlen >= 32)
@@ -310,7 +310,7 @@ void __connman_ippool_deladdr(int index, const char *address,
 		return;
 
 	start = ntohl(inp.s_addr);
-	if (is_private_address(start) == FALSE)
+	if (!is_private_address(start))
 		return;
 
 	mask = ~(0xffffffff >> prefixlen);

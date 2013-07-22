@@ -231,12 +231,12 @@ static gboolean unref_web(gpointer user_data)
 	return FALSE;
 }
 
-static gboolean web_result(GWebResult *result, gpointer user_data)
+static bool web_result(GWebResult *result, gpointer user_data)
 {
 	guint16 status;
 
 	if (web_request_id == 0)
-		return FALSE;
+		return false;
 
 	status = g_web_result_get_status(result);
 
@@ -251,7 +251,7 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 
 	g_timeout_add_seconds(1, unref_web, NULL);
 
-	return FALSE;
+	return false;
 }
 
 static void web_debug(const char *str, void *data)

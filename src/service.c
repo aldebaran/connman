@@ -46,18 +46,18 @@ static GHashTable *service_hash = NULL;
 static GSList *counter_list = NULL;
 static unsigned int autoconnect_timeout = 0;
 static struct connman_service *current_default = NULL;
-static connman_bool_t services_dirty = FALSE;
+static bool services_dirty = false;
 
 struct connman_stats {
-	connman_bool_t valid;
-	connman_bool_t enabled;
+	bool valid;
+	bool enabled;
 	struct connman_stats_data data_last;
 	struct connman_stats_data data;
 	GTimer *timer;
 };
 
 struct connman_stats_counter {
-	connman_bool_t append_all;
+	bool append_all;
 	struct connman_stats stats;
 	struct connman_stats stats_roaming;
 };
@@ -74,18 +74,18 @@ struct connman_service {
 	enum connman_service_state state_ipv6;
 	enum connman_service_error error;
 	uint8_t strength;
-	connman_bool_t favorite;
-	connman_bool_t immutable;
-	connman_bool_t hidden;
-	connman_bool_t ignore;
-	connman_bool_t autoconnect;
-	connman_bool_t userconnect;
+	bool favorite;
+	bool immutable;
+	bool hidden;
+	bool ignore;
+	bool autoconnect;
+	bool userconnect;
 	GTimeVal modified;
 	unsigned int order;
 	char *name;
 	char *passphrase;
 	char *agent_passphrase;
-	connman_bool_t roaming;
+	bool roaming;
 	struct connman_ipconfig *ipconfig_ipv4;
 	struct connman_ipconfig *ipconfig_ipv6;
 	struct connman_network *network;
@@ -117,16 +117,16 @@ struct connman_service {
 	char **proxies;
 	char **excludes;
 	char *pac;
-	connman_bool_t wps;
+	bool wps;
 	int online_check_count;
-	connman_bool_t do_split_routing;
-	connman_bool_t new_service;
-	connman_bool_t hidden_service;
+	bool do_split_routing;
+	bool new_service;
+	bool hidden_service;
 	char *config_file;
 	char *config_entry;
 };
 
-static connman_bool_t allow_property_changed(struct connman_service *service);
+static bool allow_property_changed(struct connman_service *service);
 
 static struct connman_ipconfig *create_ip4config(struct connman_service *service,
 		int index, enum connman_ipconfig_method method);
@@ -327,7 +327,7 @@ static int service_load(struct connman_service *service)
 	GError *error = NULL;
 	gsize length;
 	gchar *str;
-	connman_bool_t autoconnect;
+	bool autoconnect;
 	unsigned int ssid_len;
 	int err = 0;
 
@@ -335,10 +335,10 @@ static int service_load(struct connman_service *service)
 
 	keyfile = connman_storage_load_service(service->identifier);
 	if (keyfile == NULL) {
-		service->new_service = TRUE;
+		service->new_service = true;
 		return -EIO;
 	} else
-		service->new_service = FALSE;
+		service->new_service = false;
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -408,7 +408,7 @@ static int service_load(struct connman_service *service)
 		str = g_key_file_get_string(keyfile,
 				service->identifier, "Failure", NULL);
 		if (str != NULL) {
-			if (service->favorite == FALSE)
+			if (!service->favorite)
 				service->state_ipv4 = service->state_ipv6 =
 					CONNMAN_SERVICE_STATE_FAILURE;
 			service->error = string2error(str);
@@ -515,7 +515,7 @@ static int service_save(struct connman_service *service)
 
 	DBG("service %p new %d", service, service->new_service);
 
-	if (service->new_service == TRUE)
+	if (service->new_service)
 		return -ESRCH;
 
 	keyfile = __connman_storage_open_service(service->identifier);
@@ -590,7 +590,7 @@ static int service_save(struct connman_service *service)
 		/* fall through */
 
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
-		if (service->favorite == TRUE)
+		if (service->favorite)
 			g_key_file_set_boolean(keyfile, service->identifier,
 					"AutoConnect", service->autoconnect);
 		break;
@@ -680,7 +680,7 @@ static int service_save(struct connman_service *service)
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Proxy.URL", NULL);
 
-	if (service->hidden_service == TRUE)
+	if (service->hidden_service)
 		g_key_file_set_boolean(keyfile, service->identifier, "Hidden",
 									TRUE);
 
@@ -793,7 +793,7 @@ done:
 	return result;
 }
 
-static connman_bool_t is_connecting_state(struct connman_service *service,
+static bool is_connecting_state(struct connman_service *service,
 					enum connman_service_state state)
 {
 	switch (state) {
@@ -808,13 +808,13 @@ static connman_bool_t is_connecting_state(struct connman_service *service,
 		break;
 	case CONNMAN_SERVICE_STATE_ASSOCIATION:
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
-		return TRUE;
+		return true;
 	}
 
-	return FALSE;
+	return false;
 }
 
-static connman_bool_t is_connected_state(const struct connman_service *service,
+static bool is_connected_state(const struct connman_service *service,
 					enum connman_service_state state)
 {
 	switch (state) {
@@ -827,13 +827,13 @@ static connman_bool_t is_connected_state(const struct connman_service *service,
 		break;
 	case CONNMAN_SERVICE_STATE_READY:
 	case CONNMAN_SERVICE_STATE_ONLINE:
-		return TRUE;
+		return true;
 	}
 
-	return FALSE;
+	return false;
 }
 
-static connman_bool_t is_idle_state(const struct connman_service *service,
+static bool is_idle_state(const struct connman_service *service,
 				enum connman_service_state state)
 {
 	switch (state) {
@@ -846,18 +846,18 @@ static connman_bool_t is_idle_state(const struct connman_service *service,
 	case CONNMAN_SERVICE_STATE_FAILURE:
 		break;
 	case CONNMAN_SERVICE_STATE_IDLE:
-		return TRUE;
+		return true;
 	}
 
-	return FALSE;
+	return false;
 }
 
-static connman_bool_t is_connecting(struct connman_service *service)
+static bool is_connecting(struct connman_service *service)
 {
 	return is_connecting_state(service, service->state);
 }
 
-static connman_bool_t is_connected(struct connman_service *service)
+static bool is_connected(struct connman_service *service)
 {
 	return is_connected_state(service, service->state);
 }
@@ -993,7 +993,7 @@ static void update_nameservers(struct connman_service *service)
  * for details) and not through service.c
  */
 int __connman_service_nameserver_append(struct connman_service *service,
-				const char *nameserver, gboolean is_auto)
+				const char *nameserver, bool is_auto)
 {
 	char **nameservers;
 	int len, i;
@@ -1003,7 +1003,7 @@ int __connman_service_nameserver_append(struct connman_service *service,
 	if (nameserver == NULL)
 		return -EINVAL;
 
-	if (is_auto == TRUE)
+	if (is_auto)
 		nameservers = service->nameservers_auto;
 	else
 		nameservers = service->nameservers;
@@ -1029,7 +1029,7 @@ int __connman_service_nameserver_append(struct connman_service *service,
 
 	nameservers[len + 1] = NULL;
 
-	if (is_auto == TRUE) {
+	if (is_auto) {
 		service->nameservers_auto = nameservers;
 	} else {
 		service->nameservers = nameservers;
@@ -1040,10 +1040,10 @@ int __connman_service_nameserver_append(struct connman_service *service,
 }
 
 int __connman_service_nameserver_remove(struct connman_service *service,
-				const char *nameserver, gboolean is_auto)
+				const char *nameserver, bool is_auto)
 {
 	char **servers, **nameservers;
-	gboolean found = FALSE;
+	bool found = false;
 	int len, i, j;
 
 	DBG("service %p nameserver %s auto %d", service, nameserver, is_auto);
@@ -1051,7 +1051,7 @@ int __connman_service_nameserver_remove(struct connman_service *service,
 	if (nameserver == NULL)
 		return -EINVAL;
 
-	if (is_auto == TRUE)
+	if (is_auto)
 		nameservers = service->nameservers_auto;
 	else
 		nameservers = service->nameservers;
@@ -1061,18 +1061,18 @@ int __connman_service_nameserver_remove(struct connman_service *service,
 
 	for (i = 0; nameservers != NULL && nameservers[i] != NULL; i++)
 		if (g_strcmp0(nameservers[i], nameserver) == 0) {
-			found = TRUE;
+			found = true;
 			break;
 		}
 
-	if (found == FALSE)
+	if (!found)
 		return 0;
 
 	len = g_strv_length(nameservers);
 
 	if (len == 1) {
 		g_strfreev(nameservers);
-		if (is_auto == TRUE)
+		if (is_auto)
 			service->nameservers_auto = NULL;
 		else
 			service->nameservers = NULL;
@@ -1097,7 +1097,7 @@ int __connman_service_nameserver_remove(struct connman_service *service,
 	g_strfreev(nameservers);
 	nameservers = servers;
 
-	if (is_auto == TRUE) {
+	if (is_auto) {
 		service->nameservers_auto = nameservers;
 	} else {
 		service->nameservers = nameservers;
@@ -1120,7 +1120,7 @@ static void add_nameserver_route(int family, int index, char *nameserver,
 {
 	switch (family) {
 	case AF_INET:
-		if (connman_inet_compare_subnet(index, nameserver) == TRUE)
+		if (connman_inet_compare_subnet(index, nameserver))
 			break;
 
 		if (connman_inet_add_host_route(index, nameserver, gw) < 0)
@@ -1229,13 +1229,13 @@ void __connman_service_nameserver_del_routes(struct connman_service *service,
 
 static struct connman_stats *stats_get(struct connman_service *service)
 {
-	if (service->roaming == TRUE)
+	if (service->roaming)
 		return &service->stats_roaming;
 	else
 		return &service->stats;
 }
 
-static connman_bool_t stats_enabled(struct connman_service *service)
+static bool stats_enabled(struct connman_service *service)
 {
 	struct connman_stats *stats = stats_get(service);
 
@@ -1251,7 +1251,7 @@ static void stats_start(struct connman_service *service)
 	if (stats->timer == NULL)
 		return;
 
-	stats->enabled = TRUE;
+	stats->enabled = true;
 	stats->data_last.time = stats->data.time;
 
 	g_timer_start(stats->timer);
@@ -1267,7 +1267,7 @@ static void stats_stop(struct connman_service *service)
 	if (stats->timer == NULL)
 		return;
 
-	if (stats->enabled == FALSE)
+	if (!stats->enabled)
 		return;
 
 	g_timer_stop(stats->timer);
@@ -1275,7 +1275,7 @@ static void stats_stop(struct connman_service *service)
 	seconds = g_timer_elapsed(stats->timer, NULL);
 	stats->data.time = stats->data_last.time + seconds;
 
-	stats->enabled = FALSE;
+	stats->enabled = false;
 }
 
 static void reset_stats(struct connman_service *service)
@@ -1283,7 +1283,7 @@ static void reset_stats(struct connman_service *service)
 	DBG("service %p", service);
 
 	/* home */
-	service->stats.valid = FALSE;
+	service->stats.valid = false;
 
 	service->stats.data.rx_packets = 0;
 	service->stats.data.tx_packets = 0;
@@ -1299,7 +1299,7 @@ static void reset_stats(struct connman_service *service)
 	g_timer_reset(service->stats.timer);
 
 	/* roaming */
-	service->stats_roaming.valid = FALSE;
+	service->stats_roaming.valid = false;
 
 	service->stats_roaming.data.rx_packets = 0;
 	service->stats_roaming.data.tx_packets = 0;
@@ -1324,7 +1324,7 @@ struct connman_service *__connman_service_get_default(void)
 
 	service = service_list->data;
 
-	if (is_connected(service) == FALSE)
+	if (!is_connected(service))
 		return NULL;
 
 	return service;
@@ -1354,7 +1354,7 @@ static void state_changed(struct connman_service *service)
 	if (str == NULL)
 		return;
 
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_basic(service->path,
@@ -1367,7 +1367,7 @@ static void strength_changed(struct connman_service *service)
 	if (service->strength == 0)
 		return;
 
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_basic(service->path,
@@ -1382,7 +1382,7 @@ static void favorite_changed(struct connman_service *service)
 	if (service->path == NULL)
 		return;
 
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	favorite = service->favorite;
@@ -1398,7 +1398,7 @@ static void immutable_changed(struct connman_service *service)
 	if (service->path == NULL)
 		return;
 
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	immutable = service->immutable;
@@ -1412,7 +1412,7 @@ static void roaming_changed(struct connman_service *service)
 	if (service->path == NULL)
 		return;
 
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_basic(service->path,
@@ -1427,7 +1427,7 @@ static void autoconnect_changed(struct connman_service *service)
 	if (service->path == NULL)
 		return;
 
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	autoconnect = service->autoconnect;
@@ -1451,7 +1451,7 @@ static void append_security(DBusMessageIter *iter, void *user_data)
 	 * are configured as open or no security, so filter
 	 * appropriately.
 	 */
-	if (service->wps == TRUE) {
+	if (service->wps) {
 		switch (service->security) {
 		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
@@ -1488,7 +1488,7 @@ static void append_ipv4(DBusMessageIter *iter, void *user_data)
 	DBG("ipv4 %p state %s", service->ipconfig_ipv4,
 				state2string(service->state_ipv4));
 
-	if (is_connected_state(service, service->state_ipv4) == FALSE)
+	if (!is_connected_state(service, service->state_ipv4))
 		return;
 
 	if (service->ipconfig_ipv4 != NULL)
@@ -1502,7 +1502,7 @@ static void append_ipv6(DBusMessageIter *iter, void *user_data)
 	DBG("ipv6 %p state %s", service->ipconfig_ipv6,
 				state2string(service->state_ipv6));
 
-	if (is_connected_state(service, service->state_ipv6) == FALSE)
+	if (!is_connected_state(service, service->state_ipv6))
 		return;
 
 	if (service->ipconfig_ipv6 != NULL)
@@ -1545,7 +1545,7 @@ static void append_dns(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
-	if (is_connected(service) == FALSE)
+	if (!is_connected(service))
 		return;
 
 	if (service->nameservers_config != NULL) {
@@ -1617,8 +1617,8 @@ static void append_domain(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
-	if (is_connected(service) == FALSE &&
-				is_connecting(service) == FALSE)
+	if (!is_connected(service) &&
+				!is_connecting(service))
 		return;
 
 	if (service->domains != NULL)
@@ -1664,7 +1664,7 @@ static void append_proxy(DBusMessageIter *iter, void *user_data)
 
 	DBG("");
 
-	if (is_connected(service) == FALSE)
+	if (!is_connected(service))
 		return;
 
 	proxy = connman_service_get_proxy_method(service);
@@ -1753,7 +1753,7 @@ static void append_provider(DBusMessageIter *iter, void *user_data)
 
 	DBG("%p %p", service, service->provider);
 
-	if (is_connected(service) == FALSE)
+	if (!is_connected(service))
 		return;
 
 	if (service->provider != NULL)
@@ -1766,7 +1766,7 @@ static void settings_changed(struct connman_service *service,
 {
 	enum connman_ipconfig_type type;
 
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	type = __connman_ipconfig_get_config_type(ipconfig);
@@ -1785,7 +1785,7 @@ static void settings_changed(struct connman_service *service,
 
 static void ipv4_configuration_changed(struct connman_service *service)
 {
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_dict(service->path,
@@ -1797,7 +1797,7 @@ static void ipv4_configuration_changed(struct connman_service *service)
 
 static void ipv6_configuration_changed(struct connman_service *service)
 {
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_dict(service->path,
@@ -1809,7 +1809,7 @@ static void ipv6_configuration_changed(struct connman_service *service)
 
 static void dns_changed(struct connman_service *service)
 {
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_array(service->path,
@@ -1819,7 +1819,7 @@ static void dns_changed(struct connman_service *service)
 
 static void dns_configuration_changed(struct connman_service *service)
 {
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_array(service->path,
@@ -1832,7 +1832,7 @@ static void dns_configuration_changed(struct connman_service *service)
 
 static void domain_changed(struct connman_service *service)
 {
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_array(service->path,
@@ -1842,7 +1842,7 @@ static void domain_changed(struct connman_service *service)
 
 static void domain_configuration_changed(struct connman_service *service)
 {
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_array(service->path,
@@ -1853,7 +1853,7 @@ static void domain_configuration_changed(struct connman_service *service)
 
 static void proxy_changed(struct connman_service *service)
 {
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_dict(service->path,
@@ -1863,7 +1863,7 @@ static void proxy_changed(struct connman_service *service)
 
 static void proxy_configuration_changed(struct connman_service *service)
 {
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_dict(service->path,
@@ -1875,7 +1875,7 @@ static void proxy_configuration_changed(struct connman_service *service)
 
 static void timeservers_configuration_changed(struct connman_service *service)
 {
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_array(service->path,
@@ -1887,7 +1887,7 @@ static void timeservers_configuration_changed(struct connman_service *service)
 
 static void link_changed(struct connman_service *service)
 {
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_dict(service->path,
@@ -1898,7 +1898,7 @@ static void link_changed(struct connman_service *service)
 static void stats_append_counters(DBusMessageIter *dict,
 			struct connman_stats_data *stats,
 			struct connman_stats_data *counters,
-			connman_bool_t append_all)
+			bool append_all)
 {
 	if (counters->rx_packets != stats->rx_packets || append_all) {
 		counters->rx_packets = stats->rx_packets;
@@ -1958,7 +1958,7 @@ static void stats_append_counters(DBusMessageIter *dict,
 static void stats_append(struct connman_service *service,
 				const char *counter,
 				struct connman_stats_counter *counters,
-				connman_bool_t append_all)
+				bool append_all)
 {
 	DBusMessageIter array, dict;
 	DBusMessage *msg;
@@ -2006,7 +2006,7 @@ static void stats_update(struct connman_service *service,
 
 	DBG("service %p", service);
 
-	if (stats->valid == TRUE) {
+	if (stats->valid) {
 		data->rx_packets +=
 			rx_packets - data_last->rx_packets;
 		data->tx_packets +=
@@ -2024,7 +2024,7 @@ static void stats_update(struct connman_service *service,
 		data->tx_dropped +=
 			tx_dropped - data_last->tx_dropped;
 	} else {
-		stats->valid = TRUE;
+		stats->valid = true;
 	}
 
 	data_last->rx_packets = rx_packets;
@@ -2056,7 +2056,7 @@ void __connman_service_notify(struct connman_service *service,
 	if (service == NULL)
 		return;
 
-	if (is_connected(service) == FALSE)
+	if (!is_connected(service))
 		return;
 
 	stats_update(service,
@@ -2077,7 +2077,7 @@ void __connman_service_notify(struct connman_service *service,
 		counters = value;
 
 		stats_append(service, counter, counters, counters->append_all);
-		counters->append_all = FALSE;
+		counters->append_all = false;
 	}
 }
 
@@ -2098,7 +2098,7 @@ int __connman_service_counter_register(const char *counter)
 		if (counters == NULL)
 			return -ENOMEM;
 
-		counters->append_all = TRUE;
+		counters->append_all = true;
 
 		g_hash_table_replace(service->counter_table, (gpointer)counter,
 					counters);
@@ -2144,15 +2144,15 @@ void __connman_service_session_inc(struct connman_service *service)
 	__sync_fetch_and_add(&service->session_usage_count, 1);
 }
 
-connman_bool_t __connman_service_session_dec(struct connman_service *service)
+bool __connman_service_session_dec(struct connman_service *service)
 {
 	DBG("service %p ref count %d", service,
 		service->session_usage_count - 1);
 
 	if (__sync_fetch_and_sub(&service->session_usage_count, 1) != 1)
-		return FALSE;
+		return false;
 
-	return TRUE;
+	return true;
 }
 
 static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
@@ -2192,7 +2192,7 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 	connman_dbus_dict_append_basic(dict, "Immutable",
 					DBUS_TYPE_BOOLEAN, &val);
 
-	if (service->favorite == TRUE)
+	if (service->favorite)
 		val = service->autoconnect;
 	else
 		val = service->favorite;
@@ -2314,12 +2314,12 @@ void __connman_service_list_struct(DBusMessageIter *iter)
 	g_list_foreach(service_list, append_struct, iter);
 }
 
-connman_bool_t __connman_service_is_hidden(struct connman_service *service)
+bool __connman_service_is_hidden(struct connman_service *service)
 {
 	return service->hidden;
 }
 
-connman_bool_t
+bool
 __connman_service_is_split_routing(struct connman_service *service)
 {
 	return service->do_split_routing;
@@ -2340,16 +2340,16 @@ int __connman_service_get_index(struct connman_service *service)
 
 void __connman_service_set_hidden(struct connman_service *service)
 {
-	if (service == NULL || service->hidden == TRUE)
+	if (service == NULL || service->hidden)
 		return;
 
-	service->hidden_service = TRUE;
+	service->hidden_service = true;
 }
 
 void __connman_service_set_domainname(struct connman_service *service,
 						const char *domainname)
 {
-	if (service == NULL || service->hidden == TRUE)
+	if (service == NULL || service->hidden)
 		return;
 
 	g_free(service->domainname);
@@ -2425,7 +2425,7 @@ char **connman_service_get_timeservers(struct connman_service *service)
 void connman_service_set_proxy_method(struct connman_service *service,
 					enum connman_service_proxy_method method)
 {
-	if (service == NULL || service->hidden == TRUE)
+	if (service == NULL || service->hidden)
 		return;
 
 	service->proxy = method;
@@ -2474,7 +2474,7 @@ const char *connman_service_get_proxy_url(struct connman_service *service)
 void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 							const char *url)
 {
-	if (service == NULL || service->hidden == TRUE)
+	if (service == NULL || service->hidden)
 		return;
 
 	service->proxy = CONNMAN_SERVICE_PROXY_METHOD_AUTO;
@@ -2617,7 +2617,7 @@ void __connman_service_timeserver_changed(struct connman_service *service,
 	if (service == NULL)
 		return;
 
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_array(service->path,
@@ -2628,7 +2628,7 @@ void __connman_service_timeserver_changed(struct connman_service *service,
 void __connman_service_set_pac(struct connman_service *service,
 					const char *pac)
 {
-	if (service->hidden == TRUE)
+	if (service->hidden)
 		return;
 	g_free(service->pac);
 	service->pac = g_strdup(pac);
@@ -2639,7 +2639,7 @@ void __connman_service_set_pac(struct connman_service *service,
 void __connman_service_set_identity(struct connman_service *service,
 					const char *identity)
 {
-	if (service->immutable || service->hidden == TRUE)
+	if (service->immutable || service->hidden)
 		return;
 
 	g_free(service->identity);
@@ -2654,7 +2654,7 @@ void __connman_service_set_identity(struct connman_service *service,
 void __connman_service_set_agent_identity(struct connman_service *service,
 						const char *agent_identity)
 {
-	if (service->hidden == TRUE)
+	if (service->hidden)
 		return;
 	g_free(service->agent_identity);
 	service->agent_identity = g_strdup(agent_identity);
@@ -2677,7 +2677,7 @@ static int check_passphrase(struct connman_service *service,
 		 * This will prevent __connman_service_set_passphrase() to
 		 * wipe the passphrase out in case of -ENOKEY error for a
 		 * favorite service. */
-		if (service->favorite == TRUE)
+		if (service->favorite)
 			return 1;
 		else
 			return 0;
@@ -2727,7 +2727,7 @@ int __connman_service_set_passphrase(struct connman_service *service,
 {
 	int err = 0;
 
-	if (service->immutable == TRUE || service->hidden == TRUE)
+	if (service->immutable || service->hidden)
 		return -EINVAL;
 
 	err = check_passphrase(service, service->security, passphrase);
@@ -2757,7 +2757,7 @@ const char *__connman_service_get_passphrase(struct connman_service *service)
 void __connman_service_set_agent_passphrase(struct connman_service *service,
 						const char *agent_passphrase)
 {
-	if (service->hidden == TRUE)
+	if (service->hidden)
 		return;
 	g_free(service->agent_passphrase);
 	service->agent_passphrase = g_strdup(agent_passphrase);
@@ -2823,7 +2823,7 @@ static int update_proxy_configuration(struct connman_service *service,
 
 		type = dbus_message_iter_get_arg_type(&variant);
 
-		if (g_str_equal(key, "Method") == TRUE) {
+		if (g_str_equal(key, "Method")) {
 			const char *val;
 
 			if (type != DBUS_TYPE_STRING)
@@ -2831,12 +2831,12 @@ static int update_proxy_configuration(struct connman_service *service,
 
 			dbus_message_iter_get_basic(&variant, &val);
 			method = string2proxymethod(val);
-		} else if (g_str_equal(key, "URL") == TRUE) {
+		} else if (g_str_equal(key, "URL")) {
 			if (type != DBUS_TYPE_STRING)
 				goto error;
 
 			dbus_message_iter_get_basic(&variant, &url);
-		} else if (g_str_equal(key, "Servers") == TRUE) {
+		} else if (g_str_equal(key, "Servers")) {
 			DBusMessageIter str_array;
 
 			if (type != DBUS_TYPE_ARRAY)
@@ -2862,7 +2862,7 @@ static int update_proxy_configuration(struct connman_service *service,
 
 				dbus_message_iter_next(&str_array);
 			}
-		} else if (g_str_equal(key, "Excludes") == TRUE) {
+		} else if (g_str_equal(key, "Excludes")) {
 			DBusMessageIter str_array;
 
 			if (type != DBUS_TYPE_ARRAY)
@@ -3043,7 +3043,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	DBG("service %p", service);
 
-	if (dbus_message_iter_init(msg, &iter) == FALSE)
+	if (!dbus_message_iter_init(msg, &iter))
 		return __connman_error_invalid_arguments(msg);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
@@ -3059,13 +3059,13 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	type = dbus_message_iter_get_arg_type(&value);
 
-	if (g_str_equal(name, "AutoConnect") == TRUE) {
-		connman_bool_t autoconnect;
+	if (g_str_equal(name, "AutoConnect")) {
+		bool autoconnect;
 
 		if (type != DBUS_TYPE_BOOLEAN)
 			return __connman_error_invalid_arguments(msg);
 
-		if (service->favorite == FALSE)
+		if (!service->favorite)
 			return __connman_error_invalid_service(msg);
 
 		dbus_message_iter_get_basic(&value, &autoconnect);
@@ -3077,17 +3077,17 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		autoconnect_changed(service);
 
-		if (autoconnect == TRUE)
+		if (autoconnect)
 			__connman_service_auto_connect();
 
 		service_save(service);
-	} else if (g_str_equal(name, "Nameservers.Configuration") == TRUE) {
+	} else if (g_str_equal(name, "Nameservers.Configuration")) {
 		DBusMessageIter entry;
 		GString *str;
 		int index;
 		const char *gw;
 
-		if (service->immutable == TRUE)
+		if (service->immutable)
 			return __connman_error_not_supported(msg);
 
 		if (type != DBUS_TYPE_ARRAY)
@@ -3151,12 +3151,12 @@ static DBusMessage *set_property(DBusConnection *conn,
 						CONNMAN_IPCONFIG_TYPE_IPV6);
 
 		service_save(service);
-	} else if (g_str_equal(name, "Timeservers.Configuration") == TRUE) {
+	} else if (g_str_equal(name, "Timeservers.Configuration")) {
 		DBusMessageIter entry;
 		GSList *list = NULL;
 		int count = 0;
 
-		if (service->immutable == TRUE)
+		if (service->immutable)
 			return __connman_error_not_supported(msg);
 
 		if (type != DBUS_TYPE_ARRAY)
@@ -3198,11 +3198,11 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (service == __connman_service_get_default())
 			__connman_timeserver_sync(service);
 
-	} else if (g_str_equal(name, "Domains.Configuration") == TRUE) {
+	} else if (g_str_equal(name, "Domains.Configuration")) {
 		DBusMessageIter entry;
 		GString *str;
 
-		if (service->immutable == TRUE)
+		if (service->immutable)
 			return __connman_error_not_supported(msg);
 
 		if (type != DBUS_TYPE_ARRAY)
@@ -3239,10 +3239,10 @@ static DBusMessage *set_property(DBusConnection *conn,
 		domain_changed(service);
 
 		service_save(service);
-	} else if (g_str_equal(name, "Proxy.Configuration") == TRUE) {
+	} else if (g_str_equal(name, "Proxy.Configuration")) {
 		int err;
 
-		if (service->immutable == TRUE)
+		if (service->immutable)
 			return __connman_error_not_supported(msg);
 
 		if (type != DBUS_TYPE_ARRAY)
@@ -3258,7 +3258,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		__connman_notifier_proxy_changed(service);
 
 		service_save(service);
-	} else if (g_str_equal(name, "IPv4.Configuration") == TRUE ||
+	} else if (g_str_equal(name, "IPv4.Configuration") ||
 			g_str_equal(name, "IPv6.Configuration")) {
 
 		enum connman_service_state state =
@@ -3267,7 +3267,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 			CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 		int err = 0;
 
-		if (service->immutable == TRUE)
+		if (service->immutable)
 			return __connman_error_not_supported(msg);
 
 		DBG("%s", name);
@@ -3276,7 +3276,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 					service->ipconfig_ipv6 == NULL)
 			return __connman_error_invalid_property(msg);
 
-		if (g_str_equal(name, "IPv4.Configuration") == TRUE)
+		if (g_str_equal(name, "IPv4.Configuration"))
 			type = CONNMAN_IPCONFIG_TYPE_IPV4;
 		else
 			type = CONNMAN_IPCONFIG_TYPE_IPV6;
@@ -3328,7 +3328,7 @@ static void set_error(struct connman_service *service,
 	if (str == NULL)
 		str = "";
 
-	if (allow_property_changed(service) == FALSE)
+	if (!allow_property_changed(service))
 		return;
 
 	connman_dbus_property_changed_basic(service->path,
@@ -3355,7 +3355,7 @@ static DBusMessage *clear_property(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &name,
 							DBUS_TYPE_INVALID);
 
-	if (g_str_equal(name, "Error") == TRUE) {
+	if (g_str_equal(name, "Error")) {
 		set_idle(service);
 
 		g_get_current_time(&service->modified);
@@ -3366,34 +3366,33 @@ static DBusMessage *clear_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static connman_bool_t is_ipconfig_usable(struct connman_service *service)
+static bool is_ipconfig_usable(struct connman_service *service)
 {
-	if (__connman_ipconfig_is_usable(service->ipconfig_ipv4) == FALSE &&
-			__connman_ipconfig_is_usable(service->ipconfig_ipv6)
-								== FALSE)
-		return FALSE;
+	if (!__connman_ipconfig_is_usable(service->ipconfig_ipv4) &&
+			!__connman_ipconfig_is_usable(service->ipconfig_ipv6))
+		return false;
 
-	return TRUE;
+	return true;
 }
 
-static connman_bool_t is_ignore(struct connman_service *service)
+static bool is_ignore(struct connman_service *service)
 {
-	if (service->autoconnect == FALSE)
-		return TRUE;
+	if (!service->autoconnect)
+		return true;
 
-	if (service->roaming == TRUE)
-		return TRUE;
+	if (service->roaming)
+		return true;
 
-	if (service->ignore == TRUE)
-		return TRUE;
+	if (service->ignore)
+		return true;
 
 	if (service->state == CONNMAN_SERVICE_STATE_FAILURE)
-		return TRUE;
+		return true;
 
-	if (is_ipconfig_usable(service) == FALSE)
-		return TRUE;
+	if (!is_ipconfig_usable(service))
+		return true;
 
-	return FALSE;
+	return false;
 }
 
 struct preferred_tech_data {
@@ -3425,15 +3424,15 @@ static GList* preferred_tech_list_get(void)
 	if (tech_array == NULL)
 		return NULL;
 
-	if (connman_setting_get_bool("SingleConnectedTechnology") == TRUE) {
+	if (connman_setting_get_bool("SingleConnectedTechnology")) {
 		GList *list;
 		for (list = service_list; list != NULL; list = list->next) {
 			struct connman_service *service = list->data;
 
-			if (is_connected(service) == FALSE)
+			if (!is_connected(service))
 				break;
 
-			if (service->userconnect == TRUE) {
+			if (service->userconnect) {
 				DBG("service %p name %s is user connected",
 						service, service->name);
 				return NULL;
@@ -3450,8 +3449,8 @@ static GList* preferred_tech_list_get(void)
 	return tech_data.preferred_list;
 }
 
-static connman_bool_t auto_connect_service(GList *services,
-		connman_bool_t preferred)
+static bool auto_connect_service(GList *services,
+		bool preferred)
 {
 	struct connman_service *service = NULL;
 	GList *list;
@@ -3460,21 +3459,21 @@ static connman_bool_t auto_connect_service(GList *services,
 		service = list->data;
 
 		if (service->pending != NULL)
-			return TRUE;
+			return true;
 
-		if (is_connecting(service) == TRUE)
-			return TRUE;
+		if (is_connecting(service))
+			return true;
 
-		if (service->favorite == FALSE) {
-			if (preferred == TRUE)
+		if (!service->favorite) {
+			if (preferred)
 				goto next_service;
-			return FALSE;
+			return false;
 		}
 
-		if (is_connected(service) == TRUE)
-			return TRUE;
+		if (is_connected(service))
+			return true;
 
-		if (is_ignore(service) == FALSE && service->state ==
+		if (!is_ignore(service) && service->state ==
 				CONNMAN_SERVICE_STATE_IDLE)
 			break;
 
@@ -3485,13 +3484,13 @@ static connman_bool_t auto_connect_service(GList *services,
 	if (service != NULL) {
 
 		DBG("service %p %s %s", service, service->name,
-				(preferred == TRUE)? "preferred": "auto");
+				(preferred)? "preferred": "auto");
 
-		service->userconnect = FALSE;
+		service->userconnect = false;
 		__connman_service_connect(service);
-		return TRUE;
+		return true;
 	}
-	return FALSE;
+	return false;
 }
 
 static gboolean run_auto_connect(gpointer data)
@@ -3506,11 +3505,11 @@ static gboolean run_auto_connect(gpointer data)
 	if (preferred_tech != NULL)
 		list = preferred_tech;
 
-	if (list == NULL || auto_connect_service(list, TRUE) == FALSE)
+	if (list == NULL || !auto_connect_service(list, true))
 		list = service_list;
 
 	if (list != NULL)
-		auto_connect_service(list, FALSE);
+		auto_connect_service(list, false);
 
 	if (preferred_tech != NULL)
 		g_list_free(preferred_tech);
@@ -3522,7 +3521,7 @@ void __connman_service_auto_connect(void)
 {
 	DBG("");
 
-	if (__connman_session_mode() == TRUE) {
+	if (__connman_session_mode()) {
 		DBG("Session mode enabled: auto connect disabled");
 		return;
 	}
@@ -3590,16 +3589,16 @@ static void reply_pending(struct connman_service *service, int error)
 	}
 }
 
-connman_bool_t
+bool
 __connman_service_is_provider_pending(struct connman_service *service)
 {
 	if (service == NULL)
-		return FALSE;
+		return false;
 
 	if (service->provider_pending != NULL)
-		return TRUE;
+		return true;
 
-	return FALSE;
+	return false;
 }
 
 void __connman_service_set_provider_pending(struct connman_service *service,
@@ -3653,7 +3652,7 @@ void __connman_service_return_error(struct connman_service *service,
 static gboolean connect_timeout(gpointer user_data)
 {
 	struct connman_service *service = user_data;
-	connman_bool_t autoconnect = FALSE;
+	bool autoconnect = false;
 
 	DBG("service %p", service);
 
@@ -3679,7 +3678,7 @@ static gboolean connect_timeout(gpointer user_data)
 		dbus_message_unref(service->pending);
 		service->pending = NULL;
 	} else
-		autoconnect = TRUE;
+		autoconnect = true;
 
 	__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_FAILURE,
@@ -3688,14 +3687,14 @@ static gboolean connect_timeout(gpointer user_data)
 					CONNMAN_SERVICE_STATE_FAILURE,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 
-	if (autoconnect == TRUE && service->userconnect == FALSE)
+	if (autoconnect && !service->userconnect)
 		__connman_service_auto_connect();
 
 	return FALSE;
 }
 
 static void set_reconnect_state(struct connman_service *service,
-						connman_bool_t reconnect)
+						bool reconnect)
 {
 	struct connman_device *device;
 
@@ -3709,21 +3708,21 @@ static void set_reconnect_state(struct connman_service *service,
 	__connman_device_set_reconnect(device, reconnect);
 }
 
-static connman_bool_t get_reconnect_state(struct connman_service *service)
+static bool get_reconnect_state(struct connman_service *service)
 {
 	struct connman_device *device;
 
 	if (service->network == NULL)
-		return FALSE;
+		return false;
 
 	device = connman_network_get_device(service->network);
 	if (device == NULL)
-		return FALSE;
+		return false;
 
 	return __connman_device_get_reconnect(device);
 }
 
-static connman_bool_t is_interface_available(struct connman_service *service,
+static bool is_interface_available(struct connman_service *service,
 					struct connman_service *other_service)
 {
 	unsigned int index = 0, other_index = 0;
@@ -3741,9 +3740,9 @@ static connman_bool_t is_interface_available(struct connman_service *service,
 						other_service->ipconfig_ipv6);
 
 	if (index > 0 && other_index != index)
-		return TRUE;
+		return true;
 
-	return FALSE;
+	return false;
 }
 
 static DBusMessage *connect_service(DBusConnection *conn,
@@ -3767,9 +3766,8 @@ static DBusMessage *connect_service(DBusConnection *conn,
 		 * more than one wifi card).
 		 */
 		if (service->type == temp->type &&
-				is_connecting(temp) == TRUE &&
-				is_interface_available(service,
-							temp) == FALSE) {
+				is_connecting(temp) &&
+				!is_interface_available(service, temp)) {
 			if (temp->pending != NULL)
 				__connman_service_return_error(temp,
 							ECONNABORTED,
@@ -3785,13 +3783,13 @@ static DBusMessage *connect_service(DBusConnection *conn,
 		}
 	}
 
-	service->ignore = FALSE;
+	service->ignore = false;
 
-	service->userconnect = TRUE;
+	service->userconnect = true;
 
 	service->pending = dbus_message_ref(msg);
 
-	set_reconnect_state(service, FALSE);
+	set_reconnect_state(service, false);
 
 	err = __connman_service_connect(service);
 	if (err < 0) {
@@ -3821,9 +3819,9 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 
 	reply_pending(service, ECONNABORTED);
 
-	service->ignore = TRUE;
+	service->ignore = true;
 
-	set_reconnect_state(service, FALSE);
+	set_reconnect_state(service, false);
 
 	err = __connman_service_disconnect(service);
 	if (err < 0) {
@@ -3834,19 +3832,19 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-gboolean __connman_service_remove(struct connman_service *service)
+bool __connman_service_remove(struct connman_service *service)
 {
 	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
-		return FALSE;
+		return false;
 
-	if (service->immutable == TRUE || service->hidden == TRUE)
-		return FALSE;
+	if (service->immutable || service->hidden)
+		return false;
 
-	if (service->favorite == FALSE && service->state !=
+	if (!service->favorite && service->state !=
 						CONNMAN_SERVICE_STATE_FAILURE)
-		return FALSE;
+		return false;
 
-	set_reconnect_state(service, FALSE);
+	set_reconnect_state(service, false);
 
 	__connman_service_disconnect(service);
 
@@ -3867,11 +3865,11 @@ gboolean __connman_service_remove(struct connman_service *service)
 
 	set_idle(service);
 
-	__connman_service_set_favorite(service, FALSE);
+	__connman_service_set_favorite(service, false);
 
 	service_save(service);
 
-	return TRUE;
+	return true;
 }
 
 static DBusMessage *remove_service(DBusConnection *conn,
@@ -3881,13 +3879,13 @@ static DBusMessage *remove_service(DBusConnection *conn,
 
 	DBG("service %p", service);
 
-	if (__connman_service_remove(service) == FALSE)
+	if (!__connman_service_remove(service))
 		return __connman_error_not_supported(msg);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static gboolean check_suitable_state(enum connman_service_state a,
+static bool check_suitable_state(enum connman_service_state a,
 					enum connman_service_state b)
 {
 	/*
@@ -3898,7 +3896,7 @@ static gboolean check_suitable_state(enum connman_service_state a,
 			b == CONNMAN_SERVICE_STATE_READY) ||
 		(b == CONNMAN_SERVICE_STATE_ONLINE &&
 			a == CONNMAN_SERVICE_STATE_READY))
-		return TRUE;
+		return true;
 
 	return a == b;
 }
@@ -3961,7 +3959,7 @@ static void switch_default_service(struct connman_service *default_service,
 
 static DBusMessage *move_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data,
-								gboolean before)
+								bool before)
 {
 	struct connman_service *service = user_data;
 	struct connman_service *target;
@@ -3974,11 +3972,11 @@ static DBusMessage *move_service(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
 
-	if (service->favorite == FALSE)
+	if (!service->favorite)
 		return __connman_error_not_supported(msg);
 
 	target = find_service(path);
-	if (target == NULL || target->favorite == FALSE || target == service)
+	if (target == NULL || !target->favorite || target == service)
 		return __connman_error_invalid_service(msg);
 
 	if (target->type == CONNMAN_SERVICE_TYPE_VPN) {
@@ -3986,19 +3984,18 @@ static DBusMessage *move_service(DBusConnection *conn,
 		 * We only allow VPN route splitting if there are
 		 * routes defined for a given VPN.
 		 */
-		if (__connman_provider_check_routes(target->provider)
-								== FALSE) {
+		if (!__connman_provider_check_routes(target->provider)) {
 			connman_info("Cannot move service. "
 				"No routes defined for provider %s",
 				__connman_provider_get_ident(target->provider));
 			return __connman_error_invalid_service(msg);
 		}
 
-		target->do_split_routing = TRUE;
+		target->do_split_routing = true;
 	} else
-		target->do_split_routing = FALSE;
+		target->do_split_routing = false;
 
-	service->do_split_routing = FALSE;
+	service->do_split_routing = false;
 
 	target4 = __connman_ipconfig_get_method(target->ipconfig_ipv4);
 	target6 = __connman_ipconfig_get_method(target->ipconfig_ipv6);
@@ -4019,32 +4016,28 @@ static DBusMessage *move_service(DBusConnection *conn,
 	 */
 	if (target4 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (service6 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (check_suitable_state(target->state_ipv6,
-						service->state_ipv6) == FALSE)
+			if (!check_suitable_state(target->state_ipv6, service->state_ipv6))
 				return __connman_error_invalid_service(msg);
 		}
 	}
 
 	if (target6 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (service4 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (check_suitable_state(target->state_ipv4,
-						service->state_ipv4) == FALSE)
+			if (!check_suitable_state(target->state_ipv4, service->state_ipv4))
 				return __connman_error_invalid_service(msg);
 		}
 	}
 
 	if (service4 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (target6 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (check_suitable_state(target->state_ipv6,
-						service->state_ipv6) == FALSE)
+			if (!check_suitable_state(target->state_ipv6, service->state_ipv6))
 				return __connman_error_invalid_service(msg);
 		}
 	}
 
 	if (service6 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (target4 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (check_suitable_state(target->state_ipv4,
-						service->state_ipv4) == FALSE)
+			if (!check_suitable_state(target->state_ipv4, service->state_ipv4))
 				return __connman_error_invalid_service(msg);
 		}
 	}
@@ -4059,7 +4052,7 @@ static DBusMessage *move_service(DBusConnection *conn,
 	 * the service which goes up, needs to recompute its state which
 	 * is triggered via downgrading it - if relevant - to state ready.
 	 */
-	if (before == TRUE)
+	if (before)
 		switch_default_service(target, service);
 	else
 		switch_default_service(service, target);
@@ -4072,13 +4065,13 @@ static DBusMessage *move_service(DBusConnection *conn,
 static DBusMessage *move_before(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	return move_service(conn, msg, user_data, TRUE);
+	return move_service(conn, msg, user_data, true);
 }
 
 static DBusMessage *move_after(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	return move_service(conn, msg, user_data, FALSE);
+	return move_service(conn, msg, user_data, false);
 }
 
 static DBusMessage *reset_counters(DBusConnection *conn,
@@ -4201,15 +4194,15 @@ static void service_schedule_removed(struct connman_service *service)
 	service_schedule_changed();
 }
 
-static connman_bool_t allow_property_changed(struct connman_service *service)
+static bool allow_property_changed(struct connman_service *service)
 {
 	if (g_hash_table_lookup_extended(services_notify->add, service->path,
-					NULL, NULL) == TRUE) {
+					NULL, NULL)) {
 		DBG("no property updates for service %p", service);
-		return FALSE;
+		return false;
 	}
 
-	return TRUE;
+	return true;
 }
 
 static const GDBusMethodTable service_methods[] = {
@@ -4330,13 +4323,13 @@ static void service_free(gpointer user_data)
 static void stats_init(struct connman_service *service)
 {
 	/* home */
-	service->stats.valid = FALSE;
-	service->stats.enabled = FALSE;
+	service->stats.valid = false;
+	service->stats.enabled = false;
 	service->stats.timer = g_timer_new();
 
 	/* roaming */
-	service->stats_roaming.valid = FALSE;
-	service->stats_roaming.enabled = FALSE;
+	service->stats_roaming.valid = false;
+	service->stats_roaming.enabled = false;
 	service->stats_roaming.timer = g_timer_new();
 }
 
@@ -4356,13 +4349,13 @@ static void service_initialize(struct connman_service *service)
 	service->state_ipv4 = CONNMAN_SERVICE_STATE_UNKNOWN;
 	service->state_ipv6 = CONNMAN_SERVICE_STATE_UNKNOWN;
 
-	service->favorite  = FALSE;
-	service->immutable = FALSE;
-	service->hidden = FALSE;
+	service->favorite  = false;
+	service->immutable = false;
+	service->hidden = false;
 
-	service->ignore = FALSE;
+	service->ignore = false;
 
-	service->userconnect = FALSE;
+	service->userconnect = false;
 
 	service->order = 0;
 
@@ -4370,7 +4363,7 @@ static void service_initialize(struct connman_service *service)
 
 	service->provider = NULL;
 
-	service->wps = FALSE;
+	service->wps = false;
 }
 
 /**
@@ -4407,7 +4400,7 @@ struct connman_service *connman_service_create(void)
 			return NULL;
 		}
 
-		counters->append_all = TRUE;
+		counters->append_all = true;
 
 		g_hash_table_replace(service->counter_table, (gpointer)counter,
 				counters);
@@ -4470,10 +4463,10 @@ static gint service_compare(gconstpointer a, gconstpointer b)
 	state_b = service_b->state;
 
 	if (state_a != state_b) {
-		gboolean a_connected = is_connected(service_a);
-		gboolean b_connected = is_connected(service_b);
+		bool a_connected = is_connected(service_a);
+		bool b_connected = is_connected(service_b);
 
-		if (a_connected == TRUE && b_connected == TRUE) {
+		if (a_connected && b_connected) {
 			/* We prefer online over ready state */
 			if (state_a == CONNMAN_SERVICE_STATE_ONLINE)
 				return -1;
@@ -4482,14 +4475,14 @@ static gint service_compare(gconstpointer a, gconstpointer b)
 				return 1;
 		}
 
-		if (a_connected == TRUE)
+		if (a_connected)
 			return -1;
-		if (b_connected == TRUE)
+		if (b_connected)
 			return 1;
 
-		if (is_connecting(service_a) == TRUE)
+		if (is_connecting(service_a))
 			return -1;
-		if (is_connecting(service_b) == TRUE)
+		if (is_connecting(service_b))
 			return 1;
 	}
 
@@ -4499,10 +4492,10 @@ static gint service_compare(gconstpointer a, gconstpointer b)
 	if (service_a->order < service_b->order)
 		return 1;
 
-	if (service_a->favorite == TRUE && service_b->favorite == FALSE)
+	if (service_a->favorite && !service_b->favorite)
 		return -1;
 
-	if (service_a->favorite == FALSE && service_b->favorite == TRUE)
+	if (!service_a->favorite && service_b->favorite)
 		return 1;
 
 	if (service_a->type != service_b->type) {
@@ -4618,11 +4611,11 @@ __connman_service_get_ipconfig(struct connman_service *service, int family)
 
 }
 
-connman_bool_t __connman_service_is_connected_state(struct connman_service *service,
+bool __connman_service_is_connected_state(struct connman_service *service,
 					enum connman_ipconfig_type type)
 {
 	if (service == NULL)
-		return FALSE;
+		return false;
 
 	switch (type) {
 	case CONNMAN_IPCONFIG_TYPE_UNKNOWN:
@@ -4633,7 +4626,7 @@ connman_bool_t __connman_service_is_connected_state(struct connman_service *serv
 		return is_connected_state(service, service->state_ipv6);
 	}
 
-	return FALSE;
+	return false;
 }
 enum connman_service_security __connman_service_get_security(struct connman_service *service)
 {
@@ -4651,17 +4644,17 @@ const char *__connman_service_get_phase2(struct connman_service *service)
 	return service->phase2;
 }
 
-connman_bool_t __connman_service_wps_enabled(struct connman_service *service)
+bool __connman_service_wps_enabled(struct connman_service *service)
 {
 	if (service == NULL)
-		return FALSE;
+		return false;
 
 	return service->wps;
 }
 
 void __connman_service_mark_dirty()
  {
-	services_dirty = TRUE;
+	services_dirty = true;
  }
 
 /**
@@ -4673,10 +4666,10 @@ void __connman_service_mark_dirty()
  * Change the favorite setting of service
  */
 int __connman_service_set_favorite_delayed(struct connman_service *service,
-					connman_bool_t favorite,
-					gboolean delay_ordering)
+					bool favorite,
+					bool delay_ordering)
 {
-	if (service->hidden == TRUE)
+	if (service->hidden)
 		return -EOPNOTSUPP;
 
 	if (service->favorite == favorite)
@@ -4684,12 +4677,12 @@ int __connman_service_set_favorite_delayed(struct connman_service *service,
 
 	service->favorite = favorite;
 
-	if (delay_ordering == FALSE)
+	if (!delay_ordering)
 		service->order = __connman_service_get_order(service);
 
 	favorite_changed(service);
 
-	if (delay_ordering == FALSE) {
+	if (!delay_ordering) {
 
 		if (service_list->next != NULL) {
 			service_list = g_list_sort(service_list,
@@ -4711,21 +4704,21 @@ int __connman_service_set_favorite_delayed(struct connman_service *service,
  * Change the favorite setting of service
  */
 int __connman_service_set_favorite(struct connman_service *service,
-						connman_bool_t favorite)
+						bool favorite)
 {
 	return __connman_service_set_favorite_delayed(service, favorite,
-							FALSE);
+							false);
 }
 
-connman_bool_t connman_service_get_favorite(struct connman_service *service)
+bool connman_service_get_favorite(struct connman_service *service)
 {
        return service->favorite;
 }
 
 int __connman_service_set_immutable(struct connman_service *service,
-						connman_bool_t immutable)
+						bool immutable)
 {
-	if (service->hidden == TRUE)
+	if (service->hidden)
 		return -EOPNOTSUPP;
 
 	if (service->immutable == immutable)
@@ -4739,7 +4732,7 @@ int __connman_service_set_immutable(struct connman_service *service,
 }
 
 int __connman_service_set_ignore(struct connman_service *service,
-						connman_bool_t ignore)
+						bool ignore)
 {
 	if (service == NULL)
 		return -EINVAL;
@@ -4752,37 +4745,37 @@ int __connman_service_set_ignore(struct connman_service *service,
 void __connman_service_set_string(struct connman_service *service,
 				  const char *key, const char *value)
 {
-	if (service->hidden == TRUE)
+	if (service->hidden)
 		return;
-	if (g_str_equal(key, "EAP") == TRUE) {
+	if (g_str_equal(key, "EAP")) {
 		g_free(service->eap);
 		service->eap = g_strdup(value);
-	} else if (g_str_equal(key, "Identity") == TRUE) {
+	} else if (g_str_equal(key, "Identity")) {
 		g_free(service->identity);
 		service->identity = g_strdup(value);
-	} else if (g_str_equal(key, "CACertFile") == TRUE) {
+	} else if (g_str_equal(key, "CACertFile")) {
 		g_free(service->ca_cert_file);
 		service->ca_cert_file = g_strdup(value);
-	} else if (g_str_equal(key, "ClientCertFile") == TRUE) {
+	} else if (g_str_equal(key, "ClientCertFile")) {
 		g_free(service->client_cert_file);
 		service->client_cert_file = g_strdup(value);
-	} else if (g_str_equal(key, "PrivateKeyFile") == TRUE) {
+	} else if (g_str_equal(key, "PrivateKeyFile")) {
 		g_free(service->private_key_file);
 		service->private_key_file = g_strdup(value);
-	} else if (g_str_equal(key, "PrivateKeyPassphrase") == TRUE) {
+	} else if (g_str_equal(key, "PrivateKeyPassphrase")) {
 		g_free(service->private_key_passphrase);
 		service->private_key_passphrase = g_strdup(value);
-	} else if (g_str_equal(key, "Phase2") == TRUE) {
+	} else if (g_str_equal(key, "Phase2")) {
 		g_free(service->phase2);
 		service->phase2 = g_strdup(value);
-	} else if (g_str_equal(key, "Passphrase") == TRUE) {
+	} else if (g_str_equal(key, "Passphrase")) {
 		g_free(service->passphrase);
 		service->passphrase = g_strdup(value);
 	}
 }
 
 void __connman_service_set_userconnect(struct connman_service *service,
-						connman_bool_t userconnect)
+						bool userconnect)
 {
 	if (service != NULL)
 		service->userconnect = userconnect;
@@ -4823,19 +4816,19 @@ static void service_complete(struct connman_service *service)
 {
 	reply_pending(service, EIO);
 
-	if (service->userconnect == FALSE)
+	if (!service->userconnect)
 		__connman_service_auto_connect();
 
 	g_get_current_time(&service->modified);
 	service_save(service);
 }
 
-static void report_error_cb(void *user_context, gboolean retry,
+static void report_error_cb(void *user_context, bool retry,
 							void *user_data)
 {
 	struct connman_service *service = user_context;
 
-	if (retry == TRUE)
+	if (retry)
 		__connman_service_connect(service);
 	else {
 		/* It is not relevant to stay on Failure state
@@ -4907,10 +4900,10 @@ static int check_wpspin(struct connman_service *service, const char *wpspin)
 }
 
 static void request_input_cb (struct connman_service *service,
-			connman_bool_t values_received,
+			bool values_received,
 			const char *name, int name_len,
 			const char *identity, const char *passphrase,
-			gboolean wps, const char *wpspin,
+			bool wps, const char *wpspin,
 			const char *error, void *user_data)
 {
 	struct connman_device *device;
@@ -4925,18 +4918,18 @@ static void request_input_cb (struct connman_service *service,
 				"net.connman.Agent.Error.Canceled") == 0) {
 			err = -EINVAL;
 
-			if (service->hidden == TRUE)
+			if (service->hidden)
 				__connman_service_return_error(service,
 							ECANCELED, user_data);
 			goto done;
 		} else {
-			if (service->hidden == TRUE)
+			if (service->hidden)
 				__connman_service_return_error(service,
 							ETIMEDOUT, user_data);
 		}
 	}
 
-	if (service->hidden == TRUE && name_len > 0 && name_len <= 32) {
+	if (service->hidden && name_len > 0 && name_len <= 32) {
 		device = connman_network_get_device(service->network);
 		err = __connman_device_request_hidden_scan(device,
 						name, name_len,
@@ -4947,12 +4940,12 @@ static void request_input_cb (struct connman_service *service,
 							user_data);
 	}
 
-	if (values_received == FALSE || service->hidden == TRUE) {
+	if (!values_received || service->hidden) {
 		err = -EINVAL;
 		goto done;
 	}
 
-	if (wps == TRUE && service->network != NULL) {
+	if (wps && service->network != NULL) {
 		err = check_wpspin(service, wpspin);
 		if (err < 0)
 			goto done;
@@ -4984,7 +4977,7 @@ static void request_input_cb (struct connman_service *service,
 		 * when failing is due to wrong user input */
 		service->state = CONNMAN_SERVICE_STATE_IDLE;
 
-		if (service->hidden == FALSE) {
+		if (!service->hidden) {
 			/*
 			 * If there was a real error when requesting
 			 * hidden scan, then that error is returned already
@@ -5008,7 +5001,7 @@ static void downgrade_connected_services(void)
 	for (list = service_list; list != NULL; list = list->next) {
 		up_service = list->data;
 
-		if (is_connected(up_service) == FALSE)
+		if (!is_connected(up_service))
 			continue;
 
 		if (up_service->state == CONNMAN_SERVICE_STATE_ONLINE)
@@ -5059,7 +5052,7 @@ static void single_connected_tech(struct connman_service *allowed)
 	for (iter = service_list; iter != NULL; iter = iter->next) {
 		service = iter->data;
 
-		if (is_connected(service) == FALSE)
+		if (!is_connected(service))
 			break;
 
 		if (service == allowed)
@@ -5123,50 +5116,50 @@ static int service_indicate_state(struct connman_service *service)
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_CONFIGURATION) {
-		if (service->new_service == FALSE &&
+		if (!service->new_service &&
 				__connman_stats_service_register(service) == 0) {
 			/*
 			 * For new services the statistics are updated after
 			 * we have successfully connected.
 			 */
-			__connman_stats_get(service, FALSE,
+			__connman_stats_get(service, false,
 						&service->stats.data);
-			__connman_stats_get(service, TRUE,
+			__connman_stats_get(service, true,
 						&service->stats_roaming.data);
 		}
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_IDLE) {
-		connman_bool_t reconnect;
+		bool reconnect;
 
 		reconnect = get_reconnect_state(service);
-		if (reconnect == TRUE)
+		if (reconnect)
 			__connman_service_auto_connect();
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_READY) {
 		enum connman_ipconfig_method method;
 
-		if (service->new_service == TRUE &&
+		if (service->new_service &&
 				__connman_stats_service_register(service) == 0) {
 			/*
 			 * This is normally done after configuring state
 			 * but for new service do this after we have connected
 			 * successfully.
 			 */
-			__connman_stats_get(service, FALSE,
+			__connman_stats_get(service, false,
 						&service->stats.data);
-			__connman_stats_get(service, TRUE,
+			__connman_stats_get(service, true,
 						&service->stats_roaming.data);
 		}
 
-		service->new_service = FALSE;
+		service->new_service = false;
 
 		service_update_preferred_order(def_service, service, new_state);
 
-		set_reconnect_state(service, TRUE);
+		set_reconnect_state(service, true);
 
-		__connman_service_set_favorite(service, TRUE);
+		__connman_service_set_favorite(service, true);
 
 		reply_pending(service, 0);
 
@@ -5183,7 +5176,7 @@ static int service_indicate_state(struct connman_service *service)
 
 		if (service->type == CONNMAN_SERVICE_TYPE_WIFI &&
 			connman_network_get_bool(service->network,
-						"WiFi.UseWPS") == TRUE) {
+						"WiFi.UseWPS")) {
 			const char *pass;
 
 			pass = connman_network_get_string(service->network,
@@ -5192,7 +5185,7 @@ static int service_indicate_state(struct connman_service *service)
 			__connman_service_set_passphrase(service, pass);
 
 			connman_network_set_bool(service->network,
-							"WiFi.UseWPS", FALSE);
+							"WiFi.UseWPS", false);
 		}
 
 		default_changed();
@@ -5203,13 +5196,13 @@ static int service_indicate_state(struct connman_service *service)
 						service->ipconfig_ipv6);
 
 		if (connman_setting_get_bool("SingleConnectedTechnology")
-				== TRUE)
+				)
 			single_connected_tech(service);
 
 	} else if (new_state == CONNMAN_SERVICE_STATE_DISCONNECT) {
 		def_service = __connman_service_get_default();
 
-		if (__connman_notifier_is_connected() == FALSE &&
+		if (!__connman_notifier_is_connected() &&
 			def_service != NULL &&
 				def_service->provider != NULL)
 			connman_provider_disconnect(def_service->provider);
@@ -5236,7 +5229,7 @@ static int service_indicate_state(struct connman_service *service)
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_FAILURE) {
-		if (service->userconnect == TRUE &&
+		if (service->userconnect &&
 			connman_agent_report_error(service, service->path,
 					error2string(service->error),
 					report_error_cb, NULL) == -EINPROGRESS)
@@ -5296,8 +5289,8 @@ int __connman_service_clear_error(struct connman_service *service)
 						CONNMAN_SERVICE_STATE_UNKNOWN;
 	set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 
-	if (service->favorite == TRUE)
-		set_reconnect_state(service, TRUE);
+	if (service->favorite)
+		set_reconnect_state(service, true);
 
 	__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_IDLE,
@@ -5379,7 +5372,7 @@ static int connected_networks_count;
 static int original_rp_filter;
 
 static void service_rp_filter(struct connman_service *service,
-				gboolean connected)
+				bool connected)
 {
 	enum connman_ipconfig_method method;
 
@@ -5396,7 +5389,7 @@ static void service_rp_filter(struct connman_service *service,
 		break;
 	}
 
-	if (connected == TRUE) {
+	if (connected) {
 		if (connected_networks_count == 1) {
 			int filter_value;
 			filter_value = __connman_ipconfig_set_rp_filter();
@@ -5506,7 +5499,7 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
 			check_proxy_setup(service);
-			service_rp_filter(service, TRUE);
+			service_rp_filter(service, true);
 		} else {
 			service->online_check_count = 1;
 			__connman_wispr_start(service, type);
@@ -5519,7 +5512,7 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 			return -EINVAL;
 
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-			service_rp_filter(service, FALSE);
+			service_rp_filter(service, false);
 
 		break;
 	case CONNMAN_SERVICE_STATE_FAILURE:
@@ -5560,7 +5553,7 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 	return ret;
 }
 
-static connman_bool_t prepare_network(struct connman_service *service)
+static bool prepare_network(struct connman_service *service)
 {
 	enum connman_network_type type;
 	unsigned int ssid_len;
@@ -5570,11 +5563,11 @@ static connman_bool_t prepare_network(struct connman_service *service)
 	switch (type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
-		return FALSE;
+		return false;
 	case CONNMAN_NETWORK_TYPE_WIFI:
 		if (connman_network_get_blob(service->network, "WiFi.SSID",
 							&ssid_len) == NULL)
-			return FALSE;
+			return false;
 
 		if (service->passphrase != NULL)
 			connman_network_set_string(service->network,
@@ -5587,7 +5580,7 @@ static connman_bool_t prepare_network(struct connman_service *service)
 		break;
 	}
 
-	return TRUE;
+	return true;
 }
 
 static void prepare_8021x(struct connman_service *service)
@@ -5628,7 +5621,7 @@ static int service_connect(struct connman_service *service)
 {
 	int err;
 
-	if (service->hidden == TRUE)
+	if (service->hidden)
 		return -EPERM;
 
 	switch (service->type) {
@@ -5655,10 +5648,8 @@ static int service_connect(struct connman_service *service)
 				if (service->network == NULL)
 					return -EOPNOTSUPP;
 
-				if (service->wps == FALSE ||
-					connman_network_get_bool(
-							service->network,
-							"WiFi.UseWPS") == FALSE)
+				if (!service->wps ||
+					!connman_network_get_bool(service->network, "WiFi.UseWPS"))
 					return -ENOKEY;
 			} else if (service->error ==
 					CONNMAN_SERVICE_ERROR_INVALID_KEY)
@@ -5672,7 +5663,7 @@ static int service_connect(struct connman_service *service)
 			 * never request credentials if using EAP-TLS
 			 * (EAP-TLS networks need to be fully provisioned)
 			 */
-			if (g_str_equal(service->eap, "tls") == TRUE)
+			if (g_str_equal(service->eap, "tls"))
 				break;
 
 			/*
@@ -5692,7 +5683,7 @@ static int service_connect(struct connman_service *service)
 	}
 
 	if (service->network != NULL) {
-		if (prepare_network(service) == FALSE)
+		if (!prepare_network(service))
 			return -EINVAL;
 
 		switch (service->security) {
@@ -5709,9 +5700,9 @@ static int service_connect(struct connman_service *service)
 		}
 
 		if (__connman_stats_service_register(service) == 0) {
-			__connman_stats_get(service, FALSE,
+			__connman_stats_get(service, false,
 						&service->stats.data);
-			__connman_stats_get(service, TRUE,
+			__connman_stats_get(service, true,
 						&service->stats_roaming.data);
 		}
 
@@ -5745,10 +5736,10 @@ int __connman_service_connect(struct connman_service *service)
 
 	DBG("service %p state %s", service, state2string(service->state));
 
-	if (is_connected(service) == TRUE)
+	if (is_connected(service))
 		return -EISCONN;
 
-	if (is_connecting(service) == TRUE)
+	if (is_connecting(service))
 		return -EALREADY;
 
 	switch (service->type) {
@@ -5758,7 +5749,7 @@ int __connman_service_connect(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_GADGET:
 		return -EINVAL;
 	default:
-		if (is_ipconfig_usable(service) == FALSE)
+		if (!is_ipconfig_usable(service))
 			return -ENOLINK;
 
 		err = service_connect(service);
@@ -5783,7 +5774,7 @@ int __connman_service_connect(struct connman_service *service)
 				service->provider != NULL)
 			connman_provider_disconnect(service->provider);
 
-	if (service->userconnect == TRUE) {
+	if (service->userconnect) {
 		if (err == -ENOKEY || err == -EPERM) {
 			DBusMessage *pending = NULL;
 
@@ -5793,14 +5784,14 @@ int __connman_service_connect(struct connman_service *service)
 			 * after the real hidden network is connected or
 			 * connection failed.
 			 */
-			if (service->hidden == TRUE) {
+			if (service->hidden) {
 				pending = service->pending;
 				service->pending = NULL;
 			}
 
 			err = __connman_agent_request_passphrase_input(service,
 					request_input_cb, pending);
-			if (service->hidden == TRUE && err != -EINPROGRESS)
+			if (service->hidden && err != -EINPROGRESS)
 				service->pending = pending;
 
 			return err;
@@ -5817,7 +5808,7 @@ int __connman_service_disconnect(struct connman_service *service)
 
 	DBG("service %p", service);
 
-	service->userconnect = FALSE;
+	service->userconnect = false;
 
 	connman_agent_cancel(service);
 
@@ -5866,7 +5857,7 @@ int __connman_service_disconnect_all(void)
 	for (iter = service_list; iter != NULL; iter = iter->next) {
 		service = iter->data;
 
-		if (is_connected(service) == FALSE)
+		if (!is_connected(service))
 			break;
 
 		services = g_slist_prepend(services, service);
@@ -5875,9 +5866,9 @@ int __connman_service_disconnect_all(void)
 	for (list = services; list != NULL; list = list->next) {
 		struct connman_service *service = list->data;
 
-		service->ignore = TRUE;
+		service->ignore = true;
 
-		set_reconnect_state(service, FALSE);
+		set_reconnect_state(service, false);
 
 		__connman_service_disconnect(service);
 	}
@@ -5929,8 +5920,8 @@ int __connman_service_provision_changed(const char *ident)
 	 * Because the provision_changed() might have set some services
 	 * as favorite, we must sort the sequence now.
 	 */
-	if (services_dirty == TRUE) {
-		services_dirty = FALSE;
+	if (services_dirty) {
+		services_dirty = false;
 
 		if (service_list->next != NULL) {
 			service_list = g_list_sort(service_list,
@@ -6028,8 +6019,8 @@ static void service_up(struct connman_ipconfig *ipconfig)
 
 	link_changed(service);
 
-	service->stats.valid = FALSE;
-	service->stats_roaming.valid = FALSE;
+	service->stats.valid = false;
+	service->stats_roaming.valid = false;
 }
 
 static void service_down(struct connman_ipconfig *ipconfig)
@@ -6052,10 +6043,10 @@ static void service_lower_down(struct connman_ipconfig *ipconfig)
 
 	DBG("%s lower down", __connman_ipconfig_get_ifname(ipconfig));
 
-	if (is_idle_state(service, service->state_ipv4) == FALSE)
+	if (!is_idle_state(service, service->state_ipv4))
 		__connman_ipconfig_disable(service->ipconfig_ipv4);
 
-	if (is_idle_state(service, service->state_ipv6) == FALSE)
+	if (!is_idle_state(service, service->state_ipv6))
 		__connman_ipconfig_disable(service->ipconfig_ipv6);
 
 	stats_stop(service);
@@ -6303,7 +6294,7 @@ unsigned int __connman_service_get_order(struct connman_service *service)
 	if (service == NULL)
 		return 0;
 
-	if (service->favorite == FALSE) {
+	if (!service->favorite) {
 		service->order = 0;
 		goto done;
 	}
@@ -6311,7 +6302,7 @@ unsigned int __connman_service_get_order(struct connman_service *service)
 	if (service == service_list->data)
 		service->order = 1;
 	else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
-			service->do_split_routing == FALSE)
+			!service->do_split_routing)
 		service->order = 10;
 	else
 		service->order = 0;
@@ -6355,17 +6346,17 @@ static enum connman_service_security convert_wifi_security(const char *security)
 {
 	if (security == NULL)
 		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
-	else if (g_str_equal(security, "none") == TRUE)
+	else if (g_str_equal(security, "none"))
 		return CONNMAN_SERVICE_SECURITY_NONE;
-	else if (g_str_equal(security, "wep") == TRUE)
+	else if (g_str_equal(security, "wep"))
 		return CONNMAN_SERVICE_SECURITY_WEP;
-	else if (g_str_equal(security, "psk") == TRUE)
+	else if (g_str_equal(security, "psk"))
 		return CONNMAN_SERVICE_SECURITY_PSK;
-	else if (g_str_equal(security, "ieee8021x") == TRUE)
+	else if (g_str_equal(security, "ieee8021x"))
 		return CONNMAN_SERVICE_SECURITY_8021X;
-	else if (g_str_equal(security, "wpa") == TRUE)
+	else if (g_str_equal(security, "wpa"))
 		return CONNMAN_SERVICE_SECURITY_WPA;
-	else if (g_str_equal(security, "rsn") == TRUE)
+	else if (g_str_equal(security, "rsn"))
 		return CONNMAN_SERVICE_SECURITY_RSN;
 	else
 		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
@@ -6379,21 +6370,21 @@ static void update_from_network(struct connman_service *service,
 
 	DBG("service %p network %p", service, network);
 
-	if (is_connected(service) == TRUE)
+	if (is_connected(service))
 		return;
 
-	if (is_connecting(service) == TRUE)
+	if (is_connecting(service))
 		return;
 
 	str = connman_network_get_string(network, "Name");
 	if (str != NULL) {
 		g_free(service->name);
 		service->name = g_strdup(str);
-		service->hidden = FALSE;
+		service->hidden = false;
 	} else {
 		g_free(service->name);
 		service->name = NULL;
-		service->hidden = TRUE;
+		service->hidden = true;
 	}
 
 	service->strength = connman_network_get_strength(network);
@@ -6465,7 +6456,7 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	if (service == NULL)
 		return NULL;
 
-	if (__connman_network_get_weakness(network) == TRUE)
+	if (__connman_network_get_weakness(network))
 		return service;
 
 	if (service->path != NULL) {
@@ -6477,11 +6468,11 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	service->type = convert_network_type(network);
 
 	auto_connect_types = connman_setting_get_uint_list("DefaultAutoConnectTechnologies");
-	service->autoconnect = FALSE;
+	service->autoconnect = false;
 	for (i = 0; auto_connect_types != NULL &&
 		     auto_connect_types[i] != 0; i++) {
 		if (service->type == auto_connect_types[i]) {
-			service->autoconnect = TRUE;
+			service->autoconnect = true;
 			break;
 		}
 	}
@@ -6497,7 +6488,7 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		break;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
-		service->favorite = TRUE;
+		service->favorite = true;
 		break;
 	}
 
@@ -6517,9 +6508,9 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 
 	service_register(service);
 
-	if (service->favorite == TRUE) {
+	if (service->favorite) {
 		device = connman_network_get_device(service->network);
-		if (device && connman_device_get_scanning(device) == FALSE)
+		if (device && !connman_device_get_scanning(device))
 			__connman_service_auto_connect();
 	}
 
@@ -6531,12 +6522,12 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 
 void __connman_service_update_from_network(struct connman_network *network)
 {
-	connman_bool_t need_sort = FALSE;
+	bool need_sort = false;
 	struct connman_service *service;
 	uint8_t strength;
-	connman_bool_t roaming;
+	bool roaming;
 	const char *name;
-	connman_bool_t stats_enable;
+	bool stats_enable;
 
 	DBG("network %p", network);
 
@@ -6552,7 +6543,7 @@ void __connman_service_update_from_network(struct connman_network *network)
 		g_free(service->name);
 		service->name = g_strdup(name);
 
-		if (allow_property_changed(service) == TRUE)
+		if (allow_property_changed(service))
 			connman_dbus_property_changed_basic(service->path,
 					CONNMAN_SERVICE_INTERFACE, "Name",
 					DBUS_TYPE_STRING, &service->name);
@@ -6566,7 +6557,7 @@ void __connman_service_update_from_network(struct connman_network *network)
 		goto roaming;
 
 	service->strength = strength;
-	need_sort = TRUE;
+	need_sort = true;
 
 	strength_changed(service);
 
@@ -6576,19 +6567,19 @@ roaming:
 		goto sorting;
 
 	stats_enable = stats_enabled(service);
-	if (stats_enable == TRUE)
+	if (stats_enable)
 		stats_stop(service);
 
 	service->roaming = roaming;
-	need_sort = TRUE;
+	need_sort = true;
 
-	if (stats_enable == TRUE)
+	if (stats_enable)
 		stats_start(service);
 
 	roaming_changed(service);
 
 sorting:
-	if (need_sort == TRUE) {
+	if (need_sort) {
 		if (service_list->next != NULL) {
 			service_list = g_list_sort(service_list,
 							service_compare);
@@ -6607,7 +6598,7 @@ void __connman_service_remove_from_network(struct connman_network *network)
 	if (service == NULL)
 		return;
 
-	service->ignore = TRUE;
+	service->ignore = true;
 
 	__connman_connection_gateway_remove(service,
 					CONNMAN_IPCONFIG_TYPE_ALL);
@@ -6644,8 +6635,8 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 
 	service->type = CONNMAN_SERVICE_TYPE_VPN;
 	service->provider = connman_provider_ref(provider);
-	service->autoconnect = FALSE;
-	service->userconnect = TRUE;
+	service->autoconnect = false;
+	service->userconnect = true;
 
 	service->state_ipv4 = service->state_ipv6 = CONNMAN_SERVICE_STATE_IDLE;
 	service->state = combine_state(service->state_ipv4, service->state_ipv6);
@@ -6654,11 +6645,11 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	if (str != NULL) {
 		g_free(service->name);
 		service->name = g_strdup(str);
-		service->hidden = FALSE;
+		service->hidden = false;
 	} else {
 		g_free(service->name);
 		service->name = NULL;
-		service->hidden = TRUE;
+		service->hidden = true;
 	}
 
 	service->strength = 0;
@@ -6717,7 +6708,7 @@ static void remove_unprovisioned_services()
 			goto next;
 		}
 
-		if (g_key_file_has_group(configkeyfile, section) == FALSE)
+		if (!g_key_file_has_group(configkeyfile, section))
 			/*
 			 * Config section is missing, remove the provisioned
 			 * service.

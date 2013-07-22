@@ -243,23 +243,23 @@ extern struct connman_debug_desc __stop___debug[];
 
 static gchar **enabled = NULL;
 
-static connman_bool_t is_enabled(struct connman_debug_desc *desc)
+static bool is_enabled(struct connman_debug_desc *desc)
 {
 	int i;
 
 	if (enabled == NULL)
-		return FALSE;
+		return false;
 
 	for (i = 0; enabled[i] != NULL; i++) {
 		if (desc->name != NULL && g_pattern_match_simple(enabled[i],
-							desc->name) == TRUE)
-			return TRUE;
+							desc->name))
+			return true;
 		if (desc->file != NULL && g_pattern_match_simple(enabled[i],
-							desc->file) == TRUE)
-			return TRUE;
+							desc->file))
+			return true;
 	}
 
-	return FALSE;
+	return false;
 }
 
 void __connman_log_enable(struct connman_debug_desc *start,
@@ -286,13 +286,13 @@ void __connman_log_enable(struct connman_debug_desc *start,
 				file = NULL;
 		}
 
-		if (is_enabled(desc) == TRUE)
+		if (is_enabled(desc))
 			desc->flags |= CONNMAN_DEBUG_FLAG_PRINT;
 	}
 }
 
 int __connman_log_init(const char *program, const char *debug,
-		connman_bool_t detach, connman_bool_t backtrace,
+		bool detach, bool backtrace,
 		const char *program_name, const char *program_version)
 {
 	static char path[PATH_MAX];
@@ -306,10 +306,10 @@ int __connman_log_init(const char *program, const char *debug,
 
 	__connman_log_enable(__start___debug, __stop___debug);
 
-	if (detach == FALSE)
+	if (!detach)
 		option |= LOG_PERROR;
 
-	if (backtrace == TRUE)
+	if (backtrace)
 		signal_setup(signal_handler);
 
 	openlog(basename(program), option, LOG_DAEMON);
@@ -319,13 +319,13 @@ int __connman_log_init(const char *program, const char *debug,
 	return 0;
 }
 
-void __connman_log_cleanup(connman_bool_t backtrace)
+void __connman_log_cleanup(bool backtrace)
 {
 	syslog(LOG_INFO, "Exit");
 
 	closelog();
 
-	if (backtrace == TRUE)
+	if (backtrace)
 		signal_setup(SIG_DFL);
 
 	g_strfreev(enabled);

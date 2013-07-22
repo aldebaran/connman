@@ -287,67 +287,67 @@ int __connman_storage_save_service(GKeyFile *keyfile, const char *service_id)
 	return ret;
 }
 
-static gboolean remove_file(const char *service_id, const char *file)
+static bool remove_file(const char *service_id, const char *file)
 {
 	gchar *pathname;
-	gboolean ret = FALSE;
+	bool ret = false;
 
 	pathname = g_strdup_printf("%s/%s/%s", STORAGEDIR, service_id, file);
 	if(pathname == NULL)
-		return FALSE;
+		return false;
 
-	if (g_file_test(pathname, G_FILE_TEST_EXISTS) == FALSE) {
-		ret = TRUE;
-	} else if (g_file_test(pathname, G_FILE_TEST_IS_REGULAR) == TRUE) {
+	if (!g_file_test(pathname, G_FILE_TEST_EXISTS)) {
+		ret = true;
+	} else if (g_file_test(pathname, G_FILE_TEST_IS_REGULAR)) {
 		unlink(pathname);
-		ret = TRUE;
+		ret = true;
 	}
 
 	g_free(pathname);
 	return ret;
 }
 
-static gboolean remove_dir(const char *service_id)
+static bool remove_dir(const char *service_id)
 {
 	gchar *pathname;
-	gboolean ret = FALSE;
+	bool ret = false;
 
 	pathname = g_strdup_printf("%s/%s", STORAGEDIR, service_id);
 	if(pathname == NULL)
-		return FALSE;
+		return false;
 
-	if (g_file_test(pathname, G_FILE_TEST_EXISTS) == FALSE) {
-		ret = TRUE;
-	} else if (g_file_test(pathname, G_FILE_TEST_IS_DIR) == TRUE) {
+	if (!g_file_test(pathname, G_FILE_TEST_EXISTS)) {
+		ret = true;
+	} else if (g_file_test(pathname, G_FILE_TEST_IS_DIR)) {
 		rmdir(pathname);
-		ret = TRUE;
+		ret = true;
 	}
 
 	g_free(pathname);
 	return ret;
 }
 
-gboolean __connman_storage_remove_service(const char *service_id)
+bool __connman_storage_remove_service(const char *service_id)
 {
-	gboolean removed;
+	bool removed;
 
 	/* Remove service configuration file */
 	removed = remove_file(service_id, SETTINGS);
-	if (removed == FALSE)
-		return FALSE;
+	if (!removed)
+		return false;
 
 	/* Remove the statistics file also */
 	removed = remove_file(service_id, "data");
-	if (removed == FALSE)
-		return FALSE;
+	if (!removed)
+		return false;
 
 	removed = remove_dir(service_id);
-	if (removed == FALSE)
-		return FALSE;
+	if (!removed)
+		return false;
 
 	DBG("Removed service dir %s/%s", STORAGEDIR, service_id);
 
-	return TRUE;
+	return true;
 }
 
 GKeyFile *__connman_storage_load_provider(const char *identifier)
@@ -375,7 +375,7 @@ void __connman_storage_save_provider(GKeyFile *keyfile, const char *identifier)
 	if (dirname == NULL)
 		return;
 
-	if (g_file_test(dirname, G_FILE_TEST_IS_DIR) == FALSE &&
+	if (!g_file_test(dirname, G_FILE_TEST_IS_DIR) &&
 			mkdir(dirname, MODE) < 0) {
 		g_free(dirname);
 		return;
@@ -388,39 +388,39 @@ void __connman_storage_save_provider(GKeyFile *keyfile, const char *identifier)
 	g_free(pathname);
 }
 
-static gboolean remove_all(const char *id)
+static bool remove_all(const char *id)
 {
-	gboolean removed;
+	bool removed;
 
 	remove_file(id, SETTINGS);
 	remove_file(id, "data");
 
 	removed = remove_dir(id);
-	if (removed == FALSE)
-		return FALSE;
+	if (!removed)
+		return false;
 
-	return TRUE;
+	return true;
 }
 
-gboolean __connman_storage_remove_provider(const char *identifier)
+bool __connman_storage_remove_provider(const char *identifier)
 {
-	gboolean removed;
+	bool removed;
 	gchar *id;
 
 	id = g_strdup_printf("%s_%s", "provider", identifier);
 	if (id == NULL)
-		return FALSE;
+		return false;
 
-	if (remove_all(id) == TRUE)
+	if (remove_all(id))
 		DBG("Removed provider dir %s/%s", STORAGEDIR, id);
 
 	g_free(id);
 
 	id = g_strdup_printf("%s_%s", "vpn", identifier);
 	if (id == NULL)
-		return FALSE;
+		return false;
 
-	if ((removed = remove_all(id)) == TRUE)
+	if ((removed = remove_all(id)))
 		DBG("Removed vpn dir %s/%s", STORAGEDIR, id);
 
 	g_free(id);

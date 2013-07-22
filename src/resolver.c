@@ -54,7 +54,7 @@ struct entry_data {
 };
 
 static GSList *entry_list = NULL;
-static connman_bool_t dnsproxy_enabled = FALSE;
+static bool dnsproxy_enabled = false;
 
 struct resolvfile_entry {
 	int index;
@@ -216,7 +216,7 @@ static void remove_entries(GSList *entries)
 
 		entry_list = g_slist_remove(entry_list, entry);
 
-		if (dnsproxy_enabled == TRUE) {
+		if (dnsproxy_enabled) {
 			__connman_dnsproxy_remove(entry->index, entry->domain,
 							entry->server);
 		} else {
@@ -249,7 +249,7 @@ static gboolean resolver_expire_cb(gpointer user_data)
 		service = __connman_service_lookup_from_index(entry->index);
 		if (service != NULL)
 			__connman_service_nameserver_remove(service,
-							entry->server, TRUE);
+							entry->server, true);
 	}
 
 	remove_entries(list);
@@ -335,12 +335,12 @@ static int append_resolver(int index, const char *domain,
 			service = __connman_service_lookup_from_index(entry->index);
 			if (service != NULL)
 				__connman_service_nameserver_append(service,
-								server, TRUE);
+								server, true);
 		}
 	}
 	entry_list = g_slist_append(entry_list, entry);
 
-	if (dnsproxy_enabled == TRUE)
+	if (dnsproxy_enabled)
 		__connman_dnsproxy_append(entry->index, domain, server);
 	else
 		__connman_resolvfile_append(entry->index, domain, server);
@@ -509,7 +509,7 @@ int connman_resolver_remove_all(int index)
  */
 void connman_resolver_flush(void)
 {
-	if (dnsproxy_enabled == TRUE)
+	if (dnsproxy_enabled)
 		__connman_dnsproxy_flush();
 
 	return;
@@ -519,7 +519,7 @@ int __connman_resolver_redo_servers(int index)
 {
 	GSList *list;
 
-	if (dnsproxy_enabled == FALSE)
+	if (!dnsproxy_enabled)
 		return 0;
 
 	DBG("index %d", index);
@@ -578,14 +578,14 @@ static void free_resolvfile(gpointer data)
 	g_free(entry);
 }
 
-int __connman_resolver_init(connman_bool_t dnsproxy)
+int __connman_resolver_init(bool dnsproxy)
 {
 	int i;
 	char **ns;
 
 	DBG("dnsproxy %d", dnsproxy);
 
-	if (dnsproxy == FALSE)
+	if (!dnsproxy)
 		return 0;
 
 	if (__connman_dnsproxy_init() < 0) {
@@ -593,7 +593,7 @@ int __connman_resolver_init(connman_bool_t dnsproxy)
 		return 0;
 	}
 
-	dnsproxy_enabled = TRUE;
+	dnsproxy_enabled = true;
 
 	ns = connman_setting_get_string_list("FallbackNameservers");
 	for (i = 0; ns != NULL && ns[i] != NULL; i += 1) {
@@ -608,7 +608,7 @@ void __connman_resolver_cleanup(void)
 {
 	DBG("");
 
-	if (dnsproxy_enabled == TRUE)
+	if (dnsproxy_enabled)
 		__connman_dnsproxy_cleanup();
 	else {
 		GList *list;

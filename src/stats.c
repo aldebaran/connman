@@ -483,7 +483,7 @@ static struct stats_record *process_file(struct stats_iter *iter,
 
 		append = FALSE;
 
-		if (cur->roaming == TRUE)
+		if (cur->roaming)
 			roaming = cur;
 		else
 			home = cur;
@@ -514,7 +514,7 @@ static struct stats_record *process_file(struct stats_iter *iter,
 				append = TRUE;
 		}
 
-		if (append == TRUE) {
+		if (append) {
 			if (home != NULL) {
 				append_record(temp_file, home);
 				home = NULL;
@@ -737,7 +737,7 @@ void __connman_stats_service_unregister(struct connman_service *service)
 }
 
 int  __connman_stats_update(struct connman_service *service,
-				connman_bool_t roaming,
+				bool roaming,
 				struct connman_stats_data *data)
 {
 	struct stats_file *file;
@@ -772,7 +772,7 @@ int  __connman_stats_update(struct connman_service *service,
 	next->roaming = roaming;
 	memcpy(&next->data, data, sizeof(struct connman_stats_data));
 
-	if (roaming != TRUE)
+	if (!roaming)
 		set_home(file, next);
 	else
 		set_roaming(file, next);
@@ -783,7 +783,7 @@ int  __connman_stats_update(struct connman_service *service,
 }
 
 int __connman_stats_get(struct connman_service *service,
-				connman_bool_t roaming,
+				bool roaming,
 				struct connman_stats_data *data)
 {
 	struct stats_file *file;
@@ -793,7 +793,7 @@ int __connman_stats_get(struct connman_service *service,
 	if (file == NULL)
 		return -EEXIST;
 
-	if (roaming != TRUE)
+	if (!roaming)
 		rec = file->home;
 	else
 		rec = file->roaming;
