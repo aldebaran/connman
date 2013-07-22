@@ -235,14 +235,18 @@ static void technology_save(struct connman_technology *technology)
 {
 	GKeyFile *keyfile;
 	gchar *identifier;
+	const char *name = get_name(technology->type);
 
-	DBG("technology %p", technology);
+	DBG("technology %p type %d name %s", technology, technology->type,
+									name);
+	if (name == NULL)
+		return;
 
 	keyfile = __connman_storage_load_global();
 	if (keyfile == NULL)
 		keyfile = g_key_file_new();
 
-	identifier = g_strdup_printf("%s", get_name(technology->type));
+	identifier = g_strdup_printf("%s", name);
 	if (identifier == NULL)
 		goto done;
 
