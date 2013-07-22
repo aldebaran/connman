@@ -700,7 +700,7 @@ static int technology_affect_devices(struct connman_technology *technology,
 						connman_bool_t enable_device)
 {
 	GSList *list;
-	int err = 0;
+	int err = -ENXIO;
 
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
