@@ -695,7 +695,8 @@ static struct stats_record *process_file(struct stats_iter *iter,
 
 			if (day_cur == day_next && month_cur != month_next)
 				append = TRUE;
-			else if (day_cur < account_period_offset && day_next >= account_period_offset)
+			else if (day_cur < account_period_offset
+					&& day_next >= account_period_offset)
 				append = TRUE;
 		} else {
 			/* day period size */
@@ -758,7 +759,8 @@ static int summarize(struct stats_file *data_file,
 		history_iter.it = history_iter.begin;
 
 		cur = process_file(&history_iter, temp_file, NULL,
-					&date_change_step_size, account_period_offset);
+					&date_change_step_size,
+					account_period_offset);
 	}
 
 	data_iter.file = data_file;
@@ -884,7 +886,8 @@ int main(int argc, char *argv[])
 		start_ts = option_start_ts;
 
 	if (option_create > 0)
-		stats_create(data_file, option_create, option_interval, start_ts, rec);
+		stats_create(data_file, option_create, option_interval,
+				start_ts, rec);
 
 	hdr = get_hdr(data_file);
 	if (hdr->magic != MAGIC) {

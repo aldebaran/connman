@@ -115,8 +115,8 @@ static void test_case_1(void)
 	netlink_destroy(netlink);
 }
 
-static void test_nfacct_dump_callback(unsigned int error, uint16_t type, const void *data,
-						uint32_t len, void *user_data)
+static void test_nfacct_dump_callback(unsigned int error, uint16_t type,
+				const void *data, uint32_t len, void *user_data)
 {
 	const struct nfgenmsg *msg = data;
 	const struct nlattr *attr;
@@ -154,8 +154,8 @@ static void test_nfacct_dump_callback(unsigned int error, uint16_t type, const v
 	g_main_loop_quit(mainloop);
 }
 
-static void test_nfacct_callback(unsigned int error, uint16_t type, const void *data,
-						uint32_t len, void *user_data)
+static void test_nfacct_callback(unsigned int error, uint16_t type,
+				const void *data, uint32_t len, void *user_data)
 {
 	if (error == EINVAL)
 		printf("nfnetlink_acct not loaded\n");
@@ -166,14 +166,14 @@ static void test_nfacct_callback(unsigned int error, uint16_t type, const void *
 static void append_attr_str(struct nlattr *attr,
                                 uint16_t type, size_t size, const char *str)
 {
-        char *dst;
+	char *dst;
 
-        attr->nla_len = NLA_HDRLEN + size;
-        attr->nla_type = NFACCT_NAME;
+	attr->nla_len = NLA_HDRLEN + size;
+	attr->nla_type = NFACCT_NAME;
 
-        dst = (char *)NLA_DATA(attr);
-        strncpy(dst, str, size);
-        dst[size - 1] = '\0';
+	dst = (char *)NLA_DATA(attr);
+	strncpy(dst, str, size);
+	dst[size - 1] = '\0';
 }
 
 static void test_nfacct_new(struct netlink_info *netlink, const char *name)

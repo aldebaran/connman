@@ -113,7 +113,7 @@ static void start_wpad(const char *search)
 		g_printerr("Domain name is not set\n");
 		goto quit;
 	}
-		
+
 	g_print("domainname: %s\n", domainname);
 
 	hostname = g_strdup_printf("wpad.%s", domainname);

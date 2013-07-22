@@ -94,8 +94,7 @@ static void connman_died(DBusConnection *connection, void *user_data)
 	g_assert(FALSE);
 }
 
-static void manager_changed(struct test_fix *fix,
-					DBusMessageIter *entry)
+static void manager_changed(struct test_fix *fix, DBusMessageIter *entry)
 {
 	DBusMessageIter iter;
 	const char *key;

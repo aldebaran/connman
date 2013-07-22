@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 	opterr = 0;
 
 	while ((c = getopt_long(argc, argv,
-                               "-A:I:D:P:N:X:F:Lt:", NULL, NULL)) != -1) {
+				"-A:I:D:P:N:X:F:Lt:", NULL, NULL)) != -1) {
 		switch (c) {
 		case 'A':
 			chain = optarg;
