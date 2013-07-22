@@ -315,9 +315,8 @@ static void request_input_cookie_reply(DBusMessage *reply, void *user_data)
 
 	DBG("provider %p", data->provider);
 
-	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
 		goto err;
-	}
 
 	if (!vpn_agent_check_reply_has_dict(reply))
 		goto err;

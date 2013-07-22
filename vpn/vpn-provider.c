@@ -886,7 +886,7 @@ static int vpn_provider_save(struct vpn_provider *provider)
 		provider->driver->save(provider, keyfile);
 
 	__connman_storage_save_provider(keyfile, provider->identifier);
-        g_key_file_free(keyfile);
+	g_key_file_free(keyfile);
 
 	return 0;
 }
@@ -1724,7 +1724,7 @@ static void provider_create_all_from_type(const char *provider_type)
 	if (providers == NULL)
 		return;
 
-	for (i = 0; providers[i] != NULL; i+=1) {
+	for (i = 0; providers[i] != NULL; i += 1) {
 
 		if (strncmp(providers[i], "provider_", 9) != 0)
 			continue;
@@ -2111,7 +2111,7 @@ DBusMessage *__vpn_provider_get_connections(DBusMessage *msg)
 	return reply;
 }
 
-const char * __vpn_provider_get_ident(struct vpn_provider *provider)
+const char *__vpn_provider_get_ident(struct vpn_provider *provider)
 {
 	if (provider == NULL)
 		return NULL;
