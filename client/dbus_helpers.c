@@ -87,7 +87,7 @@ void __connmanctl_dbus_print(DBusMessageIter *iter, const char *pre,
 
 		case DBUS_TYPE_BOOLEAN:
 			dbus_message_iter_get_basic(iter, &b);
-			if (b == FALSE)
+			if (!b)
 				fprintf(stdout, "False");
 			else
 				fprintf(stdout, "True");
@@ -123,7 +123,7 @@ void __connmanctl_dbus_print(DBusMessageIter *iter, const char *pre,
 			break;
 		}
 
-		if (dbus_message_iter_has_next(iter) == TRUE)
+		if (dbus_message_iter_has_next(iter))
 			fprintf(stdout, "%s", sep);
 
 		dbus_message_iter_next(iter);
@@ -177,8 +177,7 @@ static int send_method_call(DBusConnection *connection,
 	DBusPendingCall *call;
 	struct dbus_callback *callback;
 
-	if (dbus_connection_send_with_reply(connection, message, &call,
-					TIMEOUT) == FALSE)
+	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT))
 		goto end;
 
         if (call == NULL)

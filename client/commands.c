@@ -400,11 +400,11 @@ static int tether_set_return(DBusMessageIter *iter, const char *error,
 
 	if (error == NULL) {
 		fprintf(stdout, "%s tethering for %s\n",
-				tether->enable == TRUE ? "Enabled": "Disabled",
+				tether->enable ? "Enabled": "Disabled",
 				str);
 	} else
 		fprintf(stderr, "Error %s %s tethering: %s\n",
-				tether->enable == TRUE ?
+				tether->enable ?
 				"enabling": "disabling", str, error);
 
 	g_free(tether->path);
@@ -1034,7 +1034,7 @@ static DBusHandlerResult monitor_changed(DBusConnection *connection,
 	__connmanctl_save_rl();
 
 	if (dbus_message_is_signal(message, "net.connman.Manager",
-					"ServicesChanged") == TRUE) {
+					"ServicesChanged")) {
 
 		fprintf(stdout, "%-12s %-20s = {\n", interface,
 				"ServicesChanged");
@@ -1049,17 +1049,17 @@ static DBusHandlerResult monitor_changed(DBusConnection *connection,
 
 
 	if (dbus_message_is_signal(message, "net.connman.vpn.Manager",
-					"ConnectionAdded") == TRUE ||
+					"ConnectionAdded") ||
 			dbus_message_is_signal(message,
 					"net.connman.vpn.Manager",
-					"ConnectionRemoved") == TRUE) {
+					"ConnectionRemoved")) {
 		interface = "vpn.Manager";
 		path = dbus_message_get_member(message);
 
 	} else if (dbus_message_is_signal(message, "net.connman.Manager",
-					"TechnologyAdded") == TRUE ||
+					"TechnologyAdded") ||
 			dbus_message_is_signal(message, "net.connman.Manager",
-					"TechnologyRemoved") == TRUE)
+					"TechnologyRemoved"))
 		path = dbus_message_get_member(message);
 
 	fprintf(stdout, "%-12s %-20s ", interface, path);

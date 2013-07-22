@@ -101,7 +101,7 @@ void __connmanctl_vpnconnections_list(DBusMessageIter *iter)
 			print_connection(path, &dict);
 		}
 
-		if (dbus_message_iter_has_next(&array) == TRUE)
+		if (dbus_message_iter_has_next(&array))
 			fprintf(stdout, "\n");
 
 		dbus_message_iter_next(&array);

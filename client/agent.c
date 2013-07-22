@@ -600,10 +600,7 @@ int __connmanctl_agent_register(DBusConnection *connection)
 
 	agent_connection = connection;
 
-	if (g_dbus_register_interface(connection, path,
-					AGENT_INTERFACE, agent_methods,
-					NULL, NULL, &agent_request,
-					NULL) == FALSE) {
+	if (!g_dbus_register_interface(connection, path, AGENT_INTERFACE, agent_methods, NULL, NULL, &agent_request, NULL)) {
 		fprintf(stderr, "Error: Failed to register Agent callbacks\n");
 		return 0;
 	}
@@ -705,10 +702,7 @@ int __connmanctl_vpn_agent_register(DBusConnection *connection)
 
 	agent_connection = connection;
 
-	if (g_dbus_register_interface(connection, path,
-					VPN_AGENT_INTERFACE, vpn_agent_methods,
-					NULL, NULL, &vpn_agent_request,
-					NULL) == FALSE) {
+	if (!g_dbus_register_interface(connection, path, VPN_AGENT_INTERFACE, vpn_agent_methods, NULL, NULL, &vpn_agent_request, NULL)) {
 		fprintf(stderr, "Error: Failed to register VPN Agent "
 				"callbacks\n");
 		return 0;

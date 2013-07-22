@@ -117,7 +117,7 @@ static void list_service_array(DBusMessageIter *iter)
 			print_service(path, &dict);
 		}
 
-		if (dbus_message_iter_has_next(iter) == TRUE)
+		if (dbus_message_iter_has_next(iter))
 			fprintf(stdout, "\n");
 
 		dbus_message_iter_next(iter);
