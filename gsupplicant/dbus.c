@@ -158,7 +158,8 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 
 	dbus_message_append_args(message, DBUS_TYPE_STRING, &interface, NULL);
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT)) {
 		dbus_message_unref(message);
 		dbus_free(data);
 		return -EIO;
@@ -241,7 +242,8 @@ int supplicant_dbus_property_get(const char *path, const char *interface,
 	dbus_message_append_args(message, DBUS_TYPE_STRING, &interface,
 					DBUS_TYPE_STRING, &method, NULL);
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT)) {
 		dbus_message_unref(message);
 		dbus_free(data);
 		return -EIO;
@@ -335,7 +337,8 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 	setup(&value, user_data);
 	dbus_message_iter_close_container(&iter, &value);
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT)) {
 		dbus_message_unref(message);
 		dbus_free(data);
 		return -EIO;
@@ -421,7 +424,8 @@ int supplicant_dbus_method_call(const char *path,
 	if (setup != NULL)
 		setup(&iter, user_data);
 
-	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT)) {
+	if (!dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT)) {
 		dbus_message_unref(message);
 		dbus_free(data);
 		return -EIO;

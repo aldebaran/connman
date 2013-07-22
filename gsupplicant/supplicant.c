@@ -1748,8 +1748,9 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 	} else if (g_strcmp0(key, "CurrentNetwork") == 0) {
 		interface_network_added(iter, interface);
 	} else if (g_strcmp0(key, "BSSs") == 0) {
-		supplicant_dbus_array_foreach(iter, interface_bss_added_without_keys,
-								interface);
+		supplicant_dbus_array_foreach(iter,
+					interface_bss_added_without_keys,
+					interface);
 	} else if (g_strcmp0(key, "Blobs") == 0) {
 		/* Nothing */
 	} else if (g_strcmp0(key, "Networks") == 0) {
@@ -2159,7 +2160,8 @@ static void signal_bss_changed(const char *path, DBusMessageIter *iter)
 		network->best_bss = bss;
 	}
 
-	SUPPLICANT_DBG("New network signal for %s %d dBm", network->ssid, network->signal);
+	SUPPLICANT_DBG("New network signal for %s %d dBm", network->ssid,
+			network->signal);
 
 	callback_network_changed(network, "Signal");
 }
@@ -3124,7 +3126,8 @@ static unsigned char hexchar2bin(char c)
 		return c;
 }
 
-static void hexstring2bin(const char *string, unsigned char *data, size_t data_len)
+static void hexstring2bin(const char *string, unsigned char *data,
+				size_t data_len)
 {
 	size_t i;
 
@@ -3720,7 +3723,8 @@ int g_supplicant_register(const GSupplicantCallbacks *callbacks)
 	if (connection == NULL)
 		return -EIO;
 
-	if (!dbus_connection_add_filter(connection, g_supplicant_filter, NULL, NULL)) {
+	if (!dbus_connection_add_filter(connection, g_supplicant_filter,
+						NULL, NULL)) {
 		dbus_connection_unref(connection);
 		connection = NULL;
 		return -EIO;
