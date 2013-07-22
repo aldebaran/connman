@@ -51,9 +51,8 @@ static void prf_test(gconstpointer data)
 
 	prf_len = strlen(test->prf) / 2;
 
-	if (g_test_verbose()) {
+	if (g_test_verbose())
 		g_print("PRF    = %s (%d octects)\n", test->prf, prf_len);
-	}
 
 	result = prf_sha1(test->key, test->key_len, test->prefix,
 				test->prefix_len, test->data, test->data_len,
@@ -64,9 +63,8 @@ static void prf_test(gconstpointer data)
 	for (i = 0; i < prf_len; i++)
 		sprintf(prf + (i * 2), "%02x", output[i]);
 
-	if (g_test_verbose()) {
+	if (g_test_verbose())
 		g_print("Result = %s\n", prf);
-	}
 
 	g_assert(strcmp(test->prf, prf) == 0);
 }

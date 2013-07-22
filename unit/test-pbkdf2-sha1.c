@@ -74,9 +74,8 @@ static void pbkdf2_test(gconstpointer data)
 	for (i = 0; i < key_len; i++)
 		sprintf(key + (i * 2), "%02x", output[i]);
 
-	if (g_test_verbose()) {
+	if (g_test_verbose())
 		g_print("Result   = %s\n", key);
-	}
 
 	g_assert(strcmp(test->key, key) == 0);
 }
@@ -228,9 +227,8 @@ static void psk_test(gconstpointer data)
 	for (i = 0; i < sizeof(output); i++)
 		sprintf(psk + (i * 2), "%02x", output[i]);
 
-	if (g_test_verbose()) {
+	if (g_test_verbose())
 		g_print("Result      = %s\n", psk);
-	}
 
 	g_assert(strcmp(test->psk, psk) == 0);
 }
