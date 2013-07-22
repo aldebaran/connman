@@ -396,7 +396,7 @@ static int load_keyfile(const char *pathname, GKeyFile **keyfile)
 
 	*keyfile = g_key_file_new();
 
-	if (g_key_file_load_from_file(*keyfile, pathname, 0, &error) == FALSE)
+	if (!g_key_file_load_from_file(*keyfile, pathname, 0, &error))
 		goto err;
 
 	return 0;
@@ -559,7 +559,7 @@ static void recheck_sessions(void)
 	GSList *list;
 
 	g_hash_table_iter_init(&iter, session_hash);
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct policy_config *policy = value;
 
 		if (policy->group != NULL)
@@ -651,13 +651,13 @@ static int load_file(const char *filename, struct policy_file *file)
 	return err;
 }
 
-static connman_bool_t is_filename_valid(const char *filename)
+static bool is_filename_valid(const char *filename)
 {
 	if (filename == NULL)
-		return FALSE;
+		return false;
 
 	if (filename[0] == '.')
-		return FALSE;
+		return false;
 
 	return g_str_has_suffix(filename, ".policy");
 }
@@ -675,7 +675,7 @@ static int read_policies()
 		return -EINVAL;
 
 	while ((filename = g_dir_read_name(dir)) != NULL) {
-		if (is_filename_valid(filename) == FALSE)
+		if (!is_filename_valid(filename))
 			continue;
 
 		file = g_new0(struct policy_file, 1);
@@ -703,7 +703,7 @@ static void notify_handler(struct inotify_event *event,
 	if (event->mask & IN_CREATE)
 		return;
 
-	if (is_filename_valid(filename) == FALSE)
+	if (!is_filename_valid(filename))
 		return;
 
 	/*
@@ -737,7 +737,7 @@ static int session_policy_local_init(void)
 	DBG("");
 
 	/* If the dir doesn't exist, create it */
-	if (g_file_test(POLICYDIR, G_FILE_TEST_IS_DIR) == FALSE) {
+	if (!g_file_test(POLICYDIR, G_FILE_TEST_IS_DIR)) {
 		if (mkdir(POLICYDIR, MODE) < 0) {
 			if (errno != EEXIST)
 				return -errno;

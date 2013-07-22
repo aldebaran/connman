@@ -61,7 +61,7 @@
 struct data_elements {
 	unsigned int value;
 	unsigned int length;
-	gboolean fixed_length;
+	bool fixed_length;
 };
 
 typedef enum {
@@ -87,7 +87,7 @@ struct wifi_sc {
 
 static DBusConnection *connection = NULL;
 DBusPendingCall *register_call = NULL;
-gboolean agent_registered = FALSE;
+bool agent_registered = false;
 static guint watch_id = 0;
 
 static int set_2b_into_tlv(uint8_t *tlv_msg, uint16_t val)
@@ -225,7 +225,7 @@ static DBusMessage *create_request_oob_reply(DBusMessage *message)
 	uint8_t *tlv_msg;
 	int length;
 
-	if (connman_technology_get_wifi_tethering(&ssid, &psk) == FALSE)
+	if (!connman_technology_get_wifi_tethering(&ssid, &psk))
 		return get_reply_on_error(message, ENOTSUP);
 
 	tlv_msg = encode_to_tlv(ssid, psk, &length);
@@ -322,9 +322,9 @@ static inline DEid get_de_id(uint16_t attr)
 	return DE_MAX;
 }
 
-static inline gboolean is_de_length_fine(DEid id, uint16_t length)
+static inline bool is_de_length_fine(DEid id, uint16_t length)
 {
-	if (DEs[id].fixed_length == TRUE)
+	if (DEs[id].fixed_length)
 		return (length == DEs[id].length);
 
 	return (length <= DEs[id].length);
@@ -374,7 +374,7 @@ static struct wifi_sc *decode_from_tlv(const uint8_t *tlv_msg, int length)
 			continue;
 		}
 
-		if (is_de_length_fine(id, len) == FALSE)
+		if (!is_de_length_fine(id, len))
 			goto error;
 
 		switch (id) {
@@ -468,7 +468,7 @@ static DBusMessage *release_method(DBusConnection *dbus_conn,
 {
 	DBG("");
 
-	agent_registered = FALSE;
+	agent_registered = false;
 	g_dbus_unregister_interface(connection,
 					AGENT_PATH, NEARD_AGENT_INTERFACE);
 
@@ -498,7 +498,7 @@ static void register_agent_cb(DBusPendingCall *pending, void *user_data)
 {
 	DBusMessage *reply;
 
-	if (dbus_pending_call_get_completed(pending) == FALSE)
+	if (!dbus_pending_call_get_completed(pending))
 		return;
 
 	register_call = NULL;
@@ -511,7 +511,7 @@ static void register_agent_cb(DBusPendingCall *pending, void *user_data)
 		g_dbus_unregister_interface(connection,
 					AGENT_PATH, NEARD_AGENT_INTERFACE);
 	} else
-		agent_registered = TRUE;
+		agent_registered = true;
 
 	dbus_message_unref(reply);
 out:
@@ -533,14 +533,12 @@ static void register_agent(void)
 	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH,
 			&path, DBUS_TYPE_STRING, &type, DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(connection, message,
-					&register_call, TIMEOUT) == FALSE) {
+	if (!dbus_connection_send_with_reply(connection, message, &register_call, TIMEOUT)) {
 		dbus_message_unref(message);
 		goto out;
 	}
 
-	if (dbus_pending_call_set_notify(register_call, register_agent_cb,
-							NULL, NULL) == FALSE)
+	if (!dbus_pending_call_set_notify(register_call, register_agent_cb, NULL, NULL))
 		cleanup_register_call();
 
 out:
@@ -553,10 +551,10 @@ static void unregister_agent(void)
 	const char *type = AGENT_TYPE;
 	DBusMessage *message;
 
-	if (agent_registered == FALSE)
+	if (!agent_registered)
 		return cleanup_register_call();
 
-	agent_registered = FALSE;
+	agent_registered = false;
 
 	message = dbus_message_new_method_call(NEARD_SERVICE, NEARD_PATH,
 						NEARD_MANAGER_INTERFACE,
@@ -575,12 +573,12 @@ static void neard_is_present(DBusConnection *conn, void *user_data)
 {
 	DBG("");
 
-	if (agent_registered == TRUE)
+	if (agent_registered)
 		return;
 
 	if (g_dbus_register_interface(connection, AGENT_PATH,
 					NEARD_AGENT_INTERFACE, neard_methods,
-					NULL, NULL, NULL, NULL) == TRUE)
+					NULL, NULL, NULL, NULL))
 		register_agent();
 }
 
@@ -588,10 +586,10 @@ static void neard_is_out(DBusConnection *conn, void *user_data)
 {
 	DBG("");
 
-	if (agent_registered == TRUE) {
+	if (agent_registered) {
 		g_dbus_unregister_interface(connection,
 					AGENT_PATH, NEARD_AGENT_INTERFACE);
-		agent_registered = FALSE;
+		agent_registered = false;
 	}
 
 	cleanup_register_call();

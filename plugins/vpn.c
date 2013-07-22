@@ -71,7 +71,7 @@ struct connection_data {
 	struct connman_provider *provider;
 	int index;
 	DBusPendingCall *call;
-	connman_bool_t connect_pending;
+	bool connect_pending;
 	struct config_create_data *cb_data;
 
 	char *state;
@@ -81,7 +81,7 @@ struct connection_data {
 	char **host_ip;
 	char *domain;
 	char **nameservers;
-	gboolean immutable;
+	bool immutable;
 
 	GHashTable *server_routes;
 	GHashTable *user_routes;
@@ -104,17 +104,17 @@ static int set_string(struct connman_provider *provider,
 
 	DBG("data %p provider %p key %s value %s", data, provider, key, value);
 
-	if (g_str_equal(key, "Type") == TRUE) {
+	if (g_str_equal(key, "Type")) {
 		g_free(data->type);
 		data->type = g_strdup(value);
-	} else if (g_str_equal(key, "Name") == TRUE) {
+	} else if (g_str_equal(key, "Name")) {
 		g_free(data->name);
 		data->name = g_strdup(value);
-	} else if (g_str_equal(key, "Host") == TRUE) {
+	} else if (g_str_equal(key, "Host")) {
 		g_free(data->host);
 		data->host = g_strdup(value);
-	} else if (g_str_equal(key, "VPN.Domain") == TRUE ||
-				g_str_equal(key, "Domain") == TRUE) {
+	} else if (g_str_equal(key, "VPN.Domain") ||
+				g_str_equal(key, "Domain")) {
 		g_free(data->domain);
 		data->domain = g_strdup(value);
 	} else
@@ -134,19 +134,19 @@ static const char *get_string(struct connman_provider *provider,
 
 	DBG("data %p provider %p key %s", data, provider, key);
 
-	if (g_str_equal(key, "Type") == TRUE)
+	if (g_str_equal(key, "Type"))
 		return data->type;
-	else if (g_str_equal(key, "Name") == TRUE)
+	else if (g_str_equal(key, "Name"))
 		return data->name;
-	else if (g_str_equal(key, "Host") == TRUE)
+	else if (g_str_equal(key, "Host"))
 		return data->host;
-	else if (g_str_equal(key, "HostIP") == TRUE) {
+	else if (g_str_equal(key, "HostIP")) {
 		if (data->host_ip == NULL ||
 				data->host_ip[0] == NULL)
 			return data->host;
 		else
 			return data->host_ip[0];
-	} else if (g_str_equal(key, "VPN.Domain") == TRUE)
+	} else if (g_str_equal(key, "VPN.Domain"))
 		return data->domain;
 
 	return g_hash_table_lookup(data->setting_strings, key);
@@ -254,18 +254,18 @@ static void set_provider_state(struct connection_data *data)
 
 	DBG("provider %p new state %s", data->provider, data->state);
 
-	if (g_str_equal(data->state, "ready") == TRUE) {
+	if (g_str_equal(data->state, "ready")) {
 		state = CONNMAN_PROVIDER_STATE_READY;
 		goto set;
-	} else if (g_str_equal(data->state, "configuration") == TRUE) {
+	} else if (g_str_equal(data->state, "configuration")) {
 		state = CONNMAN_PROVIDER_STATE_CONNECT;
-	} else if (g_str_equal(data->state, "idle") == TRUE) {
+	} else if (g_str_equal(data->state, "idle")) {
 		state = CONNMAN_PROVIDER_STATE_IDLE;
-	} else if (g_str_equal(data->state, "disconnect") == TRUE) {
+	} else if (g_str_equal(data->state, "disconnect")) {
 		err = ECONNREFUSED;
 		state = CONNMAN_PROVIDER_STATE_DISCONNECT;
 		goto set;
-	} else if (g_str_equal(data->state, "failure") == TRUE) {
+	} else if (g_str_equal(data->state, "failure")) {
 		err = ECONNREFUSED;
 		state = CONNMAN_PROVIDER_STATE_FAILURE;
 		goto set;
@@ -304,7 +304,7 @@ static int create_provider(struct connection_data *data, void *user_data)
 	err = connman_provider_create_service(data->provider);
 	if (err == 0) {
 		connman_provider_set_immutable(data->provider, data->immutable);
-		if (g_str_equal(data->state, "ready") == TRUE) {
+		if (g_str_equal(data->state, "ready")) {
 			connman_provider_set_index(data->provider,
 							data->index);
 			if (data->ip != NULL)
@@ -375,19 +375,19 @@ static int extract_ip(DBusMessageIter *array, int family,
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "Address") == TRUE) {
+		if (g_str_equal(key, "Address")) {
 			dbus_message_iter_get_basic(&value, &address);
 			DBG("address %s", address);
-		} else if (g_str_equal(key, "Netmask") == TRUE) {
+		} else if (g_str_equal(key, "Netmask")) {
 			dbus_message_iter_get_basic(&value, &netmask);
 			DBG("netmask %s", netmask);
-		} else if (g_str_equal(key, "PrefixLength") == TRUE) {
+		} else if (g_str_equal(key, "PrefixLength")) {
 			dbus_message_iter_get_basic(&value, &netmask);
 			DBG("prefix length %s", netmask);
-		} else if (g_str_equal(key, "Peer") == TRUE) {
+		} else if (g_str_equal(key, "Peer")) {
 			dbus_message_iter_get_basic(&value, &peer);
 			DBG("peer %s", peer);
-		} else if (g_str_equal(key, "Gateway") == TRUE) {
+		} else if (g_str_equal(key, "Gateway")) {
 			dbus_message_iter_get_basic(&value, &gateway);
 			DBG("gateway %s", gateway);
 		}
@@ -471,7 +471,7 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 	struct connection_data *data = user_data;
 	struct config_create_data *cb_data = data->cb_data;
 
-	if (dbus_pending_call_get_completed(call) == FALSE)
+	if (!dbus_pending_call_get_completed(call))
 		return;
 
 	DBG("user_data %p path %s", user_data, cb_data ? cb_data->path : NULL);
@@ -480,7 +480,7 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&error);
 
-	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+	if (dbus_set_error_from_message(&error, reply)) {
 		int err = errorstr2val(error.name);
 		if (err != -EINPROGRESS) {
 			connman_error("Connect reply: %s (%s)", error.message,
@@ -518,7 +518,7 @@ static int connect_provider(struct connection_data *data, void *user_data)
 
 	DBG("data %p user %p path %s", data, cb_data, data->path);
 
-	data->connect_pending = FALSE;
+	data->connect_pending = false;
 
 	message = dbus_message_new_method_call(VPN_SERVICE, data->path,
 					VPN_CONNECTION_INTERFACE,
@@ -526,8 +526,7 @@ static int connect_provider(struct connection_data *data, void *user_data)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (dbus_connection_send_with_reply(connection, message,
-					&call, DBUS_TIMEOUT) == FALSE) {
+	if (!dbus_connection_send_with_reply(connection, message, &call, DBUS_TIMEOUT)) {
 		connman_error("Unable to call %s.%s()",
 			VPN_CONNECTION_INTERFACE, VPN_CONNECT);
 		dbus_message_unref(message);
@@ -557,7 +556,7 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 	struct connection_data *data;
 	int err;
 	char *ident = get_ident(path);
-	connman_bool_t found = FALSE;
+	bool found = false;
 
 	data = g_hash_table_lookup(vpn_connections, ident);
 	if (data != NULL) {
@@ -566,10 +565,10 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 		 * was created by configuration_create_reply() so in
 		 * that case just continue.
 		 */
-		if (data->connect_pending == FALSE)
+		if (!data->connect_pending)
 			return;
 
-		found = TRUE;
+		found = true;
 	} else {
 		data = create_connection_data(path);
 		if (data == NULL)
@@ -590,36 +589,36 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "State") == TRUE) {
+		if (g_str_equal(key, "State")) {
 			dbus_message_iter_get_basic(&value, &str);
 			DBG("state %s -> %s", data->state, str);
 			data->state = g_strdup(str);
-		} else if (g_str_equal(key, "IPv4") == TRUE) {
+		} else if (g_str_equal(key, "IPv4")) {
 			extract_ip(&value, AF_INET, data);
-		} else if (g_str_equal(key, "IPv6") == TRUE) {
+		} else if (g_str_equal(key, "IPv6")) {
 			extract_ip(&value, AF_INET6, data);
-		} else if (g_str_equal(key, "Name") == TRUE) {
+		} else if (g_str_equal(key, "Name")) {
 			dbus_message_iter_get_basic(&value, &str);
 			data->name = g_strdup(str);
-		} else if (g_str_equal(key, "Type") == TRUE) {
+		} else if (g_str_equal(key, "Type")) {
 			dbus_message_iter_get_basic(&value, &str);
 			data->type = g_strdup(str);
-		} else if (g_str_equal(key, "Immutable") == TRUE) {
+		} else if (g_str_equal(key, "Immutable")) {
 			dbus_message_iter_get_basic(&value, &data->immutable);
-		} else if (g_str_equal(key, "Host") == TRUE) {
+		} else if (g_str_equal(key, "Host")) {
 			dbus_message_iter_get_basic(&value, &str);
 			data->host = g_strdup(str);
-		} else if (g_str_equal(key, "Domain") == TRUE) {
+		} else if (g_str_equal(key, "Domain")) {
 			dbus_message_iter_get_basic(&value, &str);
 			g_free(data->domain);
 			data->domain = g_strdup(str);
-		} else if (g_str_equal(key, "Nameservers") == TRUE) {
+		} else if (g_str_equal(key, "Nameservers")) {
 			extract_nameservers(&value, data);
-		} else if (g_str_equal(key, "Index") == TRUE) {
+		} else if (g_str_equal(key, "Index")) {
 			dbus_message_iter_get_basic(&value, &data->index);
-		} else if (g_str_equal(key, "ServerRoutes") == TRUE) {
+		} else if (g_str_equal(key, "ServerRoutes")) {
 			/* Ignored */
-		} else if (g_str_equal(key, "UserRoutes") == TRUE) {
+		} else if (g_str_equal(key, "UserRoutes")) {
 			/* Ignored */
 		} else {
 			if (dbus_message_iter_get_arg_type(&value) ==
@@ -635,7 +634,7 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 		dbus_message_iter_next(properties);
 	}
 
-	if (found == FALSE)
+	if (!found)
 		g_hash_table_insert(vpn_connections, g_strdup(data->ident),
 									data);
 
@@ -653,7 +652,7 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 		connman_provider_set_domain(data->provider,
 						data->domain);
 
-	if (data->connect_pending == TRUE)
+	if (data->connect_pending)
 		connect_provider(data, data->cb_data);
 
 	return;
@@ -678,7 +677,7 @@ static void get_connections_reply(DBusPendingCall *call, void *user_data)
 		DBUS_DICT_ENTRY_END_CHAR_AS_STRING
 		DBUS_STRUCT_END_CHAR_AS_STRING;
 
-	if (dbus_pending_call_get_completed(call) == FALSE)
+	if (!dbus_pending_call_get_completed(call))
 		return;
 
 	DBG("");
@@ -687,20 +686,20 @@ static void get_connections_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&error);
 
-	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+	if (dbus_set_error_from_message(&error, reply)) {
 		connman_error("%s", error.message);
 		dbus_error_free(&error);
 		goto done;
 	}
 
-	if (dbus_message_has_signature(reply, signature) == FALSE) {
+	if (!dbus_message_has_signature(reply, signature)) {
 		connman_error("vpnd signature \"%s\" does not match "
 							"expected \"%s\"",
 			dbus_message_get_signature(reply), signature);
 		goto done;
 	}
 
-	if (dbus_message_iter_init(reply, &array) == FALSE)
+	if (!dbus_message_iter_init(reply, &array))
 		goto done;
 
 	dbus_message_iter_recurse(&array, &dict);
@@ -739,8 +738,7 @@ static int get_connections(void *user_data)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (dbus_connection_send_with_reply(connection, message,
-					&call, DBUS_TIMEOUT) == FALSE) {
+	if (!dbus_connection_send_with_reply(connection, message, &call, DBUS_TIMEOUT)) {
 		connman_error("Unable to call %s.%s()", VPN_MANAGER_INTERFACE,
 							GET_CONNECTIONS);
 		dbus_message_unref(message);
@@ -770,7 +768,7 @@ static void remove_connection_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply;
 	DBusError error;
 
-	if (dbus_pending_call_get_completed(call) == FALSE)
+	if (!dbus_pending_call_get_completed(call))
 		return;
 
 	DBG("");
@@ -779,13 +777,12 @@ static void remove_connection_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&error);
 
-	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+	if (dbus_set_error_from_message(&error, reply)) {
 		/*
 		 * If the returned error is NotFound, it means that we
 		 * have actually removed the provider in vpnd already.
 		 */
-		if (dbus_error_has_name(&error, CONNMAN_ERROR_INTERFACE
-						".NotFound") == FALSE)
+		if (!dbus_error_has_name(&error, CONNMAN_ERROR_INTERFACE".NotFound"))
 			connman_error("%s", error.message);
 
 		dbus_error_free(&error);
@@ -831,8 +828,7 @@ static int provider_remove(struct connman_provider *provider)
 	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &data->path,
 				NULL);
 
-	if (dbus_connection_send_with_reply(connection, message,
-					&call, DBUS_TIMEOUT) == FALSE) {
+	if (!dbus_connection_send_with_reply(connection, message, &call, DBUS_TIMEOUT)) {
 		connman_error("Unable to call %s.%s()", VPN_MANAGER_INTERFACE,
 							VPN_REMOVE);
 		dbus_message_unref(message);
@@ -868,7 +864,7 @@ static void disconnect_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply;
 	DBusError error;
 
-	if (dbus_pending_call_get_completed(call) == FALSE)
+	if (!dbus_pending_call_get_completed(call))
 		return;
 
 	DBG("user %p", user_data);
@@ -877,7 +873,7 @@ static void disconnect_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&error);
 
-	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+	if (dbus_set_error_from_message(&error, reply)) {
 		connman_error("%s", error.message);
 		dbus_error_free(&error);
 		goto done;
@@ -902,8 +898,7 @@ static int disconnect_provider(struct connection_data *data)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (dbus_connection_send_with_reply(connection, message,
-					&call, DBUS_TIMEOUT) == FALSE) {
+	if (!dbus_connection_send_with_reply(connection, message, &call, DBUS_TIMEOUT)) {
 		connman_error("Unable to call %s.%s()",
 			VPN_CONNECTION_INTERFACE, VPN_DISCONNECT);
 		dbus_message_unref(message);
@@ -941,8 +936,8 @@ static int provider_disconnect(struct connman_provider *provider)
 	if (data == NULL)
 		return -EINVAL;
 
-	if (g_str_equal(data->state, "ready") == TRUE ||
-			g_str_equal(data->state, "configuration") == TRUE)
+	if (g_str_equal(data->state, "ready") ||
+			g_str_equal(data->state, "configuration"))
 		return disconnect_provider(data);
 
 	return 0;
@@ -959,7 +954,7 @@ static void configuration_create_reply(DBusPendingCall *call, void *user_data)
 	struct connection_data *data;
 	struct config_create_data *cb_data = user_data;
 
-	if (dbus_pending_call_get_completed(call) == FALSE)
+	if (!dbus_pending_call_get_completed(call))
 		return;
 
 	DBG("user %p", cb_data);
@@ -968,20 +963,20 @@ static void configuration_create_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&error);
 
-	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+	if (dbus_set_error_from_message(&error, reply)) {
 		connman_error("dbus error: %s", error.message);
 		dbus_error_free(&error);
 		goto done;
 	}
 
-	if (dbus_message_has_signature(reply, signature) == FALSE) {
+	if (!dbus_message_has_signature(reply, signature)) {
 		connman_error("vpn configuration signature \"%s\" does not "
 						"match expected \"%s\"",
 			dbus_message_get_signature(reply), signature);
 		goto done;
 	}
 
-	if (dbus_message_iter_init(reply, &iter) == FALSE)
+	if (!dbus_message_iter_init(reply, &iter))
 		goto done;
 
 	dbus_message_iter_get_basic(&iter, &path);
@@ -999,7 +994,7 @@ static void configuration_create_reply(DBusPendingCall *call, void *user_data)
 		DBG("Pending data not found for %s, cannot continue!", ident);
 	} else {
 		data->call = NULL;
-		data->connect_pending = TRUE;
+		data->connect_pending = true;
 
 		if (data->cb_data == NULL)
 			data->cb_data = cb_data;
@@ -1220,13 +1215,13 @@ static int create_configuration(DBusMessage *msg, connection_ready_cb callback)
 		case DBUS_TYPE_STRING:
 			dbus_message_iter_get_basic(&value, &item_value);
 
-			if (g_str_equal(key, "Type") == TRUE) {
+			if (g_str_equal(key, "Type")) {
 				type = (const char *)item_value;
-			} else if (g_str_equal(key, "Name") == TRUE) {
+			} else if (g_str_equal(key, "Name")) {
 				name = (const char *)item_value;
-			} else if (g_str_equal(key, "Host") == TRUE) {
+			} else if (g_str_equal(key, "Host")) {
 				host = (const char *)item_value;
-			} else if (g_str_equal(key, "VPN.Domain") == TRUE) {
+			} else if (g_str_equal(key, "VPN.Domain")) {
 				domain = (const char *)item_value;
 			}
 
@@ -1237,7 +1232,7 @@ static int create_configuration(DBusMessage *msg, connection_ready_cb callback)
 						value_type, &item_value);
 			break;
 		case DBUS_TYPE_ARRAY:
-			if (g_str_equal(key, "Networks") == TRUE) {
+			if (g_str_equal(key, "Networks")) {
 				networks = get_user_networks(&value);
 				connman_dbus_dict_append_array(&new_dict,
 							"UserRoutes",
@@ -1318,7 +1313,7 @@ static int create_configuration(DBusMessage *msg, connection_ready_cb callback)
 
 	result = dbus_connection_send_with_reply(connection, new_msg,
 						&call, DBUS_TIMEOUT);
-	if (result == FALSE || call == NULL) {
+	if (!result || call == NULL) {
 		err = -EIO;
 		goto done;
 	}
@@ -1338,19 +1333,19 @@ done:
 	return err;
 }
 
-static connman_bool_t check_host(char **hosts, char *host)
+static bool check_host(char **hosts, char *host)
 {
 	int i;
 
 	if (hosts == NULL)
-		return FALSE;
+		return false;
 
 	for (i = 0; hosts[i] != NULL; i++) {
 		if (g_strcmp0(hosts[i], host) == 0)
-			return TRUE;
+			return true;
 	}
 
-	return FALSE;
+	return false;
 }
 
 static void set_route(struct connection_data *data, struct vpn_route *route)
@@ -1360,7 +1355,7 @@ static void set_route(struct connection_data *data, struct vpn_route *route)
 	 * VPN server, then we must discard that because the
 	 * server cannot be contacted via VPN tunnel.
 	 */
-	if (check_host(data->host_ip, route->network) == TRUE) {
+	if (check_host(data->host_ip, route->network)) {
 		DBG("Discarding VPN route to %s via %s at index %d",
 			route->network, route->gateway, data->index);
 		return;
@@ -1397,7 +1392,7 @@ static int set_routes(struct connman_provider *provider,
 					type == CONNMAN_PROVIDER_ROUTE_USER) {
 		g_hash_table_iter_init(&iter, data->user_routes);
 
-		while (g_hash_table_iter_next(&iter, &key, &value) == TRUE)
+		while (g_hash_table_iter_next(&iter, &key, &value))
 			set_route(data, value);
 	}
 
@@ -1405,14 +1400,14 @@ static int set_routes(struct connman_provider *provider,
 				type == CONNMAN_PROVIDER_ROUTE_SERVER) {
 		g_hash_table_iter_init(&iter, data->server_routes);
 
-		while (g_hash_table_iter_next(&iter, &key, &value) == TRUE)
+		while (g_hash_table_iter_next(&iter, &key, &value))
 			set_route(data, value);
 	}
 
 	return 0;
 }
 
-static connman_bool_t check_routes(struct connman_provider *provider)
+static bool check_routes(struct connman_provider *provider)
 {
 	struct connection_data *data;
 
@@ -1420,17 +1415,17 @@ static connman_bool_t check_routes(struct connman_provider *provider)
 
 	data = connman_provider_get_data(provider);
 	if (data == NULL)
-		return FALSE;
+		return false;
 
 	if (data->user_routes != NULL &&
 			g_hash_table_size(data->user_routes) > 0)
-		return TRUE;
+		return true;
 
 	if (data->server_routes != NULL &&
 			g_hash_table_size(data->server_routes) > 0)
-		return TRUE;
+		return true;
 
-	return FALSE;
+	return false;
 }
 
 static struct connman_provider_driver provider_driver = {
@@ -1451,8 +1446,8 @@ static void destroy_provider(struct connection_data *data)
 {
 	DBG("data %p", data);
 
-	if (g_str_equal(data->state, "ready") == TRUE ||
-			g_str_equal(data->state, "configuration") == TRUE)
+	if (g_str_equal(data->state, "ready") ||
+			g_str_equal(data->state, "configuration"))
 		connman_provider_disconnect(data->provider);
 
 	if (data->call != NULL)
@@ -1521,7 +1516,7 @@ static gboolean connection_removed(DBusConnection *conn, DBusMessage *message,
 	const char *signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
 	struct connection_data *data;
 
-	if (dbus_message_has_signature(message, signature) == FALSE) {
+	if (!dbus_message_has_signature(message, signature)) {
 		connman_error("vpn removed signature \"%s\" does not match "
 							"expected \"%s\"",
 			dbus_message_get_signature(message), signature);
@@ -1550,7 +1545,7 @@ static gboolean connection_added(DBusConnection *conn, DBusMessage *message,
 		DBUS_TYPE_VARIANT_AS_STRING
 		DBUS_DICT_ENTRY_END_CHAR_AS_STRING;
 
-	if (dbus_message_has_signature(message, signature) == FALSE) {
+	if (!dbus_message_has_signature(message, signature)) {
 		connman_error("vpn ConnectionAdded signature \"%s\" does not "
 						"match expected \"%s\"",
 			dbus_message_get_signature(message), signature);
@@ -1559,7 +1554,7 @@ static gboolean connection_added(DBusConnection *conn, DBusMessage *message,
 
 	DBG("");
 
-	if (dbus_message_iter_init(message, &iter) == FALSE)
+	if (!dbus_message_iter_init(message, &iter))
 		return TRUE;
 
 	dbus_message_iter_get_basic(&iter, &path);
@@ -1622,7 +1617,7 @@ static int read_route_dict(GHashTable *routes, DBusMessageIter *dicts)
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "ProtocolFamily") == TRUE) {
+		if (g_str_equal(key, "ProtocolFamily")) {
 			int pf;
 			dbus_message_iter_get_basic(&value, &pf);
 			switch (pf) {
@@ -1634,13 +1629,13 @@ static int read_route_dict(GHashTable *routes, DBusMessageIter *dicts)
 				break;
 			}
 			DBG("family %d", family);
-		} else if (g_str_equal(key, "Netmask") == TRUE) {
+		} else if (g_str_equal(key, "Netmask")) {
 			dbus_message_iter_get_basic(&value, &netmask);
 			DBG("netmask %s", netmask);
-		} else if (g_str_equal(key, "Network") == TRUE) {
+		} else if (g_str_equal(key, "Network")) {
 			dbus_message_iter_get_basic(&value, &network);
 			DBG("host %s", network);
-		} else if (g_str_equal(key, "Gateway") == TRUE) {
+		} else if (g_str_equal(key, "Gateway")) {
 			dbus_message_iter_get_basic(&value, &gateway);
 			DBG("gateway %s", gateway);
 		}
@@ -1700,14 +1695,14 @@ static gboolean property_changed(DBusConnection *conn,
 	const char *path = dbus_message_get_path(message);
 	struct connection_data *data = NULL;
 	DBusMessageIter iter, value;
-	connman_bool_t ip_set = FALSE;
+	bool ip_set = false;
 	int err;
 	char *str;
 	const char *key;
 	const char *signature =	DBUS_TYPE_STRING_AS_STRING
 		DBUS_TYPE_VARIANT_AS_STRING;
 
-	if (dbus_message_has_signature(message, signature) == FALSE) {
+	if (!dbus_message_has_signature(message, signature)) {
 		connman_error("vpn property signature \"%s\" does not match "
 							"expected \"%s\"",
 			dbus_message_get_signature(message), signature);
@@ -1718,7 +1713,7 @@ static gboolean property_changed(DBusConnection *conn,
 	if (data == NULL)
 		return TRUE;
 
-	if (dbus_message_iter_init(message, &iter) == FALSE)
+	if (!dbus_message_iter_init(message, &iter))
 		return TRUE;
 
 	dbus_message_iter_get_basic(&iter, &key);
@@ -1728,28 +1723,28 @@ static gboolean property_changed(DBusConnection *conn,
 
 	DBG("key %s", key);
 
-	if (g_str_equal(key, "State") == TRUE) {
+	if (g_str_equal(key, "State")) {
 		dbus_message_iter_get_basic(&value, &str);
 
 		DBG("%s %s -> %s", data->path, data->state, str);
 
-		if (g_str_equal(data->state, str) == TRUE)
+		if (g_str_equal(data->state, str))
 			return TRUE;
 
 		g_free(data->state);
 		data->state = g_strdup(str);
 
 		set_provider_state(data);
-	} else if (g_str_equal(key, "Index") == TRUE) {
+	} else if (g_str_equal(key, "Index")) {
 		dbus_message_iter_get_basic(&value, &data->index);
 		connman_provider_set_index(data->provider, data->index);
-	} else if (g_str_equal(key, "IPv4") == TRUE) {
+	} else if (g_str_equal(key, "IPv4")) {
 		err = extract_ip(&value, AF_INET, data);
-		ip_set = TRUE;
-	} else if (g_str_equal(key, "IPv6") == TRUE) {
+		ip_set = true;
+	} else if (g_str_equal(key, "IPv6")) {
 		err = extract_ip(&value, AF_INET6, data);
-		ip_set = TRUE;
-	} else if (g_str_equal(key, "ServerRoutes") == TRUE) {
+		ip_set = true;
+	} else if (g_str_equal(key, "ServerRoutes")) {
 		err = routes_changed(&value, data->server_routes);
 		/*
 		 * Note that the vpnd will delay the route sending a bit
@@ -1761,24 +1756,24 @@ static gboolean property_changed(DBusConnection *conn,
 		if (err == 0)
 			set_routes(data->provider,
 						CONNMAN_PROVIDER_ROUTE_SERVER);
-	} else if (g_str_equal(key, "UserRoutes") == TRUE) {
+	} else if (g_str_equal(key, "UserRoutes")) {
 		err = routes_changed(&value, data->user_routes);
 		if (err == 0)
 			set_routes(data->provider,
 						CONNMAN_PROVIDER_ROUTE_USER);
-	} else if (g_str_equal(key, "Nameservers") == TRUE) {
+	} else if (g_str_equal(key, "Nameservers")) {
 		if (extract_nameservers(&value, data) == 0 &&
 						data->nameservers != NULL)
 			connman_provider_set_nameservers(data->provider,
 							data->nameservers);
-	} else if (g_str_equal(key, "Domain") == TRUE) {
+	} else if (g_str_equal(key, "Domain")) {
 		dbus_message_iter_get_basic(&value, &str);
 		g_free(data->domain);
 		data->domain = g_strdup(str);
 		connman_provider_set_domain(data->provider, data->domain);
 	}
 
-	if (ip_set == TRUE && err == 0) {
+	if (ip_set && err == 0) {
 		err = connman_provider_set_ipaddress(data->provider, data->ip);
 		if (err < 0)
 			DBG("setting provider IP address failed (%s/%d)",

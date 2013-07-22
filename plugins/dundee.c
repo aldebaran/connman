@@ -61,7 +61,7 @@ struct dundee_data {
 	struct connman_device *device;
 	struct connman_network *network;
 
-	connman_bool_t active;
+	bool active;
 
 	int index;
 
@@ -126,7 +126,7 @@ out:
 
 static void destroy_device(struct dundee_data *info)
 {
-	connman_device_set_powered(info->device, FALSE);
+	connman_device_set_powered(info->device, false);
 
 	if (info->call != NULL)
 		dbus_pending_call_cancel(info->call);
@@ -211,14 +211,14 @@ static void set_connected(struct dundee_data *info)
 	connman_network_set_ipaddress(info->network, info->address);
 	connman_network_set_nameservers(info->network, info->nameservers);
 
-	connman_network_set_connected(info->network, TRUE);
+	connman_network_set_connected(info->network, true);
 }
 
 static void set_disconnected(struct dundee_data *info)
 {
 	DBG("%s", info->path);
 
-	connman_network_set_connected(info->network, FALSE);
+	connman_network_set_connected(info->network, false);
 	connman_inet_ifdown(info->index);
 }
 
@@ -266,8 +266,7 @@ static int set_property(struct dundee_data *info,
 	dbus_message_iter_init_append(message, &iter);
 	connman_dbus_property_append_basic(&iter, property, type, value);
 
-	if (dbus_connection_send_with_reply(connection, message,
-			&info->call, TIMEOUT) == FALSE) {
+	if (!dbus_connection_send_with_reply(connection, message, &info->call, TIMEOUT)) {
 		connman_error("Failed to change property: %s %s",
 				info->path, property);
 		dbus_message_unref(message);
@@ -364,7 +363,7 @@ static int dundee_probe(struct connman_device *device)
 
 	g_hash_table_iter_init(&iter, dundee_devices);
 
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct dundee_data *info = value;
 
 		if (device == info->device)
@@ -453,7 +452,7 @@ static void extract_settings(DBusMessageIter *array,
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "Interface") == TRUE) {
+		if (g_str_equal(key, "Interface")) {
 			dbus_message_iter_get_basic(&value, &interface);
 
 			DBG("Interface %s", interface);
@@ -464,17 +463,17 @@ static void extract_settings(DBusMessageIter *array,
 
 			if (index < 0)
 				break;
-		} else if (g_str_equal(key, "Address") == TRUE) {
+		} else if (g_str_equal(key, "Address")) {
 			dbus_message_iter_get_basic(&value, &val);
 
 			address = g_strdup(val);
 
 			DBG("Address %s", address);
-		} else if (g_str_equal(key, "DomainNameServers") == TRUE) {
+		} else if (g_str_equal(key, "DomainNameServers")) {
 			nameservers = extract_nameservers(&value);
 
 			DBG("Nameservers %s", nameservers);
-		} else if (g_str_equal(key, "Gateway") == TRUE) {
+		} else if (g_str_equal(key, "Gateway")) {
 			dbus_message_iter_get_basic(&value, &val);
 
 			gateway = g_strdup(val);
@@ -516,7 +515,7 @@ static gboolean device_changed(DBusConnection *conn,
 	const char *signature =	DBUS_TYPE_STRING_AS_STRING
 		DBUS_TYPE_VARIANT_AS_STRING;
 
-	if (dbus_message_has_signature(message, signature) == FALSE) {
+	if (!dbus_message_has_signature(message, signature)) {
 		connman_error("dundee signature does not match");
 		return TRUE;
 	}
@@ -525,7 +524,7 @@ static gboolean device_changed(DBusConnection *conn,
 	if (info == NULL)
 		return TRUE;
 
-	if (dbus_message_iter_init(message, &iter) == FALSE)
+	if (!dbus_message_iter_init(message, &iter))
 		return TRUE;
 
 	dbus_message_iter_get_basic(&iter, &key);
@@ -538,20 +537,20 @@ static gboolean device_changed(DBusConnection *conn,
 	 * Active. Settings will always be send before Active = True.
 	 * That means we don't have to order here.
 	 */
-	if (g_str_equal(key, "Active") == TRUE) {
+	if (g_str_equal(key, "Active")) {
 		dbus_message_iter_get_basic(&value, &info->active);
 
 		DBG("%s Active %d", info->path, info->active);
 
-		if (info->active == TRUE)
+		if (info->active)
 			set_connected(info);
 		else
 			set_disconnected(info);
-	} else if (g_str_equal(key, "Settings") == TRUE) {
+	} else if (g_str_equal(key, "Settings")) {
 		DBG("%s Settings", info->path);
 
 		extract_settings(&value, info);
-	} else if (g_str_equal(key, "Name") == TRUE) {
+	} else if (g_str_equal(key, "Name")) {
 		char *name;
 
 		dbus_message_iter_get_basic(&value, &name);
@@ -594,15 +593,15 @@ static void add_device(const char *path, DBusMessageIter *properties)
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "Active") == TRUE) {
+		if (g_str_equal(key, "Active")) {
 			dbus_message_iter_get_basic(&value, &info->active);
 
 			DBG("%s Active %d", info->path, info->active);
-		} else if (g_str_equal(key, "Settings") == TRUE) {
+		} else if (g_str_equal(key, "Settings")) {
 			DBG("%s Settings", info->path);
 
 			extract_settings(&value, info);
-		} else if (g_str_equal(key, "Name") == TRUE) {
+		} else if (g_str_equal(key, "Name")) {
 			char *name;
 
 			dbus_message_iter_get_basic(&value, &name);
@@ -627,7 +626,7 @@ static void add_device(const char *path, DBusMessageIter *properties)
 		goto out;
 	}
 
-	if (info->active == TRUE)
+	if (info->active)
 		set_connected(info);
 
 	return;
@@ -648,14 +647,14 @@ static gboolean device_added(DBusConnection *conn, DBusMessage *message,
 		DBUS_TYPE_VARIANT_AS_STRING
 		DBUS_DICT_ENTRY_END_CHAR_AS_STRING;
 
-	if (dbus_message_has_signature(message, signature) == FALSE) {
+	if (!dbus_message_has_signature(message, signature)) {
 		connman_error("dundee signature does not match");
 		return TRUE;
 	}
 
 	DBG("");
 
-	if (dbus_message_iter_init(message, &iter) == FALSE)
+	if (!dbus_message_iter_init(message, &iter))
 		return TRUE;
 
 	dbus_message_iter_get_basic(&iter, &path);
@@ -681,7 +680,7 @@ static gboolean device_removed(DBusConnection *conn, DBusMessage *message,
 	const char *path;
 	const char *signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
 
-	if (dbus_message_has_signature(message, signature) == FALSE) {
+	if (!dbus_message_has_signature(message, signature)) {
 		connman_error("dundee signature does not match");
 		return TRUE;
 	}
@@ -711,20 +710,20 @@ static void manager_get_devices_reply(DBusPendingCall *call, void *user_data)
 
 	reply = dbus_pending_call_steal_reply(call);
 
-	if (dbus_message_has_signature(reply, signature) == FALSE) {
+	if (!dbus_message_has_signature(reply, signature)) {
 		connman_error("dundee signature does not match");
 		goto done;
 	}
 
 	dbus_error_init(&error);
 
-	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+	if (dbus_set_error_from_message(&error, reply)) {
 		connman_error("%s", error.message);
 		dbus_error_free(&error);
 		goto done;
 	}
 
-	if (dbus_message_iter_init(reply, &array) == FALSE)
+	if (!dbus_message_iter_init(reply, &array))
 		goto done;
 
 	dbus_message_iter_recurse(&array, &dict);
@@ -762,8 +761,7 @@ static int manager_get_devices(void)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
+	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT)) {
 		connman_error("Failed to call GetDevices()");
 		dbus_message_unref(message);
 		return -EINVAL;

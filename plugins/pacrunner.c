@@ -67,8 +67,7 @@ static void create_config_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	if (dbus_message_get_args(reply, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-						DBUS_TYPE_INVALID) == FALSE)
+	if (!dbus_message_get_args(reply, NULL, DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID))
 		goto done;
 
 	g_free(current_config);
@@ -195,7 +194,7 @@ static void create_proxy_configuration(void)
 	result = dbus_connection_send_with_reply(connection, msg,
 							&call, DBUS_TIMEOUT);
 
-	if (result == FALSE || call == NULL)
+	if (!result || call == NULL)
 		goto done;
 
 	dbus_pending_call_set_notify(call, create_config_reply, NULL, NULL);
@@ -244,7 +243,7 @@ static void destroy_proxy_configuration(void)
 
 	dbus_message_unref(msg);
 
-	if (result == FALSE || call == NULL)
+	if (!result || call == NULL)
 		return;
 
 	dbus_pending_call_set_notify(call, destroy_config_reply, NULL, NULL);
@@ -264,7 +263,7 @@ static void default_service_changed(struct connman_service *service)
 
 	default_service = service;
 
-	if (daemon_running == FALSE)
+	if (!daemon_running)
 		return;
 
 	destroy_proxy_configuration();
@@ -279,7 +278,7 @@ static void proxy_changed(struct connman_service *service)
 	if (service != default_service)
 		return;
 
-	if (daemon_running == FALSE)
+	if (!daemon_running)
 		return;
 
 	destroy_proxy_configuration();
@@ -352,8 +351,7 @@ static void request_lookup_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	if (dbus_message_get_args(reply, NULL, DBUS_TYPE_STRING, &proxy,
-						DBUS_TYPE_INVALID) == FALSE)
+	if (!dbus_message_get_args(reply, NULL, DBUS_TYPE_STRING, &proxy, DBUS_TYPE_INVALID))
 		proxy = NULL;
 
 done:
@@ -377,7 +375,7 @@ static int request_lookup(struct connman_service *service, const char *url)
 
 	DBG("");
 
-	if (daemon_running == FALSE)
+	if (!daemon_running)
 		return -EINVAL;
 
 	msg = dbus_message_new_method_call(PACRUNNER_SERVICE,
@@ -414,7 +412,7 @@ static int request_lookup(struct connman_service *service, const char *url)
 
 	dbus_message_unref(msg);
 
-	if (result == FALSE || call == NULL) {
+	if (!result || call == NULL) {
 		g_free(host);
 		g_free(data->url);
 		g_free(data);

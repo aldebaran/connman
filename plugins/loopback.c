@@ -86,7 +86,7 @@ static int setup_hostname(void)
 	return 0;
 }
 
-static gboolean valid_loopback(int sk, struct ifreq *ifr)
+static bool valid_loopback(int sk, struct ifreq *ifr)
 {
 	struct sockaddr_in *addr;
 	int err;
@@ -108,24 +108,24 @@ static gboolean valid_loopback(int sk, struct ifreq *ifr)
 	if (addr->sin_addr.s_addr != loopback_address) {
 		connman_warn("Invalid loopback address %s",
 			inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf)));
-		return FALSE;
+		return false;
 	}
 
 	err = ioctl(sk, SIOCGIFNETMASK, ifr);
 	if (err < 0) {
 		err = -errno;
 		connman_error("Getting netmask failed (%s)", strerror(-err));
-		return TRUE;
+		return true;
 	}
 
 	addr = (struct sockaddr_in *) &ifr->ifr_netmask;
 	if (addr->sin_addr.s_addr != loopback_netmask) {
 		connman_warn("Invalid loopback netmask %s",
 			inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf)));
-		return FALSE;
+		return false;
 	}
 
-	return TRUE;
+	return true;
 }
 
 static int setup_loopback(void)
@@ -148,7 +148,7 @@ static int setup_loopback(void)
 
 	if (ifr.ifr_flags & IFF_UP) {
 		connman_info("Checking loopback interface settings");
-		if (valid_loopback(sk, &ifr) == TRUE) {
+		if (valid_loopback(sk, &ifr)) {
 			err = -EALREADY;
 			goto done;
 		}
@@ -215,7 +215,7 @@ static int loopback_set_hostname(const char *hostname)
 
 	len = strlen(hostname);
 
-	if (connman_inet_check_hostname(hostname, len) == FALSE)
+	if (!connman_inet_check_hostname(hostname, len))
 		return -EINVAL;
 
 	if ((ptr = strstr(hostname, ".")) != NULL)
@@ -238,7 +238,7 @@ static int loopback_set_domainname(const char *domainname)
 
 	len = strlen(domainname);
 
-	if (connman_inet_check_hostname(domainname, len) == FALSE)
+	if (!connman_inet_check_hostname(domainname, len))
 		return -EINVAL;
 
 	if (setdomainname(domainname, len) < 0) {

@@ -158,11 +158,11 @@ static void service_state_changed(struct connman_service *service,
 	properties_changed(nm_state);
 }
 
-static void offline_mode(connman_bool_t enabled)
+static void offline_mode(bool enabled)
 {
 	DBG("enabled %d", enabled);
 
-	if (enabled == TRUE)
+	if (enabled)
 		nm_state = NM_STATE_ASLEEP;
 	else
 		nm_state = NM_STATE_DISCONNECTED;
@@ -191,11 +191,11 @@ static DBusMessage *property_get(DBusConnection *conn,
 
 	DBG("interface %s property %s", interface, key);
 
-	if (g_str_equal(interface, NM_INTERFACE) == FALSE)
+	if (!g_str_equal(interface, NM_INTERFACE))
 		return dbus_message_new_error(msg, DBUS_ERROR_FAILED,
 						"Unsupported interface");
 
-	if (g_str_equal(key, "State") == TRUE) {
+	if (g_str_equal(key, "State")) {
 		DBusMessage *reply;
 		DBusMessageIter iter, value;
 
@@ -243,7 +243,7 @@ static int nmcompat_init(void)
 	if (connection == NULL)
 		return -1;
 
-	if (g_dbus_request_name(connection, NM_SERVICE, NULL) == FALSE) {
+	if (!g_dbus_request_name(connection, NM_SERVICE, NULL)) {
 		connman_error("nmcompat: failed to register service");
 		return -1;
 	}
@@ -253,9 +253,7 @@ static int nmcompat_init(void)
 		return -1;
 	}
 
-	if (g_dbus_register_interface(connection, NM_PATH,
-				DBUS_PROPERTIES_INTERFACE,
-				methods, signals, NULL, NULL, NULL) == FALSE) {
+	if (!g_dbus_register_interface(connection, NM_PATH, DBUS_PROPERTIES_INTERFACE, methods, signals, NULL, NULL, NULL)) {
 		connman_error("nmcompat: failed to register "
 						DBUS_PROPERTIES_INTERFACE);
 		return -1;

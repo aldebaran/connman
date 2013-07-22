@@ -343,7 +343,7 @@ err:
 	return FALSE;
 }
 
-static int install_ldisc(GIOChannel *channel, gboolean install)
+static int install_ldisc(GIOChannel *channel, bool install)
 {
 	int uart_fd, err;
 	struct speed_change_cmd cmd;
@@ -351,7 +351,7 @@ static int install_ldisc(GIOChannel *channel, gboolean install)
 
 	DBG("%d %p", install, uart_channel);
 
-	if (install == FALSE) {
+	if (!install) {
 		install_count = 0;
 		__sync_synchronize();
 
@@ -442,7 +442,7 @@ static gboolean install_event(GIOChannel *channel,
 {
 	GIOStatus status = G_IO_STATUS_NORMAL;
 	unsigned int install_state;
-	gboolean install;
+	bool install;
 	char buf[8];
 	gsize len;
 
@@ -576,7 +576,7 @@ static int tist_init(void)
 		install_count = 1;
 		__sync_synchronize();
 
-		err = install_ldisc(install_channel, TRUE);
+		err = install_ldisc(install_channel, true);
 		if (err < 0) {
 			connman_error("ldisc installtion failed");
 			return err;

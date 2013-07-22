@@ -44,7 +44,7 @@ static DBusConnection *connection;
 static GDBusClient *client;
 static GHashTable *devices;
 static GHashTable *networks;
-static connman_bool_t bluetooth_tethering;
+static bool bluetooth_tethering;
 
 struct bluetooth_pan {
 	struct connman_network *network;
@@ -68,32 +68,32 @@ static const char *proxy_get_string(GDBusProxy *proxy, const char *property)
 	DBusMessageIter iter;
 	const char *str;
 
-	if (g_dbus_proxy_get_property(proxy, property, &iter) == FALSE)
+	if (!g_dbus_proxy_get_property(proxy, property, &iter))
 		return NULL;
 	dbus_message_iter_get_basic(&iter, &str);
 	return str;
 }
 
-static connman_bool_t proxy_get_bool(GDBusProxy *proxy, const char *property)
+static bool proxy_get_bool(GDBusProxy *proxy, const char *property)
 {
 	DBusMessageIter iter;
 	dbus_bool_t value;
 
-	if (g_dbus_proxy_get_property(proxy, property, &iter) == FALSE)
-		return FALSE;
+	if (!g_dbus_proxy_get_property(proxy, property, &iter))
+		return false;
 	dbus_message_iter_get_basic(&iter, &value);
 	return value;
 }
 
-static connman_bool_t proxy_get_nap(GDBusProxy *proxy)
+static bool proxy_get_nap(GDBusProxy *proxy)
 {
         DBusMessageIter iter, value;
 
 	if (proxy == NULL)
-		return FALSE;
+		return false;
 
-        if (g_dbus_proxy_get_property(proxy, "UUIDs", &iter) == FALSE)
-                return FALSE;
+        if (!g_dbus_proxy_get_property(proxy, "UUIDs", &iter))
+                return false;
 
         dbus_message_iter_recurse(&iter, &value);
         while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_STRING) {
@@ -101,11 +101,11 @@ static connman_bool_t proxy_get_nap(GDBusProxy *proxy)
 
                 dbus_message_iter_get_basic(&value, &uuid);
                 if (strcmp(uuid, BLUETOOTH_PAN_NAP) == 0)
-                        return TRUE;
+                        return true;
 
                 dbus_message_iter_next(&value);
         }
-        return FALSE;
+        return false;
 }
 
 static int bluetooth_pan_probe(struct connman_network *network)
@@ -117,7 +117,7 @@ static int bluetooth_pan_probe(struct connman_network *network)
 
 	g_hash_table_iter_init(&iter, networks);
 
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct bluetooth_pan *pan = value;
 
 		if (network == pan->network)
@@ -159,30 +159,30 @@ static void bluetooth_pan_remove(struct connman_network *network)
 		pan_remove_nap(pan);
 }
 
-static connman_bool_t pan_connect(struct bluetooth_pan *pan,
+static bool pan_connect(struct bluetooth_pan *pan,
 		const char *iface)
 {
 	int index;
 
 	if (iface == NULL) {
-		if (proxy_get_bool(pan->btnetwork_proxy, "Connected") == FALSE)
-			return FALSE;
+		if (!proxy_get_bool(pan->btnetwork_proxy, "Connected"))
+			return false;
 		iface = proxy_get_string(pan->btnetwork_proxy, "Interface");
 	}
 
 	if (iface == NULL)
-		return FALSE;
+		return false;
 
 	index = connman_inet_ifindex(iface);
 	if (index < 0) {
 		DBG("network %p invalid index %d", pan->network, index);
-		return FALSE;
+		return false;
 	}
 
 	connman_network_set_index(pan->network, index);
-	connman_network_set_connected(pan->network, TRUE);
+	connman_network_set_connected(pan->network, true);
 
-	return TRUE;
+	return true;
 }
 
 static void pan_connect_cb(DBusMessage *message, void *user_data)
@@ -210,7 +210,7 @@ static void pan_connect_cb(DBusMessage *message, void *user_data)
 			return;
 		}
 	} else {
-		if (dbus_message_iter_init(message, &iter) == TRUE &&
+		if (dbus_message_iter_init(message, &iter) &&
 				dbus_message_iter_get_arg_type(&iter) ==
 				DBUS_TYPE_STRING)
 			dbus_message_iter_get_basic(&iter, &iface);
@@ -241,12 +241,10 @@ static int bluetooth_pan_connect(struct connman_network *network)
 
 	path = g_dbus_proxy_get_path(pan->btnetwork_proxy);
 
-	if (g_dbus_proxy_method_call(pan->btnetwork_proxy, "Connect",
-					pan_connect_append, pan_connect_cb,
-					g_strdup(path), g_free) == FALSE)
+	if (!g_dbus_proxy_method_call(pan->btnetwork_proxy, "Connect", pan_connect_append, pan_connect_cb, g_strdup(path), g_free))
 		return -EIO;
 
-	connman_network_set_associating(pan->network, TRUE);
+	connman_network_set_associating(pan->network, true);
 
 	return -EINPROGRESS;
 }
@@ -270,7 +268,7 @@ static void pan_disconnect_cb(DBusMessage *message, void *user_data)
 
 	DBG("network %p", pan->network);
 
-	connman_network_set_connected(pan->network, FALSE);
+	connman_network_set_connected(pan->network, false);
 }
 
 static int bluetooth_pan_disconnect(struct connman_network *network)
@@ -285,9 +283,7 @@ static int bluetooth_pan_disconnect(struct connman_network *network)
 
 	path = g_dbus_proxy_get_path(pan->btnetwork_proxy);
 
-	if (g_dbus_proxy_method_call(pan->btnetwork_proxy, "Disconnect",
-					NULL, pan_disconnect_cb,
-					g_strdup(path), g_free) == FALSE)
+	if (!g_dbus_proxy_method_call(pan->btnetwork_proxy, "Disconnect", NULL, pan_disconnect_cb, g_strdup(path), g_free))
 		return -EIO;
 
        return -EINPROGRESS;
@@ -297,7 +293,7 @@ static void btnetwork_property_change(GDBusProxy *proxy, const char *name,
 		DBusMessageIter *iter, void *user_data)
 {
 	struct bluetooth_pan *pan;
-	connman_bool_t proxy_connected, network_connected;
+	bool proxy_connected, network_connected;
 
 	if (strcmp(name, "Connected") != 0)
 		return;
@@ -320,7 +316,7 @@ static void pan_create_nap(struct bluetooth_pan *pan)
 {
 	struct connman_device *device;
 
-	if (proxy_get_nap(pan->btdevice_proxy) == FALSE) {
+	if (!proxy_get_nap(pan->btdevice_proxy)) {
 		pan_remove_nap(pan);
 		return;
 	}
@@ -328,7 +324,7 @@ static void pan_create_nap(struct bluetooth_pan *pan)
 	device = g_hash_table_lookup(devices,
 			proxy_get_string(pan->btdevice_proxy, "Adapter"));
 
-	if (device == NULL || connman_device_get_powered(device) == FALSE)
+	if (device == NULL || !connman_device_get_powered(device))
 		return;
 
 	if (pan->network == NULL) {
@@ -360,7 +356,7 @@ static void pan_create_nap(struct bluetooth_pan *pan)
 
 	connman_device_add_network(device, pan->network);
 
-	if (pan_connect(pan, NULL) == TRUE)
+	if (pan_connect(pan, NULL))
 		DBG("network %p already connected", pan->network);
 }
 
@@ -368,7 +364,7 @@ static void btdevice_property_change(GDBusProxy *proxy, const char *name,
 		DBusMessageIter *iter, void *user_data)
 {
 	struct bluetooth_pan *pan;
-	connman_bool_t pan_nap = FALSE;
+	bool pan_nap = false;
 
 	if (strcmp(name, "UUIDs") != 0)
 		return;
@@ -379,7 +375,7 @@ static void btdevice_property_change(GDBusProxy *proxy, const char *name,
 
 	if (pan->network != NULL &&
 			connman_network_get_device(pan->network) != NULL)
-		pan_nap = TRUE;
+		pan_nap = true;
 
 	DBG("network %p network nap %d proxy nap %d", pan->network, pan_nap,
 			proxy_get_nap(pan->btdevice_proxy));
@@ -466,7 +462,7 @@ static void device_enable_cb(const DBusError *error, void *user_data)
 		goto out;
 	}
 
-	if (dbus_error_is_set(error) == TRUE) {
+	if (dbus_error_is_set(error)) {
 		connman_warn("Bluetooth device %s not enabled %s",
 				path, error->message);
 		goto out;
@@ -474,10 +470,10 @@ static void device_enable_cb(const DBusError *error, void *user_data)
 
 	DBG("device %p %s", device, path);
 
-	connman_device_set_powered(device, TRUE);
+	connman_device_set_powered(device, true);
 
 	g_hash_table_iter_init(&iter, networks);
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct bluetooth_pan *pan = value;
 
 		if (g_strcmp0(proxy_get_string(pan->btdevice_proxy, "Adapter"),
@@ -503,7 +499,7 @@ static int bluetooth_device_enable(struct connman_device *device)
 
 	path = g_dbus_proxy_get_path(proxy);
 
-	if (proxy_get_bool(proxy, "Powered") == TRUE) {
+	if (proxy_get_bool(proxy, "Powered")) {
 		DBG("already enabled %p %s", device, path);
 		return -EALREADY;
 	}
@@ -530,17 +526,17 @@ static void device_disable_cb(const DBusError *error, void *user_data)
 		goto out;
 	}
 
-	if (dbus_error_is_set(error) == TRUE) {
+	if (dbus_error_is_set(error)) {
 		connman_warn("Bluetooth device %s not disabled: %s",
 				path, error->message);
 		goto out;
 	}
 
 	DBG("device %p %s", device, path);
-	connman_device_set_powered(device, FALSE);
+	connman_device_set_powered(device, false);
 
 	g_hash_table_iter_init(&iter, networks);
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct bluetooth_pan *pan = value;
 
 		if (connman_network_get_device(pan->network) == device) {
@@ -564,7 +560,7 @@ static int bluetooth_device_disable(struct connman_device *device)
 
 	path = g_dbus_proxy_get_path(proxy);
 
-	if (proxy_get_bool(proxy, "Powered") == FALSE) {
+	if (!proxy_get_bool(proxy, "Powered")) {
 		DBG("already disabled %p %s", device, path);
 		return -EALREADY;
 	}
@@ -583,7 +579,7 @@ static void adapter_property_change(GDBusProxy *proxy, const char *name,
 {
 	struct connman_device *device;
 	const char *path;
-	connman_bool_t adapter_powered, device_powered;
+	bool adapter_powered, device_powered;
 
 	if (strcmp(name, "Powered") != 0)
 		return;
@@ -599,7 +595,7 @@ static void adapter_property_change(GDBusProxy *proxy, const char *name,
 
 	if (device_powered != adapter_powered) {
 		DBG("powering adapter");
-		if (device_powered == TRUE)
+		if (device_powered)
 			bluetooth_device_enable(device);
 		else
 			bluetooth_device_disable(device);
@@ -622,7 +618,7 @@ static void device_free(gpointer data)
 struct tethering_info {
 	struct connman_technology *technology;
 	char *bridge;
-	connman_bool_t enable;
+	bool enable;
 };
 
 static void tethering_free(void *user_data)
@@ -641,12 +637,12 @@ static void tethering_create_cb(DBusMessage *message, void *user_data)
 		const char *dbus_error = dbus_message_get_error_name(message);
 
 		DBG("%s tethering failed: %s",
-				tethering->enable == TRUE? "enable": "disable",
+				tethering->enable ? "enable": "disable",
 				dbus_error);
 		return;
 	}
 
-	DBG("bridge %s %s", tethering->bridge, tethering->enable == TRUE?
+	DBG("bridge %s %s", tethering->bridge, tethering->enable ?
 			"enabled": "disabled");
 
 	if (tethering->technology != NULL)
@@ -660,19 +656,19 @@ static void tethering_append(DBusMessageIter *iter, void *user_data)
 	const char *nap = "nap";
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &nap);
-	if (tethering->enable == TRUE)
+	if (tethering->enable)
 		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
 				&tethering->bridge);
 }
 
-static connman_bool_t tethering_create(const char *path,
+static bool tethering_create(const char *path,
 		struct connman_technology *technology, const char *bridge,
-		connman_bool_t enabled)
+		bool enabled)
 {
 	struct tethering_info *tethering = g_new0(struct tethering_info, 1);
 	GDBusProxy *proxy;
 	const char *method;
-	connman_bool_t result;
+	bool result;
 
 	DBG("path %s bridge %s", path, bridge);
 
@@ -681,7 +677,7 @@ static connman_bool_t tethering_create(const char *path,
 
 	proxy = g_dbus_proxy_new(client, path, "org.bluez.NetworkServer1");
 	if (proxy == NULL)
-		return FALSE;
+		return false;
 
 	tethering->technology = technology;
 	tethering->bridge = g_strdup(bridge);
@@ -706,7 +702,7 @@ static void device_create(GDBusProxy *proxy)
 	const char *path = g_dbus_proxy_get_path(proxy);
 	const char *address;
 	char ident[BLUETOOTH_ADDR_LEN * 2 + 1];
-	connman_bool_t powered;
+	bool powered;
 
 	address = proxy_get_string(proxy, "Address");
 	if (address == NULL)
@@ -738,8 +734,8 @@ static void device_create(GDBusProxy *proxy)
 	powered = proxy_get_bool(proxy, "Powered");
 	connman_device_set_powered(device, powered);
 
-	if (proxy_get_nap(proxy) == TRUE && bluetooth_tethering == FALSE)
-		tethering_create(path, NULL, NULL, FALSE);
+	if (proxy_get_nap(proxy) && !bluetooth_tethering)
+		tethering_create(path, NULL, NULL, false);
 }
 
 static void object_added(GDBusProxy *proxy, void *user_data)
@@ -790,7 +786,7 @@ static int bluetooth_device_probe(struct connman_device *device)
 
 	g_hash_table_iter_init(&iter, devices);
 
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct connman_device *known = value;
 
 		if (device == known)
@@ -826,7 +822,7 @@ static void bluetooth_tech_remove(struct connman_technology *technology)
 
 static int bluetooth_tech_set_tethering(struct connman_technology *technology,
 		const char *identifier, const char *passphrase,
-		const char *bridge, connman_bool_t enabled)
+		const char *bridge, bool enabled)
 {
 	GHashTableIter hash_iter;
 	gpointer key, value;
@@ -836,18 +832,18 @@ static int bluetooth_tech_set_tethering(struct connman_technology *technology,
 
 	g_hash_table_iter_init(&hash_iter, devices);
 
-	while (g_hash_table_iter_next(&hash_iter, &key, &value) == TRUE) {
+	while (g_hash_table_iter_next(&hash_iter, &key, &value)) {
 		const char *path = key;
 		struct connman_device *device = value;
 
 		DBG("device %p", device);
 
 		if (tethering_create(path, technology, bridge, enabled)
-				== TRUE)
+				)
 			i++;
 	}
 
-	DBG("%s %d device(s)", enabled == TRUE? "enabled": "disabled", i);
+	DBG("%s %d device(s)", enabled ? "enabled": "disabled", i);
 
 	if (i == 0)
 		return -ENODEV;
