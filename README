@@ -271,6 +271,12 @@ CONFIG_IP_MULTIPLE_TABLES
 CONFIG_NETFILTER_NETLINK_ACCT
 CONFIG_NETFILTER_XT_MATCH_NFACCT
 
+In order to support USB gadget tethering, the following kernel configuration
+options need to be enabled:
+
+CONFIG_USB_GADGET
+CONFIG_USB_ETH
+
 wpa_supplicant configuration
 ============================
 
