@@ -41,7 +41,7 @@ short int connman_inet_ifflags(int index);
 int connman_inet_ifup(int index);
 int connman_inet_ifdown(int index);
 
-connman_bool_t connman_inet_is_cfg80211(int index);
+bool connman_inet_is_cfg80211(int index);
 
 int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress);
 int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress);
@@ -53,7 +53,7 @@ int connman_inet_del_network_route(int index, const char *host);
 int connman_inet_clear_gateway_address(int index, const char *gateway);
 int connman_inet_set_gateway_interface(int index);
 int connman_inet_clear_gateway_interface(int index);
-connman_bool_t connman_inet_compare_subnet(int index, const char *host);
+bool connman_inet_compare_subnet(int index, const char *host);
 int connman_inet_set_ipv6_address(int index,
 		struct connman_ipaddress *ipaddress);
 int connman_inet_clear_ipv6_address(int index,
@@ -78,8 +78,8 @@ int connman_inet_create_tunnel(char **iface);
 int connman_inet_get_dest_addr(int index, char **dest);
 int connman_inet_ipv6_get_dest_addr(int index, char **dest);
 int connman_inet_check_ipaddress(const char *host);
-connman_bool_t connman_inet_check_hostname(const char *ptr, size_t len);
-connman_bool_t connman_inet_is_ipv6_supported();
+bool connman_inet_check_hostname(const char *ptr, size_t len);
+bool connman_inet_is_ipv6_supported();
 
 #ifdef __cplusplus
 }

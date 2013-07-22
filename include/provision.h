@@ -41,7 +41,7 @@ struct connman_config_entry {
 	char *name;
 	void *ssid;
 	unsigned int ssid_len;
-	connman_bool_t hidden;
+	bool hidden;
 };
 
 int connman_config_provision_mutable_service(GKeyFile *keyfile);

@@ -89,20 +89,20 @@ void connman_network_set_group(struct connman_network *network,
 						const char *group);
 const char *connman_network_get_group(struct connman_network *network);
 
-connman_bool_t connman_network_get_connecting(struct connman_network *network);
+bool connman_network_get_connecting(struct connman_network *network);
 int connman_network_set_available(struct connman_network *network,
-						connman_bool_t available);
-connman_bool_t connman_network_get_available(struct connman_network *network);
+						bool available);
+bool connman_network_get_available(struct connman_network *network);
 int connman_network_set_associating(struct connman_network *network,
-						connman_bool_t associating);
+						bool associating);
 void connman_network_set_error(struct connman_network *network,
 					enum connman_network_error error);
 void connman_network_clear_error(struct connman_network *network);
 int connman_network_set_connected(struct connman_network *network,
-						connman_bool_t connected);
-connman_bool_t connman_network_get_connected(struct connman_network *network);
+						bool connected);
+bool connman_network_get_connected(struct connman_network *network);
 
-connman_bool_t connman_network_get_associating(struct connman_network *network);
+bool connman_network_get_associating(struct connman_network *network);
 
 void connman_network_clear_hidden(void *user_data);
 int connman_network_connect_hidden(struct connman_network *network,
@@ -135,8 +135,8 @@ int connman_network_set_string(struct connman_network *network,
 const char *connman_network_get_string(struct connman_network *network,
 							const char *key);
 int connman_network_set_bool(struct connman_network *network,
-					const char *key, connman_bool_t value);
-connman_bool_t connman_network_get_bool(struct connman_network *network,
+					const char *key, bool value);
+bool connman_network_get_bool(struct connman_network *network,
 							const char *key);
 int connman_network_set_blob(struct connman_network *network,
 			const char *key, const void *data, unsigned int size);

@@ -61,10 +61,10 @@ struct connman_session;
 struct connman_session_config {
 	enum connman_session_id_type id_type;
 	char *id;
-	connman_bool_t priority;
+	bool priority;
 	enum connman_session_roaming_policy roaming_policy;
 	enum connman_session_type type;
-	connman_bool_t ecall;
+	bool ecall;
 	GSList *allowed_bearers;
 };
 

@@ -50,7 +50,7 @@ int connman_agent_driver_register(struct connman_agent_driver *driver);
 void connman_agent_driver_unregister(struct connman_agent_driver *driver);
 
 typedef void (* report_error_cb_t) (void *user_context,
-				gboolean retry, void *user_data);
+				bool retry, void *user_data);
 
 int connman_agent_report_error(void *user_context, const char *path,
 				const char *error,
