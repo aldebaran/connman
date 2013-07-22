@@ -226,6 +226,35 @@ static struct connman_device_driver ethernet_driver = {
 	.disable	= ethernet_disable,
 };
 
+static int gadget_probe(struct connman_device *device)
+{
+	DBG("device %p", device);
+	return 0;
+}
+static void gadget_remove(struct connman_device *device)
+{
+	DBG("device %p", device);
+}
+static int gadget_enable(struct connman_device *device)
+{
+	DBG("device %p", device);
+	return 0;
+}
+static int gadget_disable(struct connman_device *device)
+{
+	DBG("device %p", device);
+	return 0;
+}
+
+static struct connman_device_driver gadget_driver = {
+	.name		= "gadget",
+	.type		= CONNMAN_DEVICE_TYPE_GADGET,
+	.probe		= gadget_probe,
+	.remove		= gadget_remove,
+	.enable		= gadget_enable,
+	.disable	= gadget_disable,
+};
+
 static GList *cdc_interface_list = NULL;
 
 static void tech_add_interface(struct connman_technology *technology,
@@ -451,6 +480,14 @@ static int ethernet_init(void)
 		return err;
 	}
 
+	err = connman_device_driver_register(&gadget_driver);
+	if (err < 0) {
+		connman_technology_driver_unregister(&tech_driver);
+		connman_device_driver_unregister(&ethernet_driver);
+		connman_network_driver_unregister(&cable_driver);
+		return err;
+	}
+
 	return 0;
 }
 
@@ -463,6 +500,8 @@ static void ethernet_exit(void)
 	connman_network_driver_unregister(&cable_driver);
 
 	connman_device_driver_unregister(&ethernet_driver);
+
+	connman_device_driver_unregister(&gadget_driver);
 }
 
 CONNMAN_PLUGIN_DEFINE(ethernet, "Ethernet interface plugin", VERSION,
