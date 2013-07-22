@@ -125,7 +125,7 @@ DBusMessage *manager_create_session(DBusConnection *connection,
 DBusMessage *manager_destroy_session(DBusConnection *connection,
 					const char *notifier_path);
 DBusMessage *manager_set_session_mode(DBusConnection *connection,
-					connman_bool_t enable);
+					bool enable);
 int manager_parse_properties(DBusMessage *msg,
 				struct test_manager *manager);
 

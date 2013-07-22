@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 
 	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, &err);
 	if (conn == NULL) {
-		if (dbus_error_is_set(&err) == TRUE) {
+		if (dbus_error_is_set(&err)) {
 			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);
 		} else

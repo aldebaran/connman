@@ -194,7 +194,7 @@ static void test_session_create_many(struct test_fix *fix)
 }
 
 static void set_session_mode(struct test_fix *fix,
-					connman_bool_t enable)
+					bool enable)
 {
 	DBusMessage *msg;
 
@@ -610,25 +610,25 @@ static void test_session_policy(struct test_fix *fix)
 	set_session_state(session, TEST_SESSION_STATE_0);
 }
 
-static connman_bool_t is_online(struct test_fix *fix)
+static bool is_online(struct test_fix *fix)
 {
 	if (g_strcmp0(fix->manager.state, "online") == 0)
-		return TRUE;
+		return true;
 
-	return FALSE;
+	return false;
 }
 
 static void enable_session_mode(struct test_fix *fix)
 {
-	set_session_mode(fix, TRUE);
+	set_session_mode(fix, true);
 
-	if (is_online(fix) == FALSE)
+	if (!is_online(fix))
 		util_idle_call(fix, util_quit_loop, NULL);
 }
 
 static void manager_state_changed(struct test_fix *fix)
 {
-	if (is_online(fix) == FALSE) {
+	if (!is_online(fix)) {
 		fix->manager_changed = NULL;
 		util_idle_call(fix, util_quit_loop, NULL);
 	}
@@ -636,7 +636,7 @@ static void manager_state_changed(struct test_fix *fix)
 
 static void disable_session_mode(struct test_fix *fix)
 {
-	set_session_mode(fix, FALSE);
+	set_session_mode(fix, false);
 }
 
 static void setup_cb(struct test_fix *fix)

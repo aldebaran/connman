@@ -117,7 +117,7 @@ static void manager_changed(struct test_fix *fix,
 
 	dbus_message_iter_get_basic(&iter, &value);
 
-	if (g_str_equal(key, "State") == TRUE) {
+	if (g_str_equal(key, "State")) {
 		LOG("State %s", value);
 
 		if (fix->manager.state != NULL)
@@ -202,7 +202,7 @@ static void run_test_cb(gconstpointer data)
 	g_main_loop_run(fix->main_loop);
 
 #if ENABLE_WRAPPER
-	if (g_test_trap_fork(60 * 1000 * 1000, 0) == TRUE) {
+	if (g_test_trap_fork(60 * 1000 * 1000, 0)) {
 		util_call(fix, cbd->func, NULL);
 		g_main_loop_run(fix->main_loop);
 		exit(0);

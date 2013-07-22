@@ -128,7 +128,7 @@ static DBusMessage *notify_update(DBusConnection *conn,
 
 		switch (dbus_message_iter_get_arg_type(&value)) {
 		case DBUS_TYPE_ARRAY:
-			if (g_str_equal(key, "AllowedBearers") == TRUE) {
+			if (g_str_equal(key, "AllowedBearers")) {
 				allowed_bearers = session_parse_allowed_bearers(&value);
 
 				g_slist_foreach(info->allowed_bearers,
@@ -137,10 +137,10 @@ static DBusMessage *notify_update(DBusConnection *conn,
 
 				info->allowed_bearers = allowed_bearers;
 
-			} else if (g_str_equal(key, "IPv4") == TRUE) {
+			} else if (g_str_equal(key, "IPv4")) {
 				/* XXX */
 
-			} else if (g_str_equal(key, "IPv6") == TRUE) {
+			} else if (g_str_equal(key, "IPv6")) {
 				/* XXX */
 
 			} else {
@@ -149,12 +149,12 @@ static DBusMessage *notify_update(DBusConnection *conn,
 			}
 			break;
 		case DBUS_TYPE_STRING:
-			if (g_str_equal(key, "State") == TRUE) {
+			if (g_str_equal(key, "State")) {
 				const char *val;
 				dbus_message_iter_get_basic(&value, &val);
 
 				info->state = string2state(val);
-			} else if (g_str_equal(key, "Bearer") == TRUE) {
+			} else if (g_str_equal(key, "Bearer")) {
 				const char *val;
 				dbus_message_iter_get_basic(&value, &val);
 
@@ -163,7 +163,7 @@ static DBusMessage *notify_update(DBusConnection *conn,
 
 				info->bearer = g_strdup(val);
 
-			} else if (g_str_equal(key, "Name") == TRUE) {
+			} else if (g_str_equal(key, "Name")) {
 				const char *val;
 				dbus_message_iter_get_basic(&value, &val);
 
@@ -172,7 +172,7 @@ static DBusMessage *notify_update(DBusConnection *conn,
 
 				info->name = g_strdup(val);
 
-			} else if (g_str_equal(key, "Interface") == TRUE) {
+			} else if (g_str_equal(key, "Interface")) {
 				const char *val;
 				dbus_message_iter_get_basic(&value, &val);
 
@@ -182,7 +182,7 @@ static DBusMessage *notify_update(DBusConnection *conn,
 				info->interface = g_strdup(val);
 
 			} else if (g_str_equal(key, "ConnectionType")
-								== TRUE) {
+								) {
 				const char *val;
 				dbus_message_iter_get_basic(&value, &val);
 
@@ -216,10 +216,7 @@ static const GDBusMethodTable notify_methods[] = {
 int session_notify_register(struct test_session *session,
 				const char *notify_path)
 {
-	if (g_dbus_register_interface(session->connection, notify_path,
-			CONNMAN_NOTIFICATION_INTERFACE,
-			notify_methods, NULL, NULL,
-			session, NULL) == FALSE) {
+	if (!g_dbus_register_interface(session->connection, notify_path, CONNMAN_NOTIFICATION_INTERFACE, notify_methods, NULL, NULL, session, NULL)) {
 		return -EINVAL;
 	}
 
@@ -229,8 +226,7 @@ int session_notify_register(struct test_session *session,
 int session_notify_unregister(struct test_session *session,
 				const char *notify_path)
 {
-	if (g_dbus_unregister_interface(session->connection, notify_path,
-				CONNMAN_NOTIFICATION_INTERFACE) == FALSE) {
+	if (!g_dbus_unregister_interface(session->connection, notify_path, CONNMAN_NOTIFICATION_INTERFACE)) {
 		return -EINVAL;
 	}
 
@@ -281,7 +277,7 @@ DBusMessage *session_connect(DBusConnection *connection,
 	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
+		if (dbus_error_is_set(&error)) {
 			LOG("%s", error.message);
 			dbus_error_free(&error);
 		} else {
@@ -314,7 +310,7 @@ DBusMessage *session_disconnect(DBusConnection *connection,
 	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
+		if (dbus_error_is_set(&error)) {
 			LOG("%s", error.message);
 			dbus_error_free(&error);
 		} else {

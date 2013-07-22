@@ -49,7 +49,7 @@ static DBusMessage *set_property(DBusConnection *connection,
 	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
+		if (dbus_error_is_set(&error)) {
 			LOG("%s", error.message);
 			dbus_error_free(&error);
 		} else {
@@ -81,7 +81,7 @@ DBusMessage *manager_get_services(DBusConnection *connection)
 	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
+		if (dbus_error_is_set(&error)) {
 			LOG("%s", error.message);
 			dbus_error_free(&error);
 		} else {
@@ -113,7 +113,7 @@ DBusMessage *manager_get_properties(DBusConnection *connection)
 	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
+		if (dbus_error_is_set(&error)) {
 			LOG("%s", error.message);
 			dbus_error_free(&error);
 		} else {
@@ -159,7 +159,7 @@ DBusMessage *manager_create_session(DBusConnection *connection,
 	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
+		if (dbus_error_is_set(&error)) {
 			LOG("%s", error.message);
 			dbus_error_free(&error);
 		} else {
@@ -198,7 +198,7 @@ DBusMessage *manager_destroy_session(DBusConnection *connection,
 	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
+		if (dbus_error_is_set(&error)) {
 			LOG("%s", error.message);
 			dbus_error_free(&error);
 		} else {
@@ -214,7 +214,7 @@ DBusMessage *manager_destroy_session(DBusConnection *connection,
 }
 
 DBusMessage *manager_set_session_mode(DBusConnection *connection,
-					connman_bool_t enable)
+					bool enable)
 {
 	dbus_bool_t val = enable;
 
@@ -242,7 +242,7 @@ int manager_parse_properties(DBusMessage *msg,
 
 		switch (dbus_message_iter_get_arg_type(&value)) {
 		case DBUS_TYPE_STRING:
-			if (g_str_equal(key, "State") == TRUE) {
+			if (g_str_equal(key, "State")) {
 				const char *val;
 				dbus_message_iter_get_basic(&value, &val);
 

@@ -187,9 +187,9 @@ static enum supplicant_mode string2mode(const char *mode)
 	if (mode == NULL)
 		return SUPPLICANT_MODE_UNKNOWN;
 
-	if (g_str_equal(mode, "infrastructure") == TRUE)
+	if (g_str_equal(mode, "infrastructure"))
 		return SUPPLICANT_MODE_INFRA;
-	else if (g_str_equal(mode, "ad-hoc") == TRUE)
+	else if (g_str_equal(mode, "ad-hoc"))
 		return SUPPLICANT_MODE_IBSS;
 
 	return SUPPLICANT_MODE_UNKNOWN;
@@ -232,25 +232,25 @@ static enum supplicant_state string2state(const char *state)
 	if (state == NULL)
 		return SUPPLICANT_STATE_UNKNOWN;
 
-	if (g_str_equal(state, "unknown") == TRUE)
+	if (g_str_equal(state, "unknown"))
 		return SUPPLICANT_STATE_UNKNOWN;
-	else if (g_str_equal(state, "disconnected") == TRUE)
+	else if (g_str_equal(state, "disconnected"))
 		return SUPPLICANT_STATE_DISCONNECTED;
-	else if (g_str_equal(state, "inactive") == TRUE)
+	else if (g_str_equal(state, "inactive"))
 		return SUPPLICANT_STATE_INACTIVE;
-	else if (g_str_equal(state, "scanning") == TRUE)
+	else if (g_str_equal(state, "scanning"))
 		return SUPPLICANT_STATE_SCANNING;
-	else if (g_str_equal(state, "authenticating") == TRUE)
+	else if (g_str_equal(state, "authenticating"))
 		return SUPPLICANT_STATE_AUTHENTICATING;
-	else if (g_str_equal(state, "associating") == TRUE)
+	else if (g_str_equal(state, "associating"))
 		return SUPPLICANT_STATE_ASSOCIATING;
-	else if (g_str_equal(state, "associated") == TRUE)
+	else if (g_str_equal(state, "associated"))
 		return SUPPLICANT_STATE_ASSOCIATED;
-	else if (g_str_equal(state, "group_handshake") == TRUE)
+	else if (g_str_equal(state, "group_handshake"))
 		return SUPPLICANT_STATE_GROUP_HANDSHAKE;
-	else if (g_str_equal(state, "4way_handshake") == TRUE)
+	else if (g_str_equal(state, "4way_handshake"))
 		return SUPPLICANT_STATE_4WAY_HANDSHAKE;
-	else if (g_str_equal(state, "completed") == TRUE)
+	else if (g_str_equal(state, "completed"))
 		return SUPPLICANT_STATE_COMPLETED;
 
 	return SUPPLICANT_STATE_UNKNOWN;
@@ -258,7 +258,7 @@ static enum supplicant_state string2state(const char *state)
 
 static void callback_system_ready(void)
 {
-	if (system_ready == TRUE)
+	if (system_ready)
 		return;
 
 	system_ready = TRUE;
@@ -918,11 +918,11 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 		return;
 
 	if (key == NULL) {
-		if (bss->ieee8021x == TRUE)
+		if (bss->ieee8021x)
 			bss->security = SUPPLICANT_SECURITY_IEEE8021X;
-		else if (bss->psk == TRUE)
+		else if (bss->psk)
 			bss->security = SUPPLICANT_SECURITY_PSK;
-		else if (bss->privacy == TRUE)
+		else if (bss->privacy)
 			bss->security = SUPPLICANT_SECURITY_WEP;
 		else
 			bss->security = SUPPLICANT_SECURITY_NONE;
@@ -1140,8 +1140,8 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		dbus_message_iter_get_basic(iter, &scanning);
 		interface->scanning = scanning;
 
-		if (interface->ready == TRUE) {
-			if (interface->scanning == TRUE)
+		if (interface->ready) {
+			if (interface->scanning)
 				callback_scan_started(interface);
 			else
 				callback_scan_finished(interface);
@@ -1390,7 +1390,7 @@ static void signal_scan_done(const char *path, DBusMessageIter *iter)
 	if (interface->scan_callback != NULL) {
 		int result = 0;
 
-		if (success == FALSE)
+		if (!success)
 			result = -EIO;
 
 		interface->scan_callback(result, interface->scan_data);
@@ -1500,16 +1500,14 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 	if (path == NULL)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	if (dbus_message_iter_init(message, &iter) == FALSE)
+	if (!dbus_message_iter_init(message, &iter))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	for (i = 0; signal_map[i].interface != NULL; i++) {
-		if (dbus_message_has_interface(message,
-					signal_map[i].interface) == FALSE)
+		if (!dbus_message_has_interface(message, signal_map[i].interface))
 			continue;
 
-		if (dbus_message_has_member(message,
-					signal_map[i].member) == FALSE)
+		if (!dbus_message_has_member(message, signal_map[i].member))
 			continue;
 
 		signal_map[i].function(path, &iter);
@@ -1544,8 +1542,7 @@ int supplicant_register(const struct supplicant_callbacks *callbacks)
 	if (connection == NULL)
 		return -EIO;
 
-	if (dbus_connection_add_filter(connection,
-				supplicant_filter, NULL, NULL) == FALSE) {
+	if (!dbus_connection_add_filter(connection, supplicant_filter, NULL, NULL)) {
 		dbus_connection_unref(connection);
 		connection = NULL;
 		return -EIO;
@@ -1572,7 +1569,7 @@ int supplicant_register(const struct supplicant_callbacks *callbacks)
 	dbus_connection_flush(connection);
 
 	if (dbus_bus_name_has_owner(connection,
-					SUPPLICANT_SERVICE, NULL) == TRUE) {
+					SUPPLICANT_SERVICE, NULL)) {
 		system_available = TRUE;
 		supplicant_bootstrap();
 	}
@@ -1606,7 +1603,7 @@ void supplicant_unregister(const struct supplicant_callbacks *callbacks)
 		interface_table = NULL;
 	}
 
-	if (system_available == TRUE)
+	if (system_available)
 		callback_system_killed();
 
 	if (connection != NULL) {
@@ -1640,7 +1637,7 @@ static void debug_level_params(DBusMessageIter *iter, void *user_data)
 
 void supplicant_set_debug_level(unsigned int level)
 {
-	if (system_available == FALSE)
+	if (!system_available)
 		return;
 
 	supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
@@ -1691,7 +1688,7 @@ static void interface_create_result(const char *error,
 		goto done;
 	}
 
-	if (system_available == FALSE) {
+	if (!system_available) {
 		err = -EFAULT;
 		goto done;
 	}
@@ -1766,7 +1763,7 @@ static void interface_get_result(const char *error,
 	return;
 
 create:
-	if (system_available == FALSE) {
+	if (!system_available) {
 		err = -EFAULT;
 		goto done;
 	}
@@ -1802,7 +1799,7 @@ int supplicant_interface_create(const char *ifname, const char *driver,
 	if (ifname == NULL)
 		return -EINVAL;
 
-	if (system_available == FALSE)
+	if (!system_available)
 		return -EFAULT;
 
 	data = dbus_malloc0(sizeof(*data));
@@ -1828,7 +1825,7 @@ int supplicant_interface_remove(struct supplicant_interface *interface,
 	if (interface == NULL)
 		return -EINVAL;
 
-	if (system_available == FALSE)
+	if (!system_available)
 		return -EFAULT;
 
 	return 0;
@@ -1878,10 +1875,10 @@ int supplicant_interface_scan(struct supplicant_interface *interface,
 	if (interface == NULL)
 		return -EINVAL;
 
-	if (system_available == FALSE)
+	if (!system_available)
 		return -EFAULT;
 
-	if (interface->scanning == TRUE)
+	if (interface->scanning)
 		return -EALREADY;
 
 	data = dbus_malloc0(sizeof(*data));
@@ -1926,7 +1923,7 @@ int supplicant_interface_disconnect(struct supplicant_interface *interface,
 	if (interface == NULL)
 		return -EINVAL;
 
-	if (system_available == FALSE)
+	if (!system_available)
 		return -EFAULT;
 
 	data = dbus_malloc0(sizeof(*data));

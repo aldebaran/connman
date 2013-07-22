@@ -100,7 +100,7 @@ static const char *response_code_to_string(int response_code)
 }
 
 struct wispr_msg {
-	gboolean has_error;
+	bool has_error;
 	const char *current_element;
 	int message_type;
 	int response_code;
@@ -114,7 +114,7 @@ struct wispr_msg {
 
 static inline void wispr_msg_init(struct wispr_msg *msg)
 {
-	msg->has_error = FALSE;
+	msg->has_error = false;
 	msg->current_element = NULL;
 
 	msg->message_type = -1;
@@ -216,8 +216,7 @@ static void text_handler(GMarkupParseContext *context,
 		return;
 
 	for (i = 0; wispr_element_map[i].str; i++) {
-		if (g_str_equal(wispr_element_map[i].str,
-					msg->current_element) == FALSE)
+		if (!g_str_equal(wispr_element_map[i].str, msg->current_element))
 			continue;
 
 		switch (wispr_element_map[i].element) {
@@ -266,7 +265,7 @@ static void error_handler(GMarkupParseContext *context,
 {
 	struct wispr_msg *msg = user_data;
 
-	msg->has_error = TRUE;
+	msg->has_error = true;
 }
 
 static const GMarkupParser wispr_parser = {
@@ -281,7 +280,7 @@ static void parser_callback(const char *str, gpointer user_data)
 {
 	struct wispr_session *wispr = user_data;
 	GMarkupParseContext *context;
-	gboolean result;
+	bool result;
 
 	//printf("%s\n", str);
 
@@ -289,7 +288,7 @@ static void parser_callback(const char *str, gpointer user_data)
 			G_MARKUP_TREAT_CDATA_AS_TEXT, &wispr->msg, NULL);
 
 	result = g_markup_parse_context_parse(context, str, strlen(str), NULL);
-	if (result == TRUE)
+	if (result)
 		g_markup_parse_context_end_parse(context, NULL);
 
 	g_markup_parse_context_free(context);
@@ -301,7 +300,7 @@ struct user_input_data {
 	GString *str;
 	user_input_cb cb;
 	gpointer user_data;
-	gboolean hidden;
+	bool hidden;
 	int fd;
 	struct termios saved_termios;
 };
@@ -310,7 +309,7 @@ static void user_callback(struct user_input_data *data)
 {
 	char *value;
 
-	if (data->hidden == TRUE) {
+	if (data->hidden) {
 		ssize_t len;
 
 		len = write(data->fd, "\n", 1);
@@ -351,13 +350,13 @@ static gboolean keyboard_input(GIOChannel *channel, GIOCondition condition,
 
 	g_string_append_c(data->str, buf[0]);
 
-	if (data->hidden == TRUE)
+	if (data->hidden)
 		len = write(data->fd, "*", 1);
 
 	return TRUE;
 }
 
-static gboolean user_input(const char *label, gboolean hidden,
+static bool user_input(const char *label, bool hidden,
 				user_input_cb func, gpointer user_data)
 {
 	struct user_input_data *data;
@@ -368,7 +367,7 @@ static gboolean user_input(const char *label, gboolean hidden,
 
 	data = g_try_new0(struct user_input_data, 1);
 	if (data == NULL)
-		return FALSE;
+		return false;
 
 	data->str = g_string_sized_new(32);
 	data->cb = func;
@@ -385,7 +384,7 @@ static gboolean user_input(const char *label, gboolean hidden,
 	}
 
 	new_termios = data->saved_termios;
-	if (data->hidden == TRUE)
+	if (data->hidden)
 		new_termios.c_lflag &= ~(ICANON|ECHO);
 	else
 		new_termios.c_lflag &= ~ICANON;
@@ -411,13 +410,13 @@ static gboolean user_input(const char *label, gboolean hidden,
 	if (len < 0)
 		goto error;
 
-	return TRUE;
+	return true;
 
 error:
 	g_string_free(data->str, TRUE);
 	g_free(data);
 
-	return FALSE;
+	return false;
 }
 
 static void password_callback(const char *value, gpointer user_data)
@@ -440,7 +439,7 @@ static void username_callback(const char *value, gpointer user_data)
 	wispr->username = g_strdup(value);
 
 	if (wispr->password == NULL) {
-		user_input("Password", TRUE, password_callback, wispr);
+		user_input("Password", true, password_callback, wispr);
 		return;
 	}
 
@@ -449,7 +448,7 @@ static void username_callback(const char *value, gpointer user_data)
 	execute_login(wispr);
 }
 
-static gboolean wispr_input(const guint8 **data, gsize *length,
+static bool wispr_input(const guint8 **data, gsize *length,
 						gpointer user_data)
 {
 	struct wispr_session *wispr = user_data;
@@ -473,10 +472,10 @@ static gboolean wispr_input(const guint8 **data, gsize *length,
 	*data = (guint8 *) wispr->formdata;
 	*length = count;
 
-	return FALSE;
+	return false;
 }
 
-static gboolean wispr_route(const char *addr, int ai_family, int if_index,
+static bool wispr_route(const char *addr, int ai_family, int if_index,
 		gpointer user_data)
 {
 	char *family = "unknown";
@@ -489,12 +488,12 @@ static gboolean wispr_route(const char *addr, int ai_family, int if_index,
 	printf("Route request: %s %s index %d\n", family, addr, if_index);
 
 	if (ai_family != AF_INET && ai_family != AF_INET6)
-		return FALSE;
+		return false;
 
-	return TRUE;
+	return true;
 }
 
-static gboolean wispr_result(GWebResult *result, gpointer user_data)
+static bool wispr_result(GWebResult *result, gpointer user_data)
 {
 	struct wispr_session *wispr = user_data;
 	const guint8 *chunk;
@@ -507,7 +506,7 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 	if (length > 0) {
 		//printf("%s\n", (char *) chunk);
 		g_web_parser_feed_data(wispr->parser, chunk, length);
-		return TRUE;
+		return true;
 	}
 
 	g_web_parser_end_data(wispr->parser);
@@ -526,8 +525,7 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 		if (status != 302)
 			goto done;
 
-		if (g_web_result_get_header(result, "Location",
-							&redirect) == FALSE)
+		if (!g_web_result_get_header(result, "Location", &redirect))
 			goto done;
 
 		printf("Redirect URL: %s\n", redirect);
@@ -536,7 +534,7 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 		wispr->request = g_web_request_get(wispr->web, redirect,
 				wispr_result, wispr_route, wispr);
 
-		return FALSE;
+		return false;
 	}
 
 	printf("Message type: %s (%d)\n",
@@ -564,17 +562,18 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 
 	if (wispr->msg.message_type == 100) {
 		if (wispr->username == NULL) {
-			user_input("Username", FALSE, username_callback, wispr);
-			return FALSE;
+			user_input("Username", false,
+				   username_callback, wispr);
+			return false;
 		}
 
 		if (wispr->password == NULL) {
-			user_input("Password", TRUE, password_callback, wispr);
-			return FALSE;
+			user_input("Password", true, password_callback, wispr);
+			return false;
 		}
 
 		g_idle_add(execute_login, wispr);
-		return FALSE;
+		return false;
 	} else if (wispr->msg.message_type == 120 ||
 					wispr->msg.message_type == 140) {
 		int code = wispr->msg.response_code;
@@ -585,8 +584,7 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 	if (status == 302) {
 		const char *redirect;
 
-		if (g_web_result_get_header(result, "Location",
-							&redirect) == FALSE)
+		if (!g_web_result_get_header(result, "Location", &redirect))
 			goto done;
 
 		printf("\n");
@@ -596,13 +594,13 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 		wispr->request = g_web_request_get(wispr->web, redirect,
 				wispr_result, NULL, wispr);
 
-		return FALSE;
+		return false;
 	}
 
 done:
 	g_main_loop_quit(main_loop);
 
-	return FALSE;
+	return false;
 }
 
 static gboolean execute_login(gpointer user_data)
@@ -618,7 +616,7 @@ static gboolean execute_login(gpointer user_data)
 	return FALSE;
 }
 
-static gboolean option_debug = FALSE;
+static bool option_debug = false;
 static gchar *option_nameserver = NULL;
 static gchar *option_username = NULL;
 static gchar *option_password = NULL;
@@ -649,7 +647,7 @@ int main(int argc, char *argv[])
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
 
-	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
+	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		if (error != NULL) {
 			g_printerr("%s\n", error->message);
 			g_error_free(error);
@@ -669,7 +667,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (option_debug == TRUE)
+	if (option_debug)
 		g_web_set_debug(wispr.web, web_debug, "WEB");
 
 	main_loop = g_main_loop_new(NULL, FALSE);

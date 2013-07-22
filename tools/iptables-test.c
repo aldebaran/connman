@@ -129,7 +129,7 @@ out:
 		err = __connman_iptables_flush_chain(table, chain);
 		break;
 	case IPTABLES_COMMAND_DUMP:
-		__connman_log_init(argv[0], "*", FALSE, FALSE,
+		__connman_log_init(argv[0], "*", false, false,
 			"iptables-test", "1");
 		err = __connman_iptables_dump(table);
 		break;

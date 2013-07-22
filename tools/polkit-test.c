@@ -142,7 +142,7 @@ static int check_authorization(DBusConnection *conn)
 		return -EIO;
 	}
 
-	if (dbus_message_has_signature(reply, "(bba{ss})") == TRUE) {
+	if (dbus_message_has_signature(reply, "(bba{ss})")) {
 		dbus_message_iter_init(reply, &iter);
 		print_arguments(&iter);
 	}

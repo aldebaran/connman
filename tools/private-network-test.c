@@ -101,7 +101,7 @@ static void request_private_network(DBusConnection *conn, int *out_fd,
 		return;
 	}
 
-	if (dbus_message_iter_init(reply, &array) == FALSE)
+	if (!dbus_message_iter_init(reply, &array))
 		goto done;
 
 	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_UNIX_FD)

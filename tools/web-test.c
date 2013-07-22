@@ -43,7 +43,7 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
-static gboolean web_result(GWebResult *result, gpointer user_data)
+static bool web_result(GWebResult *result, gpointer user_data)
 {
 	const guint8 *chunk;
 	gsize length;
@@ -54,7 +54,7 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 
 	if (length > 0) {
 		printf("%s\n", (char *) chunk);
-		return TRUE;
+		return true;
 	}
 
 	status = g_web_result_get_status(result);
@@ -67,10 +67,10 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 
 	g_main_loop_quit(main_loop);
 
-	return FALSE;
+	return false;
 }
 
-static gboolean option_debug = FALSE;
+static bool option_debug = false;
 static gchar *option_proxy = NULL;
 static gchar *option_nameserver = NULL;
 static gchar *option_user_agent = NULL;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
 
-	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
+	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		if (error != NULL) {
 			g_printerr("%s\n", error->message);
 			g_error_free(error);
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (option_debug == TRUE)
+	if (option_debug)
 		g_web_set_debug(web, web_debug, "WEB");
 
 	main_loop = g_main_loop_new(NULL, FALSE);

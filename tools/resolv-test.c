@@ -88,7 +88,7 @@ static void resolv_result(GResolvResultStatus status,
 	g_main_loop_quit(main_loop);
 }
 
-static gboolean option_debug = FALSE;
+static bool option_debug = false;
 
 static GOptionEntry options[] = {
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
 
-	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
+	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		if (error != NULL) {
 			g_printerr("%s\n", error->message);
 			g_error_free(error);
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (option_debug == TRUE)
+	if (option_debug)
 		g_resolv_set_debug(resolv, resolv_debug, "RESOLV");
 
 	main_loop = g_main_loop_new(NULL, FALSE);

@@ -100,23 +100,23 @@ struct stats_iter {
 
 static gint option_create = 0;
 static gint option_interval = 3;
-static gboolean option_dump = FALSE;
-static gboolean option_summary = FALSE;
+static bool option_dump = false;
+static bool option_summary = false;
 static char *option_info_file_name = NULL;
 static time_t option_start_ts = -1;
 static char *option_last_file_name = NULL;
 
-static gboolean parse_start_ts(const char *key, const char *value,
+static bool parse_start_ts(const char *key, const char *value,
 					gpointer user_data, GError **error)
 {
 	GTimeVal time_val;
 
-	if (g_time_val_from_iso8601(value, &time_val) == FALSE)
-		return FALSE;
+	if (!g_time_val_from_iso8601(value, &time_val))
+		return false;
 
 	option_start_ts = time_val.tv_sec;
 
-	return TRUE;
+	return true;
 }
 
 static GOptionEntry options[] = {
@@ -605,7 +605,7 @@ static int stats_create(struct stats_file *file, unsigned int nr,
 		set_end(file, next);
 
 		if ((rand() % 50) == 0)
-			roaming = roaming == TRUE? FALSE : TRUE;
+			roaming = roaming ? FALSE : TRUE;
 
 	}
 
@@ -674,7 +674,7 @@ static struct stats_record *process_file(struct stats_iter *iter,
 
 		append = FALSE;
 
-		if (cur->roaming == TRUE)
+		if (cur->roaming)
 			roaming = cur;
 		else
 			home = cur;
@@ -703,7 +703,7 @@ static struct stats_record *process_file(struct stats_iter *iter,
 				append = TRUE;
 		}
 
-		if (append == TRUE) {
+		if (append) {
 			if (home != NULL) {
 				append_record(temp_file, home);
 				home = NULL;
@@ -845,7 +845,7 @@ int main(int argc, char *argv[])
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
 
-	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
+	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		if (error != NULL) {
 			g_printerr("%s\n", error->message);
 			g_error_free(error);
@@ -896,10 +896,10 @@ int main(int argc, char *argv[])
 
 	stats_hdr_info(data_file);
 
-	if (option_dump == TRUE)
+	if (option_dump)
 		stats_print_entries(data_file);
 
-	if (option_summary == TRUE)
+	if (option_summary)
 		stats_print_diff(data_file);
 
 	if (option_info_file_name != NULL)
