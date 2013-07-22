@@ -148,7 +148,7 @@ struct _GDHCPClient {
 	time_t last_renew;
 	time_t last_rebind;
 	time_t expire;
-	gboolean retransmit;
+	bool retransmit;
 	struct timeval start_time;
 };
 
@@ -276,7 +276,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 {
 	GList *list;
 	uint16_t code, value;
-	gboolean added;
+	bool added;
 	int32_t diff;
 	int len;
 
@@ -285,7 +285,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 
 	for (list = dhcp_client->request_list; list; list = list->next) {
 		code = (uint16_t) GPOINTER_TO_INT(list->data);
-		added = FALSE;
+		added = false;
 
 		switch (code) {
 		case G_DHCPV6_CLIENTID:
@@ -302,7 +302,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 			copy_option(*ptr_buf, G_DHCPV6_CLIENTID,
 				dhcp_client->duid_len, dhcp_client->duid);
 			(*ptr_buf) += len;
-			added = TRUE;
+			added = true;
 			break;
 
 		case G_DHCPV6_SERVERID:
@@ -320,7 +320,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 				dhcp_client->server_duid_len,
 				dhcp_client->server_duid);
 			(*ptr_buf) += len;
-			added = TRUE;
+			added = true;
 			break;
 
 		case G_DHCPV6_RAPID_COMMIT:
@@ -333,14 +333,14 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 
 			copy_option(*ptr_buf, G_DHCPV6_RAPID_COMMIT, 0, 0);
 			(*ptr_buf) += len;
-			added = TRUE;
+			added = true;
 			break;
 
 		case G_DHCPV6_ORO:
 			break;
 
 		case G_DHCPV6_ELAPSED_TIME:
-			if (dhcp_client->retransmit == FALSE) {
+			if (!dhcp_client->retransmit) {
 				/*
 				 * Initial message, elapsed time is 0.
 				 */
@@ -362,7 +362,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 			copy_option(*ptr_buf, G_DHCPV6_ELAPSED_TIME,
 				2, (uint8_t *)&value);
 			(*ptr_buf) += len;
-			added = TRUE;
+			added = true;
 			break;
 
 		case G_DHCPV6_DNS_SERVERS:
@@ -631,7 +631,7 @@ void g_dhcpv6_client_set_retransmit(GDHCPClient *dhcp_client)
 	if (dhcp_client == NULL)
 		return;
 
-	dhcp_client->retransmit = TRUE;
+	dhcp_client->retransmit = true;
 }
 
 void g_dhcpv6_client_clear_retransmit(GDHCPClient *dhcp_client)
@@ -639,7 +639,7 @@ void g_dhcpv6_client_clear_retransmit(GDHCPClient *dhcp_client)
 	if (dhcp_client == NULL)
 		return;
 
-	dhcp_client->retransmit = FALSE;
+	dhcp_client->retransmit = false;
 }
 
 int g_dhcpv6_create_duid(GDHCPDuidType duid_type, int index, int type,
@@ -864,7 +864,7 @@ static void put_iaid(GDHCPClient *dhcp_client, int index, uint8_t *buf)
 
 int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
 			int code, uint32_t *T1, uint32_t *T2,
-			gboolean add_iaaddr, const char *ia_na)
+			bool add_iaaddr, const char *ia_na)
 {
 	if (code == G_DHCPV6_IA_TA) {
 		uint8_t ia_options[4];
@@ -888,8 +888,8 @@ int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
 		 * if the current address is not set, then we should not send
 		 * the address sub-option.
 		 */
-		if (add_iaaddr == TRUE && ((ia_na == NULL &&
-			IN6_IS_ADDR_UNSPECIFIED(&dhcp_client->ia_na) == FALSE)
+		if (add_iaaddr && ((ia_na == NULL &&
+			!IN6_IS_ADDR_UNSPECIFIED(&dhcp_client->ia_na))
 			|| (ia_na != NULL &&
 				inet_pton(AF_INET6, ia_na, &addr) == 1))) {
 #define IAADDR_LEN (16+4+4)
@@ -978,7 +978,7 @@ static int send_dhcpv6_msg(GDHCPClient *dhcp_client, int type, char *msg)
 
 	init_packet(dhcp_client, packet, type);
 
-	if (dhcp_client->retransmit == FALSE) {
+	if (!dhcp_client->retransmit) {
 		dhcp_client->xid = packet->transaction_id[0] << 16 |
 				packet->transaction_id[1] << 8 |
 				packet->transaction_id[2];
@@ -1077,7 +1077,7 @@ GDHCPClient *g_dhcp_client_new(GDHCPType type,
 		goto error;
 	}
 
-	if (interface_is_up(ifindex) == FALSE) {
+	if (!interface_is_up(ifindex)) {
 		*error = G_DHCP_CLIENT_ERROR_INTERFACE_DOWN;
 		goto error;
 	}
@@ -1195,24 +1195,24 @@ static int dhcp_l2_socket(int ifindex)
 	return fd;
 }
 
-static gboolean sanity_check(struct ip_udp_dhcp_packet *packet, int bytes)
+static bool sanity_check(struct ip_udp_dhcp_packet *packet, int bytes)
 {
 	if (packet->ip.protocol != IPPROTO_UDP)
-		return FALSE;
+		return false;
 
 	if (packet->ip.version != IPVERSION)
-		return FALSE;
+		return false;
 
 	if (packet->ip.ihl != sizeof(packet->ip) >> 2)
-		return FALSE;
+		return false;
 
 	if (packet->udp.dest != htons(CLIENT_PORT))
-		return FALSE;
+		return false;
 
 	if (ntohs(packet->udp.len) != (uint16_t)(bytes - sizeof(packet->ip)))
-		return FALSE;
+		return false;
 
-	return TRUE;
+	return true;
 }
 
 static int dhcp_recv_l2_packet(struct dhcp_packet *dhcp_pkt, int fd)
@@ -1237,7 +1237,7 @@ static int dhcp_recv_l2_packet(struct dhcp_packet *dhcp_pkt, int fd)
 	/* ignore any extra garbage bytes */
 	bytes = ntohs(packet.ip.tot_len);
 
-	if (sanity_check(&packet, bytes) == FALSE)
+	if (!sanity_check(&packet, bytes))
 		return -1;
 
 	check = packet.ip.check;
@@ -1387,35 +1387,35 @@ static int ipv4ll_recv_arp_packet(GDHCPClient *dhcp_client)
 	return 0;
 }
 
-static gboolean check_package_owner(GDHCPClient *dhcp_client, gpointer pkt)
+static bool check_package_owner(GDHCPClient *dhcp_client, gpointer pkt)
 {
 	if (dhcp_client->type == G_DHCP_IPV6) {
 		struct dhcpv6_packet *packet6 = pkt;
 		uint32_t xid;
 
 		if (packet6 == NULL)
-			return FALSE;
+			return false;
 
 		xid = packet6->transaction_id[0] << 16 |
 			packet6->transaction_id[1] << 8 |
 			packet6->transaction_id[2];
 
 		if (xid != dhcp_client->xid)
-			return FALSE;
+			return false;
 	} else {
 		struct dhcp_packet *packet = pkt;
 
 		if (packet->xid != dhcp_client->xid)
-			return FALSE;
+			return false;
 
 		if (packet->hlen != 6)
-			return FALSE;
+			return false;
 
 		if (memcmp(packet->chaddr, dhcp_client->mac_address, 6))
-			return FALSE;
+			return false;
 	}
 
-	return TRUE;
+	return true;
 }
 
 static void start_request(GDHCPClient *dhcp_client);
@@ -2166,7 +2166,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	if (re < 0)
 		return TRUE;
 
-	if (check_package_owner(dhcp_client, pkt) == FALSE)
+	if (!check_package_owner(dhcp_client, pkt))
 		return TRUE;
 
 	if (dhcp_client->type == G_DHCP_IPV6) {

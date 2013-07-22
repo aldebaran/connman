@@ -371,17 +371,17 @@ void dhcpv6_init_header(struct dhcpv6_packet *packet, uint8_t type)
 	packet->transaction_id[2] = id & 0xff;
 }
 
-static gboolean check_vendor(uint8_t  *option_vendor, const char *vendor)
+static bool check_vendor(uint8_t  *option_vendor, const char *vendor)
 {
 	uint8_t vendor_length = sizeof(vendor) - 1;
 
 	if (option_vendor[OPT_LEN - OPT_DATA] != vendor_length)
-		return FALSE;
+		return false;
 
 	if (memcmp(option_vendor, vendor, vendor_length) != 0)
-		return FALSE;
+		return false;
 
-	return TRUE;
+	return true;
 }
 
 static void check_broken_vendor(struct dhcp_packet *packet)
@@ -395,7 +395,7 @@ static void check_broken_vendor(struct dhcp_packet *packet)
 	if (vendor == NULL)
 		return;
 
-	if (check_vendor(vendor, "MSFT 98") == TRUE)
+	if (check_vendor(vendor, "MSFT 98"))
 		packet->flags |= htons(BROADCAST_FLAG);
 }
 
@@ -727,16 +727,16 @@ char *get_interface_name(int index)
 	return g_strdup(ifr.ifr_name);
 }
 
-gboolean interface_is_up(int index)
+bool interface_is_up(int index)
 {
 	int sk, err;
 	struct ifreq ifr;
-	gboolean ret = FALSE;
+	bool ret = false;
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
 		perror("Open socket error");
-		return FALSE;
+		return false;
 	}
 
 	memset(&ifr, 0, sizeof(ifr));
@@ -755,7 +755,7 @@ gboolean interface_is_up(int index)
 	}
 
 	if (ifr.ifr_flags & IFF_UP)
-		ret = TRUE;
+		ret = true;
 
 done:
 	close(sk);

@@ -208,4 +208,4 @@ int dhcpv6_recv_l3_packet(struct dhcpv6_packet **packet, unsigned char *buf,
 int dhcp_l3_socket_send(int index, int port, int family);
 
 char *get_interface_name(int index);
-gboolean interface_is_up(int index);
+bool interface_is_up(int index);
