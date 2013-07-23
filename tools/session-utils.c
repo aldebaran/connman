@@ -228,7 +228,9 @@ void util_test_add(const char *test_name, util_test_func_t test_func,
 	cbd->setup = setup;
 	cbd->teardown = teardown;
 
-	g_test_add_data_func_full(test_name, cbd, run_test_cb, g_free);
+	g_test_add_vtable(test_name, 0, cbd, NULL,
+			(GTestFixtureFunc) run_test_cb,
+			(GTestFixtureFunc) g_free);
 }
 
 void util_session_create(struct test_fix *fix, unsigned int max_sessions)
