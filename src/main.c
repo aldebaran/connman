@@ -73,7 +73,7 @@ static struct {
 	char **tethering_technologies;
 	bool persistent_tethering_mode;
 } connman_settings  = {
-	.bg_scan = TRUE,
+	.bg_scan = true,
 	.pref_timeservers = NULL,
 	.auto_connect = NULL,
 	.preferred_techs = NULL,
@@ -81,10 +81,10 @@ static struct {
 	.timeout_inputreq = DEFAULT_INPUT_REQUEST_TIMEOUT,
 	.timeout_browserlaunch = DEFAULT_BROWSER_LAUNCH_TIMEOUT,
 	.blacklisted_interfaces = NULL,
-	.allow_hostname_updates = TRUE,
-	.single_tech = FALSE,
+	.allow_hostname_updates = true,
+	.single_tech = false,
 	.tethering_technologies = NULL,
-	.persistent_tethering_mode = FALSE,
+	.persistent_tethering_mode = false,
 };
 
 #define CONF_BG_SCAN                    "BackgroundScanning"
