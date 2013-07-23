@@ -24,8 +24,6 @@
 
 #include <stdbool.h>
 
-#include <connman/types.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif

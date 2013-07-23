@@ -26,7 +26,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <connman/types.h>
 #include <connman/device.h>
 #include <connman/ipconfig.h>
 

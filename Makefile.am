@@ -5,7 +5,7 @@ noinst_LTLIBRARIES =
 
 includedir = @includedir@/connman
 
-include_HEADERS = include/types.h include/log.h include/plugin.h \
+include_HEADERS = include/log.h include/plugin.h \
 			include/notifier.h include/service.h \
 			include/resolver.h include/ipconfig.h \
 			include/device.h include/network.h include/inet.h \

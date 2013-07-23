@@ -22,7 +22,6 @@
 #ifndef __CONNMAN_DEVICE_H
 #define __CONNMAN_DEVICE_H
 
-#include <connman/types.h>
 #include <connman/network.h>
 
 #ifdef __cplusplus

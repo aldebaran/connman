@@ -26,7 +26,6 @@
 #define VPN_API_SUBJECT_TO_CHANGE
 
 #include <connman/dbus.h>
-#include <connman/types.h>
 
 int __vpn_manager_init(void);
 void __vpn_manager_cleanup(void);

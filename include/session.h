@@ -23,7 +23,6 @@
 #define __CONNMAN_SESSION_H
 
 #include <connman/service.h>
-#include <connman/types.h>
 
 #ifdef __cplusplus
 extern "C" {

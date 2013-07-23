@@ -25,7 +25,6 @@
 #include <stdbool.h>
 
 #include <glib.h>
-#include <connman/types.h>
 
 #ifdef __cplusplus
 extern "C" {
