@@ -268,14 +268,14 @@ static int del_routes(struct gateway_data *data,
 			enum connman_ipconfig_type type)
 {
 	int status4 = 0, status6 = 0;
-	int do_ipv4 = FALSE, do_ipv6 = FALSE;
+	bool do_ipv4 = false, do_ipv6 = false;
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		do_ipv4 = TRUE;
+		do_ipv4 = true;
 	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		do_ipv6 = TRUE;
+		do_ipv6 = true;
 	else
-		do_ipv4 = do_ipv6 = TRUE;
+		do_ipv4 = do_ipv6 = true;
 
 	if (do_ipv4 && data->ipv4_gateway != NULL) {
 		if (data->ipv4_gateway->vpn) {
@@ -418,14 +418,14 @@ static void set_default_gateway(struct gateway_data *data,
 {
 	int index;
 	int status4 = 0, status6 = 0;
-	int do_ipv4 = FALSE, do_ipv6 = FALSE;
+	bool do_ipv4 = false, do_ipv6 = false;
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		do_ipv4 = TRUE;
+		do_ipv4 = true;
 	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		do_ipv6 = TRUE;
+		do_ipv6 = true;
 	else
-		do_ipv4 = do_ipv6 = TRUE;
+		do_ipv4 = do_ipv6 = true;
 
 	DBG("type %d gateway ipv4 %p ipv6 %p", type, data->ipv4_gateway,
 						data->ipv6_gateway);
@@ -497,14 +497,14 @@ static void unset_default_gateway(struct gateway_data *data,
 				enum connman_ipconfig_type type)
 {
 	int index;
-	int do_ipv4 = FALSE, do_ipv6 = FALSE;
+	bool do_ipv4 = false, do_ipv6 = false;
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		do_ipv4 = TRUE;
+		do_ipv4 = true;
 	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		do_ipv6 = TRUE;
+		do_ipv6 = true;
 	else
-		do_ipv4 = do_ipv6 = TRUE;
+		do_ipv4 = do_ipv6 = true;
 
 	DBG("type %d gateway ipv4 %p ipv6 %p", type, data->ipv4_gateway,
 						data->ipv6_gateway);
@@ -949,17 +949,17 @@ void __connman_connection_gateway_remove(struct connman_service *service,
 {
 	struct gateway_data *data = NULL;
 	bool set_default4 = false, set_default6 = false;
-	int do_ipv4 = FALSE, do_ipv6 = FALSE;
+        bool do_ipv4 = false, do_ipv6 = false;
 	int err;
 
 	DBG("service %p type %d", service, type);
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		do_ipv4 = TRUE;
+		do_ipv4 = true;
 	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		do_ipv6 = TRUE;
+		do_ipv6 = true;
 	else
-		do_ipv4 = do_ipv6 = TRUE;
+		do_ipv4 = do_ipv6 = true;
 
 	__connman_service_nameserver_del_routes(service, type);
 
