@@ -177,7 +177,7 @@ static void unregister_service(gpointer data)
 
 		service = __connman_service_lookup_from_ident(service_id);
 		if (service != NULL) {
-			__connman_service_set_immutable(service, FALSE);
+			__connman_service_set_immutable(service, false);
 			__connman_service_set_config(service, NULL, NULL);
 			__connman_service_remove(service);
 
@@ -193,7 +193,7 @@ static void unregister_service(gpointer data)
 					CONNMAN_IPCONFIG_TYPE_IPV4, NULL, NULL);
 				__connman_service_reset_ipconfig(service,
 					CONNMAN_IPCONFIG_TYPE_IPV6, NULL, NULL);
-				__connman_service_set_ignore(service, TRUE);
+				__connman_service_set_ignore(service, true);
 
 				/*
 				 * After these operations, user needs to
@@ -1160,9 +1160,9 @@ static void provision_service(gpointer key, gpointer value,
 				g_strdup(service_id));
 
 	if (!config->virtual)
-		__connman_service_set_immutable(service, TRUE);
+		__connman_service_set_immutable(service, true);
 
-	__connman_service_set_favorite_delayed(service, TRUE, TRUE);
+	__connman_service_set_favorite_delayed(service, true, true);
 
 	__connman_service_set_config(service, config->config_ident,
 						config->config_entry);
@@ -1177,7 +1177,7 @@ static void provision_service(gpointer key, gpointer value,
 
 		for (i = 0; config->nameservers[i] != NULL; i++) {
 			__connman_service_nameserver_append(service,
-						config->nameservers[i], FALSE);
+						config->nameservers[i], false);
 		}
 	}
 
