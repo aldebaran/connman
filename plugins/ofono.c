@@ -632,7 +632,7 @@ static int cdma_cm_set_powered(struct modem_data *modem, dbus_bool_t powered)
 	return err;
 }
 
-static int modem_set_online(struct modem_data *modem, bool online)
+static int modem_set_online(struct modem_data *modem, dbus_bool_t online)
 {
 	DBG("%s online %d", modem->path, online);
 
@@ -2488,7 +2488,7 @@ static int modem_enable(struct connman_device *device)
 	if (modem->online)
 		return 0;
 
-	return modem_set_online(modem, true);
+	return modem_set_online(modem, TRUE);
 }
 
 static int modem_disable(struct connman_device *device)
@@ -2500,7 +2500,7 @@ static int modem_disable(struct connman_device *device)
 	if (!modem->online)
 		return 0;
 
-	return modem_set_online(modem, false);
+	return modem_set_online(modem, FALSE);
 }
 
 static struct connman_device_driver modem_driver = {
