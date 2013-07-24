@@ -737,11 +737,9 @@ static int technology_enable(struct connman_technology *technology)
 		set_tethering(technology, true);
 
 	if (technology->rfkill_driven)
-		err = __connman_rfkill_block(technology->type,
-								  false);
+		err = __connman_rfkill_block(technology->type, false);
 
-	err_dev = technology_affect_devices(technology,
-								    true);
+	err_dev = technology_affect_devices(technology, true);
 
 	if (!technology->rfkill_driven)
 		err = err_dev;
@@ -765,12 +763,10 @@ static int technology_disable(struct connman_technology *technology)
 	if (technology->tethering)
 		set_tethering(technology, false);
 
-	err = technology_affect_devices(technology,
-								false);
+	err = technology_affect_devices(technology, false);
 
 	if (technology->rfkill_driven)
-		err = __connman_rfkill_block(technology->type,
-								  true);
+		err = __connman_rfkill_block(technology->type, true);
 
 	return err;
 }
