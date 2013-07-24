@@ -431,7 +431,7 @@ static int get_hidden_connections(GSupplicantScanParams *scan_data)
 		name = g_key_file_get_string(keyfile, services[i], "Name",
 								NULL);
 
-		ret = add_scan_param(ssid, NULL, 0, freq, scan_data, 0, name);
+		ret = add_scan_param(ssid, NULL, 0, 0, scan_data, 0, name);
 		if (ret < 0)
 			add_param_failed++;
 		else if (ret > 0)
@@ -1000,7 +1000,7 @@ static int get_latest_connections(int max_ssids,
 		DBG("ssid %s freq %d modified %lu", entry->ssid, entry->freq,
 						entry->modified.tv_sec);
 
-		add_scan_param(entry->ssid, NULL, 0, entry->freq, scan_data,
+		add_scan_param(entry->ssid, NULL, 0, 0, scan_data,
 						max_ssids, entry->ssid);
 
 		iter = g_sequence_iter_next(iter);
