@@ -1703,45 +1703,14 @@ int __connman_technology_update_rfkill(unsigned int index,
 	if (technology == NULL)
 		return -ENXIO;
 
-	/* If hardblocked, there is no need to handle softblocked state */
-	if (technology_apply_rfkill_change(technology,
-				softblock, hardblock, false))
-		return 0;
+	technology_apply_rfkill_change(technology, softblock, hardblock,
+								false);
 
-	if (global_offlinemode)
-		return 0;
-
-	/*
-	 * State diagram how to set the block status from individual
-	 * technology status fields:
-	 *
-	 *   enabled  |  softblocked  |  offline  |    is
-	 *            |               |           |  blocked
-	 * -----------+---------------+-----------+----------
-	 *     no     |      no       |    no     |   yes
-	 *     yes    |      no       |    no     |   no
-	 *     no     |      yes      |    no     |   yes
-	 *     yes    |      yes      |    no     |   yes
-	 *     no     |      no       |    yes    |   yes
-	 *     yes    |      no       |    yes    |   no
-	 *     no     |      yes      |    yes    |   yes
-	 *     yes    |      yes      |    yes    |   yes
-	 *
-	 * The enabled is controlled by dbus API (typically
-	 * from UI). softblocked is set either by dbus API or by
-	 * external event. Offline (flight mode) is set via dbus
-	 * API.
-	 */
-
-	DBG("type %d enabled %d soft %d hard %d blocked %d",
-		type, technology->enabled,
-		technology->softblocked, technology->hardblocked,
-		!(technology->enabled && !technology->softblocked));
-
-	if (technology->enabled && !technology->softblocked)
-		return __connman_rfkill_block(type, false);
+	if (technology->hardblocked)
+		DBG("%s hardblocked", get_name(technology->type));
 	else
-		return __connman_rfkill_block(type, true);
+		DBG("%s is%s softblocked", get_name(technology->type),
+			technology->softblocked ? "" : " not");
 
 	return 0;
 }
