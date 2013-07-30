@@ -2624,7 +2624,7 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 	if (last_address == NULL) {
 		addr = 0;
 	} else {
-		addr = inet_addr(last_address);
+		addr = ntohl(inet_addr(last_address));
 		if (addr == 0xFFFFFFFF) {
 			addr = 0;
 		} else {
