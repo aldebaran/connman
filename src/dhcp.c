@@ -50,6 +50,8 @@ struct connman_dhcp {
 
 	GDHCPClient *ipv4ll_client;
 	GDHCPClient *dhcp_client;
+	char *ipv4ll_debug_prefix;
+	char *dhcp_debug_prefix;
 };
 
 static GHashTable *network_table;
@@ -154,6 +156,9 @@ static void ipv4ll_stop_client(struct connman_dhcp *dhcp)
 	g_dhcp_client_unref(dhcp->ipv4ll_client);
 	dhcp->ipv4ll_client = NULL;
 	ipv4ll_running = false;
+
+	g_free(dhcp->ipv4ll_debug_prefix);
+	dhcp->ipv4ll_debug_prefix = NULL;
 }
 
 static void ipv4ll_lost_cb(GDHCPClient *dhcp_client, gpointer user_data);
@@ -176,8 +181,12 @@ static int ipv4ll_start_client(struct connman_dhcp *dhcp)
 	if (error != G_DHCP_CLIENT_ERROR_NONE)
 		return -EINVAL;
 
-	if (getenv("CONNMAN_DHCP_DEBUG"))
-		g_dhcp_client_set_debug(ipv4ll_client, dhcp_debug, "IPV4LL");
+	if (getenv("CONNMAN_DHCP_DEBUG")) {
+		dhcp->ipv4ll_debug_prefix = g_strdup_printf("IPv4LL index %d",
+							index);
+		g_dhcp_client_set_debug(ipv4ll_client, dhcp_debug,
+					dhcp->ipv4ll_debug_prefix);
+	}
 
 	g_dhcp_client_set_id(ipv4ll_client);
 
@@ -513,8 +522,12 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 	if (error != G_DHCP_CLIENT_ERROR_NONE)
 		return -EINVAL;
 
-	if (getenv("CONNMAN_DHCP_DEBUG"))
-		g_dhcp_client_set_debug(dhcp_client, dhcp_debug, "DHCP");
+	if (getenv("CONNMAN_DHCP_DEBUG")) {
+		dhcp->dhcp_debug_prefix = g_strdup_printf("DHCP index %d",
+							index);
+		g_dhcp_client_set_debug(dhcp_client, dhcp_debug,
+					dhcp->dhcp_debug_prefix);
+	}
 
 	g_dhcp_client_set_id(dhcp_client);
 
@@ -574,6 +587,11 @@ static int dhcp_release(struct connman_dhcp *dhcp)
 
 	dhcp->ipv4ll_client = NULL;
 	dhcp->dhcp_client = NULL;
+
+	g_free(dhcp->ipv4ll_debug_prefix);
+	g_free(dhcp->dhcp_debug_prefix);
+	dhcp->ipv4ll_debug_prefix = NULL;
+	dhcp->dhcp_debug_prefix = NULL;
 
 	return 0;
 }
