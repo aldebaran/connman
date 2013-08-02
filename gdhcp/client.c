@@ -1608,6 +1608,19 @@ static void start_rebound(GDHCPClient *dhcp_client)
 								NULL);
 }
 
+static gboolean start_renew_request_timeout(gpointer user_data)
+{
+	GDHCPClient *dhcp_client = user_data;
+
+	debug(dhcp_client, "renew request timeout");
+
+	if (dhcp_client->no_lease_cb != NULL)
+			dhcp_client->no_lease_cb(dhcp_client,
+						dhcp_client->no_lease_data);
+
+	return false;
+}
+
 static gboolean start_renew_timeout(gpointer user_data)
 {
 	GDHCPClient *dhcp_client = user_data;
@@ -1629,10 +1642,10 @@ static gboolean start_renew_timeout(gpointer user_data)
 
 		dhcp_client->timeout =
 				g_timeout_add_seconds_full(G_PRIORITY_HIGH,
-						dhcp_client->lease_seconds >> 1,
-							start_renew_timeout,
-								dhcp_client,
-								NULL);
+						REQUEST_TIMEOUT,
+						start_renew_request_timeout,
+						dhcp_client,
+						NULL);
 	}
 
 	return FALSE;
