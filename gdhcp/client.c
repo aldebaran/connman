@@ -1274,7 +1274,6 @@ static void ipv4ll_start(GDHCPClient *dhcp_client)
 	}
 
 	switch_listening_mode(dhcp_client, L_NONE);
-	dhcp_client->type = G_DHCP_IPV4LL;
 	dhcp_client->retry_times = 0;
 	dhcp_client->requested_ip = 0;
 
@@ -1508,9 +1507,9 @@ static void start_request(GDHCPClient *dhcp_client)
 					dhcp_client->retry_times);
 
 	if (dhcp_client->retry_times == REQUEST_RETRIES) {
-		dhcp_client->state = INIT_SELECTING;
-		ipv4ll_start(dhcp_client);
-
+		if (dhcp_client->no_lease_cb != NULL)
+			dhcp_client->no_lease_cb(dhcp_client,
+						dhcp_client->no_lease_data);
 		return;
 	}
 
@@ -2603,8 +2602,17 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 		return 0;
 	}
 
-	if (dhcp_client->retry_times == DISCOVER_RETRIES) {
+	if (dhcp_client->type == G_DHCP_IPV4LL) {
+		dhcp_client->state = INIT_SELECTING;
 		ipv4ll_start(dhcp_client);
+		return 0;
+	}
+
+	if (dhcp_client->retry_times == DISCOVER_RETRIES) {
+		if (dhcp_client->no_lease_cb != NULL)
+			dhcp_client->no_lease_cb(dhcp_client,
+						dhcp_client->no_lease_data);
+		dhcp_client->retry_times = 0;
 		return 0;
 	}
 
