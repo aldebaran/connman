@@ -427,6 +427,9 @@ static int check_ipv6_addr_prefix(GSList *prefixes, char *address)
 
 		prefix = g_strndup(prefix, slash - prefix);
 		len = strtol(slash + 1, NULL, 10);
+		if (len < 3 || len > 128)
+			break;
+
 		plen = 128 - len;
 
 		count = plen / 8;
