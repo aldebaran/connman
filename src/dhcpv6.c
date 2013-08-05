@@ -787,7 +787,7 @@ static int check_restart(struct connman_dhcpv6 *dhcp)
 				NULL, &expired);
 	current = time(NULL);
 
-	if (current > expired) {
+	if (current >= expired) {
 		DBG("expired by %d secs", (int)(current - expired));
 
 		g_timeout_add(0, dhcpv6_restart, dhcp);
@@ -821,6 +821,9 @@ static gboolean timeout_rebind(gpointer user_data)
 static gboolean start_rebind(gpointer user_data)
 {
 	struct connman_dhcpv6 *dhcp = user_data;
+
+	if (check_restart(dhcp) < 0)
+		return FALSE;
 
 	dhcp->RT = REB_TIMEOUT * (1 + get_random());
 
@@ -1031,13 +1034,11 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 		 */
 		T1 = 1800;
 
-	/* RFC 3315, 18.1.4, start solicit if expired */
-	if (current > expired) {
-		DBG("expired by %d secs", (int)(current - expired));
-		return -ETIMEDOUT;
-	}
-
 	dhcp->callback = callback;
+
+	/* RFC 3315, 18.1.4, start solicit if expired */
+	if (check_restart(dhcp) < 0)
+		return 0;
 
 	if (T2 != 0xffffffff && T2 > 0) {
 		if ((unsigned)current >= (unsigned)started + T2) {
