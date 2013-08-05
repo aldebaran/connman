@@ -181,7 +181,6 @@ int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
 void g_dhcpv6_client_reset_request(GDHCPClient *dhcp_client);
 void g_dhcpv6_client_reset_renew(GDHCPClient *dhcp_client);
 void g_dhcpv6_client_reset_rebind(GDHCPClient *dhcp_client);
-void g_dhcpv6_client_set_expire(GDHCPClient *dhcp_client, uint32_t timeout);
 void g_dhcpv6_client_set_retransmit(GDHCPClient *dhcp_client);
 void g_dhcpv6_client_clear_retransmit(GDHCPClient *dhcp_client);
 

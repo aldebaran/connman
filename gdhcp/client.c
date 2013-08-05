@@ -1957,7 +1957,7 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 		dhcp_client->T1 = T1;
 		dhcp_client->T2 = T2;
 
-		g_dhcpv6_client_set_expire(dhcp_client, shortest_valid);
+		dhcp_client->expire = shortest_valid;
 	}
 
 	if (status != NULL && *status != 0)
@@ -2972,14 +2972,6 @@ void g_dhcpv6_client_reset_rebind(GDHCPClient *dhcp_client)
 {
 	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
 		return;
-}
-
-void g_dhcpv6_client_set_expire(GDHCPClient *dhcp_client, uint32_t timeout)
-{
-	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
-		return;
-
-	dhcp_client->expire = timeout;
 }
 
 uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client)
