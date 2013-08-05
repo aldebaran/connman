@@ -469,7 +469,7 @@ static DBusMessage *agent_request_input(DBusConnection *connection,
 	DBusMessageIter iter, dict, entry, variant;
 	char *service, *str, *field;
 	DBusMessageIter dict_entry, field_entry, field_value;
-	char *argument, *value, *attr_type;
+	char *argument, *value, *attr_type = NULL;
 
 	int i;
 
