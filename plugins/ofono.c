@@ -1199,7 +1199,10 @@ static gboolean context_changed(DBusConnection *conn,
 
 		extract_ipv6_settings(&value, modem->context);
 	} else if (g_str_equal(key, "Active")) {
-		dbus_message_iter_get_basic(&value, &modem->active);
+		dbus_bool_t active;
+
+		dbus_message_iter_get_basic(&value, &active);
+		modem->active = active;
 
 		DBG("%s Active %d", modem->path, modem->active);
 
@@ -1713,7 +1716,10 @@ static void cm_update_attached(struct modem_data *modem,
 static void cm_update_powered(struct modem_data *modem,
 				DBusMessageIter *value)
 {
-	dbus_message_iter_get_basic(value, &modem->cm_powered);
+	dbus_bool_t cm_powered;
+
+	dbus_message_iter_get_basic(value, &cm_powered);
+	modem->cm_powered = cm_powered;
 
 	DBG("%s ConnnectionManager Powered %d", modem->path,
 		modem->cm_powered);
@@ -1758,7 +1764,10 @@ static gboolean cm_changed(DBusConnection *conn, DBusMessage *message,
 static void cdma_cm_update_powered(struct modem_data *modem,
 					DBusMessageIter *value)
 {
-	dbus_message_iter_get_basic(value, &modem->cdma_cm_powered);
+	dbus_bool_t cdma_cm_powered;
+
+	dbus_message_iter_get_basic(value, &cdma_cm_powered);
+	modem->cdma_cm_powered = cdma_cm_powered;
 
 	DBG("%s CDMA cm Powered %d", modem->path, modem->cdma_cm_powered);
 
@@ -2085,14 +2094,20 @@ static gboolean modem_changed(DBusConnection *conn, DBusMessage *message,
 	dbus_message_iter_recurse(&iter, &value);
 
 	if (g_str_equal(key, "Powered")) {
-		dbus_message_iter_get_basic(&value, &modem->powered);
+		dbus_bool_t powered;
+
+		dbus_message_iter_get_basic(&value, &powered);
+		modem->powered = powered;
 
 		DBG("%s Powered %d", modem->path, modem->powered);
 
 		if (!modem->powered)
 			modem_set_powered(modem, TRUE);
 	} else if (g_str_equal(key, "Online")) {
-		dbus_message_iter_get_basic(&value, &modem->online);
+		dbus_bool_t online;
+
+		dbus_message_iter_get_basic(&value, &online);
+		modem->online = online;
 
 		DBG("%s Online %d", modem->path, modem->online);
 
@@ -2171,11 +2186,17 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 		dbus_message_iter_recurse(&entry, &value);
 
 		if (g_str_equal(key, "Powered")) {
-			dbus_message_iter_get_basic(&value, &modem->powered);
+			dbus_bool_t powered;
+
+			dbus_message_iter_get_basic(&value, &powered);
+			modem->powered = powered;
 
 			DBG("%s Powered %d", modem->path, modem->powered);
 		} else if (g_str_equal(key, "Online")) {
-			dbus_message_iter_get_basic(&value, &modem->online);
+			dbus_bool_t online;
+
+			dbus_message_iter_get_basic(&value, &online);
+			modem->online = online;
 
 			DBG("%s Online %d", modem->path, modem->online);
 		} else if (g_str_equal(key, "Interfaces")) {
