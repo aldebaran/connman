@@ -2962,18 +2962,6 @@ void g_dhcpv6_client_reset_request(GDHCPClient *dhcp_client)
 	dhcp_client->last_request = time(NULL);
 }
 
-void g_dhcpv6_client_reset_renew(GDHCPClient *dhcp_client)
-{
-	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
-		return;
-}
-
-void g_dhcpv6_client_reset_rebind(GDHCPClient *dhcp_client)
-{
-	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
-		return;
-}
-
 uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client)
 {
 	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
