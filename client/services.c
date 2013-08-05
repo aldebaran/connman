@@ -85,13 +85,10 @@ static void print_service(char *path, DBusMessageIter *iter)
 	else
 		str = path;
 
-	if (count > 0) {
-		if (*name == '\0')
-			name = "<hidden>";
-
+	if (count > 0)
 		fprintf(stdout, "%c%c%c %-20s %s", favorite != 0 ? '*' : ' ',
 				autoconn != 0 ? 'A' : ' ', state, name, str);
-	} else
+	else
 		fprintf(stdout, "%-24s %s", "unchanged", str);
 
 }
