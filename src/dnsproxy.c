@@ -2959,8 +2959,10 @@ static bool tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 					GINT_TO_POINTER(client_sk));
 	if (client == NULL) {
 		client = g_try_new0(struct tcp_partial_client_data, 1);
-		if (client == NULL)
+		if (client == NULL) {
+			close(client_sk);
 			return false;
+		}
 
 		g_hash_table_insert(partial_tcp_req_table,
 					GINT_TO_POINTER(client_sk),
