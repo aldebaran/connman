@@ -337,6 +337,11 @@ static void pan_create_nap(struct bluetooth_pan *pan)
 		const char *name, *path;
 
 		address = proxy_get_string(pan->btdevice_proxy, "Address");
+		if (!address) {
+			connman_warn("Bluetooth device address missing");
+			return;
+		}
+
 		address2ident(address, ident);
 
 		pan->network = connman_network_create(ident,
