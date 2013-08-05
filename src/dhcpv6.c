@@ -727,8 +727,6 @@ static void rebind_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
 	DBG("");
 
-	g_dhcpv6_client_reset_rebind(dhcp_client);
-	g_dhcpv6_client_reset_renew(dhcp_client);
 	g_dhcpv6_client_clear_retransmit(dhcp_client);
 
 	re_cb(REQ_REBIND, dhcp_client, user_data);
@@ -910,7 +908,6 @@ static void renew_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
 	DBG("");
 
-	g_dhcpv6_client_reset_renew(dhcp_client);
 	g_dhcpv6_client_clear_retransmit(dhcp_client);
 
 	re_cb(REQ_RENEW, dhcp_client, user_data);
@@ -964,7 +961,7 @@ static gboolean timeout_renew(gpointer user_data)
 	g_dhcpv6_client_get_timeouts(dhcp->dhcp_client, NULL, &T2,
 				NULL, &last_rebind, NULL);
 	current = time(NULL);
-	if ((unsigned)current > (unsigned)last_rebind + T2) {
+	if ((unsigned)current >= (unsigned)last_rebind + T2) {
 		/*
 		 * Do rebind instead if past T2
 		 */
@@ -1020,8 +1017,8 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 
 	current = time(NULL);
 
-	DBG("T1 %u T2 %u expires %lu current %lu", T1, T2,
-		(unsigned long)expired, current);
+	DBG("T1 %u T2 %u expires %lu current %lu renew %lu rebind %lu", T1, T2,
+		(unsigned long)expired, current, last_renew, last_rebind);
 
 	if (T1 == 0xffffffff)
 		/* RFC 3315, 22.4 */
@@ -1041,27 +1038,28 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 
 	dhcp->callback = callback;
 
-	if (T2 != 0xffffffff && T2 > 0 &&
-			(unsigned)current > (unsigned)last_rebind + T2) {
-		int timeout;
+	if (T2 != 0xffffffff && T2 > 0) {
+		if ((unsigned)current >= (unsigned)last_rebind + T2) {
+			/* RFC 3315, chapter 18.1.3, start rebind */
+			DBG("rebind after %d secs", T2);
 
-		/* RFC 3315, chapter 18.1.3, start rebind */
-		if ((unsigned)current > (unsigned)last_renew + T1)
-			timeout = 0;
-		else
-			timeout = last_renew - current + T1;
+			dhcp->timeout = g_timeout_add_seconds(T2, start_rebind,
+							dhcp);
 
-		/*
-		 * If we just did a renew, do not restart the rebind
-		 * immediately.
-		 */
-		dhcp->timeout = g_timeout_add_seconds(timeout, start_rebind,
-						dhcp);
-	} else {
-		DBG("renew after %d secs", T1);
+		} else if ((unsigned)current < (unsigned)last_renew + T1) {
+			DBG("renew after %d secs", T1);
 
-		dhcp->timeout = g_timeout_add_seconds(T1, start_renew, dhcp);
+			dhcp->timeout = g_timeout_add_seconds(T1, start_renew,
+							dhcp);
+		} else {
+			DBG("rebind after %d secs", T2 - T1);
+
+			dhcp->timeout = g_timeout_add_seconds(T2 - T1,
+							start_rebind,
+							dhcp);
+		}
 	}
+
 	return 0;
 }
 
