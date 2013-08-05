@@ -172,13 +172,13 @@ void g_dhcpv6_client_create_iaid(GDHCPClient *dhcp_client, int index,
 				unsigned char *iaid);
 int g_dhcpv6_client_get_timeouts(GDHCPClient *dhcp_client,
 				uint32_t *T1, uint32_t *T2,
-				time_t *last_renew, time_t *last_rebind,
-				time_t *expire);
+				time_t *started, time_t *expire);
 uint32_t g_dhcpv6_client_get_iaid(GDHCPClient *dhcp_client);
 void g_dhcpv6_client_set_iaid(GDHCPClient *dhcp_client, uint32_t iaid);
 int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
 			int code, uint32_t *T1, uint32_t *T2,
 			bool add_addresses, const char *address);
+void g_dhcpv6_client_reset_request(GDHCPClient *dhcp_client);
 void g_dhcpv6_client_reset_renew(GDHCPClient *dhcp_client);
 void g_dhcpv6_client_reset_rebind(GDHCPClient *dhcp_client);
 void g_dhcpv6_client_set_expire(GDHCPClient *dhcp_client, uint32_t timeout);
