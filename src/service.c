@@ -3767,10 +3767,6 @@ static DBusMessage *connect_service(DBusConnection *conn,
 		if (service->type == temp->type &&
 				is_connecting(temp) &&
 				!is_interface_available(service, temp)) {
-			if (temp->pending != NULL)
-				__connman_service_return_error(temp,
-							ECONNABORTED,
-							NULL);
 
 			err = __connman_service_disconnect(temp);
 			if (err < 0 && err != -EINPROGRESS)
@@ -3815,8 +3811,6 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 	int err;
 
 	DBG("service %p", service);
-
-	reply_pending(service, ECONNABORTED);
 
 	service->ignore = true;
 
@@ -4450,7 +4444,6 @@ void connman_service_unref_debug(struct connman_service *service,
 
 	service_list = g_list_remove(service_list, service);
 
-	reply_pending(service, ECONNABORTED);
 	__connman_service_disconnect(service);
 
 	g_hash_table_remove(service_hash, service->identifier);
@@ -5114,7 +5107,6 @@ static int service_indicate_state(struct connman_service *service)
 
 	if (new_state == CONNMAN_SERVICE_STATE_IDLE &&
 			old_state != CONNMAN_SERVICE_STATE_DISCONNECT) {
-		reply_pending(service, ECONNABORTED);
 
 		__connman_service_disconnect(service);
 	}
@@ -5815,6 +5807,8 @@ int __connman_service_disconnect(struct connman_service *service)
 	service->userconnect = false;
 
 	connman_agent_cancel(service);
+
+	reply_pending(service, ECONNABORTED);
 
 	if (service->network != NULL) {
 		err = __connman_network_disconnect(service->network);
