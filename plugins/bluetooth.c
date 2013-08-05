@@ -752,6 +752,11 @@ static void object_added(GDBusProxy *proxy, void *user_data)
 	const char *interface;
 
 	interface = g_dbus_proxy_get_interface(proxy);
+	if (!interface) {
+		connman_warn("Interface or proxy missing when adding "
+							"bluetooth object");
+		return;
+	}
 
 	if (strcmp(interface, "org.bluez.Adapter1") == 0) {
 		DBG("%s %s", interface, g_dbus_proxy_get_path(proxy));
@@ -771,6 +776,11 @@ static void object_removed(GDBusProxy *proxy, void *user_data)
 	const char *interface, *path;
 
 	interface = g_dbus_proxy_get_interface(proxy);
+	if (!interface) {
+		connman_warn("Interface or proxy missing when removing "
+							"bluetooth object");
+		return;
+	}
 
 	if (strcmp(interface, "org.bluez.Adapter1") == 0) {
 		path = g_dbus_proxy_get_path(proxy);
