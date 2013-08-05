@@ -246,6 +246,12 @@ Following environment variables can be used:
 Example:
     CONNMAN_WEB_DEBUG=1 src/connmand -n
 
+If timing conditions are relevant then it is recommended command to
+get log traces as follows:
+    connmand -d 2>&1 | ts '[%H:%M:%.S]' | tee connman.log
+
+The 'ts' program is normaly avialable in the moreutils package.
+
 
 Kernel configuration
 ====================
