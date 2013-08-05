@@ -1874,7 +1874,7 @@ static int check_pd_restart(struct connman_dhcpv6 *dhcp)
 				NULL, &expired);
 	current = time(NULL);
 
-	if (current > expired) {
+	if (current >= expired) {
 		DBG("expired by %d secs", (int)(current - expired));
 
 		g_timeout_add(0, dhcpv6_restart, dhcp);
@@ -1908,6 +1908,9 @@ static gboolean timeout_pd_rebind(gpointer user_data)
 static gboolean start_pd_rebind(gpointer user_data)
 {
 	struct connman_dhcpv6 *dhcp = user_data;
+
+	if (check_pd_restart(dhcp) < 0)
+		return FALSE;
 
 	dhcp->RT = REB_TIMEOUT * (1 + get_random());
 
@@ -2041,35 +2044,36 @@ int __connman_dhcpv6_start_pd_renew(struct connman_network *network,
 		 */
 		T1 = 120;
 
-	/* RFC 3315, 18.1.4, start solicit if expired */
-	if (current > expired) {
-		DBG("expired by %d secs", (int)(current - expired));
-		return -ETIMEDOUT;
-	}
-
 	dhcp->callback = callback;
 
-	if (T2 != 0xffffffff && T2 > 0 &&
-			(unsigned)current > (unsigned)started + T2) {
-		int timeout;
+	/* RFC 3315, 18.1.4, start solicit if expired */
+	if (check_pd_restart(dhcp) < 0)
+		return 0;
 
-		/* RFC 3315, chapter 18.1.3, start rebind */
-		if ((unsigned)current > (unsigned)started + T1)
-			timeout = 0;
-		else
-			timeout = current - started + T1;
+	if (T2 != 0xffffffff && T2 > 0) {
+		if ((unsigned)current >= (unsigned)started + T2) {
+			/* RFC 3315, chapter 18.1.3, start rebind */
+			DBG("rebind after %d secs", T2);
 
-		/*
-		 * If we just did a renew, do not restart the rebind
-		 * immediately.
-		 */
-		dhcp->timeout = g_timeout_add_seconds(timeout, start_pd_rebind,
-						dhcp);
-	} else {
-		DBG("renew after %d secs", T1);
+			dhcp->timeout = g_timeout_add_seconds(T2,
+							start_pd_rebind,
+							dhcp);
 
-		dhcp->timeout = g_timeout_add_seconds(T1, start_pd_renew, dhcp);
+		} else if ((unsigned)current < (unsigned)started + T1) {
+			DBG("renew after %d secs", T1);
+
+			dhcp->timeout = g_timeout_add_seconds(T1,
+							start_pd_renew,
+							dhcp);
+		} else {
+			DBG("rebind after %d secs", T2 - T1);
+
+			dhcp->timeout = g_timeout_add_seconds(T2 - T1,
+							start_pd_rebind,
+							dhcp);
+		}
 	}
+
 	return 0;
 }
 
