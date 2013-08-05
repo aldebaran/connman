@@ -753,7 +753,7 @@ static int dhcpv6_rebind(struct connman_dhcpv6 *dhcp)
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
 			dhcp->use_ta ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
-			NULL, NULL, FALSE, NULL);
+			NULL, NULL, TRUE, NULL);
 
 	clear_callbacks(dhcp_client);
 
