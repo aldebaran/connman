@@ -955,9 +955,22 @@ static int dhcpv6_renew(struct connman_dhcpv6 *dhcp)
 static gboolean timeout_renew(gpointer user_data)
 {
 	struct connman_dhcpv6 *dhcp = user_data;
+	time_t last_rebind, current;
+	uint32_t T2;
 
 	if (check_restart(dhcp) < 0)
 		return FALSE;
+
+	g_dhcpv6_client_get_timeouts(dhcp->dhcp_client, NULL, &T2,
+				NULL, &last_rebind, NULL);
+	current = time(NULL);
+	if ((unsigned)current > (unsigned)last_rebind + T2) {
+		/*
+		 * Do rebind instead if past T2
+		 */
+		start_rebind(dhcp);
+		return FALSE;
+	}
 
 	dhcp->RT = calc_delay(dhcp->RT, REN_MAX_RT);
 
