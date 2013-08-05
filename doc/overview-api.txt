@@ -99,12 +99,10 @@ delete/remove button.
 	|                                       |
 
 Ethernet is special here since the unplugging of the network cable will
-remove the favorite selection.
+remove the service from the list
 
 	+---------------------------------------+
 	| Ethernet with cable                   |  order=1 - favorite=yes
-	+---------------------------------------+
-	| Ethernet without cable                |  order=0 - favorite=no
 	+---------------------------------------+
 	| Guest            (strength 90, none)  |  order=0
 	+---------------------------------------+
@@ -143,14 +141,13 @@ A working connection is considered top priority.
 	+---------------------------------------+
 	|                                       |
 
-Another possible user interaction would be to unplug the Ethernet cable and
-in this case the favorite setting will be removed and the service falls back
-down in the list.
+Another possible user interaction would be to disconnect the Ethernet service
+and in this case the service falls back down in the list.
 
 	+---------------------------------------+
 	| My WiFi AP       (strength 80, rsn)   |  order=1 - connected=yes
 	+---------------------------------------+
-	| Ethernet                              |  order=0
+	| Ethernet                              |  order=1 - connected=no
 	+---------------------------------------+
 	| Guest            (strength 90, none)  |  order=0
 	+---------------------------------------+
@@ -174,14 +171,10 @@ and are sorted above all others.
 	+---------------------------------------+
 	|                                       |
 
-Unplugging the Ethernet cable will remove the favorite setting, but due to
-the basic ordering of services it will be at the top of the services with an
-order number of 0 (directly after all favorite services).
+Unplugging the Ethernet cable will remove the Ethernet service.
 
 	+---------------------------------------+
 	| My WiFi AP       (strength 80, rsn)   |  order=1 - connected=no
-	+---------------------------------------+
-	| Ethernet                              |  order=0 - connected=no
 	+---------------------------------------+
 	| Guest            (strength 90, none)  |  order=0
 	+---------------------------------------+
