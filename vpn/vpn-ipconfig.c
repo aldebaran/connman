@@ -75,7 +75,7 @@ unsigned char __vpn_ipconfig_netmask_prefix_len(const char *netmask)
 	in_addr_t mask;
 	in_addr_t host;
 
-	if (netmask == NULL)
+	if (!netmask)
 		return 32;
 
 	mask = inet_network(netmask);
@@ -94,7 +94,7 @@ unsigned char __vpn_ipconfig_netmask_prefix_len(const char *netmask)
 
 const char *__vpn_ipconfig_get_peer(struct vpn_ipconfig *ipconfig)
 {
-	if (ipconfig->address == NULL)
+	if (!ipconfig->address)
 		return NULL;
 
 	return ipconfig->address->peer;
@@ -105,7 +105,7 @@ unsigned short __vpn_ipconfig_get_type_from_index(int index)
 	struct vpn_ipdevice *ipdevice;
 
 	ipdevice = g_hash_table_lookup(ipdevice_hash, GINT_TO_POINTER(index));
-	if (ipdevice == NULL)
+	if (!ipdevice)
 		return ARPHRD_VOID;
 
 	return ipdevice->type;
@@ -116,7 +116,7 @@ unsigned int __vpn_ipconfig_get_flags_from_index(int index)
 	struct vpn_ipdevice *ipdevice;
 
 	ipdevice = g_hash_table_lookup(ipdevice_hash, GINT_TO_POINTER(index));
-	if (ipdevice == NULL)
+	if (!ipdevice)
 		return 0;
 
 	return ipdevice->flags;
@@ -128,7 +128,7 @@ void __vpn_ipconfig_foreach(void (*function) (int index,
 	GList *list, *keys;
 
 	keys = g_hash_table_get_keys(ipdevice_hash);
-	if (keys == NULL)
+	if (!keys)
 		return;
 
 	for (list = g_list_first(keys); list; list = g_list_next(list)) {
@@ -143,7 +143,7 @@ void __vpn_ipconfig_foreach(void (*function) (int index,
 void __vpn_ipconfig_set_local(struct vpn_ipconfig *ipconfig,
 							const char *address)
 {
-	if (ipconfig->address == NULL)
+	if (!ipconfig->address)
 		return;
 
 	g_free(ipconfig->address->local);
@@ -152,7 +152,7 @@ void __vpn_ipconfig_set_local(struct vpn_ipconfig *ipconfig,
 
 const char *__vpn_ipconfig_get_local(struct vpn_ipconfig *ipconfig)
 {
-	if (ipconfig->address == NULL)
+	if (!ipconfig->address)
 		return NULL;
 
 	return ipconfig->address->local;
@@ -161,7 +161,7 @@ const char *__vpn_ipconfig_get_local(struct vpn_ipconfig *ipconfig)
 void __vpn_ipconfig_set_peer(struct vpn_ipconfig *ipconfig,
 							const char *address)
 {
-	if (ipconfig->address == NULL)
+	if (!ipconfig->address)
 		return;
 
 	g_free(ipconfig->address->peer);
@@ -171,7 +171,7 @@ void __vpn_ipconfig_set_peer(struct vpn_ipconfig *ipconfig,
 void __vpn_ipconfig_set_broadcast(struct vpn_ipconfig *ipconfig,
 					const char *broadcast)
 {
-	if (ipconfig->address == NULL)
+	if (!ipconfig->address)
 		return;
 
 	g_free(ipconfig->address->broadcast);
@@ -183,7 +183,7 @@ void __vpn_ipconfig_set_gateway(struct vpn_ipconfig *ipconfig,
 {
 	DBG("");
 
-	if (ipconfig->address == NULL)
+	if (!ipconfig->address)
 		return;
 	g_free(ipconfig->address->gateway);
 	ipconfig->address->gateway = g_strdup(gateway);
@@ -192,7 +192,7 @@ void __vpn_ipconfig_set_gateway(struct vpn_ipconfig *ipconfig,
 const char *
 __vpn_ipconfig_get_gateway(struct vpn_ipconfig *ipconfig)
 {
-	if (ipconfig->address == NULL)
+	if (!ipconfig->address)
 		return NULL;
 
 	return ipconfig->address->gateway;
@@ -201,7 +201,7 @@ __vpn_ipconfig_get_gateway(struct vpn_ipconfig *ipconfig)
 void __vpn_ipconfig_set_prefixlen(struct vpn_ipconfig *ipconfig,
 					unsigned char prefixlen)
 {
-	if (ipconfig->address == NULL)
+	if (!ipconfig->address)
 		return;
 
 	ipconfig->address->prefixlen = prefixlen;
@@ -210,7 +210,7 @@ void __vpn_ipconfig_set_prefixlen(struct vpn_ipconfig *ipconfig,
 unsigned char
 __vpn_ipconfig_get_prefixlen(struct vpn_ipconfig *ipconfig)
 {
-	if (ipconfig->address == NULL)
+	if (!ipconfig->address)
 		return 0;
 
 	return ipconfig->address->prefixlen;
@@ -220,7 +220,7 @@ int __vpn_ipconfig_address_add(struct vpn_ipconfig *ipconfig, int family)
 {
 	DBG("ipconfig %p family %d", ipconfig, family);
 
-	if (ipconfig == NULL)
+	if (!ipconfig)
 		return -EINVAL;
 
 	if (family == AF_INET)
@@ -237,7 +237,7 @@ int __vpn_ipconfig_gateway_add(struct vpn_ipconfig *ipconfig, int family)
 {
 	DBG("ipconfig %p family %d", ipconfig, family);
 
-	if (ipconfig == NULL || ipconfig->address == NULL)
+	if (!ipconfig || !ipconfig->address)
 		return -EINVAL;
 
 	DBG("family %d gw %s peer %s", family,
@@ -260,7 +260,7 @@ int __vpn_ipconfig_gateway_add(struct vpn_ipconfig *ipconfig, int family)
 void __vpn_ipconfig_unref_debug(struct vpn_ipconfig *ipconfig,
 				const char *file, int line, const char *caller)
 {
-	if (ipconfig == NULL)
+	if (!ipconfig)
 		return;
 
 	DBG("%p ref %d by %s:%d:%s()", ipconfig, ipconfig->refcount - 1,
@@ -281,7 +281,7 @@ static struct vpn_ipconfig *create_ipv6config(int index)
 	DBG("index %d", index);
 
 	ipv6config = g_try_new0(struct vpn_ipconfig, 1);
-	if (ipv6config == NULL)
+	if (!ipv6config)
 		return NULL;
 
 	ipv6config->refcount = 1;
@@ -291,7 +291,7 @@ static struct vpn_ipconfig *create_ipv6config(int index)
 	ipv6config->family = AF_INET6;
 
 	ipv6config->address = connman_ipaddress_alloc(AF_INET6);
-	if (ipv6config->address == NULL) {
+	if (!ipv6config->address) {
 		g_free(ipv6config);
 		return NULL;
 	}
@@ -313,7 +313,7 @@ struct vpn_ipconfig *__vpn_ipconfig_create(int index, int family)
 	DBG("index %d", index);
 
 	ipconfig = g_try_new0(struct vpn_ipconfig, 1);
-	if (ipconfig == NULL)
+	if (!ipconfig)
 		return NULL;
 
 	ipconfig->refcount = 1;
@@ -323,7 +323,7 @@ struct vpn_ipconfig *__vpn_ipconfig_create(int index, int family)
 	ipconfig->family = family;
 
 	ipconfig->address = connman_ipaddress_alloc(AF_INET);
-	if (ipconfig->address == NULL) {
+	if (!ipconfig->address) {
 		g_free(ipconfig);
 		return NULL;
 	}
@@ -371,11 +371,11 @@ void __vpn_ipconfig_newlink(int index, unsigned short type,
 		return;
 
 	ipdevice = g_hash_table_lookup(ipdevice_hash, GINT_TO_POINTER(index));
-	if (ipdevice != NULL)
+	if (ipdevice)
 		goto update;
 
 	ipdevice = g_try_new0(struct vpn_ipdevice, 1);
-	if (ipdevice == NULL)
+	if (!ipdevice)
 		return;
 
 	ipdevice->index = index;
@@ -398,7 +398,7 @@ update:
 	ipdevice->flags = flags;
 
 	str = g_string_new(NULL);
-	if (str == NULL)
+	if (!str)
 		return;
 
 	if (flags & IFF_UP)
@@ -425,7 +425,7 @@ void __vpn_ipconfig_dellink(int index, struct rtnl_link_stats *stats)
 	DBG("index %d", index);
 
 	ipdevice = g_hash_table_lookup(ipdevice_hash, GINT_TO_POINTER(index));
-	if (ipdevice == NULL)
+	if (!ipdevice)
 		return;
 
 	g_hash_table_remove(ipdevice_hash, GINT_TO_POINTER(index));

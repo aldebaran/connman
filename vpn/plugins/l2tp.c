@@ -138,12 +138,12 @@ static DBusMessage *l2tp_get_sec(struct connman_task *task,
 		user = vpn_provider_get_string(provider, "L2TP.User");
 		passwd = vpn_provider_get_string(provider, "L2TP.Password");
 
-		if (user == NULL || strlen(user) == 0 ||
-				passwd == NULL || strlen(passwd) == 0)
+		if (!user || strlen(user) == 0 ||
+				!passwd || strlen(passwd) == 0)
 			return NULL;
 
 		reply = dbus_message_new_method_return(msg);
-		if (reply == NULL)
+		if (!reply)
 			return NULL;
 
 		dbus_message_append_args(reply, DBUS_TYPE_STRING, &user,
@@ -227,12 +227,12 @@ static int l2tp_notify(DBusMessage *msg, struct vpn_provider *provider)
 		return VPN_STATE_FAILURE;
 	}
 
-	if (addressv4 != NULL)
+	if (addressv4)
 		ipaddress = connman_ipaddress_alloc(AF_INET);
 
 	g_free(ifname);
 
-	if (ipaddress == NULL) {
+	if (!ipaddress) {
 		connman_error("No IP address for provider");
 		g_free(addressv4);
 		g_free(netmask);
@@ -241,12 +241,12 @@ static int l2tp_notify(DBusMessage *msg, struct vpn_provider *provider)
 	}
 
 	value = vpn_provider_get_string(provider, "HostIP");
-	if (value != NULL) {
+	if (value) {
 		vpn_provider_set_string(provider, "Gateway", value);
 		gateway = g_strdup(value);
 	}
 
-	if (addressv4 != NULL)
+	if (addressv4)
 		connman_ipaddress_set_ipv4(ipaddress, addressv4, netmask,
 					gateway);
 
@@ -280,7 +280,7 @@ static int l2tp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 		if (l2tp_option || pppd_option) {
 			option = vpn_provider_get_string(provider,
 						pppd_options[i].cm_opt);
-			if (option == NULL) {
+			if (!option) {
 				/*
 				 * Check if the option prefix is L2TP as the
 				 * PPPD options were using L2TP prefix earlier.
@@ -296,7 +296,7 @@ static int l2tp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 								l2tp_str);
 				g_free(l2tp_str);
 
-				if (option == NULL)
+				if (!option)
 					continue;
 			}
 
@@ -333,7 +333,7 @@ static ssize_t l2tp_write_bool_option(int fd,
 	gchar *buf;
 	ssize_t ret = 0;
 
-	if (key != NULL && value != NULL) {
+	if (key && value) {
 		if (strcasecmp(value, "yes") == 0 ||
 				strcasecmp(value, "true") == 0 ||
 				strcmp(value, "1") == 0) {
@@ -352,8 +352,8 @@ static int l2tp_write_option(int fd, const char *key, const char *value)
 	gchar *buf;
 	ssize_t ret = 0;
 
-	if (key != NULL) {
-		if (value != NULL)
+	if (key) {
+		if (value)
 			buf = g_strdup_printf("%s %s\n", key, value);
 		else
 			buf = g_strdup_printf("%s\n", key);
@@ -371,7 +371,7 @@ static int l2tp_write_section(int fd, const char *key, const char *value)
 	gchar *buf;
 	ssize_t ret = 0;
 
-	if (key != NULL && value != NULL) {
+	if (key && value) {
 		buf = g_strdup_printf("%s = %s\n", key, value);
 		ret = full_write(fd, buf, strlen(buf));
 
@@ -578,13 +578,13 @@ static int request_input(struct vpn_provider *provider,
 
 	connman_agent_get_info(&agent_sender, &agent_path);
 
-	if (provider == NULL || agent_path == NULL || callback == NULL)
+	if (!provider || !agent_path || !callback)
 		return -ESRCH;
 
 	message = dbus_message_new_method_call(agent_sender, agent_path,
 					VPN_AGENT_INTERFACE,
 					"RequestInput");
-	if (message == NULL)
+	if (!message)
 		return -ENOMEM;
 
 	dbus_message_iter_init_append(message, &iter);
@@ -602,7 +602,7 @@ static int request_input(struct vpn_provider *provider,
 	connman_dbus_dict_close(&iter, &dict);
 
 	l2tp_reply = g_try_new0(struct request_input_reply, 1);
-	if (l2tp_reply == NULL) {
+	if (!l2tp_reply) {
 		dbus_message_unref(message);
 		return -ENOMEM;
 	}
@@ -635,7 +635,7 @@ static int run_connect(struct vpn_provider *provider,
 	int l2tp_fd, pppd_fd;
 	int err;
 
-	if (username == NULL || password == NULL) {
+	if (!username || !password) {
 		DBG("Cannot connect username %s password %p",
 						username, password);
 		err = -EINVAL;
@@ -685,7 +685,7 @@ static int run_connect(struct vpn_provider *provider,
 	}
 
 done:
-	if (cb != NULL)
+	if (cb)
 		cb(provider, user_data, err);
 
 	return err;
@@ -704,10 +704,10 @@ static void request_input_cb(struct vpn_provider *provider,
 {
 	struct l2tp_private_data *data = user_data;
 
-	if (username == NULL || password == NULL)
+	if (!username || !password)
 		DBG("Requesting username %s or password failed, error %s",
 			username, error);
-	else if (error != NULL)
+	else if (error)
 		DBG("error %s", error);
 
 	vpn_provider_set_string(provider, "L2TP.User", username);
@@ -738,11 +738,11 @@ static int l2tp_connect(struct vpn_provider *provider,
 
 	DBG("user %s password %p", username, password);
 
-	if (username == NULL || password == NULL) {
+	if (!username || !password) {
 		struct l2tp_private_data *data;
 
 		data = g_try_new0(struct l2tp_private_data, 1);
-		if (data == NULL)
+		if (!data)
 			return -ENOMEM;
 
 		data->task = task;
@@ -763,7 +763,7 @@ done:
 							username, password);
 
 error:
-	if (cb != NULL)
+	if (cb)
 		cb(provider, user_data, err);
 
 	return err;

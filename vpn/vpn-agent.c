@@ -117,9 +117,9 @@ static void request_input_append_user_info(DBusMessageIter *iter,
 	connman_dbus_dict_append_basic(iter, "Requirement",
 				DBUS_TYPE_STRING, &str);
 
-	if (data->username_str != NULL) {
+	if (data->username_str) {
 		str = vpn_provider_get_string(provider, data->username_str);
-		if (str != NULL)
+		if (str)
 			connman_dbus_dict_append_basic(iter, "Value",
 						DBUS_TYPE_STRING, &str);
 	}

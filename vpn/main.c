@@ -84,14 +84,14 @@ static void parse_config(GKeyFile *config, const char *file)
 	GError *error = NULL;
 	int timeout;
 
-	if (config == NULL)
+	if (!config)
 		return;
 
 	DBG("parsing %s", file);
 
 	timeout = g_key_file_get_integer(config, "General",
 			"InputRequestTimeout", &error);
-	if (error == NULL && timeout >= 0)
+	if (!error && timeout >= 0)
 		connman_vpn_settings.timeout_inputreq = timeout * 1000;
 
 	g_clear_error(&error);
@@ -103,7 +103,7 @@ static int config_init(const char *file)
 
 	config = load_config(file);
 	parse_config(config, file);
-	if (config != NULL)
+	if (config)
 		g_key_file_free(config);
 
 	return 0;
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
 	g_option_context_add_main_entries(context, options, NULL);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
-		if (error != NULL) {
+		if (error) {
 			g_printerr("%s\n", error->message);
 			g_error_free(error);
 		} else
@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
 	dbus_error_init(&err);
 
 	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, VPN_SERVICE, &err);
-	if (conn == NULL) {
+	if (!conn) {
 		if (dbus_error_is_set(&err)) {
 			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);
@@ -313,7 +313,7 @@ int main(int argc, char *argv[])
 			"Connection Manager VPN daemon", VERSION);
 	__connman_dbus_init(conn);
 
-	if (option_config == NULL)
+	if (!option_config)
 		config_init(CONFIGMAINFILE);
 	else
 		config_init(option_config);

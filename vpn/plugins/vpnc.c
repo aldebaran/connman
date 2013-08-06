@@ -138,7 +138,7 @@ static int vc_notify(DBusMessage *msg, struct vpn_provider *provider)
 
 
 	ipaddress = connman_ipaddress_alloc(AF_INET);
-	if (ipaddress == NULL) {
+	if (!ipaddress) {
 		g_free(address);
 		g_free(netmask);
 		g_free(gateway);
@@ -180,7 +180,7 @@ static ssize_t write_option(int fd, const char *key, const char *value)
 	gchar *buf;
 	ssize_t ret = 0;
 
-	if (key != NULL && value != NULL) {
+	if (key && value) {
 		buf = g_strdup_printf("%s %s\n", key, value);
 		ret = full_write(fd, buf, strlen(buf));
 
@@ -195,7 +195,7 @@ static ssize_t write_bool_option(int fd, const char *key, const char *value)
 	gchar *buf;
 	ssize_t ret = 0;
 
-	if (key != NULL && value != NULL) {
+	if (key && value) {
 		if (strcasecmp(value, "yes") == 0 ||
 				strcasecmp(value, "true") == 0 ||
 				strcmp(value, "1") == 0) {
@@ -251,7 +251,7 @@ static int vc_save(struct vpn_provider *provider, GKeyFile *keyfile)
 
 			option = vpn_provider_get_string(provider,
 							vpnc_options[i].cm_opt);
-			if (option == NULL)
+			if (!option)
 				continue;
 
 			g_key_file_set_string(keyfile,
@@ -270,13 +270,13 @@ static int vc_connect(struct vpn_provider *provider,
 	int err = 0, fd;
 
 	option = vpn_provider_get_string(provider, "Host");
-	if (option == NULL) {
+	if (!option) {
 		connman_error("Host not set; cannot enable VPN");
 		err = -EINVAL;
 		goto done;
 	}
 	option = vpn_provider_get_string(provider, "VPNC.IPSec.ID");
-	if (option == NULL) {
+	if (!option) {
 		connman_error("Group not set; cannot enable VPN");
 		err = -EINVAL;
 		goto done;
@@ -292,7 +292,7 @@ static int vc_connect(struct vpn_provider *provider,
 				SCRIPTDIR "/openconnect-script");
 
 	option = vpn_provider_get_string(provider, "VPNC.Debug");
-	if (option != NULL)
+	if (option)
 		connman_task_add_argument(task, "--debug", option);
 
 	connman_task_add_argument(task, "-", NULL);
@@ -310,7 +310,7 @@ static int vc_connect(struct vpn_provider *provider,
 	close(fd);
 
 done:
-	if (cb != NULL)
+	if (cb)
 		cb(provider, user_data, err);
 
 	return err;

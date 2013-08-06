@@ -88,14 +88,14 @@ static struct nameserver_entry *ov_append_dns_entries(const char *key,
 		return NULL;
 
 	options = g_strsplit(value, " ", 3);
-	if (options[0] != NULL &&
+	if (options[0] &&
 		!strcmp(options[0], "dhcp-option") &&
-			options[1] != NULL &&
+			options[1] &&
 			!strcmp(options[1], "DNS") &&
-				options[2] != NULL) {
+				options[2]) {
 
 		entry = g_try_new(struct nameserver_entry, 1);
-		if (entry == NULL)
+		if (!entry)
 			return NULL;
 
 		entry->nameserver = g_strdup(options[2]);
@@ -116,11 +116,11 @@ static char *ov_get_domain_name(const char *key, const char *value)
 		return NULL;
 
 	options = g_strsplit(value, " ", 3);
-	if (options[0] != NULL &&
+	if (options[0] &&
 		!strcmp(options[0], "dhcp-option") &&
-			options[1] != NULL &&
+			options[1] &&
 			!strcmp(options[1], "DOMAIN") &&
-				options[2] != NULL) {
+				options[2]) {
 
 		domain = g_strdup(options[2]);
 	}
@@ -204,12 +204,12 @@ static int ov_notify(DBusMessage *msg, struct vpn_provider *provider)
 		if (g_str_has_prefix(key, "route_"))
 			vpn_provider_append_route(provider, key, value);
 
-		if ((ns_entry = ov_append_dns_entries(key, value)) != NULL)
+		if ((ns_entry = ov_append_dns_entries(key, value)))
 			nameserver_list = g_slist_prepend(nameserver_list,
 							ns_entry);
 		else {
 			char *domain = ov_get_domain_name(key, value);
-			if (domain != NULL) {
+			if (domain) {
 				vpn_provider_set_domain(provider, domain);
 				g_free(domain);
 			}
@@ -219,7 +219,7 @@ static int ov_notify(DBusMessage *msg, struct vpn_provider *provider)
 	}
 
 	ipaddress = connman_ipaddress_alloc(AF_INET);
-	if (ipaddress == NULL) {
+	if (!ipaddress) {
 		g_slist_free_full(nameserver_list, free_ns_entry);
 		g_free(address);
 		g_free(gateway);
@@ -232,16 +232,16 @@ static int ov_notify(DBusMessage *msg, struct vpn_provider *provider)
 	connman_ipaddress_set_peer(ipaddress, peer);
 	vpn_provider_set_ipaddress(provider, ipaddress);
 
-	if (nameserver_list != NULL) {
+	if (nameserver_list) {
 		char *nameservers = NULL;
 		GSList *tmp;
 
 		nameserver_list = g_slist_sort(nameserver_list, cmp_ns);
-		for (tmp = nameserver_list; tmp != NULL;
+		for (tmp = nameserver_list; tmp;
 						tmp = g_slist_next(tmp)) {
 			struct nameserver_entry *ns = tmp->data;
 
-			if (nameservers == NULL) {
+			if (!nameservers) {
 				nameservers = g_strdup(ns->nameserver);
 			} else {
 				char *str;
@@ -276,7 +276,7 @@ static int ov_save(struct vpn_provider *provider, GKeyFile *keyfile)
 		if (strncmp(ov_options[i].cm_opt, "OpenVPN.", 8) == 0) {
 			option = vpn_provider_get_string(provider,
 							ov_options[i].cm_opt);
-			if (option == NULL)
+			if (!option)
 				continue;
 
 			g_key_file_set_string(keyfile,
@@ -294,12 +294,12 @@ static int task_append_config_data(struct vpn_provider *provider,
 	int i;
 
 	for (i = 0; i < (int)ARRAY_SIZE(ov_options); i++) {
-		if (ov_options[i].ov_opt == NULL)
+		if (!ov_options[i].ov_opt)
 			continue;
 
 		option = vpn_provider_get_string(provider,
 					ov_options[i].cm_opt);
-		if (option == NULL)
+		if (!option)
 			continue;
 
 		if (connman_task_add_argument(task,
@@ -320,7 +320,7 @@ static int ov_connect(struct vpn_provider *provider,
 	int err = 0, fd;
 
 	option = vpn_provider_get_string(provider, "Host");
-	if (option == NULL) {
+	if (!option) {
 		connman_error("Host not set; cannot enable VPN");
 		return -EINVAL;
 	}
@@ -328,16 +328,16 @@ static int ov_connect(struct vpn_provider *provider,
 	task_append_config_data(provider, task);
 
 	option = vpn_provider_get_string(provider, "OpenVPN.ConfigFile");
-	if (option == NULL) {
+	if (!option) {
 		/*
 		 * Set some default options if user has no config file.
 		 */
 		option = vpn_provider_get_string(provider, "OpenVPN.TLSAuth");
-		if (option != NULL) {
+		if (option) {
 			connman_task_add_argument(task, "--tls-auth", option);
 			option = vpn_provider_get_string(provider,
 							"OpenVPN.TLSAuthDir");
-			if (option != NULL)
+			if (option)
 				connman_task_add_argument(task, option, NULL);
 		}
 
@@ -394,7 +394,7 @@ static int ov_connect(struct vpn_provider *provider,
 	}
 
 done:
-	if (cb != NULL)
+	if (cb)
 		cb(provider, user_data, err);
 
 	return err;
