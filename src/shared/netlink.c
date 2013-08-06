@@ -513,7 +513,7 @@ bool netlink_cancel(struct netlink_info *netlink, unsigned int id)
 		return false;
 
 	if (!netlink->command_queue ||
-			!netlink->command_pending||
+			!netlink->command_pending ||
 			!netlink->command_lookup)
 		return false;
 
