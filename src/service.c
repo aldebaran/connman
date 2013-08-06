@@ -6399,6 +6399,11 @@ const char *__connman_service_get_path(struct connman_service *service)
 	return service->path;
 }
 
+const char *__connman_service_get_name(struct connman_service *service)
+{
+	return service->name;
+}
+
 unsigned int __connman_service_get_order(struct connman_service *service)
 {
 	if (!service)
