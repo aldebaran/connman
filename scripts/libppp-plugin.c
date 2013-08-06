@@ -87,26 +87,26 @@ static int ppp_get_secret(char *username, char *password)
 	const char *user, *pass;
 	DBusError err;
 
-	if (username == NULL && password == NULL)
+	if (!username && !password)
 		return -1;
 
-	if (password == NULL)
+	if (!password)
 		return 1;
 
-	if (connection == NULL)
+	if (!connection)
 		return -1;
 
 	dbus_error_init(&err);
 
 	msg = dbus_message_new_method_call(busname, path, interface, "getsec");
-	if (msg == NULL)
+	if (!msg)
 		return -1;
 
 	dbus_message_append_args(msg, DBUS_TYPE_INVALID, DBUS_TYPE_INVALID);
 
 	reply = dbus_connection_send_with_reply_and_block(connection,
 								msg, -1, &err);
-	if (reply == NULL) {
+	if (!reply) {
 		if (dbus_error_is_set(&err))
 			dbus_error_free(&err);
 
@@ -128,7 +128,7 @@ static int ppp_get_secret(char *username, char *password)
 		return -1;
 	}
 
-	if (username != NULL)
+	if (username)
 		strcpy(username, user);
 
 	strcpy(password, pass);
@@ -147,7 +147,7 @@ static void ppp_up(void *data, int arg)
 	DBusMessageIter iter, dict;
 	DBusMessage *msg;
 
-	if (connection == NULL)
+	if (!connection)
 		return;
 
 	if (ipcp_gotoptions[0].ouraddr == 0)
@@ -155,7 +155,7 @@ static void ppp_up(void *data, int arg)
 
 	msg = dbus_message_new_method_call(busname, path,
 						interface, "notify");
-	if (msg == NULL)
+	if (!msg)
 		return;
 
 	dbus_message_set_no_reply(msg, TRUE);
@@ -214,22 +214,22 @@ static void ppp_up(void *data, int arg)
 
 static void ppp_exit(void *data, int arg)
 {
-	if (connection != NULL) {
+	if (connection) {
 		dbus_connection_unref(connection);
 		connection = NULL;
 	}
 
-	if (busname != NULL) {
+	if (busname) {
 		free(busname);
 		busname = NULL;
 	}
 
-	if (interface != NULL) {
+	if (interface) {
 		free(interface);
 		interface = NULL;
 	}
 
-	if (path != NULL) {
+	if (path) {
 		free(path);
 		path = NULL;
 	}
@@ -241,7 +241,7 @@ static void ppp_phase_change(void *data, int arg)
 	DBusMessage *msg;
 	int send_msg = 0;
 
-	if (connection == NULL)
+	if (!connection)
 		return;
 
 	if (prev_phase == PHASE_AUTHENTICATE &&
@@ -253,7 +253,7 @@ static void ppp_phase_change(void *data, int arg)
 	if (send_msg > 0 || arg == PHASE_DEAD || arg == PHASE_DISCONNECT) {
 		msg = dbus_message_new_method_call(busname, path,
 						interface, "notify");
-		if (msg == NULL)
+		if (!msg)
 			return;
 
 		dbus_message_set_no_reply(msg, TRUE);
@@ -282,20 +282,20 @@ int plugin_init(void)
 	inter = getenv("CONNMAN_INTERFACE");
 	p = getenv("CONNMAN_PATH");
 
-	if (bus == NULL || inter == NULL || p == NULL)
+	if (!bus || !inter || !p)
 		return -1;
 
 	busname = strdup(bus);
 	interface = strdup(inter);
 	path = strdup(p);
 
-	if (busname == NULL || interface == NULL || path == NULL) {
+	if (!busname || !interface || !path) {
 		ppp_exit(NULL, 0);
 		return -1;
 	}
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
-	if (connection == NULL) {
+	if (!connection) {
 		if (dbus_error_is_set(&error))
 			dbus_error_free(&error);
 

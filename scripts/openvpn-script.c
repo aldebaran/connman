@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 	dbus_error_init(&error);
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
-	if (conn == NULL) {
+	if (!conn) {
 		if (dbus_error_is_set(&error)) {
 			print("%s", error.message);
 			dbus_error_free(&error);
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 
 	msg = dbus_message_new_method_call(busname, path,
 						interface, "notify");
-	if (msg == NULL) {
+	if (!msg) {
 		dbus_connection_unref(conn);
 		print("Failed to allocate method call");
 		goto out;
