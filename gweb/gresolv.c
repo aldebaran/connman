@@ -485,10 +485,14 @@ static void sort_and_return_results(struct resolv_lookup *lookup)
 
 	for (i = 0; i < lookup->nr_results; i++) {
 		if (lookup->results[i].dst.sa.sa_family == AF_INET) {
-			if (!inet_ntop(AF_INET, &lookup->results[i].dst.sin.sin_addr, buf, sizeof(buf) - 1))
+			if (!inet_ntop(AF_INET,
+					&lookup->results[i].dst.sin.sin_addr,
+					buf, sizeof(buf) - 1))
 				continue;
 		} else if (lookup->results[i].dst.sa.sa_family == AF_INET6) {
-			if (!inet_ntop(AF_INET6, &lookup->results[i].dst.sin6.sin6_addr, buf, sizeof(buf) - 1))
+			if (!inet_ntop(AF_INET6,
+					&lookup->results[i].dst.sin6.sin6_addr,
+					buf, sizeof(buf) - 1))
 				continue;
 		} else
 			continue;
