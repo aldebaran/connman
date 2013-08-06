@@ -1200,6 +1200,14 @@ static bool is_connecting(enum connman_service_state state)
 	return false;
 }
 
+static bool is_disconnected(enum connman_service_state state)
+{
+	if (is_connected(state) || is_connecting(state))
+		return false;
+
+	return true;
+}
+
 static bool explicit_connect(enum connman_session_reason reason)
 {
 	switch (reason) {
@@ -1488,6 +1496,9 @@ static void iterate_service_cb(struct connman_service *service,
 	struct connman_session *session = user_data;
 	struct service_entry *entry;
 
+	if (!is_connected(state))
+		return;
+
 	if (!service_match(session, service))
 		return;
 
@@ -1651,10 +1662,7 @@ static void session_changed(struct connman_session *session,
 				is_connected(info->entry->state)))
 			break;
 
-		deselect_and_disconnect(session);
-
-		if (info->reason == CONNMAN_SESSION_REASON_FREE_RIDE)
-			select_and_connect(session, info->reason);
+		select_and_connect(session, info->reason);
 
 		break;
 	}
@@ -2323,7 +2331,7 @@ void __connman_session_set_mode(bool enable)
 }
 
 static void service_add(struct connman_service *service,
-			const char *name)
+		enum connman_service_state state, const char *name)
 {
 	GHashTableIter iter;
 	gpointer key, value;
@@ -2340,15 +2348,29 @@ static void service_add(struct connman_service *service,
 		if (!service_match(session, service))
 			continue;
 
-		entry = create_service_entry(session, service, name,
-						CONNMAN_SERVICE_STATE_IDLE);
-		if (!entry)
-			continue;
+		entry = g_hash_table_lookup(session->service_hash, service);
+		if (entry) {
+			entry->state = state;
 
-		session->service_list = g_list_insert_sorted_with_data(
-			session->service_list, entry, sort_services, session);
+			session->service_list =
+				g_list_sort_with_data(session->service_list,
+						sort_services, session);
 
-		g_hash_table_replace(session->service_hash, service, entry);
+		} else {
+			entry = create_service_entry(session, service, name,
+					state);
+
+			if (!entry)
+				continue;
+
+			session->service_list =
+				g_list_insert_sorted_with_data(
+				session->service_list, entry,
+				sort_services, session);
+
+			g_hash_table_replace(session->service_hash, service,
+					entry);
+		}
 
 		session_changed(session, CONNMAN_SESSION_TRIGGER_SERVICE);
 	}
@@ -2389,24 +2411,13 @@ static void service_remove(struct connman_service *service)
 static void service_state_changed(struct connman_service *service,
 					enum connman_service_state state)
 {
-	GHashTableIter iter;
-	gpointer key, value;
-
 	DBG("service %p state %d", service, state);
 
-	g_hash_table_iter_init(&iter, session_hash);
-
-	while (g_hash_table_iter_next(&iter, &key, &value)) {
-		struct connman_session *session = value;
-		struct service_entry *entry;
-
-		entry = g_hash_table_lookup(session->service_hash, service);
-		if (entry)
-			entry->state = state;
-
-		session_changed(session,
-				CONNMAN_SESSION_TRIGGER_SERVICE);
-	}
+	if (is_connected(state))
+		service_add(service, state,
+				__connman_service_get_name(service));
+	else if (is_disconnected(state))
+		service_remove(service);
 }
 
 static void ipconfig_changed(struct connman_service *service,
@@ -2442,8 +2453,6 @@ static void ipconfig_changed(struct connman_service *service,
 
 static struct connman_notifier session_notifier = {
 	.name			= "session",
-	.service_add		= service_add,
-	.service_remove		= service_remove,
 	.service_state_changed	= service_state_changed,
 	.ipconfig_changed	= ipconfig_changed,
 };
