@@ -22,12 +22,18 @@ Methods		dict GetProperties()  [deprecated]
 			changeable. On success a PropertyChanged signal
 			will be emitted.
 
+			Properties cannot be set for hidden WiFi service
+			entries or provisioned services.
+
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.InvalidProperty
 
 		void ClearProperty(string name)
 
 			Clears the value of the specified property.
+
+			Properties cannot be cleared for hidden WiFi service
+			entries or provisioned services.
 
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.InvalidProperty
@@ -48,6 +54,11 @@ Methods		dict GetProperties()  [deprecated]
 			setting a longer D-Bus timeout might be a really
 			good idea.
 
+			Calling Connect() on a hidden WiFi service entry will
+			query the missing SSID via the Agent API causing a
+			WiFi service with the given SSID to be scanned,
+			created and connected.
+
 			Possible Errors: [service].Error.InvalidArguments
 
 		void Disconnect()
@@ -62,6 +73,9 @@ Methods		dict GetProperties()  [deprecated]
 
 			This method can also be used to abort a previous
 			connection attempt via the Connect method.
+
+			Hidden WiFi service entries cannot be disconnected
+			as they always stay in idle state.
 
 			Possible Errors: [service].Error.InvalidArguments
 
@@ -81,9 +95,10 @@ Methods		dict GetProperties()  [deprecated]
 			service is in the State=failure, this method can
 			also be used to reset the service.
 
-			Calling this method on Ethernet devices will cause
-			an error message. It is not possible to remove these
-			kind of devices.
+			Calling this method on Ethernet devices, hidden WiFi
+			services or provisioned services will cause an error
+			message. It is not possible to remove these kind of
+			services.
 
 			Possible Errors: [service].Error.InvalidArguments
 
