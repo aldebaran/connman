@@ -51,7 +51,7 @@ void supplicant_dbus_array_foreach(DBusMessageIter *iter,
 	dbus_message_iter_recurse(iter, &entry);
 
 	while (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_INVALID) {
-		if (function != NULL)
+		if (function)
 			function(&entry, user_data);
 
 		dbus_message_iter_next(&entry);
@@ -86,11 +86,11 @@ void supplicant_dbus_property_foreach(DBusMessageIter *iter,
 
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (key != NULL) {
+		if (key) {
 			if (strcmp(key, "Properties") == 0)
 				supplicant_dbus_property_foreach(&value,
 							function, user_data);
-			else if (function != NULL)
+			else if (function)
 				function(key, &value, user_data);
 		}
 
@@ -120,7 +120,7 @@ static void property_get_all_reply(DBusPendingCall *call, void *user_data)
 	supplicant_dbus_property_foreach(&iter, data->function,
 							data->user_data);
 
-	if (data->function != NULL)
+	if (data->function)
 		data->function(NULL, NULL, data->user_data);
 
 done:
@@ -137,19 +137,19 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 	DBusMessage *message;
 	DBusPendingCall *call;
 
-	if (connection == NULL)
+	if (!connection)
 		return -EINVAL;
 
-	if (path == NULL || interface == NULL)
+	if (!path || !interface)
 		return -EINVAL;
 
 	data = dbus_malloc0(sizeof(*data));
-	if (data == NULL)
+	if (!data)
 		return -ENOMEM;
 
 	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
 					DBUS_INTERFACE_PROPERTIES, "GetAll");
-	if (message == NULL) {
+	if (!message) {
 		dbus_free(data);
 		return -ENOMEM;
 	}
@@ -165,7 +165,7 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 		return -EIO;
 	}
 
-	if (call == NULL) {
+	if (!call) {
 		dbus_message_unref(message);
 		dbus_free(data);
 		return -EIO;
@@ -201,7 +201,7 @@ static void property_get_reply(DBusPendingCall *call, void *user_data)
 
 		dbus_message_iter_recurse(&iter, &variant);
 
-		if (data->function != NULL)
+		if (data->function)
 			data->function(NULL, &variant, data->user_data);
 	}
 done:
@@ -219,20 +219,20 @@ int supplicant_dbus_property_get(const char *path, const char *interface,
 	DBusMessage *message;
 	DBusPendingCall *call;
 
-	if (connection == NULL)
+	if (!connection)
 		return -EINVAL;
 
-	if (path == NULL || interface == NULL || method == NULL)
+	if (!path || !interface || !method)
 		return -EINVAL;
 
 	data = dbus_malloc0(sizeof(*data));
-	if (data == NULL)
+	if (!data)
 		return -ENOMEM;
 
 	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
 					DBUS_INTERFACE_PROPERTIES, "Get");
 
-	if (message == NULL) {
+	if (!message) {
 		dbus_free(data);
 		return -ENOMEM;
 	}
@@ -249,7 +249,7 @@ int supplicant_dbus_property_get(const char *path, const char *interface,
 		return -EIO;
 	}
 
-	if (call == NULL) {
+	if (!call) {
 		dbus_message_unref(message);
 		dbus_free(data);
 		return -EIO;
@@ -287,7 +287,7 @@ static void property_set_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_iter_init(reply, &iter);
 
-	if (data->function != NULL)
+	if (data->function)
 		data->function(error, &iter, data->user_data);
 
 	dbus_message_unref(reply);
@@ -306,22 +306,22 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 	DBusMessageIter iter, value;
 	DBusPendingCall *call;
 
-	if (connection == NULL)
+	if (!connection)
 		return -EINVAL;
 
-	if (path == NULL || interface == NULL)
+	if (!path || !interface)
 		return -EINVAL;
 
-	if (key == NULL || signature == NULL || setup == NULL)
+	if (!key || !signature || !setup)
 		return -EINVAL;
 
 	data = dbus_malloc0(sizeof(*data));
-	if (data == NULL)
+	if (!data)
 		return -ENOMEM;
 
 	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
 					DBUS_INTERFACE_PROPERTIES, "Set");
-	if (message == NULL) {
+	if (!message) {
 		dbus_free(data);
 		return -ENOMEM;
 	}
@@ -344,7 +344,7 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 		return -EIO;
 	}
 
-	if (call == NULL) {
+	if (!call) {
 		dbus_message_unref(message);
 		dbus_free(data);
 		return -EIO;
@@ -382,7 +382,7 @@ static void method_call_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_iter_init(reply, &iter);
 
-	if (data->function != NULL)
+	if (data->function)
 		data->function(error, &iter, data->user_data);
 
 	dbus_message_unref(reply);
@@ -401,19 +401,19 @@ int supplicant_dbus_method_call(const char *path,
 	DBusMessageIter iter;
 	DBusPendingCall *call;
 
-	if (connection == NULL)
+	if (!connection)
 		return -EINVAL;
 
-	if (path == NULL || interface == NULL || method == NULL)
+	if (!path || !interface || !method)
 		return -EINVAL;
 
 	data = dbus_malloc0(sizeof(*data));
-	if (data == NULL)
+	if (!data)
 		return -ENOMEM;
 
 	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
 							interface, method);
-	if (message == NULL) {
+	if (!message) {
 		dbus_free(data);
 		return -ENOMEM;
 	}
@@ -421,7 +421,7 @@ int supplicant_dbus_method_call(const char *path,
 	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_message_iter_init_append(message, &iter);
-	if (setup != NULL)
+	if (setup)
 		setup(&iter, user_data);
 
 	if (!dbus_connection_send_with_reply(connection, message,
@@ -431,7 +431,7 @@ int supplicant_dbus_method_call(const char *path,
 		return -EIO;
 	}
 
-	if (call == NULL) {
+	if (!call) {
 		dbus_message_unref(message);
 		dbus_free(data);
 		return -EIO;
