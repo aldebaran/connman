@@ -2022,7 +2022,8 @@ static GList *get_dhcpv6_option_value_list(GDHCPClient *dhcp_client,
 			if (!str)
 				return list;
 
-			if (!inet_ntop(AF_INET6, &value[i], str, INET6_ADDRSTRLEN))
+			if (!inet_ntop(AF_INET6, &value[i], str,
+					INET6_ADDRSTRLEN))
 				g_free(str);
 			else
 				list = g_list_append(list, str);
@@ -2828,7 +2829,8 @@ char *g_dhcp_client_get_netmask(GDHCPClient *dhcp_client)
 GDHCPClientError g_dhcp_client_set_request(GDHCPClient *dhcp_client,
 						unsigned int option_code)
 {
-	if (!g_list_find(dhcp_client->request_list, GINT_TO_POINTER((int)option_code)))
+	if (!g_list_find(dhcp_client->request_list,
+				GINT_TO_POINTER((int)option_code)))
 		dhcp_client->request_list = g_list_prepend(
 					dhcp_client->request_list,
 					(GINT_TO_POINTER((int) option_code)));
