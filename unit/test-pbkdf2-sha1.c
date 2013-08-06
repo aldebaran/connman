@@ -199,7 +199,7 @@ static void psk_test(gconstpointer data)
 	unsigned int i;
 	int result;
 
-	if (test->network == NULL) {
+	if (!test->network) {
 		memcpy(ssid, test->ssid, test->ssid_len);
 		ssid_len = test->ssid_len;
 	} else {

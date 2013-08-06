@@ -47,7 +47,7 @@ static void test_case_1(void)
 	__connman_ippool_init();
 
 	pool = __connman_ippool_create(23, 1, 500, NULL, NULL);
-	g_assert(pool == NULL);
+	g_assert(!pool);
 
 	for (i = 0; i < 100000; i++) {
 		pool = __connman_ippool_create(23, 1, 20, NULL, NULL);
@@ -131,7 +131,7 @@ static void test_case_3(void)
 
 	while (TRUE) {
 		pool = __connman_ippool_create(23, 1, 100, NULL, NULL);
-		if (pool == NULL)
+		if (!pool)
 			break;
 		i += 1;
 
@@ -154,7 +154,7 @@ static void test_case_3(void)
 
 	LOG("Number of blocks %d", i);
 
-	for (it = list; it != NULL; it = it->next) {
+	for (it = list; it; it = it->next) {
 		pool = it->data;
 
 		__connman_ippool_unref(pool);
