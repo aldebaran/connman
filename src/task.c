@@ -313,7 +313,8 @@ int connman_task_run(struct connman_task *task,
 	if (g_ptr_array_index(task->argv, task->argv->len - 1))
 		g_ptr_array_add(task->argv, NULL);
 
-	if (task->envp->len == 0 || g_ptr_array_index(task->envp, task->envp->len - 1)) {
+	if (task->envp->len == 0 ||
+			g_ptr_array_index(task->envp, task->envp->len - 1)) {
 		if (g_hash_table_size(task->notify) > 0) {
 			const char *busname;
 			char *str;

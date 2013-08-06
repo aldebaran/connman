@@ -1186,11 +1186,13 @@ static void dump_ip(struct ipt_entry *entry)
 		DBG("\tout %s", ip->outiface);
 
 	if (inet_ntop(AF_INET, &ip->src, ip_string, INET6_ADDRSTRLEN) &&
-			inet_ntop(AF_INET, &ip->smsk, ip_mask, INET6_ADDRSTRLEN))
+			inet_ntop(AF_INET, &ip->smsk, ip_mask,
+				INET6_ADDRSTRLEN))
 		DBG("\tsrc %s/%s", ip_string, ip_mask);
 
 	if (inet_ntop(AF_INET, &ip->dst, ip_string, INET6_ADDRSTRLEN) &&
-			inet_ntop(AF_INET, &ip->dmsk, ip_mask, INET6_ADDRSTRLEN))
+			inet_ntop(AF_INET, &ip->dmsk, ip_mask,
+				INET6_ADDRSTRLEN))
 		DBG("\tdst %s/%s", ip_string, ip_mask);
 }
 

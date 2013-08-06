@@ -367,7 +367,8 @@ static int service_load(struct connman_service *service)
 		}
 
 		if (service->network &&
-				!connman_network_get_blob(service->network, "WiFi.SSID", &ssid_len)) {
+				!connman_network_get_blob(service->network,
+						"WiFi.SSID", &ssid_len)) {
 			gchar *hex_ssid;
 
 			hex_ssid = g_key_file_get_string(keyfile,
@@ -5560,7 +5561,8 @@ static bool prepare_network(struct connman_service *service)
 	case CONNMAN_NETWORK_TYPE_VENDOR:
 		return false;
 	case CONNMAN_NETWORK_TYPE_WIFI:
-		if (!connman_network_get_blob(service->network, "WiFi.SSID", &ssid_len))
+		if (!connman_network_get_blob(service->network, "WiFi.SSID",
+						&ssid_len))
 			return false;
 
 		if (service->passphrase)
@@ -6676,7 +6678,7 @@ static void remove_unprovisioned_services()
 	if (!services)
 		return;
 
-	for (;services[i]; i++) {
+	for (; services[i]; i++) {
 		file = section = NULL;
 		keyfile = configkeyfile = NULL;
 

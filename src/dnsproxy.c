@@ -2742,7 +2742,8 @@ read_another:
 		if (data->protocol != IPPROTO_UDP || !data->enabled)
 			continue;
 
-		if(!create_server(data->index, NULL, data->server, IPPROTO_TCP))
+		if (!create_server(data->index, NULL, data->server,
+					IPPROTO_TCP))
 			continue;
 
 		waiting_for_connect = true;
