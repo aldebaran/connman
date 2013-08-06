@@ -180,8 +180,8 @@ static int send_method_call(DBusConnection *connection,
 	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT))
 		goto end;
 
-        if (!call)
-                goto end;
+	if (!call)
+		goto end;
 
 	if (cb) {
 		callback = g_new0(struct dbus_callback, 1);

@@ -374,7 +374,7 @@ static void request_input_next(struct agent_data *request)
 
 	for (i = 0; request->input[i].attribute; i++) {
 		if (request->input[i].requested == true) {
-			if(request->input[i].func)
+			if (request->input[i].func)
 				__connmanctl_agent_mode(request->input[i].prompt,
 						request->input[i].func,
 						request);
