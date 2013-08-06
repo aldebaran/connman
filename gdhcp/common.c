@@ -170,7 +170,7 @@ uint8_t *dhcpv6_get_option(struct dhcpv6_packet *packet, uint16_t pkt_len,
 			break;
 
 		if (opt_code == code) {
-			if (option_len != NULL)
+			if (option_len)
 				*option_len = opt_len;
 			if (rem < 0)
 				goto bad_packet;
@@ -185,15 +185,15 @@ uint8_t *dhcpv6_get_option(struct dhcpv6_packet *packet, uint16_t pkt_len,
 		optionptr += len;
 	}
 
-	if (option_count != NULL)
+	if (option_count)
 		*option_count = count;
 
 	return found;
 
 bad_packet:
-	if (option_len != NULL)
+	if (option_len)
 		*option_len = 0;
-	if (option_count != NULL)
+	if (option_count)
 		*option_count = 0;
 	return NULL;
 }
@@ -392,7 +392,7 @@ static void check_broken_vendor(struct dhcp_packet *packet)
 		return;
 
 	vendor = dhcp_get_option(packet, DHCP_VENDOR);
-	if (vendor == NULL)
+	if (!vendor)
 		return;
 
 	if (check_vendor(vendor, "MSFT 98"))
@@ -496,7 +496,7 @@ int dhcpv6_send_packet(int index, struct dhcpv6_packet *dhcp_pkt, int len)
 
 	control_buf_len = CMSG_SPACE(sizeof(struct in6_pktinfo));
 	control_buf = g_try_malloc0(control_buf_len);
-	if (control_buf == NULL) {
+	if (!control_buf) {
 		close(fd);
 		return -ENOMEM;
 	}

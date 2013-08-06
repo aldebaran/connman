@@ -156,7 +156,7 @@ static inline void debug(GDHCPClient *client, const char *format, ...)
 	char str[256];
 	va_list ap;
 
-	if (client->debug_func == NULL)
+	if (!client->debug_func)
 		return;
 
 	va_start(ap, format);
@@ -251,7 +251,7 @@ static void copy_option(uint8_t *buf, uint16_t code, uint16_t len,
 	buf[1] = code & 0xff;
 	buf[2] = len >> 8;
 	buf[3] = len & 0xff;
-	if (len > 0 && msg != NULL)
+	if (len > 0 && msg)
 		memcpy(&buf[4], msg, len);
 }
 
@@ -288,7 +288,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 
 		switch (code) {
 		case G_DHCPV6_CLIENTID:
-			if (dhcp_client->duid == NULL)
+			if (!dhcp_client->duid)
 				return;
 
 			len = 2 + 2 + dhcp_client->duid_len;
@@ -305,7 +305,7 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 			break;
 
 		case G_DHCPV6_SERVERID:
-			if (dhcp_client->server_duid == NULL)
+			if (!dhcp_client->server_duid)
 				break;
 
 			len = 2 + 2 + dhcp_client->server_duid_len;
@@ -627,7 +627,7 @@ done:
 
 void g_dhcpv6_client_set_retransmit(GDHCPClient *dhcp_client)
 {
-	if (dhcp_client == NULL)
+	if (!dhcp_client)
 		return;
 
 	dhcp_client->retransmit = true;
@@ -635,7 +635,7 @@ void g_dhcpv6_client_set_retransmit(GDHCPClient *dhcp_client)
 
 void g_dhcpv6_client_clear_retransmit(GDHCPClient *dhcp_client)
 {
-	if (dhcp_client == NULL)
+	if (!dhcp_client)
 		return;
 
 	dhcp_client->retransmit = false;
@@ -650,7 +650,7 @@ int g_dhcpv6_create_duid(GDHCPDuidType duid_type, int index, int type,
 	case G_DHCPV6_DUID_LLT:
 		*duid_len = 2 + 2 + 4 + ETH_ALEN;
 		*duid = g_try_malloc(*duid_len);
-		if (*duid == NULL)
+		if (!*duid)
 			return -ENOMEM;
 
 		(*duid)[0] = 0;
@@ -669,7 +669,7 @@ int g_dhcpv6_create_duid(GDHCPDuidType duid_type, int index, int type,
 	case G_DHCPV6_DUID_LL:
 		*duid_len = 2 + 2 + ETH_ALEN;
 		*duid = g_try_malloc(*duid_len);
-		if (*duid == NULL)
+		if (!*duid)
 			return -ENOMEM;
 
 		(*duid)[0] = 0;
@@ -688,7 +688,7 @@ static gchar *convert_to_hex(unsigned char *buf, int len)
 	gchar *ret = g_try_malloc(len * 2 + 1);
 	int i;
 
-	for (i = 0; ret != NULL && i < len; i++)
+	for (i = 0; ret && i < len; i++)
 		g_snprintf(ret + i * 2, 3, "%02x", buf[i]);
 
 	return ret;
@@ -697,7 +697,7 @@ static gchar *convert_to_hex(unsigned char *buf, int len)
 int g_dhcpv6_client_set_duid(GDHCPClient *dhcp_client, unsigned char *duid,
 			int duid_len)
 {
-	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
+	if (!dhcp_client || dhcp_client->type != G_DHCP_IPV6)
 		return -EINVAL;
 
 	g_free(dhcp_client->duid);
@@ -705,7 +705,7 @@ int g_dhcpv6_client_set_duid(GDHCPClient *dhcp_client, unsigned char *duid,
 	dhcp_client->duid = duid;
 	dhcp_client->duid_len = duid_len;
 
-	if (dhcp_client->debug_func != NULL) {
+	if (dhcp_client->debug_func) {
 		gchar *hex = convert_to_hex(duid, duid_len);
 		debug(dhcp_client, "DUID(%d) %s", duid_len, hex);
 		g_free(hex);
@@ -721,7 +721,7 @@ int g_dhcpv6_client_set_pd(GDHCPClient *dhcp_client, uint32_t *T1,
 	unsigned int max_buf = sizeof(options);
 	int len, count = g_slist_length(prefixes);
 
-	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
+	if (!dhcp_client || dhcp_client->type != G_DHCP_IPV6)
 		return -EINVAL;
 
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_IA_PD);
@@ -733,12 +733,12 @@ int g_dhcpv6_client_set_pd(GDHCPClient *dhcp_client, uint32_t *T1,
 	options[2] = dhcp_client->iaid >> 8;
 	options[3] = dhcp_client->iaid;
 
-	if (T1 != NULL) {
+	if (T1) {
 		uint32_t t = htonl(*T1);
 		memcpy(&options[4], &t, 4);
 	}
 
-	if (T2 != NULL) {
+	if (T2) {
 		uint32_t t = htonl(*T2);
 		memcpy(&options[8], &t, 4);
 	}
@@ -780,7 +780,7 @@ int g_dhcpv6_client_set_pd(GDHCPClient *dhcp_client, uint32_t *T1,
 
 uint32_t g_dhcpv6_client_get_iaid(GDHCPClient *dhcp_client)
 {
-	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
+	if (!dhcp_client || dhcp_client->type != G_DHCP_IPV6)
 		return 0;
 
 	return dhcp_client->iaid;
@@ -788,7 +788,7 @@ uint32_t g_dhcpv6_client_get_iaid(GDHCPClient *dhcp_client)
 
 void g_dhcpv6_client_set_iaid(GDHCPClient *dhcp_client, uint32_t iaid)
 {
-	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
+	if (!dhcp_client || dhcp_client->type != G_DHCP_IPV6)
 		return;
 
 	dhcp_client->iaid = iaid;
@@ -811,19 +811,19 @@ int g_dhcpv6_client_get_timeouts(GDHCPClient *dhcp_client,
 				time_t *started,
 				time_t *expire)
 {
-	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
+	if (!dhcp_client || dhcp_client->type != G_DHCP_IPV6)
 		return -EINVAL;
 
-	if (T1 != NULL)
+	if (T1)
 		*T1 = dhcp_client->T1;
 
-	if (T2 != NULL)
+	if (T2)
 		*T2 = dhcp_client->T2;
 
-	if (started != NULL)
+	if (started)
 		*started = dhcp_client->last_request;
 
-	if (expire != NULL)
+	if (expire)
 		*expire = dhcp_client->last_request + dhcp_client->expire;
 
 	return 0;
@@ -884,20 +884,20 @@ int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
 		 * if the current address is not set, then we should not send
 		 * the address sub-option.
 		 */
-		if (add_iaaddr && ((ia_na == NULL &&
+		if (add_iaaddr && ((!ia_na &&
 			!IN6_IS_ADDR_UNSPECIFIED(&dhcp_client->ia_na))
-			|| (ia_na != NULL &&
+			|| (ia_na &&
 				inet_pton(AF_INET6, ia_na, &addr) == 1))) {
 #define IAADDR_LEN (16+4+4)
 			uint8_t ia_options[4+4+4+2+2+IAADDR_LEN];
 
-			if (ia_na != NULL)
+			if (ia_na)
 				memcpy(&dhcp_client->ia_na, &addr,
 						sizeof(struct in6_addr));
 
 			put_iaid(dhcp_client, index, ia_options);
 
-			if (T1 != NULL) {
+			if (T1) {
 				ia_options[4] = *T1 >> 24;
 				ia_options[5] = *T1 >> 16;
 				ia_options[6] = *T1 >> 8;
@@ -905,7 +905,7 @@ int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
 			} else
 				memset(&ia_options[4], 0x00, 4);
 
-			if (T2 != NULL) {
+			if (T2) {
 				ia_options[8] = *T2 >> 24;
 				ia_options[9] = *T2 >> 16;
 				ia_options[10] = *T2 >> 8;
@@ -943,7 +943,7 @@ int g_dhcpv6_client_set_oro(GDHCPClient *dhcp_client, int args, ...)
 	uint8_t *values;
 
 	values = g_try_malloc(len);
-	if (values == NULL)
+	if (!values)
 		return -ENOMEM;
 
 	va_start(va, args);
@@ -1062,13 +1062,13 @@ GDHCPClient *g_dhcp_client_new(GDHCPType type,
 	}
 
 	dhcp_client = g_try_new0(GDHCPClient, 1);
-	if (dhcp_client == NULL) {
+	if (!dhcp_client) {
 		*error = G_DHCP_CLIENT_ERROR_NOMEM;
 		return NULL;
 	}
 
 	dhcp_client->interface = get_interface_name(ifindex);
-	if (dhcp_client->interface == NULL) {
+	if (!dhcp_client->interface) {
 		*error = G_DHCP_CLIENT_ERROR_INTERFACE_UNAVAILABLE;
 		goto error;
 	}
@@ -1354,7 +1354,7 @@ static int ipv4ll_recv_arp_packet(GDHCPClient *dhcp_client)
 	if (dhcp_client->state == IPV4LL_DEFEND) {
 		if (!source_conflict)
 			return 0;
-		else if (dhcp_client->ipv4ll_lost_cb != NULL)
+		else if (dhcp_client->ipv4ll_lost_cb)
 			dhcp_client->ipv4ll_lost_cb(dhcp_client,
 						dhcp_client->ipv4ll_lost_data);
 	}
@@ -1375,7 +1375,7 @@ static int ipv4ll_recv_arp_packet(GDHCPClient *dhcp_client)
 	 * to wait RATE_LIMIT_INTERVAL before retrying,
 	 * but we just report failure.
 	 */
-	else if (dhcp_client->no_lease_cb != NULL)
+	else if (dhcp_client->no_lease_cb)
 			dhcp_client->no_lease_cb(dhcp_client,
 						dhcp_client->no_lease_data);
 
@@ -1388,7 +1388,7 @@ static bool check_package_owner(GDHCPClient *dhcp_client, gpointer pkt)
 		struct dhcpv6_packet *packet6 = pkt;
 		uint32_t xid;
 
-		if (packet6 == NULL)
+		if (!packet6)
 			return false;
 
 		xid = packet6->transaction_id[0] << 16 |
@@ -1476,7 +1476,7 @@ static int switch_listening_mode(GDHCPClient *dhcp_client,
 		return -EIO;
 
 	listener_channel = g_io_channel_unix_new(listener_sockfd);
-	if (listener_channel == NULL) {
+	if (!listener_channel) {
 		/* Failed to create listener channel */
 		close(listener_sockfd);
 		return -EIO;
@@ -1503,7 +1503,7 @@ static void start_request(GDHCPClient *dhcp_client)
 					dhcp_client->retry_times);
 
 	if (dhcp_client->retry_times == REQUEST_RETRIES) {
-		if (dhcp_client->no_lease_cb != NULL)
+		if (dhcp_client->no_lease_cb)
 			dhcp_client->no_lease_cb(dhcp_client,
 						dhcp_client->no_lease_data);
 		return;
@@ -1529,7 +1529,7 @@ static uint32_t get_lease(struct dhcp_packet *packet)
 	uint32_t lease_seconds;
 
 	option = dhcp_get_option(packet, DHCP_LEASE_TIME);
-	if (option == NULL)
+	if (!option)
 		return 3600;
 
 	lease_seconds = get_be32(option);
@@ -1572,7 +1572,7 @@ static gboolean start_rebound_timeout(gpointer user_data)
 	if (dhcp_client->lease_seconds <= 6) {
 
 		/* ip need to be cleared */
-		if (dhcp_client->lease_lost_cb != NULL)
+		if (dhcp_client->lease_lost_cb)
 			dhcp_client->lease_lost_cb(dhcp_client,
 					dhcp_client->lease_lost_data);
 
@@ -1610,7 +1610,7 @@ static gboolean start_renew_request_timeout(gpointer user_data)
 
 	debug(dhcp_client, "renew request timeout");
 
-	if (dhcp_client->no_lease_cb != NULL)
+	if (dhcp_client->no_lease_cb)
 			dhcp_client->no_lease_cb(dhcp_client,
 						dhcp_client->no_lease_data);
 
@@ -1713,7 +1713,7 @@ static char *malloc_option_value_string(uint8_t *option, GDHCPOptionType type)
 	upper_length = len_of_option_as_string[type] *
 			((unsigned)len / (unsigned)optlen);
 	dest = ret = g_malloc(upper_length + 1);
-	if (ret == NULL)
+	if (!ret)
 		return NULL;
 
 	while (len >= optlen) {
@@ -1754,13 +1754,13 @@ static GList *get_option_value_list(char *value, GDHCPOptionType type)
 	char *pos = value;
 	GList *list = NULL;
 
-	if (pos == NULL)
+	if (!pos)
 		return NULL;
 
 	if (type == OPTION_STRING)
 		return g_list_append(list, g_strdup(value));
 
-	while ((pos = strchr(pos, ' ')) != NULL) {
+	while ((pos = strchr(pos, ' '))) {
 		*pos = '\0';
 
 		list = g_list_append(list, g_strdup(value));
@@ -1792,10 +1792,10 @@ static GList *add_prefix(GDHCPClient *dhcp_client, GList *list,
 	GDHCPIAPrefix *ia_prefix;
 
 	ia_prefix = g_try_new(GDHCPIAPrefix, 1);
-	if (ia_prefix == NULL)
+	if (!ia_prefix)
 		return list;
 
-	if (dhcp_client->debug_func != NULL) {
+	if (dhcp_client->debug_func) {
 		char addr_str[INET6_ADDRSTRLEN + 1];
 		inet_ntop(AF_INET6, addr, addr_str, INET6_ADDRSTRLEN);
 		debug(dhcp_client, "prefix %s/%d preferred %u valid %u",
@@ -1826,7 +1826,7 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 	uint8_t *option;
 	char *str;
 
-	if (value == NULL || len < 4)
+	if (!value || len < 4)
 		return NULL;
 
 	iaid = get_uint32(&value[0]);
@@ -1861,7 +1861,7 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 		debug(dhcp_client, "pos %d option %p code %d len %d",
 			pos, option, option_code, option_len);
 
-		if (option == NULL)
+		if (!option)
 			break;
 
 		if (pos >= len)
@@ -1945,7 +1945,7 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 			dhcp_client->expire = valid;
 	}
 
-	if (prefix_count > 0 && list != NULL) {
+	if (prefix_count > 0 && list) {
 		/*
 		 * This means we have a list of prefixes to delegate.
 		 */
@@ -1960,7 +1960,7 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 		dhcp_client->expire = shortest_valid;
 	}
 
-	if (status != NULL && *status != 0)
+	if (status && *status != 0)
 		debug(dhcp_client, "status %d", *status);
 
 	return list;
@@ -1974,7 +1974,7 @@ static GList *get_domains(int maxlen, unsigned char *value)
 	unsigned char *c;
 	char dns_name[NS_MAXDNAME + 1];
 
-	if (value == NULL || maxlen < 3)
+	if (!value || maxlen < 3)
 		return NULL;
 
 	while (pos < maxlen) {
@@ -2003,7 +2003,7 @@ static GList *get_dhcpv6_option_value_list(GDHCPClient *dhcp_client,
 	char *str;
 	int i;
 
-	if (value == NULL)
+	if (!value)
 		return NULL;
 
 	switch (code) {
@@ -2019,11 +2019,10 @@ static GList *get_dhcpv6_option_value_list(GDHCPClient *dhcp_client,
 		for (i = 0; i < len; i += 16) {
 
 			str = g_try_malloc0(INET6_ADDRSTRLEN+1);
-			if (str == NULL)
+			if (!str)
 				return list;
 
-			if (inet_ntop(AF_INET6, &value[i], str,
-					INET6_ADDRSTRLEN) == NULL)
+			if (!inet_ntop(AF_INET6, &value[i], str, INET6_ADDRSTRLEN))
 				g_free(str);
 			else
 				list = g_list_append(list, str);
@@ -2061,7 +2060,7 @@ static void get_dhcpv6_request(GDHCPClient *dhcp_client,
 
 		option = dhcpv6_get_option(packet, pkt_len, code, &option_len,
 						NULL);
-		if (option == NULL) {
+		if (!option) {
 			g_hash_table_remove(dhcp_client->code_value_hash,
 						GINT_TO_POINTER((int) code));
 			continue;
@@ -2073,7 +2072,7 @@ static void get_dhcpv6_request(GDHCPClient *dhcp_client,
 		debug(dhcp_client, "code %d %p len %d list %p", code, option,
 			option_len, value_list);
 
-		if (value_list == NULL)
+		if (!value_list)
 			g_hash_table_remove(dhcp_client->code_value_hash,
 						GINT_TO_POINTER((int) code));
 		else
@@ -2094,7 +2093,7 @@ static void get_request(GDHCPClient *dhcp_client, struct dhcp_packet *packet)
 		code = (uint8_t) GPOINTER_TO_INT(list->data);
 
 		option = dhcp_get_option(packet, code);
-		if (option == NULL) {
+		if (!option) {
 			g_hash_table_remove(dhcp_client->code_value_hash,
 						GINT_TO_POINTER((int) code));
 			continue;
@@ -2103,7 +2102,7 @@ static void get_request(GDHCPClient *dhcp_client, struct dhcp_packet *packet)
 		type =  dhcp_get_code_type(code);
 
 		option_value = malloc_option_value_string(option, type);
-		if (option_value == NULL)
+		if (!option_value)
 			g_hash_table_remove(dhcp_client->code_value_hash,
 						GINT_TO_POINTER((int) code));
 
@@ -2111,7 +2110,7 @@ static void get_request(GDHCPClient *dhcp_client, struct dhcp_packet *packet)
 
 		g_free(option_value);
 
-		if (value_list == NULL)
+		if (!value_list)
 			g_hash_table_remove(dhcp_client->code_value_hash,
 						GINT_TO_POINTER((int) code));
 		else
@@ -2178,14 +2177,14 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		return TRUE;
 
 	if (dhcp_client->type == G_DHCP_IPV6) {
-		if (packet6 == NULL)
+		if (!packet6)
 			return TRUE;
 
 		count = 0;
 		client_id = dhcpv6_get_option(packet6, pkt_len,
 				G_DHCPV6_CLIENTID, &option_len,	&count);
 
-		if (client_id == NULL || count == 0 || option_len == 0 ||
+		if (!client_id || count == 0 || option_len == 0 ||
 				memcmp(dhcp_client->duid, client_id,
 					dhcp_client->duid_len) != 0) {
 			debug(dhcp_client,
@@ -2213,11 +2212,11 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		}
 	} else {
 		message_type = dhcp_get_option(&packet, DHCP_MESSAGE_TYPE);
-		if (message_type == NULL)
+		if (!message_type)
 			return TRUE;
 	}
 
-	if (message_type == NULL && client_id == NULL)
+	if (!message_type && !client_id)
 		/* No message type / client id option, ignore package */
 		return TRUE;
 
@@ -2262,7 +2261,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			dhcp_client->assigned_ip = get_ip(packet.yiaddr);
 
 			/* Address should be set up here */
-			if (dhcp_client->lease_available_cb != NULL)
+			if (dhcp_client->lease_available_cb)
 				dhcp_client->lease_available_cb(dhcp_client,
 					dhcp_client->lease_available_data);
 
@@ -2292,7 +2291,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		count = 0;
 		server_id = dhcpv6_get_option(packet6, pkt_len,
 				G_DHCPV6_SERVERID, &option_len,	&count);
-		if (server_id == NULL || count != 1 || option_len == 0) {
+		if (!server_id || count != 1 || option_len == 0) {
 			/* RFC 3315, 15.10 */
 			debug(dhcp_client,
 				"server duid error, discarding msg %p/%d/%d",
@@ -2300,7 +2299,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			return TRUE;
 		}
 		dhcp_client->server_duid = g_try_malloc(option_len);
-		if (dhcp_client->server_duid == NULL)
+		if (!dhcp_client->server_duid)
 			return TRUE;
 		memcpy(dhcp_client->server_duid, server_id, option_len);
 		dhcp_client->server_duid_len = option_len;
@@ -2312,7 +2311,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			rapid_commit = dhcpv6_get_option(packet6, pkt_len,
 							G_DHCPV6_RAPID_COMMIT,
 							&option_len, &count);
-			if (rapid_commit == NULL || option_len == 0 ||
+			if (!rapid_commit || option_len == 0 ||
 								count != 1)
 				/* RFC 3315, 17.1.4 */
 				return TRUE;
@@ -2325,13 +2324,13 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 					&dhcp_client->status_code);
 
 		if (packet6->message == DHCPV6_ADVERTISE) {
-			if (dhcp_client->advertise_cb != NULL)
+			if (dhcp_client->advertise_cb)
 				dhcp_client->advertise_cb(dhcp_client,
 						dhcp_client->advertise_data);
 			return TRUE;
 		}
 
-		if (dhcp_client->solicitation_cb != NULL) {
+		if (dhcp_client->solicitation_cb) {
 			/*
 			 * The dhcp_client might not be valid after the
 			 * callback call so just return immediately.
@@ -2347,14 +2346,14 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 
 		server_id = dhcpv6_get_option(packet6, pkt_len,
 				G_DHCPV6_SERVERID, &option_len,	&count);
-		if (dhcp_client->server_duid == NULL && server_id != NULL &&
+		if (!dhcp_client->server_duid && server_id &&
 								count == 1) {
 			/*
 			 * If we do not have server duid yet, then get it now.
 			 * Prefix delegation renew support needs it.
 			 */
 			dhcp_client->server_duid = g_try_malloc(option_len);
-			if (dhcp_client->server_duid == NULL)
+			if (!dhcp_client->server_duid)
 				return TRUE;
 			memcpy(dhcp_client->server_duid, server_id, option_len);
 			dhcp_client->server_duid_len = option_len;
@@ -2375,7 +2374,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		option_len = 0;
 		server_id = dhcpv6_get_option(packet6, pkt_len,
 				G_DHCPV6_SERVERID, &option_len, &count);
-		if (server_id == NULL || count != 1 || option_len == 0 ||
+		if (!server_id || count != 1 || option_len == 0 ||
 				(dhcp_client->server_duid_len > 0 &&
 				memcmp(dhcp_client->server_duid, server_id,
 					dhcp_client->server_duid_len) != 0)) {
@@ -2391,7 +2390,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		get_dhcpv6_request(dhcp_client, packet6, pkt_len,
 						&dhcp_client->status_code);
 
-		if (dhcp_client->information_req_cb != NULL) {
+		if (dhcp_client->information_req_cb) {
 			/*
 			 * The dhcp_client might not be valid after the
 			 * callback call so just return immediately.
@@ -2400,32 +2399,32 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 					dhcp_client->information_req_data);
 			return TRUE;
 		}
-		if (dhcp_client->request_cb != NULL) {
+		if (dhcp_client->request_cb) {
 			dhcp_client->request_cb(dhcp_client,
 					dhcp_client->request_data);
 			return TRUE;
 		}
-		if (dhcp_client->renew_cb != NULL) {
+		if (dhcp_client->renew_cb) {
 			dhcp_client->renew_cb(dhcp_client,
 					dhcp_client->renew_data);
 			return TRUE;
 		}
-		if (dhcp_client->rebind_cb != NULL) {
+		if (dhcp_client->rebind_cb) {
 			dhcp_client->rebind_cb(dhcp_client,
 					dhcp_client->rebind_data);
 			return TRUE;
 		}
-		if (dhcp_client->release_cb != NULL) {
+		if (dhcp_client->release_cb) {
 			dhcp_client->release_cb(dhcp_client,
 					dhcp_client->release_data);
 			return TRUE;
 		}
-		if (dhcp_client->confirm_cb != NULL) {
+		if (dhcp_client->confirm_cb) {
 			count = 0;
 			server_id = dhcpv6_get_option(packet6, pkt_len,
 						G_DHCPV6_SERVERID, &option_len,
 						&count);
-			if (server_id == NULL || count != 1 ||
+			if (!server_id || count != 1 ||
 							option_len == 0) {
 				/* RFC 3315, 15.10 */
 				debug(dhcp_client,
@@ -2435,7 +2434,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 				return TRUE;
 			}
 			dhcp_client->server_duid = g_try_malloc(option_len);
-			if (dhcp_client->server_duid == NULL)
+			if (!dhcp_client->server_duid)
 				return TRUE;
 			memcpy(dhcp_client->server_duid, server_id, option_len);
 			dhcp_client->server_duid_len = option_len;
@@ -2502,7 +2501,7 @@ static gboolean ipv4ll_announce_timeout(gpointer dhcp_data)
 	dhcp_client->state = IPV4LL_MONITOR;
 	dhcp_client->assigned_ip = get_ip(ip);
 
-	if (dhcp_client->ipv4ll_available_cb != NULL)
+	if (dhcp_client->ipv4ll_available_cb)
 		dhcp_client->ipv4ll_available_cb(dhcp_client,
 					dhcp_client->ipv4ll_available_data);
 	dhcp_client->conflicts = 0;
@@ -2619,7 +2618,7 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 	}
 
 	if (dhcp_client->retry_times == DISCOVER_RETRIES) {
-		if (dhcp_client->no_lease_cb != NULL)
+		if (dhcp_client->no_lease_cb)
 			dhcp_client->no_lease_cb(dhcp_client,
 						dhcp_client->no_lease_data);
 		dhcp_client->retry_times = 0;
@@ -2639,7 +2638,7 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 		dhcp_client->start = time(NULL);
 	}
 
-	if (last_address == NULL) {
+	if (!last_address) {
 		addr = 0;
 	} else {
 		addr = ntohl(inet_addr(last_address));
@@ -2807,7 +2806,7 @@ char *g_dhcp_client_get_netmask(GDHCPClient *dhcp_client)
 	case RENEWING:
 	case REBINDING:
 		option = g_dhcp_client_get_option(dhcp_client, G_DHCP_SUBNET);
-		if (option != NULL)
+		if (option)
 			return g_strdup(option->data);
 	case INIT_SELECTING:
 	case REQUESTING:
@@ -2829,8 +2828,7 @@ char *g_dhcp_client_get_netmask(GDHCPClient *dhcp_client)
 GDHCPClientError g_dhcp_client_set_request(GDHCPClient *dhcp_client,
 						unsigned int option_code)
 {
-	if (g_list_find(dhcp_client->request_list,
-			GINT_TO_POINTER((int) option_code)) == NULL)
+	if (!g_list_find(dhcp_client->request_list, GINT_TO_POINTER((int)option_code)))
 		dhcp_client->request_list = g_list_prepend(
 					dhcp_client->request_list,
 					(GINT_TO_POINTER((int) option_code)));
@@ -2854,7 +2852,7 @@ static uint8_t *alloc_dhcp_option(int code, const uint8_t *data, unsigned size)
 	uint8_t *storage;
 
 	storage = g_try_malloc(size + OPT_DATA);
-	if (storage == NULL)
+	if (!storage)
 		return NULL;
 
 	storage[OPT_CODE] = code;
@@ -2888,7 +2886,7 @@ GDHCPClientError g_dhcp_client_set_id(GDHCPClient *dhcp_client)
 	memcpy(&idbuf[1], dhcp_client->mac_address, maclen);
 
 	data_option = alloc_dhcp_data_option(option_code, idbuf, idlen);
-	if (data_option == NULL)
+	if (!data_option)
 		return G_DHCP_CLIENT_ERROR_NOMEM;
 
 	g_hash_table_insert(dhcp_client->send_value_hash,
@@ -2903,10 +2901,10 @@ GDHCPClientError g_dhcp_client_set_send(GDHCPClient *dhcp_client,
 {
 	uint8_t *binary_option;
 
-	if (option_code == G_DHCP_HOST_NAME && option_value != NULL) {
+	if (option_code == G_DHCP_HOST_NAME && option_value) {
 		binary_option = alloc_dhcp_string_option(option_code,
 							option_value);
-		if (binary_option == NULL)
+		if (!binary_option)
 			return G_DHCP_CLIENT_ERROR_NOMEM;
 
 		g_hash_table_insert(dhcp_client->send_value_hash,
@@ -2922,7 +2920,7 @@ static uint8_t *alloc_dhcpv6_option(uint16_t code, uint8_t *option,
 	uint8_t *storage;
 
 	storage = g_malloc(2 + 2 + len);
-	if (storage == NULL)
+	if (!storage)
 		return NULL;
 
 	storage[0] = code >> 8;
@@ -2939,7 +2937,7 @@ void g_dhcpv6_client_set_send(GDHCPClient *dhcp_client,
 					uint8_t *option_value,
 					uint16_t option_len)
 {
-	if (option_value != NULL) {
+	if (option_value) {
 		uint8_t *binary_option;
 
 		debug(dhcp_client, "setting option %d to %p len %d",
@@ -2947,7 +2945,7 @@ void g_dhcpv6_client_set_send(GDHCPClient *dhcp_client,
 
 		binary_option = alloc_dhcpv6_option(option_code, option_value,
 						option_len);
-		if (binary_option != NULL)
+		if (binary_option)
 			g_hash_table_insert(dhcp_client->send_value_hash,
 					GINT_TO_POINTER((int) option_code),
 					binary_option);
@@ -2956,7 +2954,7 @@ void g_dhcpv6_client_set_send(GDHCPClient *dhcp_client,
 
 void g_dhcpv6_client_reset_request(GDHCPClient *dhcp_client)
 {
-	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
+	if (!dhcp_client || dhcp_client->type != G_DHCP_IPV6)
 		return;
 
 	dhcp_client->last_request = time(NULL);
@@ -2964,7 +2962,7 @@ void g_dhcpv6_client_reset_request(GDHCPClient *dhcp_client)
 
 uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client)
 {
-	if (dhcp_client == NULL || dhcp_client->type != G_DHCP_IPV6)
+	if (!dhcp_client || dhcp_client->type != G_DHCP_IPV6)
 		return 0;
 
 	return dhcp_client->status_code;
@@ -2972,7 +2970,7 @@ uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client)
 
 GDHCPClient *g_dhcp_client_ref(GDHCPClient *dhcp_client)
 {
-	if (dhcp_client == NULL)
+	if (!dhcp_client)
 		return NULL;
 
 	__sync_fetch_and_add(&dhcp_client->ref_count, 1);
@@ -2982,7 +2980,7 @@ GDHCPClient *g_dhcp_client_ref(GDHCPClient *dhcp_client)
 
 void g_dhcp_client_unref(GDHCPClient *dhcp_client)
 {
-	if (dhcp_client == NULL)
+	if (!dhcp_client)
 		return;
 
 	if (__sync_fetch_and_sub(&dhcp_client->ref_count, 1) != 1)
@@ -3008,7 +3006,7 @@ void g_dhcp_client_unref(GDHCPClient *dhcp_client)
 void g_dhcp_client_set_debug(GDHCPClient *dhcp_client,
 				GDHCPDebugFunc func, gpointer user_data)
 {
-	if (dhcp_client == NULL)
+	if (!dhcp_client)
 		return;
 
 	dhcp_client->debug_func = func;
@@ -3020,7 +3018,7 @@ static GDHCPIAPrefix *copy_prefix(gpointer data)
 	GDHCPIAPrefix *copy, *prefix = data;
 
 	copy = g_try_new(GDHCPIAPrefix, 1);
-	if (copy == NULL)
+	if (!copy)
 		return NULL;
 
 	memcpy(copy, prefix, sizeof(GDHCPIAPrefix));
