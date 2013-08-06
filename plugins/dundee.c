@@ -81,7 +81,7 @@ static char *get_ident(const char *path)
 		return NULL;
 
 	pos = strrchr(path, '/');
-	if (pos == NULL)
+	if (!pos)
 		return NULL;
 
 	return pos + 1;
@@ -97,7 +97,7 @@ static int create_device(struct dundee_data *info)
 
 	ident = g_strdup(get_ident(info->path));
 	device = connman_device_create("dundee", CONNMAN_DEVICE_TYPE_BLUETOOTH);
-	if (device == NULL) {
+	if (!device) {
 		err = -ENOMEM;
 		goto out;
 	}
@@ -128,10 +128,10 @@ static void destroy_device(struct dundee_data *info)
 {
 	connman_device_set_powered(info->device, false);
 
-	if (info->call != NULL)
+	if (info->call)
 		dbus_pending_call_cancel(info->call);
 
-	if (info->network != NULL) {
+	if (info->network) {
 		connman_device_remove_network(info->device, info->network);
 		connman_network_unref(info->network);
 		info->network = NULL;
@@ -147,7 +147,7 @@ static void device_destroy(gpointer data)
 {
 	struct dundee_data *info = data;
 
-	if (info->device != NULL)
+	if (info->device)
 		destroy_device(info);
 
 	g_free(info->path);
@@ -166,7 +166,7 @@ static int create_network(struct dundee_data *info)
 
 	network = connman_network_create(info->path,
 				CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN);
-	if (network == NULL)
+	if (!network)
 		return -ENOMEM;
 
 	DBG("network %p", network);
@@ -201,7 +201,7 @@ static void set_connected(struct dundee_data *info)
 	connman_inet_ifup(info->index);
 
 	service = connman_service_lookup_from_network(info->network);
-	if (service == NULL)
+	if (!service)
 		return;
 
 	connman_service_create_ip4config(service, info->index);
@@ -260,7 +260,7 @@ static int set_property(struct dundee_data *info,
 
 	message = dbus_message_new_method_call(DUNDEE_SERVICE, info->path,
 					DUNDEE_DEVICE_INTERFACE, SET_PROPERTY);
-	if (message == NULL)
+	if (!message)
 		return -ENOMEM;
 
 	dbus_message_iter_init_append(message, &iter);
@@ -274,7 +274,7 @@ static int set_property(struct dundee_data *info,
 		return -EINVAL;
 	}
 
-	if (info->call == NULL) {
+	if (!info->call) {
 		connman_error("D-Bus connection not available");
 		dbus_message_unref(message);
 		return -EINVAL;
@@ -359,7 +359,7 @@ static int dundee_probe(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	if (dundee_devices == NULL)
+	if (!dundee_devices)
 		return -ENOTSUP;
 
 	g_hash_table_iter_init(&iter, dundee_devices);
@@ -415,7 +415,7 @@ static char *extract_nameservers(DBusMessageIter *array)
 
 		dbus_message_iter_get_basic(&entry, &nameserver);
 
-		if (nameservers == NULL) {
+		if (!nameservers) {
 			nameservers = g_strdup(nameserver);
 		} else {
 			tmp = nameservers;
@@ -489,7 +489,7 @@ static void extract_settings(DBusMessageIter *array,
 		goto out;
 
 	info->address = connman_ipaddress_alloc(CONNMAN_IPCONFIG_TYPE_IPV4);
-	if (info->address == NULL)
+	if (!info->address)
 		goto out;
 
 	info->index = index;
@@ -522,7 +522,7 @@ static gboolean device_changed(DBusConnection *conn,
 	}
 
 	info = g_hash_table_lookup(dundee_devices, path);
-	if (info == NULL)
+	if (!info)
 		return TRUE;
 
 	if (!dbus_message_iter_init(message, &iter))
@@ -574,11 +574,11 @@ static void add_device(const char *path, DBusMessageIter *properties)
 	int err;
 
 	info = g_hash_table_lookup(dundee_devices, path);
-	if (info != NULL)
+	if (info)
 		return;
 
 	info = g_try_new0(struct dundee_data, 1);
-	if (info == NULL)
+	if (!info)
 		return;
 
 	info->path = g_strdup(path);
@@ -759,7 +759,7 @@ static int manager_get_devices(void)
 
 	message = dbus_message_new_method_call(DUNDEE_SERVICE, "/",
 					DUNDEE_MANAGER_INTERFACE, GET_DEVICES);
-	if (message == NULL)
+	if (!message)
 		return -ENOMEM;
 
 	if (!dbus_connection_send_with_reply(connection, message,
@@ -769,7 +769,7 @@ static int manager_get_devices(void)
 		return -EINVAL;
 	}
 
-	if (call == NULL) {
+	if (!call) {
 		connman_error("D-Bus connection not available");
 		dbus_message_unref(message);
 		return -EINVAL;
@@ -811,7 +811,7 @@ static int dundee_init(void)
 	int err;
 
 	connection = connman_dbus_get_connection();
-	if (connection == NULL)
+	if (!connection)
 		return -EIO;
 
 	watch = g_dbus_add_service_watch(connection, DUNDEE_SERVICE,

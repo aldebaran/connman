@@ -173,10 +173,10 @@ static void finish_create(struct policy_config *policy,
 	struct policy_group *group = NULL;
 	GSList *list;
 
-	if (policy->selinux != NULL)
+	if (policy->selinux)
 		group = g_hash_table_lookup(selinux_hash, policy->selinux);
 
-	if (group != NULL) {
+	if (group) {
 		set_policy(policy, group);
 
 		policy->config->id_type = CONNMAN_SESSION_ID_TYPE_LSM;
@@ -184,10 +184,10 @@ static void finish_create(struct policy_config *policy,
 		goto done;
 	}
 
-	if (policy->uid != NULL)
+	if (policy->uid)
 		group = g_hash_table_lookup(uid_hash, policy->uid);
 
-	if (group != NULL) {
+	if (group) {
 		set_policy(policy, group);
 
 		policy->config->id_type = CONNMAN_SESSION_ID_TYPE_UID;
@@ -195,11 +195,11 @@ static void finish_create(struct policy_config *policy,
 		goto done;
 	}
 
-	for (list = policy->gids; list != NULL; list = list->next) {
+	for (list = policy->gids; list; list = list->next) {
 		char *gid = list->data;
 
 		group = g_hash_table_lookup(gid_hash, gid);
-		if (group == NULL)
+		if (!group)
 			continue;
 
 		set_policy(policy, group);
@@ -248,7 +248,7 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 
 	policy->selinux_context = g_strdup((const char *)context);
 	ident = parse_selinux_type(policy->selinux_context);
-	if (ident != NULL)
+	if (ident)
 		policy->selinux = g_strdup(ident);
 
 	finish_create(policy, cb, cbd->user_data);
@@ -277,7 +277,7 @@ static void get_uid_reply(unsigned int uid, void *user_data, int err)
 	}
 
 	pwd = getpwuid((uid_t)uid);
-	if (pwd == NULL) {
+	if (!pwd) {
 		if (errno != 0)
 			err = -errno;
 		else
@@ -290,7 +290,7 @@ static void get_uid_reply(unsigned int uid, void *user_data, int err)
 	nrgroups = 0;
 	getgrouplist(pwd->pw_name, pwd->pw_gid, NULL, &nrgroups);
 	groups = g_try_new0(gid_t, nrgroups);
-	if (groups == NULL) {
+	if (!groups) {
 		err = -ENOMEM;
 		goto err;
 	}
@@ -301,7 +301,7 @@ static void get_uid_reply(unsigned int uid, void *user_data, int err)
 
 	for (i = 0; i < nrgroups; i++) {
 		grp = getgrgid(groups[i]);
-		if (grp == NULL) {
+		if (!grp) {
 			if (errno != 0)
 				err = -errno;
 			else
@@ -376,7 +376,7 @@ static void policy_local_destroy(struct connman_session *session)
 	DBG("session %p", session);
 
 	policy = g_hash_table_lookup(session_hash, session);
-	if (policy == NULL)
+	if (!policy)
 		return;
 
 	g_hash_table_remove(session_hash, session);
@@ -433,7 +433,7 @@ static int load_policy(GKeyFile *keyfile, const char *groupname,
 	group->uid = g_key_file_get_string(keyfile, groupname,
 						"uid", NULL);
 
-	if (group->selinux == NULL && group->gid == NULL && group->uid == NULL)
+	if (!group->selinux && !group->gid && !group->uid)
 		return -EINVAL;
 
 	config->priority = g_key_file_get_boolean(keyfile, groupname,
@@ -441,14 +441,14 @@ static int load_policy(GKeyFile *keyfile, const char *groupname,
 
 	str = g_key_file_get_string(keyfile, groupname, "RoamingPolicy",
 				NULL);
-	if (str != NULL) {
+	if (str) {
 		config->roaming_policy = connman_session_parse_roaming_policy(str);
 		g_free(str);
 	}
 
 	str = g_key_file_get_string(keyfile, groupname, "ConnectionType",
 				NULL);
-	if (str != NULL) {
+	if (str) {
 		config->type = connman_session_parse_connection_type(str);
 		g_free(str);
 	}
@@ -458,10 +458,10 @@ static int load_policy(GKeyFile *keyfile, const char *groupname,
 
 	str = g_key_file_get_string(keyfile, groupname, "AllowedBearers",
 				NULL);
-	if (str != NULL) {
+	if (str) {
 		tokens = g_strsplit(str, " ", 0);
 
-		for (i = 0; tokens[i] != NULL; i++) {
+		for (i = 0; tokens[i]; i++) {
 			err = connman_session_parse_bearers(tokens[i],
 					&config->allowed_bearers);
 			if (err < 0)
@@ -482,7 +482,7 @@ static void update_session(struct policy_config *policy)
 {
 	DBG("policy %p session %p", policy, policy->session);
 
-	if (policy->session == NULL)
+	if (!policy->session)
 		return;
 
 	if (connman_session_config_update(policy->session) < 0)
@@ -504,7 +504,7 @@ static void cleanup_config(gpointer user_data)
 
 	DBG("policy %p group %p", policy, policy->group);
 
-	if (policy->group != NULL)
+	if (policy->group)
 		policy->group->sessions =
 			g_slist_remove(policy->group->sessions, policy);
 
@@ -529,11 +529,11 @@ static void cleanup_group(gpointer user_data)
 	g_slist_free(group->config->allowed_bearers);
 	g_free(group->config->id);
 	g_free(group->config);
-	if (group->selinux != NULL)
+	if (group->selinux)
 		g_hash_table_remove(selinux_hash, group->selinux);
-	if (group->uid != NULL)
+	if (group->uid)
 		g_hash_table_remove(uid_hash, group->uid);
-	if (group->gid != NULL)
+	if (group->gid)
 		g_hash_table_remove(gid_hash, group->gid);
 	g_free(group->selinux);
 	g_free(group->uid);
@@ -562,11 +562,11 @@ static void recheck_sessions(void)
 	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct policy_config *policy = value;
 
-		if (policy->group != NULL)
+		if (policy->group)
 			continue;
 
 		group = g_hash_table_lookup(selinux_hash, policy->selinux);
-		if (group != NULL) {
+		if (group) {
 			policy->config->id_type = CONNMAN_SESSION_ID_TYPE_LSM;
 			g_free(policy->config->id);
 			policy->config->id = g_strdup(policy->selinux_context);
@@ -575,7 +575,7 @@ static void recheck_sessions(void)
 		}
 
 		group = g_hash_table_lookup(uid_hash, policy->uid);
-		if (group != NULL) {
+		if (group) {
 			set_policy(policy, group);
 
 			policy->config->id_type = CONNMAN_SESSION_ID_TYPE_UID;
@@ -585,10 +585,10 @@ static void recheck_sessions(void)
 			continue;
 		}
 
-		for (list = policy->gids; list != NULL; list = list->next) {
+		for (list = policy->gids; list; list = list->next) {
 			char *gid = list->data;
 			group = g_hash_table_lookup(gid_hash, gid);
-			if (group != NULL) {
+			if (group) {
 				set_policy(policy, group);
 
 				policy->config->id_type = CONNMAN_SESSION_ID_TYPE_GID;
@@ -619,7 +619,7 @@ static int load_file(const char *filename, struct policy_file *file)
 
 	groupnames = g_key_file_get_groups(keyfile, NULL);
 
-	for (i = 0; groupnames[i] != NULL; i++) {
+	for (i = 0; groupnames[i]; i++) {
 		group = g_new0(struct policy_group, 1);
 		group->config = g_new0(struct connman_session_config, 1);
 
@@ -629,13 +629,13 @@ static int load_file(const char *filename, struct policy_file *file)
 			g_free(group);
 			break;
 		}
-		if (group->selinux != NULL)
+		if (group->selinux)
 			g_hash_table_replace(selinux_hash, group->selinux, group);
 
-		if (group->uid != NULL)
+		if (group->uid)
 			g_hash_table_replace(uid_hash, group->uid, group);
 
-		if (group->gid != NULL)
+		if (group->gid)
 			g_hash_table_replace(gid_hash, group->gid, group);
 
 		file->groups = g_slist_prepend(file->groups, group);
@@ -653,7 +653,7 @@ static int load_file(const char *filename, struct policy_file *file)
 
 static bool is_filename_valid(const char *filename)
 {
-	if (filename == NULL)
+	if (!filename)
 		return false;
 
 	if (filename[0] == '.')
@@ -671,10 +671,10 @@ static int read_policies()
 	DBG("");
 
 	dir = g_dir_open(POLICYDIR, 0, NULL);
-	if (dir == NULL)
+	if (!dir)
 		return -EINVAL;
 
-	while ((filename = g_dir_read_name(dir)) != NULL) {
+	while ((filename = g_dir_read_name(dir))) {
 		if (!is_filename_valid(filename))
 			continue;
 
@@ -745,7 +745,7 @@ static int session_policy_local_init(void)
 	}
 
 	connection = connman_dbus_get_connection();
-	if (connection == NULL)
+	if (!connection)
 		return -EIO;
 
 	file_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
@@ -776,19 +776,19 @@ err_notify:
 	connman_inotify_unregister(POLICYDIR, notify_handler);
 
 err:
-	if (file_hash != NULL)
+	if (file_hash)
 		g_hash_table_destroy(file_hash);
 
-	if (session_hash != NULL)
+	if (session_hash)
 		g_hash_table_destroy(session_hash);
 
-	if (selinux_hash != NULL)
+	if (selinux_hash)
 		g_hash_table_destroy(selinux_hash);
 
-	if (uid_hash != NULL)
+	if (uid_hash)
 		g_hash_table_destroy(uid_hash);
 
-	if (gid_hash != NULL)
+	if (gid_hash)
 		g_hash_table_destroy(gid_hash);
 
 	connman_session_policy_unregister(&session_policy_local);

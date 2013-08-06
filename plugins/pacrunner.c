@@ -88,7 +88,7 @@ static void append_string_list(DBusMessageIter *iter, void *user_data)
 	char **list = user_data;
 	int i;
 
-	for (i = 0; list[i] != NULL; i++)
+	for (i = 0; list[i]; i++)
 		dbus_message_iter_append_basic(iter,
 					DBUS_TYPE_STRING, &list[i]);
 }
@@ -104,14 +104,14 @@ static void create_proxy_configuration(void)
 	const char *str;
 	char **str_list;
 
-	if (default_service == NULL)
+	if (!default_service)
 		return;
 
 	DBG("");
 
 	msg = dbus_message_new_method_call(PACRUNNER_SERVICE, PACRUNNER_PATH,
 			PACRUNNER_INTERFACE, "CreateProxyConfiguration");
-	if (msg == NULL)
+	if (!msg)
 		return;
 
 	dbus_message_set_auto_start(msg, FALSE);
@@ -130,7 +130,7 @@ static void create_proxy_configuration(void)
 		method = "manual";
 
 		str_list = connman_service_get_proxy_servers(default_service);
-		if (str_list == NULL) {
+		if (!str_list) {
 			connman_dbus_dict_close(&iter, &dict);
 			goto done;
 		}
@@ -141,7 +141,7 @@ static void create_proxy_configuration(void)
 		g_strfreev(str_list);
 
 		str_list = connman_service_get_proxy_excludes(default_service);
-		if (str_list == NULL)
+		if (!str_list)
 			break;
 
 		connman_dbus_dict_append_array(&dict, "Excludes",
@@ -154,10 +154,10 @@ static void create_proxy_configuration(void)
 		method = "auto";
 
 		str = connman_service_get_proxy_url(default_service);
-		if (str == NULL) {
+		if (!str) {
 			str = connman_service_get_proxy_autoconfig(
 							default_service);
-			if (str == NULL) {
+			if (!str) {
 				connman_dbus_dict_close(&iter, &dict);
 				goto done;
 			}
@@ -172,19 +172,19 @@ static void create_proxy_configuration(void)
 				DBUS_TYPE_STRING, &method);
 
 	interface = connman_service_get_interface(default_service);
-	if (interface != NULL) {
+	if (interface) {
 		connman_dbus_dict_append_basic(&dict, "Interface",
 						DBUS_TYPE_STRING, &interface);
 		g_free(interface);
 	}
 
 	str = connman_service_get_domainname(default_service);
-	if (str != NULL)
+	if (str)
 		connman_dbus_dict_append_array(&dict, "Domains",
 					DBUS_TYPE_STRING, append_string, &str);
 
 	str_list = connman_service_get_nameservers(default_service);
-	if (str_list != NULL)
+	if (str_list)
 		connman_dbus_dict_append_array(&dict, "Nameservers",
 					DBUS_TYPE_STRING, append_string_list,
 					str_list);
@@ -195,7 +195,7 @@ static void create_proxy_configuration(void)
 	result = dbus_connection_send_with_reply(connection, msg,
 							&call, DBUS_TIMEOUT);
 
-	if (!result || call == NULL)
+	if (!result || !call)
 		goto done;
 
 	dbus_pending_call_set_notify(call, create_config_reply, NULL, NULL);
@@ -224,14 +224,14 @@ static void destroy_proxy_configuration(void)
 	DBusPendingCall *call;
 	dbus_bool_t result;
 
-	if (current_config == NULL)
+	if (!current_config)
 		return;
 
 	DBG("");
 
 	msg = dbus_message_new_method_call(PACRUNNER_SERVICE, PACRUNNER_PATH,
 			PACRUNNER_INTERFACE, "DestroyProxyConfiguration");
-	if (msg == NULL)
+	if (!msg)
 		return;
 
 	dbus_message_set_auto_start(msg, FALSE);
@@ -244,7 +244,7 @@ static void destroy_proxy_configuration(void)
 
 	dbus_message_unref(msg);
 
-	if (!result || call == NULL)
+	if (!result || !call)
 		return;
 
 	dbus_pending_call_set_notify(call, destroy_config_reply, NULL, NULL);
@@ -317,18 +317,18 @@ static char * parse_url(const char *url)
 	char *scheme, *host, *path, *host_ret;
 
 	scheme = g_strdup(url);
-	if (scheme == NULL)
+	if (!scheme)
 		return NULL;
 
 	host = strstr(scheme, "://");
-	if (host != NULL) {
+	if (host) {
 		*host = '\0';
 		host += 3;
 	} else
 		host = scheme;
 
 	path = strchr(host, '/');
-	if (path != NULL)
+	if (path)
 		*(path++) = '\0';
 
 	host_ret = g_strdup(host);
@@ -384,17 +384,17 @@ static int request_lookup(struct connman_service *service, const char *url)
 						PACRUNNER_CLIENT_PATH,
 						PACRUNNER_CLIENT_INTERFACE,
 						"FindProxyForURL");
-	if (msg == NULL)
+	if (!msg)
 		return -1;
 
 	host = parse_url(url);
-	if (host == NULL) {
+	if (!host) {
 		dbus_message_unref(msg);
 		return -EINVAL;
 	}
 
 	data = g_try_new0(struct proxy_data, 1);
-	if (data == NULL) {
+	if (!data) {
 		dbus_message_unref(msg);
 		g_free(host);
 		return -ENOMEM;
@@ -414,7 +414,7 @@ static int request_lookup(struct connman_service *service, const char *url)
 
 	dbus_message_unref(msg);
 
-	if (!result || call == NULL) {
+	if (!result || !call) {
 		g_free(host);
 		g_free(data->url);
 		g_free(data);
@@ -447,7 +447,7 @@ static guint pacrunner_watch;
 static int pacrunner_init(void)
 {
 	connection = connman_dbus_get_connection();
-	if (connection == NULL)
+	if (!connection)
 		return -EIO;
 
 	pacrunner_watch = g_dbus_add_service_watch(connection,

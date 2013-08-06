@@ -51,7 +51,7 @@ static void send_indication(const char *path, bool enabled)
 
 	message = dbus_message_new_method_call(IOSPM_SERVICE, path,
 						IOSPM_INTERFACE, method);
-	if (message == NULL)
+	if (!message)
 		return;
 
 	dbus_message_set_no_reply(message, TRUE);

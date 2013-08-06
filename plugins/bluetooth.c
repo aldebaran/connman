@@ -89,7 +89,7 @@ static bool proxy_get_nap(GDBusProxy *proxy)
 {
         DBusMessageIter iter, value;
 
-	if (proxy == NULL)
+	if (!proxy)
 		return false;
 
         if (!g_dbus_proxy_get_property(proxy, "UUIDs", &iter))
@@ -135,14 +135,14 @@ static void pan_remove_nap(struct bluetooth_pan *pan)
 
 	DBG("network %p pan %p", pan->network, pan);
 
-	if (network == NULL)
+	if (!network)
 		return;
 
 	pan->network = NULL;
 	connman_network_set_data(network, NULL);
 
 	device = connman_network_get_device(network);
-	if (device != NULL)
+	if (device)
 		connman_device_remove_network(device, network);
 
 	connman_network_unref(network);
@@ -156,7 +156,7 @@ static void bluetooth_pan_remove(struct connman_network *network)
 
 	connman_network_set_data(network, NULL);
 
-	if (pan != NULL)
+	if (pan)
 		pan_remove_nap(pan);
 }
 
@@ -165,13 +165,13 @@ static bool pan_connect(struct bluetooth_pan *pan,
 {
 	int index;
 
-	if (iface == NULL) {
+	if (!iface) {
 		if (!proxy_get_bool(pan->btnetwork_proxy, "Connected"))
 			return false;
 		iface = proxy_get_string(pan->btnetwork_proxy, "Interface");
 	}
 
-	if (iface == NULL)
+	if (!iface)
 		return false;
 
 	index = connman_inet_ifindex(iface);
@@ -194,7 +194,7 @@ static void pan_connect_cb(DBusMessage *message, void *user_data)
 	DBusMessageIter iter;
 
 	pan = g_hash_table_lookup(networks, path);
-	if (pan == NULL) {
+	if (!pan) {
 		DBG("network already removed");
 		return;
 	}
@@ -237,7 +237,7 @@ static int bluetooth_pan_connect(struct connman_network *network)
 
 	DBG("network %p", network);
 
-	if (pan == NULL)
+	if (!pan)
 		return -EINVAL;
 
 	path = g_dbus_proxy_get_path(pan->btnetwork_proxy);
@@ -258,7 +258,7 @@ static void pan_disconnect_cb(DBusMessage *message, void *user_data)
 	struct bluetooth_pan *pan;
 
 	pan = g_hash_table_lookup(networks, path);
-	if (pan == NULL) {
+	if (!pan) {
 		DBG("network already removed");
 		return;
 	}
@@ -281,7 +281,7 @@ static int bluetooth_pan_disconnect(struct connman_network *network)
 
 	DBG("network %p", network);
 
-	if (pan == NULL)
+	if (!pan)
 		return -EINVAL;
 
 	path = g_dbus_proxy_get_path(pan->btnetwork_proxy);
@@ -303,7 +303,7 @@ static void btnetwork_property_change(GDBusProxy *proxy, const char *name,
 		return;
 
 	pan = g_hash_table_lookup(networks, g_dbus_proxy_get_path(proxy));
-	if (pan == NULL || pan->network == NULL)
+	if (!pan || !pan->network)
 		return;
 
 	dbus_message_iter_get_basic(iter, &proxy_connected);
@@ -328,10 +328,10 @@ static void pan_create_nap(struct bluetooth_pan *pan)
 	device = g_hash_table_lookup(devices,
 			proxy_get_string(pan->btdevice_proxy, "Adapter"));
 
-	if (device == NULL || !connman_device_get_powered(device))
+	if (!device || !connman_device_get_powered(device))
 		return;
 
-	if (pan->network == NULL) {
+	if (!pan->network) {
 		const char *address;
 		char ident[BLUETOOTH_ADDR_LEN * 2 + 1];
 		const char *name, *path;
@@ -352,7 +352,7 @@ static void pan_create_nap(struct bluetooth_pan *pan)
 
 		DBG("network %p %s %s", pan->network, path, name);
 
-		if (pan->network == NULL) {
+		if (!pan->network) {
 			connman_warn("Bluetooth network %s creation failed",
 					path);
 			return;
@@ -379,11 +379,11 @@ static void btdevice_property_change(GDBusProxy *proxy, const char *name,
 		return;
 
 	pan = g_hash_table_lookup(networks, g_dbus_proxy_get_path(proxy));
-	if (pan == NULL)
+	if (!pan)
 		return;
 
-	if (pan->network != NULL &&
-			connman_network_get_device(pan->network) != NULL)
+	if (pan->network &&
+			connman_network_get_device(pan->network))
 		pan_nap = true;
 
 	DBG("network %p network nap %d proxy nap %d", pan->network, pan_nap,
@@ -399,12 +399,12 @@ static void pan_free(gpointer data)
 {
 	struct bluetooth_pan *pan = data;
 
-	if (pan->btnetwork_proxy != NULL) {
+	if (pan->btnetwork_proxy) {
 		g_dbus_proxy_unref(pan->btnetwork_proxy);
 		pan->btnetwork_proxy = NULL;
 	}
 
-	if (pan->btdevice_proxy != NULL) {
+	if (pan->btdevice_proxy) {
 		g_dbus_proxy_unref(pan->btdevice_proxy);
 		pan->btdevice_proxy = NULL;
 	}
@@ -421,7 +421,7 @@ static void pan_create(GDBusProxy *network_proxy)
 
 	pan = g_try_new0(struct bluetooth_pan, 1);
 
-	if (pan == NULL) {
+	if (!pan) {
 		connman_error("Out of memory creating PAN NAP");
 		return;
 	}
@@ -432,7 +432,7 @@ static void pan_create(GDBusProxy *network_proxy)
 	pan->btdevice_proxy = g_dbus_proxy_new(client, path,
 			"org.bluez.Device1");
 
-	if (pan->btdevice_proxy == NULL) {
+	if (!pan->btdevice_proxy) {
 		connman_error("Cannot create BT PAN watcher %s", path);
 		g_hash_table_remove(networks, path);
 		return;
@@ -466,7 +466,7 @@ static void device_enable_cb(const DBusError *error, void *user_data)
 	gpointer key, value;
 
 	device = g_hash_table_lookup(devices, path);
-	if (device == NULL) {
+	if (!device) {
 		DBG("device already removed");
 		goto out;
 	}
@@ -503,7 +503,7 @@ static int bluetooth_device_enable(struct connman_device *device)
 	dbus_bool_t device_powered = TRUE;
 	const char *path;
 
-	if (proxy == NULL)
+	if (!proxy)
 		return 0;
 
 	path = g_dbus_proxy_get_path(proxy);
@@ -530,7 +530,7 @@ static void device_disable_cb(const DBusError *error, void *user_data)
 	gpointer key, value;
 
 	device = g_hash_table_lookup(devices, path);
-	if (device == NULL) {
+	if (!device) {
 		DBG("device already removed");
 		goto out;
 	}
@@ -564,7 +564,7 @@ static int bluetooth_device_disable(struct connman_device *device)
 	dbus_bool_t device_powered = FALSE;
 	const char *path;
 
-	if (proxy == NULL)
+	if (!proxy)
 		return 0;
 
 	path = g_dbus_proxy_get_path(proxy);
@@ -617,7 +617,7 @@ static void device_free(gpointer data)
 	GDBusProxy *proxy = connman_device_get_data(device);
 
 	connman_device_set_data(device, NULL);
-	if (proxy != NULL)
+	if (proxy)
 		g_dbus_proxy_unref(proxy);
 
 	connman_device_unregister(device);
@@ -654,7 +654,7 @@ static void tethering_create_cb(DBusMessage *message, void *user_data)
 	DBG("bridge %s %s", tethering->bridge, tethering->enable ?
 			"enabled": "disabled");
 
-	if (tethering->technology != NULL)
+	if (tethering->technology)
 		connman_technology_tethering_notify(tethering->technology,
 				tethering->enable);
 }
@@ -681,11 +681,11 @@ static bool tethering_create(const char *path,
 
 	DBG("path %s bridge %s", path, bridge);
 
-	if (bridge == NULL)
+	if (!bridge)
 		return -EINVAL;
 
 	proxy = g_dbus_proxy_new(client, path, "org.bluez.NetworkServer1");
-	if (proxy == NULL)
+	if (!proxy)
 		return false;
 
 	tethering->technology = technology;
@@ -714,14 +714,14 @@ static void device_create(GDBusProxy *proxy)
 	bool powered;
 
 	address = proxy_get_string(proxy, "Address");
-	if (address == NULL)
+	if (!address)
 		return;
 
 	address2ident(address, ident);
 
 	device = connman_device_create("bluetooth",
 			CONNMAN_DEVICE_TYPE_BLUETOOTH);
-	if (device == NULL)
+	if (!device)
 		return;
 
 	connman_device_set_data(device, g_dbus_proxy_ref(proxy));
@@ -881,7 +881,7 @@ static struct connman_technology_driver tech_driver = {
 static int bluetooth_init(void)
 {
 	connection = connman_dbus_get_connection();
-	if (connection == NULL)
+	if (!connection)
 		goto out;
 
 	if (connman_technology_driver_register(&tech_driver) < 0) {
@@ -909,7 +909,7 @@ static int bluetooth_init(void)
 			pan_free);
 
 	client = g_dbus_client_new(connection, BLUEZ_SERVICE, BLUEZ_PATH);
-	if (client == NULL) {
+	if (!client) {
 		connman_warn("Failed to initialize D-Bus client for "
 				BLUEZ_SERVICE);
 		goto out;
@@ -921,16 +921,16 @@ static int bluetooth_init(void)
 	return 0;
 
 out:
-	if (networks != NULL)
+	if (networks)
 		g_hash_table_destroy(networks);
 
-	if (devices != NULL)
+	if (devices)
 		g_hash_table_destroy(devices);
 
-	if (client != NULL)
+	if (client)
 		g_dbus_client_unref(client);
 
-	if (connection != NULL)
+	if (connection)
 		dbus_connection_unref(connection);
 
 	return -EIO;

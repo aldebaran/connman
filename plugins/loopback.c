@@ -218,7 +218,7 @@ static int loopback_set_hostname(const char *hostname)
 	if (!connman_inet_check_hostname(hostname, len))
 		return -EINVAL;
 
-	if ((ptr = strstr(hostname, ".")) != NULL)
+	if ((ptr = strstr(hostname, ".")))
 		len = ptr - hostname;
 
 	if (sethostname(hostname, len) < 0) {

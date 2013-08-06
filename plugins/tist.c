@@ -106,7 +106,7 @@ static int read_baud_rate(unsigned long *baud)
 	DBG("");
 
 	f = fopen(TIST_SYSFS_BAUD, "r");
-	if (f == NULL)
+	if (!f)
 		return -EIO;
 
 	err = fscanf(f, "%lu", baud);
@@ -127,7 +127,7 @@ static int read_uart_name(char uart_name[], size_t uart_name_len)
 	memset(uart_name, 0, uart_name_len);
 
 	f = fopen(TIST_SYSFS_UART, "r");
-	if (f == NULL)
+	if (!f)
 		return -EIO;
 
         err = fscanf(f, "%s", uart_name);
@@ -355,7 +355,7 @@ static int install_ldisc(GIOChannel *channel, bool install)
 		install_count = 0;
 		__sync_synchronize();
 
-		if (uart_channel == NULL) {
+		if (!uart_channel) {
 			DBG("UART channel is NULL");
 			return 0;
 		}
@@ -368,7 +368,7 @@ static int install_ldisc(GIOChannel *channel, bool install)
 		return 0;
 	}
 
-	if (uart_channel != NULL) {
+	if (uart_channel) {
 		g_io_channel_shutdown(uart_channel, TRUE, NULL);
 		g_io_channel_unref(uart_channel);
 		uart_channel = NULL;
@@ -599,7 +599,7 @@ static void tist_exit(void)
 	g_io_channel_shutdown(install_channel, TRUE, NULL);
 	g_io_channel_unref(install_channel);
 
-	if (uart_channel != NULL) {
+	if (uart_channel) {
 		g_io_channel_shutdown(uart_channel, TRUE, NULL);
 		g_io_channel_unref(uart_channel);
 		uart_channel = NULL;

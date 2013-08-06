@@ -97,7 +97,7 @@ static void add_network(struct connman_device *device,
 
 	network = connman_network_create("carrier",
 					CONNMAN_NETWORK_TYPE_ETHERNET);
-	if (network == NULL)
+	if (!network)
 		return;
 
 	index = connman_device_get_index(device);
@@ -124,7 +124,7 @@ static void add_network(struct connman_device *device,
 static void remove_network(struct connman_device *device,
 				struct ethernet_data *ethernet)
 {
-	if (ethernet->network == NULL)
+	if (!ethernet->network)
 		return;
 
 	connman_device_remove_network(device, ethernet->network);
@@ -170,7 +170,7 @@ static int ethernet_probe(struct connman_device *device)
 	DBG("device %p", device);
 
 	ethernet = g_try_new0(struct ethernet_data, 1);
-	if (ethernet == NULL)
+	if (!ethernet)
 		return -ENOMEM;
 
 	connman_device_set_data(device, ethernet);
@@ -262,8 +262,7 @@ static void tech_add_interface(struct connman_technology *technology,
 {
 	DBG("index %d name %s ident %s", index, name, ident);
 
-	if (g_list_find(cdc_interface_list,
-			GINT_TO_POINTER((int) index)) != NULL)
+	if (g_list_find(cdc_interface_list, GINT_TO_POINTER((int)index)))
 		return;
 
 	cdc_interface_list = g_list_prepend(cdc_interface_list,
@@ -364,8 +363,7 @@ static void eth_add_interface(struct connman_technology *technology,
 {
 	DBG("index %d name %s ident %s", index, name, ident);
 
-	if (g_list_find(eth_interface_list,
-			GINT_TO_POINTER((int) index)) != NULL)
+	if (g_list_find(eth_interface_list, GINT_TO_POINTER((int)index)))
 		return;
 
 	eth_interface_list = g_list_prepend(eth_interface_list,
@@ -391,7 +389,7 @@ static void eth_enable_tethering(struct connman_technology *technology,
 		struct connman_device *device =
 			connman_device_find_by_index(index);
 
-		if (device != NULL)
+		if (device)
 			connman_device_disconnect_service(device);
 
 		connman_technology_tethering_notify(technology, true);
@@ -420,7 +418,7 @@ static void eth_disable_tethering(struct connman_technology *technology,
 
 		connman_technology_tethering_notify(technology, false);
 
-		if (device != NULL)
+		if (device)
 			connman_device_reconnect_service(device);
 
 		eth_tethering = false;

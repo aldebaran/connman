@@ -92,7 +92,7 @@ static int hh2serial_init(void)
 
 	hh2serial_device = connman_device_create("hh2serial_gps",
 						CONNMAN_DEVICE_TYPE_GPS);
-	if (hh2serial_device == NULL)
+	if (!hh2serial_device)
 		return -ENODEV;
 
 	connman_device_register(hh2serial_device);
@@ -102,7 +102,7 @@ static int hh2serial_init(void)
 
 static void hh2serial_exit(void)
 {
-	if (hh2serial_device != NULL) {
+	if (hh2serial_device) {
 		connman_device_unregister(hh2serial_device);
 		connman_device_unref(hh2serial_device);
 	}

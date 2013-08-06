@@ -60,7 +60,7 @@ static void state_changed(dbus_uint32_t state)
 
 	signal = dbus_message_new_signal(NM_PATH, NM_INTERFACE,
 						"StateChanged");
-	if (signal == NULL)
+	if (!signal)
 		return;
 
 	dbus_message_append_args(signal, DBUS_TYPE_UINT32, &state,
@@ -79,7 +79,7 @@ static void properties_changed(dbus_uint32_t state)
 
 	signal = dbus_message_new_signal(NM_PATH, NM_INTERFACE,
 						"PropertiesChanged");
-	if (signal == NULL)
+	if (!signal)
 		return;
 
 	dbus_message_iter_init_append(signal, &iter);
@@ -112,7 +112,7 @@ static void default_changed(struct connman_service *service)
 {
 	DBG("service %p", service);
 
-	if (service == NULL)
+	if (!service)
 		nm_state = NM_STATE_DISCONNECTED;
 	else
 		nm_state = NM_STATE_CONNECTED_LOCAL;
@@ -128,7 +128,7 @@ static void service_state_changed(struct connman_service *service,
 {
 	DBG("service %p state %d", service, state);
 
-	if (current_service == NULL || current_service != service)
+	if (!current_service || current_service != service)
 		return;
 
 	switch (state) {
@@ -202,7 +202,7 @@ static DBusMessage *property_get(DBusConnection *conn,
 		DBG("state %d", nm_state);
 
 		reply = dbus_message_new_method_return(msg);
-		if (reply == NULL)
+		if (!reply)
 			return NULL;
 
 		dbus_message_iter_init_append(reply, &iter);
@@ -240,7 +240,7 @@ static int nmcompat_init(void)
 	DBG("");
 
 	connection = connman_dbus_get_connection();
-	if (connection == NULL)
+	if (!connection)
 		return -1;
 
 	if (!g_dbus_request_name(connection, NM_SERVICE, NULL)) {
@@ -270,7 +270,7 @@ static void nmcompat_exit(void)
 
 	connman_notifier_unregister(&notifier);
 
-	if (connection == NULL)
+	if (!connection)
 		return;
 
 	g_dbus_unregister_interface(connection, NM_PATH,
