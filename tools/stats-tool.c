@@ -774,7 +774,7 @@ static int summarize(struct stats_file *data_file,
 	 */
 	if (cur) {
 		next = get_next_record(&data_iter);
-		while(next && cur->ts > next->ts)
+		while (next && cur->ts > next->ts)
 			next = get_next_record(&data_iter);
 	}
 
