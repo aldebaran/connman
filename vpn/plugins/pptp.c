@@ -157,20 +157,14 @@ static int pptp_notify(DBusMessage *msg, struct vpn_provider *provider)
 
 		DBG("%s = %s", key, value);
 
-		if (!strcmp(key, "INTERNAL_IP4_ADDRESS")) {
-			vpn_provider_set_string(provider, "Address", value);
+		if (!strcmp(key, "INTERNAL_IP4_ADDRESS"))
 			addressv4 = g_strdup(value);
-		}
 
-		if (!strcmp(key, "INTERNAL_IP4_NETMASK")) {
-			vpn_provider_set_string(provider, "Netmask", value);
+		if (!strcmp(key, "INTERNAL_IP4_NETMASK"))
 			netmask = g_strdup(value);
-		}
 
-		if (!strcmp(key, "INTERNAL_IP4_DNS")) {
-			vpn_provider_set_string(provider, "DNS", value);
+		if (!strcmp(key, "INTERNAL_IP4_DNS"))
 			nameservers = g_strdup(value);
-		}
 
 		if (!strcmp(key, "INTERNAL_IFNAME"))
 			ifname = g_strdup(value);
