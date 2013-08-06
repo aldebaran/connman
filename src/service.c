@@ -3026,7 +3026,7 @@ int __connman_service_reset_ipconfig(struct connman_service *service,
 
 	DBG("err %d ipconfig %p type %d method %d state %s", err,
 		new_ipconfig, type, new_method,
-		new_state == NULL ? "-" : state2string(*new_state));
+		new_state  ? "-" : state2string(*new_state));
 
 	return err;
 }

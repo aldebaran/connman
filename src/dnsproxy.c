@@ -1856,7 +1856,7 @@ static void destroy_server(struct server_data *server)
 	GList *list;
 
 	DBG("index %d server %s sock %d", server->index, server->server,
-			server->channel != NULL ?
+			server->channel ?
 			g_io_channel_unix_get_fd(server->channel): -1);
 
 	server_list = g_slist_remove(server_list, server);
