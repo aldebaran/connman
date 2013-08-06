@@ -80,7 +80,7 @@ static void resolv_result(GResolvResultStatus status,
 
 	g_print("status: %s\n", status2str(status));
 
-	if (results != NULL) {
+	if (results) {
 		for (i = 0; results[i]; i++)
 			g_print("result: %s\n", results[i]);
 	}
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 	g_option_context_add_main_entries(context, options, NULL);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
-		if (error != NULL) {
+		if (error) {
 			g_printerr("%s\n", error->message);
 			g_error_free(error);
 		} else
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 	}
 
 	resolv = g_resolv_new(index);
-	if (resolv == NULL) {
+	if (!resolv) {
 		printf("failed to create resolver\n");
 		return 1;
 	}

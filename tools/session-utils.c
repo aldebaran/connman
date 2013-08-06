@@ -55,7 +55,7 @@ static void destroy_cb(gpointer data)
 	util_test_func_t cb = cbd->data;
 	struct test_fix *fix = cbd->user_data;
 
-	if (cb != NULL)
+	if (cb)
 		(*cb)(fix);
 
 	g_free(cbd);
@@ -119,13 +119,13 @@ static void manager_changed(struct test_fix *fix, DBusMessageIter *entry)
 	if (g_str_equal(key, "State")) {
 		LOG("State %s", value);
 
-		if (fix->manager.state != NULL)
+		if (fix->manager.state)
 			g_free(fix->manager.state);
 
 		fix->manager.state = g_strdup(value);
 	}
 
-	if (fix->manager_changed != NULL)
+	if (fix->manager_changed)
 		fix->manager_changed(fix);
 }
 
@@ -273,7 +273,7 @@ void util_session_init(struct test_session *session)
 	msg = manager_create_session(session->connection,
 					session->info,
 					session->notify_path);
-	g_assert(msg != NULL);
+	g_assert(msg);
 	dbus_message_iter_init(msg, &iter);
 
 	dbus_message_iter_get_basic(&iter, &path);
@@ -289,7 +289,7 @@ void util_session_cleanup(struct test_session *session)
 
 	msg = manager_destroy_session(session->connection,
 					session->session_path);
-	g_assert(msg != NULL);
+	g_assert(msg);
 	dbus_message_unref(msg);
 
 	err = session_notify_unregister(session,

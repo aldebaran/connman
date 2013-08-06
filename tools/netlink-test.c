@@ -287,7 +287,7 @@ static void nfacct_get_callback(unsigned int error, const char *name,
 
 	g_assert_cmpuint(error, ==, 0);
 
-	if (name == NULL) {
+	if (!name) {
 		/* end of dump */
 		return;
 	}
@@ -311,7 +311,7 @@ static void nfacct_dump_callback(unsigned int error, const char *name,
 
 	g_assert_cmpuint(error, ==, 0);
 
-	if (name == NULL) {
+	if (!name) {
 		/* end of dump */
 		return;
 	}

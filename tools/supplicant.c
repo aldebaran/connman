@@ -184,7 +184,7 @@ struct supplicant_bss {
 
 static enum supplicant_mode string2mode(const char *mode)
 {
-	if (mode == NULL)
+	if (!mode)
 		return SUPPLICANT_MODE_UNKNOWN;
 
 	if (g_str_equal(mode, "infrastructure"))
@@ -229,7 +229,7 @@ static const char *security2string(enum supplicant_security security)
 
 static enum supplicant_state string2state(const char *state)
 {
-	if (state == NULL)
+	if (!state)
 		return SUPPLICANT_STATE_UNKNOWN;
 
 	if (g_str_equal(state, "unknown"))
@@ -263,10 +263,10 @@ static void callback_system_ready(void)
 
 	system_ready = TRUE;
 
-	if (callbacks_pointer == NULL)
+	if (!callbacks_pointer)
 		return;
 
-	if (callbacks_pointer->system_ready == NULL)
+	if (!callbacks_pointer->system_ready)
 		return;
 
 	callbacks_pointer->system_ready();
@@ -276,10 +276,10 @@ static void callback_system_killed(void)
 {
 	system_ready = FALSE;
 
-	if (callbacks_pointer == NULL)
+	if (!callbacks_pointer)
 		return;
 
-	if (callbacks_pointer->system_killed == NULL)
+	if (!callbacks_pointer->system_killed)
 		return;
 
 	callbacks_pointer->system_killed();
@@ -287,10 +287,10 @@ static void callback_system_killed(void)
 
 static void callback_interface_added(struct supplicant_interface *interface)
 {
-	if (callbacks_pointer == NULL)
+	if (!callbacks_pointer)
 		return;
 
-	if (callbacks_pointer->interface_added == NULL)
+	if (!callbacks_pointer->interface_added)
 		return;
 
 	callbacks_pointer->interface_added(interface);
@@ -298,10 +298,10 @@ static void callback_interface_added(struct supplicant_interface *interface)
 
 static void callback_interface_removed(struct supplicant_interface *interface)
 {
-	if (callbacks_pointer == NULL)
+	if (!callbacks_pointer)
 		return;
 
-	if (callbacks_pointer->interface_removed == NULL)
+	if (!callbacks_pointer->interface_removed)
 		return;
 
 	callbacks_pointer->interface_removed(interface);
@@ -309,10 +309,10 @@ static void callback_interface_removed(struct supplicant_interface *interface)
 
 static void callback_scan_started(struct supplicant_interface *interface)
 {
-	if (callbacks_pointer == NULL)
+	if (!callbacks_pointer)
 		return;
 
-	if (callbacks_pointer->scan_started == NULL)
+	if (!callbacks_pointer->scan_started)
 		return;
 
 	callbacks_pointer->scan_started(interface);
@@ -320,10 +320,10 @@ static void callback_scan_started(struct supplicant_interface *interface)
 
 static void callback_scan_finished(struct supplicant_interface *interface)
 {
-	if (callbacks_pointer == NULL)
+	if (!callbacks_pointer)
 		return;
 
-	if (callbacks_pointer->scan_finished == NULL)
+	if (!callbacks_pointer->scan_finished)
 		return;
 
 	callbacks_pointer->scan_finished(interface);
@@ -331,10 +331,10 @@ static void callback_scan_finished(struct supplicant_interface *interface)
 
 static void callback_network_added(struct supplicant_network *network)
 {
-	if (callbacks_pointer == NULL)
+	if (!callbacks_pointer)
 		return;
 
-	if (callbacks_pointer->network_added == NULL)
+	if (!callbacks_pointer->network_added)
 		return;
 
 	callbacks_pointer->network_added(network);
@@ -342,10 +342,10 @@ static void callback_network_added(struct supplicant_network *network)
 
 static void callback_network_removed(struct supplicant_network *network)
 {
-	if (callbacks_pointer == NULL)
+	if (!callbacks_pointer)
 		return;
 
-	if (callbacks_pointer->network_removed == NULL)
+	if (!callbacks_pointer->network_removed)
 		return;
 
 	callbacks_pointer->network_removed(network);
@@ -396,7 +396,7 @@ static void debug_strvalmap(const char *label, struct strvalmap *map,
 {
 	int i;
 
-	for (i = 0; map[i].str != NULL; i++) {
+	for (i = 0; map[i].str; i++) {
 		if (val & map[i].val)
 			DBG("%s: %s", label, map[i].str);
 	}
@@ -409,10 +409,10 @@ static void interface_capability_keymgmt(DBusMessageIter *iter, void *user_data)
 	int i;
 
 	dbus_message_iter_get_basic(iter, &str);
-	if (str == NULL)
+	if (!str)
 		return;
 
-	for (i = 0; keymgmt_capa_map[i].str != NULL; i++)
+	for (i = 0; keymgmt_capa_map[i].str; i++)
 		if (strcmp(str, keymgmt_capa_map[i].str) == 0) {
 			interface->keymgmt_capa |= keymgmt_capa_map[i].val;
 			break;
@@ -426,10 +426,10 @@ static void interface_capability_authalg(DBusMessageIter *iter, void *user_data)
 	int i;
 
 	dbus_message_iter_get_basic(iter, &str);
-	if (str == NULL)
+	if (!str)
 		return;
 
-	for (i = 0; authalg_capa_map[i].str != NULL; i++)
+	for (i = 0; authalg_capa_map[i].str; i++)
 		if (strcmp(str, authalg_capa_map[i].str) == 0) {
 			interface->authalg_capa |= authalg_capa_map[i].val;
 			break;
@@ -443,10 +443,10 @@ static void interface_capability_proto(DBusMessageIter *iter, void *user_data)
 	int i;
 
 	dbus_message_iter_get_basic(iter, &str);
-	if (str == NULL)
+	if (!str)
 		return;
 
-	for (i = 0; proto_capa_map[i].str != NULL; i++)
+	for (i = 0; proto_capa_map[i].str; i++)
 		if (strcmp(str, proto_capa_map[i].str) == 0) {
 			interface->proto_capa |= proto_capa_map[i].val;
 			break;
@@ -460,10 +460,10 @@ static void interface_capability_pairwise(DBusMessageIter *iter, void *user_data
 	int i;
 
 	dbus_message_iter_get_basic(iter, &str);
-	if (str == NULL)
+	if (!str)
 		return;
 
-	for (i = 0; pairwise_capa_map[i].str != NULL; i++)
+	for (i = 0; pairwise_capa_map[i].str; i++)
 		if (strcmp(str, pairwise_capa_map[i].str) == 0) {
 			interface->pairwise_capa |= pairwise_capa_map[i].val;
 			break;
@@ -477,10 +477,10 @@ static void interface_capability_group(DBusMessageIter *iter, void *user_data)
 	int i;
 
 	dbus_message_iter_get_basic(iter, &str);
-	if (str == NULL)
+	if (!str)
 		return;
 
-	for (i = 0; group_capa_map[i].str != NULL; i++)
+	for (i = 0; group_capa_map[i].str; i++)
 		if (strcmp(str, group_capa_map[i].str) == 0) {
 			interface->group_capa |= group_capa_map[i].val;
 			break;
@@ -494,10 +494,10 @@ static void interface_capability_scan(DBusMessageIter *iter, void *user_data)
 	int i;
 
 	dbus_message_iter_get_basic(iter, &str);
-	if (str == NULL)
+	if (!str)
 		return;
 
-	for (i = 0; scan_capa_map[i].str != NULL; i++)
+	for (i = 0; scan_capa_map[i].str; i++)
 		if (strcmp(str, scan_capa_map[i].str) == 0) {
 			interface->scan_capa |= scan_capa_map[i].val;
 			break;
@@ -511,10 +511,10 @@ static void interface_capability_mode(DBusMessageIter *iter, void *user_data)
 	int i;
 
 	dbus_message_iter_get_basic(iter, &str);
-	if (str == NULL)
+	if (!str)
 		return;
 
-	for (i = 0; mode_capa_map[i].str != NULL; i++)
+	for (i = 0; mode_capa_map[i].str; i++)
 		if (strcmp(str, mode_capa_map[i].str) == 0) {
 			interface->mode_capa |= mode_capa_map[i].val;
 			break;
@@ -526,7 +526,7 @@ static void interface_capability(const char *key, DBusMessageIter *iter,
 {
 	struct supplicant_interface *interface = user_data;
 
-	if (key == NULL)
+	if (!key)
 		return;
 
 	if (g_strcmp0(key, "KeyMgmt") == 0)
@@ -557,7 +557,7 @@ static void interface_capability(const char *key, DBusMessageIter *iter,
 
 const char *supplicant_interface_get_ifname(struct supplicant_interface *interface)
 {
-	if (interface == NULL)
+	if (!interface)
 		return NULL;
 
 	return interface->ifname;
@@ -565,7 +565,7 @@ const char *supplicant_interface_get_ifname(struct supplicant_interface *interfa
 
 const char *supplicant_interface_get_driver(struct supplicant_interface *interface)
 {
-	if (interface == NULL)
+	if (!interface)
 		return NULL;
 
 	return interface->driver;
@@ -573,7 +573,7 @@ const char *supplicant_interface_get_driver(struct supplicant_interface *interfa
 
 struct supplicant_interface *supplicant_network_get_interface(struct supplicant_network *network)
 {
-	if (network == NULL)
+	if (!network)
 		return NULL;
 
 	return network->interface;
@@ -581,7 +581,7 @@ struct supplicant_interface *supplicant_network_get_interface(struct supplicant_
 
 const char *supplicant_network_get_name(struct supplicant_network *network)
 {
-	if (network == NULL || network->name == NULL)
+	if (!network || !network->name)
 		return "";
 
 	return network->name;
@@ -589,7 +589,7 @@ const char *supplicant_network_get_name(struct supplicant_network *network)
 
 const char *supplicant_network_get_identifier(struct supplicant_network *network)
 {
-	if (network == NULL || network->group == NULL)
+	if (!network || !network->group)
 		return "";
 
 	return network->group;
@@ -597,7 +597,7 @@ const char *supplicant_network_get_identifier(struct supplicant_network *network
 
 enum supplicant_mode supplicant_network_get_mode(struct supplicant_network *network)
 {
-	if (network == NULL)
+	if (!network)
 		return SUPPLICANT_MODE_UNKNOWN;
 
 	return network->mode;
@@ -616,13 +616,13 @@ static void merge_network(struct supplicant_network *network)
 
 	DBG("ssid %s mode %s", ssid, mode);
 
-	if (ssid != NULL)
+	if (ssid)
 		ssid_len = strlen(ssid);
 	else
 		ssid_len = 0;
 
 	str = g_string_sized_new((ssid_len * 2) + 24);
-	if (str == NULL)
+	if (!str)
 		return;
 
 	for (i = 0; i < ssid_len; i++)
@@ -653,10 +653,10 @@ static void network_property(const char *key, DBusMessageIter *iter,
 {
 	struct supplicant_network *network = user_data;
 
-	if (network->interface == NULL)
+	if (!network->interface)
 		return;
 
-	if (key == NULL) {
+	if (!key) {
 		merge_network(network);
 		return;
 	}
@@ -669,7 +669,7 @@ static void network_property(const char *key, DBusMessageIter *iter,
 		const char *str = NULL;
 
 		dbus_message_iter_get_basic(iter, &str);
-		if (str != NULL)
+		if (str)
 			g_hash_table_replace(network->config_table,
 						g_strdup(key), g_strdup(str));
 	} else
@@ -684,18 +684,18 @@ static void interface_network_added(DBusMessageIter *iter, void *user_data)
 	const char *path = NULL;
 
 	dbus_message_iter_get_basic(iter, &path);
-	if (path == NULL)
+	if (!path)
 		return;
 
 	if (g_strcmp0(path, "/") == 0)
 		return;
 
 	network = g_hash_table_lookup(interface->net_mapping, path);
-	if (network != NULL)
+	if (network)
 		return;
 
 	network = g_try_new0(struct supplicant_network, 1);
-	if (network == NULL)
+	if (!network)
 		return;
 
 	network->interface = interface;
@@ -724,11 +724,11 @@ static void interface_network_removed(DBusMessageIter *iter, void *user_data)
 	const char *path = NULL;
 
 	dbus_message_iter_get_basic(iter, &path);
-	if (path == NULL)
+	if (!path)
 		return;
 
 	network = g_hash_table_lookup(interface->net_mapping, path);
-	if (network == NULL)
+	if (!network)
 		return;
 
 	g_hash_table_remove(interface->net_mapping, path);
@@ -744,7 +744,7 @@ static char *create_name(unsigned char *ssid, int ssid_len)
 	else
 		name = g_try_malloc0(ssid_len + 1);
 
-	if (name == NULL)
+	if (!name)
 		return g_strdup("");
 
 	for (i = 0; i < ssid_len; i++) {
@@ -764,7 +764,7 @@ static char *create_group(struct supplicant_bss *bss)
 	const char *mode, *security;
 
 	str = g_string_sized_new((bss->ssid_len * 2) + 24);
-	if (str == NULL)
+	if (!str)
 		return NULL;
 
 	if (bss->ssid_len > 0 && bss->ssid[0] != '\0') {
@@ -774,11 +774,11 @@ static char *create_group(struct supplicant_bss *bss)
 		g_string_append_printf(str, "hidden");
 
 	mode = mode2string(bss->mode);
-	if (mode != NULL)
+	if (mode)
 		g_string_append_printf(str, "_%s", mode);
 
 	security = security2string(bss->security);
-	if (security != NULL)
+	if (security)
 		g_string_append_printf(str, "_%s", security);
 
 	return g_string_free(str, FALSE);
@@ -791,17 +791,17 @@ static void add_bss_to_network(struct supplicant_bss *bss)
 	char *group;
 
 	group = create_group(bss);
-	if (group == NULL)
+	if (!group)
 		return;
 
 	network = g_hash_table_lookup(interface->network_table, group);
-	if (network != NULL) {
+	if (network) {
 		g_free(group);
 		goto done;
 	}
 
 	network = g_try_new0(struct supplicant_network, 1);
-	if (network == NULL) {
+	if (!network) {
 		g_free(group);
 		return;
 	}
@@ -914,10 +914,10 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 {
 	struct supplicant_bss *bss = user_data;
 
-	if (bss->interface == NULL)
+	if (!bss->interface)
 		return;
 
-	if (key == NULL) {
+	if (!key) {
 		if (bss->ieee8021x)
 			bss->security = SUPPLICANT_SECURITY_IEEE8021X;
 		else if (bss->psk)
@@ -1039,21 +1039,21 @@ static void interface_bss_added(DBusMessageIter *iter, void *user_data)
 	const char *path = NULL;
 
 	dbus_message_iter_get_basic(iter, &path);
-	if (path == NULL)
+	if (!path)
 		return;
 
 	if (g_strcmp0(path, "/") == 0)
 		return;
 
 	network = g_hash_table_lookup(interface->bss_mapping, path);
-	if (network != NULL) {
+	if (network) {
 		bss = g_hash_table_lookup(network->bss_table, path);
-		if (bss != NULL)
+		if (bss)
 			return;
 	}
 
 	bss = g_try_new0(struct supplicant_bss, 1);
-	if (bss == NULL)
+	if (!bss)
 		return;
 
 	bss->interface = interface;
@@ -1078,11 +1078,11 @@ static void interface_bss_removed(DBusMessageIter *iter, void *user_data)
 	const char *path = NULL;
 
 	dbus_message_iter_get_basic(iter, &path);
-	if (path == NULL)
+	if (!path)
 		return;
 
 	network = g_hash_table_lookup(interface->bss_mapping, path);
-	if (network == NULL)
+	if (!network)
 		return;
 
 	g_hash_table_remove(bss_mapping, path);
@@ -1099,10 +1099,10 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 {
 	struct supplicant_interface *interface = user_data;
 
-	if (interface == NULL)
+	if (!interface)
 		return;
 
-	if (key == NULL) {
+	if (!key) {
 		debug_strvalmap("KeyMgmt capability", keymgmt_capa_map,
 						interface->keymgmt_capa);
 		debug_strvalmap("AuthAlg capability", authalg_capa_map,
@@ -1130,7 +1130,7 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		const char *str = NULL;
 
 		dbus_message_iter_get_basic(iter, &str);
-		if (str != NULL)
+		if (str)
 			interface->state = string2state(str);
 
 		DBG("state %s (%d)", str, interface->state);
@@ -1155,19 +1155,19 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		const char *str = NULL;
 
 		dbus_message_iter_get_basic(iter, &str);
-		if (str != NULL)
+		if (str)
 			interface->ifname = g_strdup(str);
 	} else if (g_strcmp0(key, "Driver") == 0) {
 		const char *str = NULL;
 
 		dbus_message_iter_get_basic(iter, &str);
-		if (str != NULL)
+		if (str)
 			interface->driver = g_strdup(str);
 	} else if (g_strcmp0(key, "BridgeIfname") == 0) {
 		const char *str = NULL;
 
 		dbus_message_iter_get_basic(iter, &str);
-		if (str != NULL)
+		if (str)
 			interface->bridge = g_strdup(str);
 	} else if (g_strcmp0(key, "CurrentBSS") == 0) {
 		interface_bss_added(iter, interface);
@@ -1190,7 +1190,7 @@ static struct supplicant_interface *interface_alloc(const char *path)
 	struct supplicant_interface *interface;
 
 	interface = g_try_new0(struct supplicant_interface, 1);
-	if (interface == NULL)
+	if (!interface)
 		return NULL;
 
 	interface->path = g_strdup(path);
@@ -1214,18 +1214,18 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
 	const char *path = NULL;
 
 	dbus_message_iter_get_basic(iter, &path);
-	if (path == NULL)
+	if (!path)
 		return;
 
 	if (g_strcmp0(path, "/") == 0)
 		return;
 
 	interface = g_hash_table_lookup(interface_table, path);
-	if (interface != NULL)
+	if (interface)
 		return;
 
 	interface = interface_alloc(path);
-	if (interface == NULL)
+	if (!interface)
 		return;
 
 	dbus_message_iter_next(iter);
@@ -1246,7 +1246,7 @@ static void interface_removed(DBusMessageIter *iter, void *user_data)
 	const char *path = NULL;
 
 	dbus_message_iter_get_basic(iter, &path);
-	if (path == NULL)
+	if (!path)
 		return;
 
 	g_hash_table_remove(interface_table, path);
@@ -1258,10 +1258,10 @@ static void eap_method(DBusMessageIter *iter, void *user_data)
 	int i;
 
 	dbus_message_iter_get_basic(iter, &str);
-	if (str == NULL)
+	if (!str)
 		return;
 
-	for (i = 0; eap_method_map[i].str != NULL; i++)
+	for (i = 0; eap_method_map[i].str; i++)
 		if (strcmp(str, eap_method_map[i].str) == 0) {
 			eap_methods |= eap_method_map[i].val;
 			break;
@@ -1271,7 +1271,7 @@ static void eap_method(DBusMessageIter *iter, void *user_data)
 static void service_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
-	if (key == NULL) {
+	if (!key) {
 		callback_system_ready();
 		return;
 	}
@@ -1281,7 +1281,7 @@ static void service_property(const char *key, DBusMessageIter *iter,
 		int i;
 
 		dbus_message_iter_get_basic(iter, &str);
-		for (i = 0; debug_strings[i] != NULL; i++)
+		for (i = 0; debug_strings[i]; i++)
 			if (g_strcmp0(debug_strings[i], str) == 0) {
 				debug_level = i;
 				break;
@@ -1318,7 +1318,7 @@ static void signal_name_owner_changed(const char *path, DBusMessageIter *iter)
 		return;
 
 	dbus_message_iter_get_basic(iter, &name);
-	if (name == NULL)
+	if (!name)
 		return;
 
 	if (g_strcmp0(name, SUPPLICANT_SERVICE) != 0)
@@ -1329,7 +1329,7 @@ static void signal_name_owner_changed(const char *path, DBusMessageIter *iter)
 	dbus_message_iter_next(iter);
 	dbus_message_iter_get_basic(iter, &new);
 
-	if (old == NULL || new == NULL)
+	if (!old || !new)
 		return;
 
 	if (strlen(old) > 0 && strlen(new) == 0) {
@@ -1370,7 +1370,7 @@ static void signal_interface_changed(const char *path, DBusMessageIter *iter)
 	struct supplicant_interface *interface;
 
 	interface = g_hash_table_lookup(interface_table, path);
-	if (interface == NULL)
+	if (!interface)
 		return;
 
 	supplicant_dbus_property_foreach(iter, interface_property, interface);
@@ -1382,12 +1382,12 @@ static void signal_scan_done(const char *path, DBusMessageIter *iter)
 	dbus_bool_t success = FALSE;
 
 	interface = g_hash_table_lookup(interface_table, path);
-	if (interface == NULL)
+	if (!interface)
 		return;
 
 	dbus_message_iter_get_basic(iter, &success);
 
-	if (interface->scan_callback != NULL) {
+	if (interface->scan_callback) {
 		int result = 0;
 
 		if (!success)
@@ -1405,7 +1405,7 @@ static void signal_bss_added(const char *path, DBusMessageIter *iter)
 	struct supplicant_interface *interface;
 
 	interface = g_hash_table_lookup(interface_table, path);
-	if (interface == NULL)
+	if (!interface)
 		return;
 
 	interface_bss_added(iter, interface);
@@ -1416,7 +1416,7 @@ static void signal_bss_removed(const char *path, DBusMessageIter *iter)
 	struct supplicant_interface *interface;
 
 	interface = g_hash_table_lookup(interface_table, path);
-	if (interface == NULL)
+	if (!interface)
 		return;
 
 	interface_bss_removed(iter, interface);
@@ -1427,7 +1427,7 @@ static void signal_network_added(const char *path, DBusMessageIter *iter)
 	struct supplicant_interface *interface;
 
 	interface = g_hash_table_lookup(interface_table, path);
-	if (interface == NULL)
+	if (!interface)
 		return;
 
 	interface_network_added(iter, interface);
@@ -1438,7 +1438,7 @@ static void signal_network_removed(const char *path, DBusMessageIter *iter)
 	struct supplicant_interface *interface;
 
 	interface = g_hash_table_lookup(interface_table, path);
-	if (interface == NULL)
+	if (!interface)
 		return;
 
 	interface_network_removed(iter, interface);
@@ -1451,15 +1451,15 @@ static void signal_bss_changed(const char *path, DBusMessageIter *iter)
 	struct supplicant_bss *bss;
 
 	interface = g_hash_table_lookup(bss_mapping, path);
-	if (interface == NULL)
+	if (!interface)
 		return;
 
 	network = g_hash_table_lookup(interface->bss_mapping, path);
-	if (network == NULL)
+	if (!network)
 		return;
 
 	bss = g_hash_table_lookup(network->bss_table, path);
-	if (bss == NULL)
+	if (!bss)
 		return;
 
 	supplicant_dbus_property_foreach(iter, bss_property, bss);
@@ -1497,13 +1497,13 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 	int i;
 
 	path = dbus_message_get_path(message);
-	if (path == NULL)
+	if (!path)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (!dbus_message_iter_init(message, &iter))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	for (i = 0; signal_map[i].interface != NULL; i++) {
+	for (i = 0; signal_map[i].interface; i++) {
 		if (!dbus_message_has_interface(message, signal_map[i].interface))
 			continue;
 
@@ -1539,7 +1539,7 @@ static const char *supplicant_rule6 = "type=signal,"
 int supplicant_register(const struct supplicant_callbacks *callbacks)
 {
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL)
+	if (!connection)
 		return -EIO;
 
 	if (!dbus_connection_add_filter(connection, supplicant_filter, NULL, NULL)) {
@@ -1579,7 +1579,7 @@ int supplicant_register(const struct supplicant_callbacks *callbacks)
 
 void supplicant_unregister(const struct supplicant_callbacks *callbacks)
 {
-	if (connection != NULL) {
+	if (connection) {
 		dbus_bus_remove_match(connection, supplicant_rule6, NULL);
 		dbus_bus_remove_match(connection, supplicant_rule5, NULL);
 		dbus_bus_remove_match(connection, supplicant_rule4, NULL);
@@ -1593,12 +1593,12 @@ void supplicant_unregister(const struct supplicant_callbacks *callbacks)
 						supplicant_filter, NULL);
 	}
 
-	if (bss_mapping != NULL) {
+	if (bss_mapping) {
 		g_hash_table_destroy(bss_mapping);
 		bss_mapping = NULL;
 	}
 
-	if (interface_table != NULL) {
+	if (interface_table) {
 		g_hash_table_destroy(interface_table);
 		interface_table = NULL;
 	}
@@ -1606,7 +1606,7 @@ void supplicant_unregister(const struct supplicant_callbacks *callbacks)
 	if (system_available)
 		callback_system_killed();
 
-	if (connection != NULL) {
+	if (connection) {
 		dbus_connection_unref(connection);
 		connection = NULL;
 	}
@@ -1618,7 +1618,7 @@ void supplicant_unregister(const struct supplicant_callbacks *callbacks)
 static void debug_level_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
-	if (error != NULL)
+	if (error)
 		DBG("debug level failure: %s", error);
 }
 
@@ -1660,8 +1660,8 @@ static void interface_create_property(const char *key, DBusMessageIter *iter,
 	struct interface_create_data *data = user_data;
 	struct supplicant_interface *interface = data->interface;
 
-	if (key == NULL) {
-		if (data->callback != NULL)
+	if (!key) {
+		if (data->callback)
 			data->callback(0, data->interface, data->user_data);
 
 		dbus_free(data);
@@ -1677,13 +1677,13 @@ static void interface_create_result(const char *error,
 	const char *path = NULL;
 	int err;
 
-	if (error != NULL) {
+	if (error) {
 		err = -EIO;
 		goto done;
 	}
 
 	dbus_message_iter_get_basic(iter, &path);
-	if (path == NULL) {
+	if (!path) {
 		err = -EINVAL;
 		goto done;
 	}
@@ -1694,9 +1694,9 @@ static void interface_create_result(const char *error,
 	}
 
 	data->interface = g_hash_table_lookup(interface_table, path);
-	if (data->interface == NULL) {
+	if (!data->interface) {
 		data->interface = interface_alloc(path);
-		if (data->interface == NULL) {
+		if (!data->interface) {
 			err = -ENOMEM;
 			goto done;
 		}
@@ -1709,7 +1709,7 @@ static void interface_create_result(const char *error,
 		return;
 
 done:
-	if (data->callback != NULL)
+	if (data->callback)
 		data->callback(err, NULL, data->user_data);
 
 	dbus_free(data);
@@ -1725,7 +1725,7 @@ static void interface_create_params(DBusMessageIter *iter, void *user_data)
 	supplicant_dbus_dict_append_basic(&dict, "Ifname",
 					DBUS_TYPE_STRING, &data->ifname);
 
-	if (data->driver != NULL)
+	if (data->driver)
 		supplicant_dbus_dict_append_basic(&dict, "Driver",
 					DBUS_TYPE_STRING, &data->driver);
 
@@ -1740,22 +1740,22 @@ static void interface_get_result(const char *error,
 	const char *path = NULL;
 	int err;
 
-	if (error != NULL)
+	if (error)
 		goto create;
 
 	dbus_message_iter_get_basic(iter, &path);
-	if (path == NULL) {
+	if (!path) {
 		err = -EINVAL;
 		goto done;
 	}
 
 	interface = g_hash_table_lookup(interface_table, path);
-	if (interface == NULL) {
+	if (!interface) {
 		err = -ENOENT;
 		goto done;
 	}
 
-	if (data->callback != NULL)
+	if (data->callback)
 		data->callback(0, interface, data->user_data);
 
 	dbus_free(data);
@@ -1777,7 +1777,7 @@ create:
 		return;
 
 done:
-	if (data->callback != NULL)
+	if (data->callback)
 		data->callback(err, NULL, data->user_data);
 
 	dbus_free(data);
@@ -1796,14 +1796,14 @@ int supplicant_interface_create(const char *ifname, const char *driver,
 {
 	struct interface_create_data *data;
 
-	if (ifname == NULL)
+	if (!ifname)
 		return -EINVAL;
 
 	if (!system_available)
 		return -EFAULT;
 
 	data = dbus_malloc0(sizeof(*data));
-	if (data == NULL)
+	if (!data)
 		return -ENOMEM;
 
 	data->ifname = ifname;
@@ -1822,7 +1822,7 @@ int supplicant_interface_remove(struct supplicant_interface *interface,
 			supplicant_interface_remove_callback callback,
 							void *user_data)
 {
-	if (interface == NULL)
+	if (!interface)
 		return -EINVAL;
 
 	if (!system_available)
@@ -1842,8 +1842,8 @@ static void interface_scan_result(const char *error,
 {
 	struct interface_scan_data *data = user_data;
 
-	if (error != NULL) {
-		if (data->callback != NULL)
+	if (error) {
+		if (data->callback)
 			data->callback(-EIO, data->user_data);
 	} else {
 		data->interface->scan_callback = data->callback;
@@ -1872,7 +1872,7 @@ int supplicant_interface_scan(struct supplicant_interface *interface,
 {
 	struct interface_scan_data *data;
 
-	if (interface == NULL)
+	if (!interface)
 		return -EINVAL;
 
 	if (!system_available)
@@ -1882,7 +1882,7 @@ int supplicant_interface_scan(struct supplicant_interface *interface,
 		return -EALREADY;
 
 	data = dbus_malloc0(sizeof(*data));
-	if (data == NULL)
+	if (!data)
 		return -ENOMEM;
 
 	data->interface = interface;
@@ -1905,10 +1905,10 @@ static void interface_disconnect_result(const char *error,
 	struct interface_disconnect_data *data = user_data;
 	int result = 0;
 
-	if (error != NULL)
+	if (error)
 		result = -EIO;
 
-	if (data->callback != NULL)
+	if (data->callback)
 		data->callback(result, data->user_data);
 
 	dbus_free(data);
@@ -1920,14 +1920,14 @@ int supplicant_interface_disconnect(struct supplicant_interface *interface,
 {
 	struct interface_disconnect_data *data;
 
-	if (interface == NULL)
+	if (!interface)
 		return -EINVAL;
 
 	if (!system_available)
 		return -EFAULT;
 
 	data = dbus_malloc0(sizeof(*data));
-	if (data == NULL)
+	if (!data)
 		return -ENOMEM;
 
 	data->callback = callback;

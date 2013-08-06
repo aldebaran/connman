@@ -102,7 +102,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	address = g_dhcp_client_get_address(dhcp_client);
 	printf("address %s\n", address);
-	if (address == NULL)
+	if (!address)
 		return;
 
 	option_value = g_dhcp_client_get_option(dhcp_client, G_DHCP_SUBNET);
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 	printf("Create DHCP client for interface %d\n", index);
 
 	dhcp_client = g_dhcp_client_new(G_DHCP_IPV4, index, &error);
-	if (dhcp_client == NULL) {
+	if (!dhcp_client) {
 		handle_error(error);
 		exit(0);
 	}

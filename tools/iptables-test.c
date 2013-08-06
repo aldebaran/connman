@@ -92,11 +92,11 @@ int main(int argc, char *argv[])
 	}
 
 out:
-	if (table == NULL)
+	if (!table)
 		table = "filter";
 
 	for (i = optind - 1; i < argc; i++) {
-		if (rule != NULL) {
+		if (rule) {
 			tmp = rule;
 			rule = g_strdup_printf("%s %s", rule,  argv[i]);
 			g_free(tmp);

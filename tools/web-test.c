@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 	g_option_context_add_main_entries(context, options, NULL);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
-		if (error != NULL) {
+		if (error) {
 			g_printerr("%s\n", error->message);
 			g_error_free(error);
 		} else
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 	}
 
 	web = g_web_new(index);
-	if (web == NULL) {
+	if (!web) {
 		fprintf(stderr, "Failed to create web service\n");
 		return 1;
 	}
@@ -128,22 +128,22 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	if (option_proxy != NULL) {
+	if (option_proxy) {
 		g_web_set_proxy(web, option_proxy);
 		g_free(option_proxy);
 	}
 
-	if (option_nameserver != NULL) {
+	if (option_nameserver) {
 		g_web_add_nameserver(web, option_nameserver);
 		g_free(option_nameserver);
 	}
 
-	if (option_user_agent != NULL) {
+	if (option_user_agent) {
 		g_web_set_user_agent(web, "%s", option_user_agent);
 		g_free(option_user_agent);
 	}
 
-	if (option_http_version != NULL) {
+	if (option_http_version) {
 		g_web_set_http_version(web, option_http_version);
 		g_free(option_http_version);
 	}

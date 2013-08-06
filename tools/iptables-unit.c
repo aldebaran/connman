@@ -40,14 +40,14 @@ static bool assert_rule(const char *table_name, const char *rule)
 	lines = g_strsplit(output, "\n", 0);
 	g_free(output);
 
-	for (i = 0; lines[i] != NULL; i++) {
+	for (i = 0; lines[i]; i++) {
 		DBG("lines[%02d]: %s\n", i, lines[i]);
 		if (g_strcmp0(lines[i], rule) == 0)
 			break;
 	}
 	g_strfreev(lines);
 
-	if (lines[i] == NULL)
+	if (!lines[i])
 		return false;
 
 	return true;
@@ -408,7 +408,7 @@ static void test_firewall_basic0(void)
 	int err;
 
 	ctx = __connman_firewall_create();
-	g_assert(ctx != NULL);
+	g_assert(ctx);
 
 	err = __connman_firewall_add_rule(ctx, "filter", "INPUT",
 					"-m mark --mark 999 -j LOG");
@@ -437,7 +437,7 @@ static void test_firewall_basic1(void)
 	int err;
 
 	ctx = __connman_firewall_create();
-	g_assert(ctx != NULL);
+	g_assert(ctx);
 
 	err = __connman_firewall_add_rule(ctx, "filter", "INPUT",
 					"-m mark --mark 999 -j LOG");
@@ -462,7 +462,7 @@ static void test_firewall_basic2(void)
 	int err;
 
 	ctx = __connman_firewall_create();
-	g_assert(ctx != NULL);
+	g_assert(ctx);
 
 	err = __connman_firewall_add_rule(ctx, "mangle", "INPUT",
 					"-j CONNMARK --restore-mark");
@@ -513,7 +513,7 @@ int main(int argc, char *argv[])
 	g_option_context_add_main_entries(context, options, NULL);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
-		if (error != NULL) {
+		if (error) {
 			g_printerr("%s\n", error->message);
 			g_error_free(error);
 		} else

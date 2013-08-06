@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 	dbus_error_init(&err);
 
 	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, &err);
-	if (conn == NULL) {
+	if (!conn) {
 		if (dbus_error_is_set(&err)) {
 			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);

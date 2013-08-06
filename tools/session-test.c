@@ -66,7 +66,7 @@ static void test_session_create_no_notify(struct test_fix *fix)
 
 	msg = manager_create_session(fix->session->connection,
 					fix->session->info, "/foo");
-	g_assert(msg != NULL);
+	g_assert(msg);
 	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
 
 	dbus_message_unref(msg);
@@ -81,7 +81,7 @@ static void test_session_destroy_no_notify(struct test_fix *fix)
 	util_session_create(fix, 1);
 
 	msg = manager_destroy_session(fix->session->connection, "/foo");
-	g_assert(msg == NULL);
+	g_assert(!msg);
 
 	util_idle_call(fix, util_quit_loop, util_session_destroy);
 }
@@ -111,7 +111,7 @@ static void test_session_create(struct test_fix *fix)
 	msg = manager_create_session(session->connection,
 					session->info,
 					session->notify_path);
-	g_assert(msg != NULL);
+	g_assert(msg);
 	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
 
 	dbus_message_unref(msg);
@@ -149,7 +149,7 @@ static void test_session_create_already_exists(struct test_fix *fix)
 	msg = manager_create_session(session1->connection,
 					session1->info,
 					session1->notify_path);
-	g_assert(msg == NULL);
+	g_assert(!msg);
 
 	util_session_cleanup(session0);
 
@@ -199,7 +199,7 @@ static void set_session_mode(struct test_fix *fix,
 	DBusMessage *msg;
 
 	msg = manager_set_session_mode(fix->main_connection, enable);
-	g_assert(msg != NULL);
+	g_assert(msg);
 	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
 
 	dbus_message_unref(msg);
@@ -230,7 +230,7 @@ static void test_session_connect(struct test_fix *fix)
 	util_session_init(session);
 
 	msg = session_connect(session->connection, session);
-	g_assert(msg != NULL);
+	g_assert(msg);
 	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
 
 	dbus_message_unref(msg);
@@ -261,7 +261,7 @@ static void test_session_disconnect(struct test_fix *fix)
 	util_session_init(session);
 
 	msg = session_disconnect(session->connection, session);
-	g_assert(msg != NULL);
+	g_assert(msg);
 	dbus_message_unref(msg);
 }
 
@@ -300,12 +300,12 @@ static void test_session_connect_disconnect_notify(struct test_session *session)
 	switch (next_state) {
 	case TEST_SESSION_STATE_1:
 		msg = session_connect(session->connection, session);
-		g_assert(msg != NULL);
+		g_assert(msg);
 		dbus_message_unref(msg);
 		return;
 	case TEST_SESSION_STATE_2:
 		msg = session_disconnect(session->connection, session);
-		g_assert(msg != NULL);
+		g_assert(msg);
 		dbus_message_unref(msg);
 		return;
 	case TEST_SESSION_STATE_3:
@@ -405,14 +405,14 @@ static void test_session_connect_free_ride_notify(struct test_session *session)
 		return;
 	case TEST_SESSION_STATE_1:
 		msg = session_connect(session0->connection, session0);
-		g_assert(msg != NULL);
+		g_assert(msg);
 		dbus_message_unref(msg);
 
 		return;
 
 	case TEST_SESSION_STATE_2:
 		msg = session_disconnect(session0->connection, session0);
-		g_assert(msg != NULL);
+		g_assert(msg);
 		dbus_message_unref(msg);
 
 		return;
@@ -498,7 +498,7 @@ static void policy_allowed_bearers(const char *allowed_bearers)
 
 	uid = getuid();
 	pwd = getpwuid(uid);
-	g_assert(pwd != NULL);
+	g_assert(pwd);
 
 	keyfile = g_key_file_new();
 	g_key_file_set_string(keyfile, "policy_foo", "uid", pwd->pw_name);
@@ -558,7 +558,7 @@ static void test_session_policy_notify(struct test_session *session)
 		policy_allowed_bearers("ethernet");
 
 		msg = session_connect(session->connection, session);
-		g_assert(msg != NULL);
+		g_assert(msg);
 		dbus_message_unref(msg);
 		return;
 	case TEST_SESSION_STATE_2:

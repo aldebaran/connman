@@ -73,7 +73,7 @@ static GSList *session_parse_allowed_bearers(DBusMessageIter *iter)
 		dbus_message_iter_get_basic(&array, &bearer);
 
 		info = g_try_new0(struct test_bearer_info, 1);
-		if (info == NULL) {
+		if (!info) {
 			g_slist_foreach(list, bearer_info_cleanup, NULL);
 			g_slist_free(list);
 
@@ -97,7 +97,7 @@ static DBusMessage *notify_release(DBusConnection *conn,
 
 	LOG("session %p", session);
 
-	if (session->notify != NULL)
+	if (session->notify)
 		session->notify(session);
 
 	return NULL;
@@ -158,7 +158,7 @@ static DBusMessage *notify_update(DBusConnection *conn,
 				const char *val;
 				dbus_message_iter_get_basic(&value, &val);
 
-				if (info->bearer != NULL)
+				if (info->bearer)
 					g_free(info->bearer);
 
 				info->bearer = g_strdup(val);
@@ -167,7 +167,7 @@ static DBusMessage *notify_update(DBusConnection *conn,
 				const char *val;
 				dbus_message_iter_get_basic(&value, &val);
 
-				if (info->name != NULL)
+				if (info->name)
 					g_free(info->name);
 
 				info->name = g_strdup(val);
@@ -176,7 +176,7 @@ static DBusMessage *notify_update(DBusConnection *conn,
 				const char *val;
 				dbus_message_iter_get_basic(&value, &val);
 
-				if (info->interface != NULL)
+				if (info->interface)
 					g_free(info->interface);
 
 				info->interface = g_strdup(val);
@@ -199,7 +199,7 @@ static DBusMessage *notify_update(DBusConnection *conn,
 		dbus_message_iter_next(&array);
 	}
 
-	if (session->notify != NULL)
+	if (session->notify)
 		session->notify(session);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
@@ -239,7 +239,7 @@ static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 	GSList *list;
 
 	for (list = info->allowed_bearers;
-			list != NULL; list = list->next) {
+			list; list = list->next) {
 		struct test_bearer_info *bearer_info = list->data;
 
 		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
@@ -250,7 +250,7 @@ static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 void session_append_settings(DBusMessageIter *dict,
 				struct test_session_info *info)
 {
-	if (info->allowed_bearers == NULL)
+	if (!info->allowed_bearers)
 		return;
 
 	connman_dbus_dict_append_array(dict, "AllowedBearers",
@@ -269,14 +269,14 @@ DBusMessage *session_connect(DBusConnection *connection,
 						session->session_path,
 						CONNMAN_SESSION_INTERFACE,
 							"Connect");
-	if (message == NULL)
+	if (!message)
 		return NULL;
 
 	dbus_error_init(&error);
 
 	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
-	if (reply == NULL) {
+	if (!reply) {
 		if (dbus_error_is_set(&error)) {
 			LOG("%s", error.message);
 			dbus_error_free(&error);
@@ -302,14 +302,14 @@ DBusMessage *session_disconnect(DBusConnection *connection,
 						session->session_path,
 						CONNMAN_SESSION_INTERFACE,
 							"Disconnect");
-	if (message == NULL)
+	if (!message)
 		return NULL;
 
 	dbus_error_init(&error);
 
 	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
-	if (reply == NULL) {
+	if (!reply) {
 		if (dbus_error_is_set(&error)) {
 			LOG("%s", error.message);
 			dbus_error_free(&error);

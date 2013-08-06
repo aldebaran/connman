@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 	printf("Create DHCP server for interface %d\n", index);
 
 	dhcp_server = g_dhcp_server_new(G_DHCP_IPV4, index, &error);
-	if (dhcp_server == NULL) {
+	if (!dhcp_server) {
 		handle_error(error);
 		exit(0);
 	}

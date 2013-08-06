@@ -212,7 +212,7 @@ static void text_handler(GMarkupParseContext *context,
 	struct wispr_msg *msg = user_data;
 	int i;
 
-	if (msg->current_element == NULL)
+	if (!msg->current_element)
 		return;
 
 	for (i = 0; wispr_element_map[i].str; i++) {
@@ -366,7 +366,7 @@ static bool user_input(const char *label, bool hidden,
 	ssize_t len;
 
 	data = g_try_new0(struct user_input_data, 1);
-	if (data == NULL)
+	if (!data)
 		return false;
 
 	data->str = g_string_sized_new(32);
@@ -438,7 +438,7 @@ static void username_callback(const char *value, gpointer user_data)
 	g_free(wispr->username);
 	wispr->username = g_strdup(value);
 
-	if (wispr->password == NULL) {
+	if (!wispr->password) {
 		user_input("Password", true, password_callback, wispr);
 		return;
 	}
@@ -543,17 +543,17 @@ static bool wispr_result(GWebResult *result, gpointer user_data)
 	printf("Response code: %s (%d)\n",
 			response_code_to_string(wispr->msg.response_code),
 						wispr->msg.response_code);
-	if (wispr->msg.access_procedure != NULL)
+	if (wispr->msg.access_procedure)
 		printf("Access procedure: %s\n", wispr->msg.access_procedure);
-	if (wispr->msg.access_location != NULL)
+	if (wispr->msg.access_location)
 		printf("Access location: %s\n", wispr->msg.access_location);
-	if (wispr->msg.location_name != NULL)
+	if (wispr->msg.location_name)
 		printf("Location name: %s\n", wispr->msg.location_name);
-	if (wispr->msg.login_url != NULL)
+	if (wispr->msg.login_url)
 		printf("Login URL: %s\n", wispr->msg.login_url);
-	if (wispr->msg.abort_login_url != NULL)
+	if (wispr->msg.abort_login_url)
 		printf("Abort login URL: %s\n", wispr->msg.abort_login_url);
-	if (wispr->msg.logoff_url != NULL)
+	if (wispr->msg.logoff_url)
 		printf("Logoff URL: %s\n", wispr->msg.logoff_url);
 	printf("\n");
 
@@ -561,13 +561,13 @@ static bool wispr_result(GWebResult *result, gpointer user_data)
 		goto done;
 
 	if (wispr->msg.message_type == 100) {
-		if (wispr->username == NULL) {
+		if (!wispr->username) {
 			user_input("Username", false,
 				   username_callback, wispr);
 			return false;
 		}
 
-		if (wispr->password == NULL) {
+		if (!wispr->password) {
 			user_input("Password", true, password_callback, wispr);
 			return false;
 		}
@@ -648,7 +648,7 @@ int main(int argc, char *argv[])
 	g_option_context_add_main_entries(context, options, NULL);
 
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
-		if (error != NULL) {
+		if (error) {
 			g_printerr("%s\n", error->message);
 			g_error_free(error);
 		} else
@@ -662,7 +662,7 @@ int main(int argc, char *argv[])
 	wispr_msg_init(&wispr.msg);
 
 	wispr.web = g_web_new(index);
-	if (wispr.web == NULL) {
+	if (!wispr.web) {
 		fprintf(stderr, "Failed to create web service\n");
 		return 1;
 	}
@@ -672,7 +672,7 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	if (option_nameserver != NULL) {
+	if (option_nameserver) {
 		g_web_add_nameserver(wispr.web, option_nameserver);
 		g_free(option_nameserver);
 	}
@@ -681,7 +681,7 @@ int main(int argc, char *argv[])
 	g_web_set_user_agent(wispr.web, "SmartClient/%s wispr", VERSION);
 	g_web_set_close_connection(wispr.web, TRUE);
 
-	if (option_url == NULL)
+	if (!option_url)
 		option_url = g_strdup(DEFAULT_URL);
 
 	wispr.username = option_username;
