@@ -138,7 +138,7 @@ static void _debug(GWeb *web, const char *file, const char *caller,
 	va_list ap;
 	int len;
 
-	if (web->debug_func == NULL)
+	if (!web->debug_func)
 		return;
 
 	va_start(ap, format);
@@ -156,7 +156,7 @@ static void free_session(struct web_session *session)
 {
 	GWeb *web;
 
-	if (session == NULL)
+	if (!session)
 		return;
 
 	g_free(session->request);
@@ -171,18 +171,18 @@ static void free_session(struct web_session *session)
 	if (session->send_watch > 0)
 		g_source_remove(session->send_watch);
 
-	if (session->transport_channel != NULL)
+	if (session->transport_channel)
 		g_io_channel_unref(session->transport_channel);
 
 	g_free(session->result.last_key);
 
-	if (session->result.headers != NULL)
+	if (session->result.headers)
 		g_hash_table_destroy(session->result.headers);
 
-	if (session->send_buffer != NULL)
+	if (session->send_buffer)
 		g_string_free(session->send_buffer, TRUE);
 
-	if (session->current_header != NULL)
+	if (session->current_header)
 		g_string_free(session->current_header, TRUE);
 
 	g_free(session->receive_buffer);
@@ -191,7 +191,7 @@ static void free_session(struct web_session *session)
 
 	g_free(session->host);
 	g_free(session->address);
-	if (session->addr != NULL)
+	if (session->addr)
 		freeaddrinfo(session->addr);
 
 	g_free(session);
@@ -217,7 +217,7 @@ GWeb *g_web_new(int index)
 		return NULL;
 
 	web = g_try_new0(GWeb, 1);
-	if (web == NULL)
+	if (!web)
 		return NULL;
 
 	web->ref_count = 1;
@@ -230,7 +230,7 @@ GWeb *g_web_new(int index)
 	web->session_list = NULL;
 
 	web->resolv = g_resolv_new(index);
-	if (web->resolv == NULL) {
+	if (!web->resolv) {
 		g_free(web);
 		return NULL;
 	}
@@ -244,7 +244,7 @@ GWeb *g_web_new(int index)
 
 GWeb *g_web_ref(GWeb *web)
 {
-	if (web == NULL)
+	if (!web)
 		return NULL;
 
 	__sync_fetch_and_add(&web->ref_count, 1);
@@ -254,7 +254,7 @@ GWeb *g_web_ref(GWeb *web)
 
 void g_web_unref(GWeb *web)
 {
-	if (web == NULL)
+	if (!web)
 		return;
 
 	if (__sync_fetch_and_sub(&web->ref_count, 1) != 1)
@@ -281,7 +281,7 @@ bool g_web_supports_tls(void)
 
 void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data)
 {
-	if (web == NULL)
+	if (!web)
 		return;
 
 	web->debug_func = func;
@@ -292,12 +292,12 @@ void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data)
 
 bool g_web_set_proxy(GWeb *web, const char *proxy)
 {
-	if (web == NULL)
+	if (!web)
 		return false;
 
 	g_free(web->proxy);
 
-	if (proxy == NULL) {
+	if (!proxy) {
 		web->proxy = NULL;
 		debug(web, "clearing proxy");
 	} else {
@@ -310,7 +310,7 @@ bool g_web_set_proxy(GWeb *web, const char *proxy)
 
 bool g_web_set_address_family(GWeb *web, int family)
 {
-	if (web == NULL)
+	if (!web)
 		return false;
 
 	if (family != AF_UNSPEC && family != AF_INET && family != AF_INET6)
@@ -325,7 +325,7 @@ bool g_web_set_address_family(GWeb *web, int family)
 
 bool g_web_add_nameserver(GWeb *web, const char *address)
 {
-	if (web == NULL)
+	if (!web)
 		return false;
 
 	g_resolv_add_nameserver(web->resolv, address, 53, 0);
@@ -337,7 +337,7 @@ static bool set_accept_option(GWeb *web, const char *format, va_list args)
 {
 	g_free(web->accept_option);
 
-	if (format == NULL) {
+	if (!format) {
 		web->accept_option = NULL;
 		debug(web, "clearing accept option");
 	} else {
@@ -353,7 +353,7 @@ bool g_web_set_accept(GWeb *web, const char *format, ...)
 	va_list args;
 	bool result;
 
-	if (web == NULL)
+	if (!web)
 		return false;
 
 	va_start(args, format);
@@ -367,7 +367,7 @@ static bool set_user_agent(GWeb *web, const char *format, va_list args)
 {
 	g_free(web->user_agent);
 
-	if (format == NULL) {
+	if (!format) {
 		web->user_agent = NULL;
 		debug(web, "clearing user agent");
 	} else {
@@ -383,7 +383,7 @@ bool g_web_set_user_agent(GWeb *web, const char *format, ...)
 	va_list args;
 	bool result;
 
-	if (web == NULL)
+	if (!web)
 		return false;
 
 	va_start(args, format);
@@ -395,7 +395,7 @@ bool g_web_set_user_agent(GWeb *web, const char *format, ...)
 
 bool g_web_set_ua_profile(GWeb *web, const char *profile)
 {
-	if (web == NULL)
+	if (!web)
 		return false;
 
 	g_free(web->user_agent_profile);
@@ -408,12 +408,12 @@ bool g_web_set_ua_profile(GWeb *web, const char *profile)
 
 bool g_web_set_http_version(GWeb *web, const char *version)
 {
-	if (web == NULL)
+	if (!web)
 		return false;
 
 	g_free(web->http_version);
 
-	if (version == NULL) {
+	if (!version) {
 		web->http_version = NULL;
 		debug(web, "clearing HTTP version");
 	} else {
@@ -426,7 +426,7 @@ bool g_web_set_http_version(GWeb *web, const char *version)
 
 void g_web_set_close_connection(GWeb *web, bool enabled)
 {
-	if (web == NULL)
+	if (!web)
 		return;
 
 	web->close_connection = enabled;
@@ -434,7 +434,7 @@ void g_web_set_close_connection(GWeb *web, bool enabled)
 
 bool g_web_get_close_connection(GWeb *web)
 {
-	if (web == NULL)
+	if (!web)
 		return false;
 
 	return web->close_connection;
@@ -443,7 +443,7 @@ bool g_web_get_close_connection(GWeb *web)
 static inline void call_result_func(struct web_session *session, guint16 status)
 {
 
-	if (session->result_func == NULL)
+	if (!session->result_func)
 		return;
 
 	if (status != 0)
@@ -455,7 +455,7 @@ static inline void call_result_func(struct web_session *session, guint16 status)
 
 static inline void call_route_func(struct web_session *session)
 {
-	if (session->route_func != NULL)
+	if (session->route_func)
 		session->route_func(session->address, session->addr->ai_family,
 				session->web->index, session->user_data);
 }
@@ -466,7 +466,7 @@ static bool process_send_buffer(struct web_session *session)
 	gsize count, bytes_written;
 	GIOStatus status;
 
-	if (session == NULL)
+	if (!session)
 		return false;
 
 	buf = session->send_buffer;
@@ -538,7 +538,7 @@ static void process_next_chunk(struct web_session *session)
 	const guint8 *body;
 	gsize length;
 
-	if (session->input_func == NULL) {
+	if (!session->input_func) {
 		session->more_data = false;
 		return;
 	}
@@ -568,12 +568,12 @@ static void start_request(struct web_session *session)
 
 	g_string_truncate(buf, 0);
 
-	if (session->web->http_version == NULL)
+	if (!session->web->http_version)
 		version = "1.1";
 	else
 		version = session->web->http_version;
 
-	if (session->content_type == NULL)
+	if (!session->content_type)
 		g_string_append_printf(buf, "GET %s HTTP/%s\r\n",
 						session->request, version);
 	else
@@ -582,23 +582,23 @@ static void start_request(struct web_session *session)
 
 	g_string_append_printf(buf, "Host: %s\r\n", session->host);
 
-	if (session->web->user_agent != NULL)
+	if (session->web->user_agent)
 		g_string_append_printf(buf, "User-Agent: %s\r\n",
 						session->web->user_agent);
 
-	if (session->web->user_agent_profile != NULL) {
+	if (session->web->user_agent_profile) {
 		g_string_append_printf(buf, "x-wap-profile: %s\r\n",
 				       session->web->user_agent_profile);
 	}
 
-	if (session->web->accept_option != NULL)
+	if (session->web->accept_option)
 		g_string_append_printf(buf, "Accept: %s\r\n",
 						session->web->accept_option);
 
-	if (session->content_type != NULL) {
+	if (session->content_type) {
 		g_string_append_printf(buf, "Content-Type: %s\r\n",
 							session->content_type);
-		if (session->input_func == NULL) {
+		if (!session->input_func) {
 			session->more_data = false;
 			length = session->length;
 		} else
@@ -616,7 +616,7 @@ static void start_request(struct web_session *session)
 
 	g_string_append(buf, "\r\n");
 
-	if (session->content_type != NULL && length > 0) {
+	if (session->content_type && length > 0) {
 		if (session->more_data) {
 			g_string_append_printf(buf, "%zx\r\n", length);
 			g_string_append_len(buf, (char *) body, length);
@@ -672,7 +672,7 @@ static int decode_chunked(struct web_session *session,
 		switch (session->chunck_state) {
 		case CHUNK_SIZE:
 			pos = memchr(ptr, '\n', len);
-			if (pos == NULL) {
+			if (!pos) {
 				g_string_append_len(session->current_header,
 						(gchar *) ptr, len);
 				return 0;
@@ -803,7 +803,7 @@ static void handle_multi_line(struct web_session *session)
 
 	value = g_hash_table_lookup(session->result.headers,
 					session->result.last_key);
-	if (value != NULL) {
+	if (value) {
 		g_string_insert(session->current_header, 0, value);
 
 		str = session->current_header->str;
@@ -825,7 +825,7 @@ static void add_header_field(struct web_session *session)
 	str = session->current_header->str;
 
 	pos = memchr(str, ':', session->current_header->len);
-	if (pos != NULL) {
+	if (pos) {
 		*pos = '\0';
 		pos++;
 
@@ -840,7 +840,7 @@ static void add_header_field(struct web_session *session)
 		g_string_erase(session->current_header, 0, count);
 
 		value = g_hash_table_lookup(session->result.headers, key);
-		if (value != NULL) {
+		if (value) {
 			g_string_insert_c(session->current_header, 0, ' ');
 			g_string_insert_c(session->current_header, 0, ';');
 
@@ -903,7 +903,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 		char *str;
 
 		pos = memchr(ptr, '\n', bytes_read);
-		if (pos == NULL) {
+		if (!pos) {
 			g_string_append_len(session->current_header,
 						(gchar *) ptr, bytes_read);
 			return TRUE;
@@ -932,9 +932,9 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 			val = g_hash_table_lookup(session->result.headers,
 							"Transfer-Encoding");
-			if (val != NULL) {
+			if (val) {
 				val = g_strrstr(val, "chunked");
-				if (val != NULL) {
+				if (val) {
 					session->result.use_chunk = true;
 
 					session->chunck_state = CHUNK_SIZE;
@@ -981,11 +981,11 @@ static int bind_to_address(int sk, const char *interface, int family)
 	if (getifaddrs(&ifaddr_list) < 0)
 		return err;
 
-	for (ifaddr = ifaddr_list; ifaddr != NULL; ifaddr = ifaddr->ifa_next) {
+	for (ifaddr = ifaddr_list; ifaddr; ifaddr = ifaddr->ifa_next) {
 		if (g_strcmp0(ifaddr->ifa_name, interface) != 0)
 			continue;
 
-		if (ifaddr->ifa_addr == NULL ||
+		if (!ifaddr->ifa_addr ||
 				ifaddr->ifa_addr->sa_family != family)
 			continue;
 
@@ -1013,7 +1013,7 @@ static inline int bind_socket(int sk, int index, int family)
 	char interface[IF_NAMESIZE];
 	int err;
 
-	if (if_indextoname(index, interface) == NULL)
+	if (!if_indextoname(index, interface))
 		return -1;
 
 	err = setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
@@ -1051,7 +1051,7 @@ static int connect_session_transport(struct web_session *session)
 		session->transport_channel = g_io_channel_unix_new(sk);
 	}
 
-	if (session->transport_channel == NULL) {
+	if (!session->transport_channel) {
 		debug(session->web, "channel missing");
 		close(sk);
 		return -ENOMEM;
@@ -1106,11 +1106,11 @@ static int parse_url(struct web_session *session,
 	char *scheme, *host, *port, *path;
 
 	scheme = g_strdup(url);
-	if (scheme == NULL)
+	if (!scheme)
 		return -EINVAL;
 
 	host = strstr(scheme, "://");
-	if (host != NULL) {
+	if (host) {
 		*host = '\0';
 		host += 3;
 
@@ -1129,16 +1129,16 @@ static int parse_url(struct web_session *session,
 	}
 
 	path = strchr(host, '/');
-	if (path != NULL)
+	if (path)
 		*(path++) = '\0';
 
-	if (proxy == NULL)
+	if (!proxy)
 		session->request = g_strdup_printf("/%s", path ? path : "");
 	else
 		session->request = g_strdup(url);
 
 	port = strrchr(host, ':');
-	if (port != NULL) {
+	if (port) {
 		char *end;
 		int tmp = strtol(port + 1, &end, 10);
 
@@ -1147,7 +1147,7 @@ static int parse_url(struct web_session *session,
 			session->port = tmp;
 		}
 
-		if (proxy == NULL)
+		if (!proxy)
 			session->host = g_strdup(host);
 		else
 			session->host = g_strdup_printf("%s:%u", host, tmp);
@@ -1156,15 +1156,15 @@ static int parse_url(struct web_session *session,
 
 	g_free(scheme);
 
-	if (proxy == NULL)
+	if (!proxy)
 		return 0;
 
 	scheme = g_strdup(proxy);
-	if (scheme == NULL)
+	if (!scheme)
 		return -EINVAL;
 
 	host = strstr(proxy, "://");
-	if (host != NULL) {
+	if (host) {
 		*host = '\0';
 		host += 3;
 
@@ -1176,11 +1176,11 @@ static int parse_url(struct web_session *session,
 		host = scheme;
 
 	path = strchr(host, '/');
-	if (path != NULL)
+	if (path)
 		*(path++) = '\0';
 
 	port = strrchr(host, ':');
-	if (port != NULL) {
+	if (port) {
 		char *end;
 		int tmp = strtol(port + 1, &end, 10);
 
@@ -1205,7 +1205,7 @@ static void resolv_result(GResolvResultStatus status,
 	char *port;
 	int ret;
 
-	if (results == NULL || results[0] == NULL) {
+	if (!results || !results[0]) {
 		call_result_func(session, 404);
 		return;
 	}
@@ -1216,7 +1216,7 @@ static void resolv_result(GResolvResultStatus status,
 	hints.ai_flags = AI_NUMERICHOST;
 	hints.ai_family = session->web->family;
 
-	if (session->addr != NULL) {
+	if (session->addr) {
 		freeaddrinfo(session->addr);
 		session->addr = NULL;
 	}
@@ -1224,7 +1224,7 @@ static void resolv_result(GResolvResultStatus status,
 	port = g_strdup_printf("%u", session->port);
 	ret = getaddrinfo(results[0], port, &hints, &session->addr);
 	g_free(port);
-	if (ret != 0 || session->addr == NULL) {
+	if (ret != 0 || !session->addr) {
 		call_result_func(session, 400);
 		return;
 	}
@@ -1245,13 +1245,13 @@ static guint do_request(GWeb *web, const char *url,
 {
 	struct web_session *session;
 
-	if (web == NULL || url == NULL)
+	if (!web || !url)
 		return 0;
 
 	debug(web, "request %s", url);
 
 	session = g_try_new0(struct web_session, 1);
-	if (session == NULL)
+	if (!session)
 		return 0;
 
 	if (parse_url(session, url, web->proxy) < 0) {
@@ -1265,7 +1265,7 @@ static guint do_request(GWeb *web, const char *url,
 	debug(web, "flags %lu", session->flags);
 	debug(web, "request %s", session->request);
 
-	if (type != NULL) {
+	if (type) {
 		session->content_type = g_strdup(type);
 
 		debug(web, "content-type %s", session->content_type);
@@ -1282,14 +1282,14 @@ static guint do_request(GWeb *web, const char *url,
 	session->user_data = user_data;
 
 	session->receive_buffer = g_try_malloc(DEFAULT_BUFFER_SIZE);
-	if (session->receive_buffer == NULL) {
+	if (!session->receive_buffer) {
 		free_session(session);
 		return 0;
 	}
 
 	session->result.headers = g_hash_table_new_full(g_str_hash, g_str_equal,
 							g_free, g_free);
-	if (session->result.headers == NULL) {
+	if (!session->result.headers) {
 		free_session(session);
 		return 0;
 	}
@@ -1300,7 +1300,7 @@ static guint do_request(GWeb *web, const char *url,
 	session->header_done = false;
 	session->body_done = false;
 
-	if (session->address == NULL && inet_aton(session->host, NULL) == 0) {
+	if (!session->address && inet_aton(session->host, NULL) == 0) {
 		session->resolv_action = g_resolv_lookup_hostname(web->resolv,
 					session->host, resolv_result, session);
 		if (session->resolv_action == 0) {
@@ -1312,14 +1312,14 @@ static guint do_request(GWeb *web, const char *url,
 		char *port;
 		int ret;
 
-		if (session->address == NULL)
+		if (!session->address)
 			session->address = g_strdup(session->host);
 
 		memset(&hints, 0, sizeof(struct addrinfo));
 		hints.ai_flags = AI_NUMERICHOST;
 		hints.ai_family = session->web->family;
 
-		if (session->addr != NULL) {
+		if (session->addr) {
 			freeaddrinfo(session->addr);
 			session->addr = NULL;
 		}
@@ -1328,7 +1328,7 @@ static guint do_request(GWeb *web, const char *url,
 		ret = getaddrinfo(session->address, port, &hints,
 							&session->addr);
 		g_free(port);
-		if (ret != 0 || session->addr == NULL) {
+		if (ret != 0 || !session->addr) {
 			free_session(session);
 			return 0;
 		}
@@ -1382,7 +1382,7 @@ guint g_web_request_post_file(GWeb *web, const char *url,
 
 bool g_web_cancel_request(GWeb *web, guint id)
 {
-	if (web == NULL)
+	if (!web)
 		return false;
 
 	return true;
@@ -1390,7 +1390,7 @@ bool g_web_cancel_request(GWeb *web, guint id)
 
 guint16 g_web_result_get_status(GWebResult *result)
 {
-	if (result == NULL)
+	if (!result)
 		return 0;
 
 	return result->status;
@@ -1399,15 +1399,15 @@ guint16 g_web_result_get_status(GWebResult *result)
 bool g_web_result_get_chunk(GWebResult *result,
 				const guint8 **chunk, gsize *length)
 {
-	if (result == NULL)
+	if (!result)
 		return false;
 
-	if (chunk == NULL)
+	if (!chunk)
 		return false;
 
 	*chunk = result->buffer;
 
-	if (length != NULL)
+	if (length)
 		*length = result->length;
 
 	return true;
@@ -1416,15 +1416,15 @@ bool g_web_result_get_chunk(GWebResult *result,
 bool g_web_result_get_header(GWebResult *result,
 				const char *header, const char **value)
 {
-	if (result == NULL)
+	if (!result)
 		return false;
 
-	if (value == NULL)
+	if (!value)
 		return false;
 
 	*value = g_hash_table_lookup(result->headers, header);
 
-	if (*value == NULL)
+	if (!*value)
 		return false;
 
 	return true;
@@ -1449,7 +1449,7 @@ GWebParser *g_web_parser_new(const char *begin, const char *end,
 	GWebParser *parser;
 
 	parser = g_try_new0(GWebParser, 1);
-	if (parser == NULL)
+	if (!parser)
 		return NULL;
 
 	parser->ref_count = 1;
@@ -1457,7 +1457,7 @@ GWebParser *g_web_parser_new(const char *begin, const char *end,
 	parser->begin_token = g_strdup(begin);
 	parser->end_token = g_strdup(end);
 
-	if (parser->begin_token == NULL) {
+	if (!parser->begin_token) {
 		g_free(parser);
 		return NULL;
 	}
@@ -1477,7 +1477,7 @@ GWebParser *g_web_parser_new(const char *begin, const char *end,
 
 GWebParser *g_web_parser_ref(GWebParser *parser)
 {
-	if (parser == NULL)
+	if (!parser)
 		return NULL;
 
 	__sync_fetch_and_add(&parser->ref_count, 1);
@@ -1487,7 +1487,7 @@ GWebParser *g_web_parser_ref(GWebParser *parser)
 
 void g_web_parser_unref(GWebParser *parser)
 {
-	if (parser == NULL)
+	if (!parser)
 		return;
 
 	if (__sync_fetch_and_sub(&parser->ref_count, 1) != 1)
@@ -1505,7 +1505,7 @@ void g_web_parser_feed_data(GWebParser *parser,
 {
 	const guint8 *ptr = data;
 
-	if (parser == NULL)
+	if (!parser)
 		return;
 
 	while (length > 0) {
@@ -1515,7 +1515,7 @@ void g_web_parser_feed_data(GWebParser *parser,
 			guint8 *pos;
 
 			pos = memchr(ptr, chr, length);
-			if (pos == NULL) {
+			if (!pos) {
 				if (parser->intoken)
 					g_string_append_len(parser->content,
 							(gchar *) ptr, length);
@@ -1577,6 +1577,6 @@ void g_web_parser_feed_data(GWebParser *parser,
 
 void g_web_parser_end_data(GWebParser *parser)
 {
-	if (parser == NULL)
+	if (!parser)
 		return;
 }

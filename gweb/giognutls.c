@@ -309,7 +309,7 @@ static gboolean g_io_gnutls_dispatch(GSource *source, GSourceFunc callback,
 
 	DBG("source %p condition %u", source, condition);
 
-	if (func == NULL)
+	if (!func)
 		return FALSE;
 
 	return func(watch->channel, condition & watch->condition, user_data);
