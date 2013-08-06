@@ -142,9 +142,9 @@ static int enable_return(DBusMessageIter *iter, const char *error,
 	else
 		str = tech;
 
-	if (!error) {
+	if (!error)
 		fprintf(stdout, "Enabled %s\n", str);
-	} else
+	else
 		fprintf(stderr, "Error %s: %s\n", str, error);
 
 	g_free(user_data);
@@ -191,9 +191,9 @@ static int disable_return(DBusMessageIter *iter, const char *error,
 	else
 		str = tech;
 
-	if (!error) {
+	if (!error)
 		fprintf(stdout, "Disabled %s\n", str);
-	} else
+	else
 		fprintf(stderr, "Error %s: %s\n", str, error);
 
 	g_free(user_data);
