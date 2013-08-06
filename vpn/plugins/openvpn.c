@@ -186,20 +186,14 @@ static int ov_notify(DBusMessage *msg, struct vpn_provider *provider)
 
 		DBG("%s = %s", key, value);
 
-		if (!strcmp(key, "trusted_ip")) {
-			vpn_provider_set_string(provider, "Gateway", value);
+		if (!strcmp(key, "trusted_ip"))
 			gateway = g_strdup(value);
-		}
 
-		if (!strcmp(key, "ifconfig_local")) {
-			vpn_provider_set_string(provider, "Address", value);
+		if (!strcmp(key, "ifconfig_local"))
 			address = g_strdup(value);
-		}
 
-		if (!strcmp(key, "ifconfig_remote")) {
-			vpn_provider_set_string(provider, "Peer", value);
+		if (!strcmp(key, "ifconfig_remote"))
 			peer = g_strdup(value);
-		}
 
 		if (g_str_has_prefix(key, "route_"))
 			vpn_provider_append_route(provider, key, value);
