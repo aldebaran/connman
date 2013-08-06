@@ -53,22 +53,22 @@ void __connman_provider_append_properties(struct connman_provider *provider,
 {
 	const char *host, *domain, *type;
 
-	if (provider->driver == NULL || provider->driver->get_property == NULL)
+	if (!provider->driver || !provider->driver->get_property)
 		return;
 
 	host = provider->driver->get_property(provider, "Host");
 	domain = provider->driver->get_property(provider, "Domain");
 	type = provider->driver->get_property(provider, "Type");
 
-	if (host != NULL)
+	if (host)
 		connman_dbus_dict_append_basic(iter, "Host",
 					DBUS_TYPE_STRING, &host);
 
-	if (domain != NULL)
+	if (domain)
 		connman_dbus_dict_append_basic(iter, "Domain",
 					DBUS_TYPE_STRING, &domain);
 
-	if (type != NULL)
+	if (type)
 		connman_dbus_dict_append_basic(iter, "Type", DBUS_TYPE_STRING,
 						 &type);
 }
@@ -87,7 +87,7 @@ connman_provider_ref_debug(struct connman_provider *provider,
 
 static void provider_remove(struct connman_provider *provider)
 {
-	if (provider->driver != NULL) {
+	if (provider->driver) {
 		provider->driver->remove(provider);
 		provider->driver = NULL;
 	}
@@ -131,12 +131,12 @@ int connman_provider_disconnect(struct connman_provider *provider)
 
 	DBG("provider %p", provider);
 
-	if (provider->driver != NULL && provider->driver->disconnect != NULL)
+	if (provider->driver && provider->driver->disconnect)
 		err = provider->driver->disconnect(provider);
 	else
 		return -EOPNOTSUPP;
 
-	if (provider->vpn_service != NULL)
+	if (provider->vpn_service)
 		provider_indicate_state(provider,
 					CONNMAN_SERVICE_STATE_DISCONNECT);
 
@@ -169,7 +169,7 @@ int __connman_provider_connect(struct connman_provider *provider)
 
 	DBG("provider %p", provider);
 
-	if (provider->driver != NULL && provider->driver->connect != NULL)
+	if (provider->driver && provider->driver->connect)
 		err = provider->driver->connect(provider);
 	else
 		return -EOPNOTSUPP;
@@ -200,7 +200,7 @@ int __connman_provider_remove_by_path(const char *path)
 		const char *srv_path;
 		provider = value;
 
-		if (provider->vpn_service == NULL)
+		if (!provider->vpn_service)
 			continue;
 
 		srv_path = __connman_service_get_path(provider->vpn_service);
@@ -228,13 +228,13 @@ static int set_connected(struct connman_provider *provider,
 	struct connman_service *service = provider->vpn_service;
 	struct connman_ipconfig *ipconfig;
 
-	if (service == NULL)
+	if (!service)
 		return -ENODEV;
 
 	ipconfig = __connman_service_get_ipconfig(service, provider->family);
 
 	if (connected) {
-		if (ipconfig == NULL) {
+		if (!ipconfig) {
 			provider_indicate_state(provider,
 						CONNMAN_SERVICE_STATE_FAILURE);
 			return -EIO;
@@ -246,12 +246,12 @@ static int set_connected(struct connman_provider *provider,
 		provider_indicate_state(provider,
 					CONNMAN_SERVICE_STATE_READY);
 
-		if (provider->driver != NULL && provider->driver->set_routes)
+		if (provider->driver && provider->driver->set_routes)
 			provider->driver->set_routes(provider,
 						CONNMAN_PROVIDER_ROUTE_ALL);
 
 	} else {
-		if (ipconfig != NULL) {
+		if (ipconfig) {
 			provider_indicate_state(provider,
 					CONNMAN_SERVICE_STATE_DISCONNECT);
 			__connman_ipconfig_gateway_remove(ipconfig);
@@ -267,7 +267,7 @@ static int set_connected(struct connman_provider *provider,
 int connman_provider_set_state(struct connman_provider *provider,
 					enum connman_provider_state state)
 {
-	if (provider == NULL || provider->vpn_service == NULL)
+	if (!provider || !provider->vpn_service)
 		return -EINVAL;
 
 	switch (state) {
@@ -317,7 +317,7 @@ int connman_provider_indicate_error(struct connman_provider *provider,
 
 int connman_provider_create_service(struct connman_provider *provider)
 {
-	if (provider->vpn_service != NULL) {
+	if (provider->vpn_service) {
 		bool connected;
 
 		connected = __connman_service_is_connected_state(
@@ -336,7 +336,7 @@ int connman_provider_create_service(struct connman_provider *provider)
 	provider->vpn_service =
 		__connman_service_create_from_provider(provider);
 
-	if (provider->vpn_service == NULL) {
+	if (!provider->vpn_service) {
 		connman_warn("service creation failed for provider %s",
 			provider->identifier);
 
@@ -350,10 +350,10 @@ int connman_provider_create_service(struct connman_provider *provider)
 int connman_provider_set_immutable(struct connman_provider *provider,
 						bool immutable)
 {
-	if (provider == NULL)
+	if (!provider)
 		return -EINVAL;
 
-	if (provider->vpn_service == NULL)
+	if (!provider->vpn_service)
 		return -ESRCH;
 
 	return __connman_service_set_immutable(provider->vpn_service,
@@ -381,7 +381,7 @@ static void connection_ready(DBusMessage *msg, int error_code, void *user_data)
 		struct connman_provider *provider;
 
 		provider = provider_lookup(identifier);
-		if (provider == NULL) {
+		if (!provider) {
 			reply = __connman_error_failed(msg, -EINVAL);
 			g_dbus_send_message(connection, reply);
 			return;
@@ -399,11 +399,11 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 {
 	struct connman_provider_driver *driver;
 
-	if (driver_list == NULL)
+	if (!driver_list)
 		return -EINVAL;
 
 	driver = driver_list->data;
-	if (driver == NULL || driver->create == NULL)
+	if (!driver || !driver->create)
 		return -EINVAL;
 
 	DBG("msg %p", msg);
@@ -413,7 +413,7 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 
 const char *__connman_provider_get_ident(struct connman_provider *provider)
 {
-	if (provider == NULL)
+	if (!provider)
 		return NULL;
 
 	return provider->identifier;
@@ -422,7 +422,7 @@ const char *__connman_provider_get_ident(struct connman_provider *provider)
 int connman_provider_set_string(struct connman_provider *provider,
 					const char *key, const char *value)
 {
-	if (provider->driver != NULL && provider->driver->set_property)
+	if (provider->driver && provider->driver->set_property)
 		return provider->driver->set_property(provider, key, value);
 
 	return 0;
@@ -431,7 +431,7 @@ int connman_provider_set_string(struct connman_provider *provider,
 const char *connman_provider_get_string(struct connman_provider *provider,
 							const char *key)
 {
-	if (provider->driver != NULL && provider->driver->get_property)
+	if (provider->driver && provider->driver->get_property)
 		return provider->driver->get_property(provider, key);
 
 	return NULL;
@@ -440,10 +440,10 @@ const char *connman_provider_get_string(struct connman_provider *provider,
 bool
 __connman_provider_check_routes(struct connman_provider *provider)
 {
-	if (provider == NULL)
+	if (!provider)
 		return false;
 
-	if (provider->driver != NULL && provider->driver->check_routes)
+	if (provider->driver && provider->driver->check_routes)
 		return provider->driver->check_routes(provider);
 
 	return false;
@@ -466,16 +466,16 @@ void connman_provider_set_index(struct connman_provider *provider, int index)
 
 	DBG("");
 
-	if (service == NULL)
+	if (!service)
 		return;
 
 	ipconfig = __connman_service_get_ip4config(service);
 
-	if (ipconfig == NULL) {
+	if (!ipconfig) {
 		connman_service_create_ip4config(service, index);
 
 		ipconfig = __connman_service_get_ip4config(service);
-		if (ipconfig == NULL) {
+		if (!ipconfig) {
 			DBG("Couldnt create ipconfig");
 			goto done;
 		}
@@ -486,11 +486,11 @@ void connman_provider_set_index(struct connman_provider *provider, int index)
 
 	ipconfig = __connman_service_get_ip6config(service);
 
-	if (ipconfig == NULL) {
+	if (!ipconfig) {
 		connman_service_create_ip6config(service, index);
 
 		ipconfig = __connman_service_get_ip6config(service);
-		if (ipconfig == NULL) {
+		if (!ipconfig) {
 			DBG("Couldnt create ipconfig for IPv6");
 			goto done;
 		}
@@ -515,7 +515,7 @@ int connman_provider_set_ipaddress(struct connman_provider *provider,
 
 	ipconfig = __connman_service_get_ipconfig(provider->vpn_service,
 							ipaddress->family);
-	if (ipconfig == NULL)
+	if (!ipconfig)
 		return -EINVAL;
 
 	provider->family = ipaddress->family;
@@ -560,10 +560,10 @@ int connman_provider_set_nameservers(struct connman_provider *provider,
 
 	__connman_service_nameserver_clear(provider->vpn_service);
 
-	if (nameservers == NULL)
+	if (!nameservers)
 		return 0;
 
-	for (i = 0; nameservers[i] != NULL; i++)
+	for (i = 0; nameservers[i]; i++)
 		__connman_service_nameserver_append(provider->vpn_service,
 						nameservers[i], false);
 
@@ -576,7 +576,7 @@ static void unregister_provider(gpointer data)
 
 	DBG("provider %p service %p", provider, provider->vpn_service);
 
-	if (provider->vpn_service != NULL) {
+	if (provider->vpn_service) {
 		connman_service_unref(provider->vpn_service);
 		provider->vpn_service = NULL;
 	}
@@ -642,7 +642,7 @@ static struct connman_provider *provider_new(void)
 	struct connman_provider *provider;
 
 	provider = g_try_new0(struct connman_provider, 1);
-	if (provider == NULL)
+	if (!provider)
 		return NULL;
 
 	provider->refcount = 1;
@@ -658,11 +658,11 @@ struct connman_provider *connman_provider_get(const char *identifier)
 	struct connman_provider *provider;
 
 	provider = g_hash_table_lookup(provider_hash, identifier);
-	if (provider != NULL)
+	if (provider)
 		return provider;
 
 	provider = provider_new();
-	if (provider == NULL)
+	if (!provider)
 		return NULL;
 
 	DBG("provider %p", provider);
@@ -702,7 +702,7 @@ static void provider_service_changed(struct connman_service *service,
 	struct connman_provider *provider;
 	int vpn_index, service_index;
 
-	if (service == NULL)
+	if (!service)
 		return;
 
 	switch (state) {
@@ -730,7 +730,7 @@ static void provider_service_changed(struct connman_service *service,
 		return;
 
 	provider = provider_get(vpn_index);
-	if (provider == NULL)
+	if (!provider)
 		return;
 
 	DBG("disconnect %p index %d", provider, vpn_index);

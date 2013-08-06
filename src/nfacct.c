@@ -118,7 +118,7 @@ static void nfacct_handle_enable_error(struct nfacct_context *ctx,
 
 	DBG("");
 
-	for (list = ctx->rules; list != NULL; list = list->next) {
+	for (list = ctx->rules; list; list = list->next) {
 		rule = list->data;
 
 		DBG("%s", rule->name);
@@ -195,7 +195,7 @@ int __connman_nfacct_enable(struct nfacct_context *ctx,
 
 	DBG("");
 
-	for (list = ctx->rules; list != NULL; list = list->next) {
+	for (list = ctx->rules; list; list = list->next) {
 		rule = list->data;
 
 		DBG("%s", rule->name);
@@ -235,7 +235,7 @@ int __connman_nfacct_disable(struct nfacct_context *ctx,
 
 	DBG("");
 
-	for (list = ctx->rules; list != NULL; list = list->next) {
+	for (list = ctx->rules; list; list = list->next) {
 		rule = list->data;
 
 		DBG("%s", rule->name);
@@ -306,7 +306,7 @@ static void nfacct_flush_cb(unsigned int error, const char *name,
 		goto out;
 	}
 
-	if (name == NULL) {
+	if (!name) {
 		/* last call */
 
 		/*
@@ -370,7 +370,7 @@ int __connman_nfacct_init(void)
 	DBG("");
 
 	nfacct = nfacct_new();
-	if (nfacct == NULL)
+	if (!nfacct)
 		return -ENOMEM;
 
 	return 0;

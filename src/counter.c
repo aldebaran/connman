@@ -75,11 +75,11 @@ int __connman_counter_register(const char *owner, const char *path,
 	DBG("owner %s path %s interval %u", owner, path, interval);
 
 	counter = g_hash_table_lookup(counter_table, path);
-	if (counter != NULL)
+	if (counter)
 		return -EEXIST;
 
 	counter = g_try_new0(struct connman_counter, 1);
-	if (counter == NULL)
+	if (!counter)
 		return -ENOMEM;
 
 	counter->owner = g_strdup(owner);
@@ -112,7 +112,7 @@ int __connman_counter_unregister(const char *owner, const char *path)
 	DBG("owner %s path %s", owner, path);
 
 	counter = g_hash_table_lookup(counter_table, path);
-	if (counter == NULL)
+	if (!counter)
 		return -ESRCH;
 
 	if (g_strcmp0(owner, counter->owner) != 0)
@@ -133,7 +133,7 @@ void __connman_counter_send_usage(const char *path,
 	struct connman_counter *counter;
 
 	counter = g_hash_table_lookup(counter_table, path);
-	if (counter == NULL)
+	if (!counter)
 		return;
 
 	dbus_message_set_destination(message, counter->owner);
@@ -157,7 +157,7 @@ static void release_counter(gpointer key, gpointer value, gpointer user_data)
 
 	message = dbus_message_new_method_call(counter->owner, counter->path,
 					CONNMAN_COUNTER_INTERFACE, "Release");
-	if (message == NULL)
+	if (!message)
 		return;
 
 	dbus_message_set_no_reply(message, TRUE);
@@ -170,7 +170,7 @@ int __connman_counter_init(void)
 	DBG("");
 
 	connection = connman_dbus_get_connection();
-	if (connection == NULL)
+	if (!connection)
 		return -1;
 
 	counter_table = g_hash_table_new_full(g_str_hash, g_str_equal,
@@ -185,7 +185,7 @@ void __connman_counter_cleanup(void)
 {
 	DBG("");
 
-	if (connection == NULL)
+	if (!connection)
 		return;
 
 	g_hash_table_foreach(counter_table, release_counter, NULL);

@@ -92,7 +92,7 @@ GKeyFile *__connman_storage_load_global(void)
 	GKeyFile *keyfile = NULL;
 
 	pathname = g_strdup_printf("%s/%s", STORAGEDIR, SETTINGS);
-	if (pathname == NULL)
+	if (!pathname)
 		return NULL;
 
 	keyfile = storage_load(pathname);
@@ -108,7 +108,7 @@ int __connman_storage_save_global(GKeyFile *keyfile)
 	int ret;
 
 	pathname = g_strdup_printf("%s/%s", STORAGEDIR, SETTINGS);
-	if (pathname == NULL)
+	if (!pathname)
 		return -ENOMEM;
 
 	ret = storage_save(keyfile, pathname);
@@ -123,7 +123,7 @@ void __connman_storage_delete_global(void)
 	gchar *pathname;
 
 	pathname = g_strdup_printf("%s/%s", STORAGEDIR, SETTINGS);
-	if (pathname == NULL)
+	if (!pathname)
 		return;
 
 	storage_delete(pathname);
@@ -137,7 +137,7 @@ GKeyFile *__connman_storage_load_config(const char *ident)
 	GKeyFile *keyfile = NULL;
 
 	pathname = g_strdup_printf("%s/%s.config", STORAGEDIR, ident);
-	if (pathname == NULL)
+	if (!pathname)
 		return NULL;
 
 	keyfile = storage_load(pathname);
@@ -153,7 +153,7 @@ GKeyFile *__connman_storage_load_provider_config(const char *ident)
 	GKeyFile *keyfile = NULL;
 
 	pathname = g_strdup_printf("%s/%s.config", VPN_STORAGEDIR, ident);
-	if (pathname == NULL)
+	if (!pathname)
 		return NULL;
 
 	keyfile = storage_load(pathname);
@@ -169,7 +169,7 @@ GKeyFile *__connman_storage_open_service(const char *service_id)
 	GKeyFile *keyfile = NULL;
 
 	pathname = g_strdup_printf("%s/%s/%s", STORAGEDIR, service_id, SETTINGS);
-	if (pathname == NULL)
+	if (!pathname)
 		return NULL;
 
 	keyfile =  storage_load(pathname);
@@ -196,7 +196,7 @@ gchar **connman_storage_get_services(void)
 	int ret;
 
 	dir = opendir(STORAGEDIR);
-	if (dir == NULL)
+	if (!dir)
 		return NULL;
 
 	result = g_string_new(NULL);
@@ -248,7 +248,7 @@ GKeyFile *connman_storage_load_service(const char *service_id)
 	GKeyFile *keyfile = NULL;
 
 	pathname = g_strdup_printf("%s/%s/%s", STORAGEDIR, service_id, SETTINGS);
-	if (pathname == NULL)
+	if (!pathname)
 		return NULL;
 
 	keyfile =  storage_load(pathname);
@@ -263,7 +263,7 @@ int __connman_storage_save_service(GKeyFile *keyfile, const char *service_id)
 	gchar *pathname, *dirname;
 
 	dirname = g_strdup_printf("%s/%s", STORAGEDIR, service_id);
-	if (dirname == NULL)
+	if (!dirname)
 		return -ENOMEM;
 
 	/* If the dir doesn't exist, create it */
@@ -293,7 +293,7 @@ static bool remove_file(const char *service_id, const char *file)
 	bool ret = false;
 
 	pathname = g_strdup_printf("%s/%s/%s", STORAGEDIR, service_id, file);
-	if (pathname == NULL)
+	if (!pathname)
 		return false;
 
 	if (!g_file_test(pathname, G_FILE_TEST_EXISTS)) {
@@ -313,7 +313,7 @@ static bool remove_dir(const char *service_id)
 	bool ret = false;
 
 	pathname = g_strdup_printf("%s/%s", STORAGEDIR, service_id);
-	if (pathname == NULL)
+	if (!pathname)
 		return false;
 
 	if (!g_file_test(pathname, G_FILE_TEST_EXISTS)) {
@@ -357,7 +357,7 @@ GKeyFile *__connman_storage_load_provider(const char *identifier)
 
 	pathname = g_strdup_printf("%s/%s_%s/%s", STORAGEDIR, "provider",
 			identifier, SETTINGS);
-	if (pathname == NULL)
+	if (!pathname)
 		return NULL;
 
 	keyfile = storage_load(pathname);
@@ -372,7 +372,7 @@ void __connman_storage_save_provider(GKeyFile *keyfile, const char *identifier)
 
 	dirname = g_strdup_printf("%s/%s_%s", STORAGEDIR,
 			"provider", identifier);
-	if (dirname == NULL)
+	if (!dirname)
 		return;
 
 	if (!g_file_test(dirname, G_FILE_TEST_IS_DIR) &&
@@ -408,7 +408,7 @@ bool __connman_storage_remove_provider(const char *identifier)
 	gchar *id;
 
 	id = g_strdup_printf("%s_%s", "provider", identifier);
-	if (id == NULL)
+	if (!id)
 		return false;
 
 	if (remove_all(id))
@@ -417,7 +417,7 @@ bool __connman_storage_remove_provider(const char *identifier)
 	g_free(id);
 
 	id = g_strdup_printf("%s_%s", "vpn", identifier);
-	if (id == NULL)
+	if (!id)
 		return false;
 
 	if ((removed = remove_all(id)))
@@ -441,7 +441,7 @@ gchar **__connman_storage_get_providers(void)
 	GSList *iter;
 
 	dir = opendir(STORAGEDIR);
-	if (dir == NULL)
+	if (!dir)
 		return NULL;
 
 	while ((d = readdir(dir))) {
@@ -465,8 +465,8 @@ gchar **__connman_storage_get_providers(void)
 	closedir(dir);
 
 	providers = g_try_new0(char *, num + 1);
-	for (iter = list; iter != NULL; iter = g_slist_next(iter)) {
-		if (providers != NULL)
+	for (iter = list; iter; iter = g_slist_next(iter)) {
+		if (providers)
 			providers[i] = iter->data;
 		else
 			g_free(iter->data);

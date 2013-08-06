@@ -53,7 +53,7 @@ static int enable_ipv6_forward(bool enable)
 	FILE *f;
 
 	f = fopen("/proc/sys/net/ipv6/ip_forward", "r+");
-	if (f == NULL)
+	if (!f)
 		return -errno;
 
 	if (enable)
@@ -76,7 +76,7 @@ static gboolean send_ra(gpointer data)
 
 static void start_ra(int ifindex, GSList *prefix)
 {
-	if (prefixes != NULL)
+	if (prefixes)
 		g_slist_free_full(prefixes, g_free);
 
 	prefixes = g_dhcpv6_copy_prefixes(prefix);
@@ -102,7 +102,7 @@ static void stop_ra(int ifindex)
 
 	enable_ipv6_forward(false);
 
-	if (prefixes != NULL) {
+	if (prefixes) {
 		g_slist_free_full(prefixes, g_free);
 		prefixes = NULL;
 	}
@@ -114,7 +114,7 @@ static void rs_received(struct nd_router_solicit *reply,
 	GDHCPIAPrefix *prefix;
 	GSList *list;
 
-	if (prefixes == NULL)
+	if (!prefixes)
 		return;
 
 	DBG("");
@@ -136,7 +136,7 @@ static gboolean do_setup(gpointer data)
 
 	timer_uplink = 0;
 
-	if (default_interface == NULL)
+	if (!default_interface)
 		DBG("No uplink connection, retrying prefix delegation");
 
 	ret = setup_prefix_delegation(__connman_service_get_default());
@@ -167,7 +167,7 @@ static void cleanup(void)
 	g_hash_table_destroy(timer_hash);
 	timer_hash = NULL;
 
-	if (prefixes != NULL) {
+	if (prefixes) {
 		g_slist_free_full(prefixes, g_free);
 		prefixes = NULL;
 	}
@@ -186,7 +186,7 @@ static void dhcpv6_callback(struct connman_network *network,
 		return;
 	}
 
-	if (prefix_list == NULL) {
+	if (!prefix_list) {
 		DBG("No prefixes, retrying");
 		if (timer_uplink == 0)
 			timer_uplink = g_timeout_add_seconds(10, do_setup,
@@ -211,7 +211,7 @@ static int setup_prefix_delegation(struct connman_service *service)
 	char *interface;
 	int err = 0, ifindex;
 
-	if (service == NULL) {
+	if (!service) {
 		/*
 		 * We do not have uplink connection. We just wait until
 		 * default interface is updated.
@@ -223,7 +223,7 @@ static int setup_prefix_delegation(struct connman_service *service)
 
 	DBG("interface %s bridge_index %d", interface, bridge_index);
 
-	if (default_interface != NULL) {
+	if (default_interface) {
 		stop_ra(bridge_index);
 
 		ifindex = connman_inet_ifindex(default_interface);
@@ -241,7 +241,7 @@ static int setup_prefix_delegation(struct connman_service *service)
 
 	default_interface = interface;
 
-	if (default_interface != NULL) {
+	if (default_interface) {
 		ifindex = connman_inet_ifindex(default_interface);
 
 		/*
@@ -271,14 +271,14 @@ static void update_default_interface(struct connman_service *service)
 static void update_ipconfig(struct connman_service *service,
 				struct connman_ipconfig *ipconfig)
 {
-	if (service == NULL || service != __connman_service_get_default())
+	if (!service || service != __connman_service_get_default())
 		return;
 
 	if (ipconfig != __connman_service_get_ip6config(service))
 		return;
 
 	if (!__connman_ipconfig_ipv6_is_enabled(ipconfig)) {
-		if (default_interface != NULL) {
+		if (default_interface) {
 			int ifindex;
 
 			ifindex = connman_inet_ifindex(default_interface);
@@ -295,7 +295,7 @@ static void update_ipconfig(struct connman_service *service,
 	/*
 	 * Did we had PD activated already? If not, then start it.
 	 */
-	if (default_interface == NULL) {
+	if (!default_interface) {
 		DBG("IPv6 ipconfig %p changed for interface %s", ipconfig,
 			__connman_ipconfig_get_ifname(ipconfig));
 
@@ -338,7 +338,7 @@ int __connman_ipv6pd_setup(const char *bridge)
 			err, strerror(-err));
 
 	service = __connman_service_get_default();
-	if (service != NULL) {
+	if (service) {
 		/*
 		 * We have an uplink connection already, try to use it.
 		 */
@@ -369,7 +369,7 @@ void __connman_ipv6pd_cleanup(void)
 
 	stop_ra(bridge_index);
 
-	if (default_interface != NULL) {
+	if (default_interface) {
 		ifindex = connman_inet_ifindex(default_interface);
 		__connman_dhcpv6_stop_pd(ifindex);
 		g_free(default_interface);

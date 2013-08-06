@@ -239,7 +239,7 @@ void __connman_notifier_service_remove(struct connman_service *service)
 {
 	GSList *list;
 
-	if (g_hash_table_lookup(service_hash, service) != NULL) {
+	if (g_hash_table_lookup(service_hash, service)) {
 		/*
 		 * This is a tempory check for consistency. It can be
 		 * removed when there are no reports for the following
@@ -325,7 +325,7 @@ void __connman_notifier_service_state_changed(struct connman_service *service,
 	}
 
 	old_size = g_hash_table_size(service_hash);
-	found = g_hash_table_lookup(service_hash, service) != NULL;
+	found = g_hash_table_lookup(service_hash, service);
 
 	switch (state) {
 	case CONNMAN_SERVICE_STATE_UNKNOWN:

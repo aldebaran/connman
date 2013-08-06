@@ -85,11 +85,11 @@ const char *connman_utsname_get_hostname(void)
 
 		DBG("driver %p name %s", driver, driver->name);
 
-		if (driver->get_hostname == NULL)
+		if (!driver->get_hostname)
 			continue;
 
 		hostname = driver->get_hostname();
-		if (hostname != NULL)
+		if (hostname)
 			return hostname;
 	}
 
@@ -107,7 +107,7 @@ int __connman_utsname_set_hostname(const char *hostname)
 
 		DBG("driver %p name %s", driver, driver->name);
 
-		if (driver->set_hostname == NULL)
+		if (!driver->set_hostname)
 			continue;
 
 		if (driver->set_hostname(hostname) == 0)
@@ -128,7 +128,7 @@ int __connman_utsname_set_domainname(const char *domainname)
 
 		DBG("driver %p name %s", driver, driver->name);
 
-		if (driver->set_domainname == NULL)
+		if (!driver->set_domainname)
 			continue;
 
 		if (driver->set_domainname(domainname) == 0)

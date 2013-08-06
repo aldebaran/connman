@@ -71,11 +71,11 @@ struct nfacct_info *nfacct_new(void)
 	struct nfacct_info *nfacct;
 
 	nfacct = g_try_new0(struct nfacct_info, 1);
-	if (nfacct == NULL)
+	if (!nfacct)
 		return NULL;
 
 	nfacct->netlink = netlink_new(NETLINK_NETFILTER);
-	if (nfacct->netlink == NULL) {
+	if (!nfacct->netlink) {
 		g_free(nfacct);
 		return NULL;
 	}
@@ -85,7 +85,7 @@ struct nfacct_info *nfacct_new(void)
 
 void nfacct_destroy(struct nfacct_info *nfacct)
 {
-	if (nfacct == NULL)
+	if (!nfacct)
 		return;
 
 	netlink_destroy(nfacct->netlink);
@@ -98,7 +98,7 @@ static struct nfgenmsg *create_nfgenmsg(size_t size)
 	struct nfgenmsg *msg;
 
 	msg = g_try_malloc0(size);
-	if (msg == NULL)
+	if (!msg)
 		return NULL;
 
 	msg->nfgen_family = AF_UNSPEC;
@@ -112,7 +112,7 @@ static size_t attr_name_size(const char *name)
 {
 	size_t size;
 
-	if (name == NULL)
+	if (!name)
 		return 0;
 
 	size = strlen(name) + 1;
@@ -167,7 +167,7 @@ unsigned int nfacct_add(struct nfacct_info *nfacct, const char *name,
 
 	len = calc_msg_size(name);
 	msg = create_nfgenmsg(len);
-	if (msg == NULL)
+	if (!msg)
 		return 0;
 
 	set_attr_name(msg, name);
@@ -237,7 +237,7 @@ unsigned int nfacct_dump(struct nfacct_info *nfacct, bool zero,
 
 	len = calc_msg_size(NULL);
 	msg = create_nfgenmsg(len);
-	if (msg == NULL)
+	if (!msg)
 		return 0;
 
 	if (zero == false)
@@ -291,7 +291,7 @@ unsigned int nfacct_get(struct nfacct_info *nfacct, const char *name, bool zero,
 
 	len = calc_msg_size(name);
 	msg = create_nfgenmsg(len);
-	if (msg == NULL)
+	if (!msg)
 		return 0;
 
 	set_attr_name(msg, name);
@@ -334,7 +334,7 @@ unsigned int nfacct_del(struct nfacct_info *nfacct, const char *name,
 
 	len = calc_msg_size(name);
 	msg = create_nfgenmsg(len);
-	if (msg == NULL)
+	if (!msg)
 		return 0;
 
 	set_attr_name(msg, name);

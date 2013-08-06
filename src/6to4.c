@@ -303,7 +303,7 @@ static void tun_newlink(unsigned flags, unsigned change, void *user_data)
 		}
 
 		web = g_web_new(index);
-		if (web == NULL) {
+		if (!web) {
 			tunnel_destroy();
 			return;
 		}
@@ -384,7 +384,7 @@ static void receive_rs_reply(struct nd_router_advert *reply,
 	/* We try to create tunnel if autoconfiguration did not work i.e.,
 	 * we did not receive any reply to router solicitation message.
 	 */
-	if (reply == NULL && inet_aton(address, &ip4addr) != 0)
+	if (!reply && inet_aton(address, &ip4addr) != 0)
 		init_6to4(&ip4addr);
 
 	g_free(address);
@@ -406,15 +406,15 @@ int __connman_6to4_probe(struct connman_service *service)
 	if (tunnel_created || tunnel_pending)
 		return 0;
 
-	if (service == NULL)
+	if (!service)
 		return -1;
 
 	ip4config = __connman_service_get_ip4config(service);
-	if (ip4config == NULL)
+	if (!ip4config)
 		return -1;
 
 	ip6config = __connman_service_get_ip6config(service);
-	if (ip6config == NULL)
+	if (!ip6config)
 		return -1;
 
 	method = __connman_ipconfig_get_method(ip6config);
@@ -422,7 +422,7 @@ int __connman_6to4_probe(struct connman_service *service)
 		return -1;
 
 	address = __connman_ipconfig_get_local(ip4config);
-	if (address == NULL)
+	if (!address)
 		return -1;
 
 	if (inet_aton(address, &ip4addr) == 0)
@@ -455,11 +455,11 @@ void __connman_6to4_remove(struct connman_ipconfig *ip4config)
 
 	DBG("tunnel ip address %s", tunnel_ip_address);
 
-	if (ip4config == NULL)
+	if (!ip4config)
 		return;
 
 	address = __connman_ipconfig_get_local(ip4config);
-	if (address == NULL)
+	if (!address)
 		return;
 
 	if (g_strcmp0(address, tunnel_ip_address) != 0)
@@ -473,14 +473,14 @@ int __connman_6to4_check(struct connman_ipconfig *ip4config)
 {
 	const char *address;
 
-	if (ip4config == NULL || tunnel_created == 0 ||
+	if (!ip4config || tunnel_created == 0 ||
 					tunnel_pending == 1)
 		return -1;
 
 	DBG("tunnel ip address %s", tunnel_ip_address);
 
 	address = __connman_ipconfig_get_local(ip4config);
-	if (address == NULL)
+	if (!address)
 		return -1;
 
 	if (g_strcmp0(address, tunnel_ip_address) == 0)

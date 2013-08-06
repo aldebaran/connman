@@ -82,7 +82,7 @@ __connman_ippool_ref_debug(struct connman_ippool *pool,
 void __connman_ippool_unref_debug(struct connman_ippool *pool,
 				const char *file, int line, const char *caller)
 {
-	if (pool == NULL)
+	if (!pool)
 		return;
 
 	DBG("%p ref %d by %s:%d:%s()", pool, pool->refcount - 1,
@@ -189,7 +189,7 @@ static uint32_t get_free_block(unsigned int size)
 
 	do {
 		collision = false;
-		for (list = allocated_blocks; list != NULL; list = list->next) {
+		for (list = allocated_blocks; list; list = list->next) {
 			info = list->data;
 
 			if (info->start <= block && block <= info->end) {
@@ -211,7 +211,7 @@ static struct address_info *lookup_info(int index, uint32_t start)
 {
 	GSList *list;
 
-	for (list = allocated_blocks; list != NULL; list = list->next) {
+	for (list = allocated_blocks; list; list = list->next) {
 		struct address_info *info = list->data;
 
 		if (info->index == index && info->start == start)
@@ -259,11 +259,11 @@ void __connman_ippool_newaddr(int index, const char *address,
 	end = start | ~mask;
 
 	info = lookup_info(index, start);
-	if (info != NULL)
+	if (info)
 		goto update;
 
 	info = g_try_new0(struct address_info, 1);
-	if (info == NULL)
+	if (!info)
 		return;
 
 	info->index = index;
@@ -275,7 +275,7 @@ void __connman_ippool_newaddr(int index, const char *address,
 update:
 	info->use_count = info->use_count + 1;
 
-	if (info->use_count > 1 || info->pool != NULL) {
+	if (info->use_count > 1 || info->pool) {
 		/*
 		 * We need only to check for the first IP in a block for
 		 * collisions.
@@ -283,7 +283,7 @@ update:
 		return;
 	}
 
-	for (list = allocated_blocks; list != NULL; list = list->next) {
+	for (list = allocated_blocks; list; list = list->next) {
 		it = list->data;
 
 		if (it == info)
@@ -292,7 +292,7 @@ update:
 		if (!(it->start <= info->start || info->start <= it->end))
 			continue;
 
-		if (it->pool != NULL && it->pool->collision_cb != NULL)
+		if (it->pool && it->pool->collision_cb)
 			it->pool->collision_cb(it->pool, it->pool->user_data);
 
 		return;
@@ -317,14 +317,14 @@ void __connman_ippool_deladdr(int index, const char *address,
 	start = start & mask;
 
 	info = lookup_info(index, start);
-	if (info == NULL) {
+	if (!info) {
 		/* In theory this should never happen */
 		connman_error("Inconsistent IP pool management (start not found)");
 		return;
 	}
 
 	info->use_count = info->use_count - 1;
-	if (info->pool != NULL)
+	if (info->pool)
 		return;
 
 	if (info->use_count > 0)
@@ -362,11 +362,11 @@ struct connman_ippool *__connman_ippool_create(int index,
 	}
 
 	pool = g_try_new0(struct connman_ippool, 1);
-	if (pool == NULL)
+	if (!pool)
 		return NULL;
 
 	info = g_try_new0(struct address_info, 1);
-	if (info == NULL) {
+	if (!info) {
 		g_free(pool);
 		return NULL;
 	}
@@ -428,7 +428,7 @@ static void pool_free(gpointer data)
 {
 	struct connman_ippool *pool = data;
 
-	if (pool->info != NULL) {
+	if (pool->info) {
 		allocated_blocks = g_slist_remove(allocated_blocks, pool->info);
 		g_free(pool->info);
 	}

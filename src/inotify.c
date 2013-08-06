@@ -95,7 +95,7 @@ static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
 		next_event += len;
 		bytes_read -= len;
 
-		for (list = inotify->list; list != NULL; list = list->next) {
+		for (list = inotify->list; list; list = list->next) {
 			inotify_event_cb callback = list->data;
 
 			(*callback)(event, ident);
@@ -125,7 +125,7 @@ static int create_watch(const char *path, struct connman_inotify *inotify)
 	}
 
 	inotify->channel = g_io_channel_unix_new(fd);
-	if (inotify->channel == NULL) {
+	if (!inotify->channel) {
 		connman_error("Creation of inotify channel failed");
 		inotify_rm_watch(fd, inotify->wd);
 		inotify->wd = 0;
@@ -149,7 +149,7 @@ static void remove_watch(struct connman_inotify *inotify)
 {
 	int fd;
 
-	if (inotify->channel == NULL)
+	if (!inotify->channel)
 		return;
 
 	if (inotify->watch > 0)
@@ -168,15 +168,15 @@ int connman_inotify_register(const char *path, inotify_event_cb callback)
 	struct connman_inotify *inotify;
 	int err;
 
-	if (callback == NULL)
+	if (!callback)
 		return -EINVAL;
 
 	inotify = g_hash_table_lookup(inotify_hash, path);
-	if (inotify != NULL)
+	if (inotify)
 		goto update;
 
 	inotify = g_try_new0(struct connman_inotify, 1);
-	if (inotify == NULL)
+	if (!inotify)
 		return -ENOMEM;
 
 	inotify->wd = -1;
@@ -210,11 +210,11 @@ void connman_inotify_unregister(const char *path, inotify_event_cb callback)
 	struct connman_inotify *inotify;
 
 	inotify = g_hash_table_lookup(inotify_hash, path);
-	if (inotify == NULL)
+	if (!inotify)
 		return;
 
 	inotify->list = g_slist_remove(inotify->list, callback);
-	if (inotify->list != NULL)
+	if (inotify->list)
 		return;
 
 	g_hash_table_remove(inotify_hash, path);

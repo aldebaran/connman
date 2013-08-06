@@ -45,7 +45,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBG("conn %p", conn);
 
 	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
+	if (!reply)
 		return NULL;
 
 	dbus_message_iter_init_append(reply, &array);
@@ -112,7 +112,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		dbus_message_iter_get_basic(&value, &sessionmode);
 
-		if (session_mode_pending != NULL)
+		if (session_mode_pending)
 			return __connman_error_in_progress(msg);
 
 		__connman_session_set_mode(sessionmode);
@@ -141,7 +141,7 @@ static DBusMessage *get_technologies(DBusConnection *conn,
 	DBG("");
 
 	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
+	if (!reply)
 		return NULL;
 
 	__connman_dbus_append_objpath_dict_array(reply,
@@ -188,7 +188,7 @@ static void idle_state(bool idle)
 
 	connman_state_idle = idle;
 
-	if (!connman_state_idle || session_mode_pending == NULL)
+	if (!connman_state_idle || !session_mode_pending)
 		return;
 
 	session_mode_notify();
@@ -211,7 +211,7 @@ static DBusMessage *get_services(DBusConnection *conn,
 	DBusMessage *reply;
 
 	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
+	if (!reply)
 		return NULL;
 
 	__connman_dbus_append_objpath_dict_array(reply,
@@ -464,7 +464,7 @@ int __connman_manager_init(void)
 	DBG("");
 
 	connection = connman_dbus_get_connection();
-	if (connection == NULL)
+	if (!connection)
 		return -1;
 
 	if (connman_notifier_register(&technology_notifier) < 0)
@@ -484,10 +484,10 @@ void __connman_manager_cleanup(void)
 {
 	DBG("");
 
-	if (connection == NULL)
+	if (!connection)
 		return;
 
-	if (session_mode_pending != NULL)
+	if (session_mode_pending)
 		dbus_message_unref(session_mode_pending);
 
 	connman_notifier_unregister(&technology_notifier);

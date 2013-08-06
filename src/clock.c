@@ -96,7 +96,7 @@ static void clock_properties_load(void)
 	enum timezone_updates timezone_value;
 
 	keyfile = __connman_storage_load_global();
-	if (keyfile == NULL)
+	if (!keyfile)
 		return;
 
 	str = g_key_file_get_string(keyfile, "global", "TimeUpdates", NULL);
@@ -125,17 +125,17 @@ static void clock_properties_save(void)
 	const char *str;
 
 	keyfile = __connman_storage_load_global();
-	if (keyfile == NULL)
+	if (!keyfile)
 		keyfile = g_key_file_new();
 
 	str = time_updates2string(time_updates_config);
-	if (str != NULL)
+	if (str)
 		g_key_file_set_string(keyfile, "global", "TimeUpdates", str);
 	else
 		g_key_file_remove_key(keyfile, "global", "TimeUpdates", NULL);
 
 	str = timezone_updates2string(timezone_updates_config);
-	if (str != NULL)
+	if (str)
 		g_key_file_set_string(keyfile, "global", "TimezoneUpdates",
 				str);
 	else
@@ -157,10 +157,10 @@ static void append_timeservers(DBusMessageIter *iter, void *user_data)
 	int i;
 	char **timeservers = __connman_timeserver_system_get();
 
-	if (timeservers == NULL)
+	if (!timeservers)
 		return;
 
-	for (i = 0; timeservers[i] != NULL; i++) {
+	for (i = 0; timeservers[i]; i++) {
 		dbus_message_iter_append_basic(iter,
 				DBUS_TYPE_STRING, &timeservers[i]);
 	}
@@ -179,7 +179,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBG("conn %p", conn);
 
 	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
+	if (!reply)
 		return NULL;
 
 	dbus_message_iter_init_append(reply, &array);
@@ -194,16 +194,16 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	}
 
 	str = time_updates2string(time_updates_config);
-	if (str != NULL)
+	if (str)
 		connman_dbus_dict_append_basic(&dict, "TimeUpdates",
 						DBUS_TYPE_STRING, &str);
 
-	if (timezone_config != NULL)
+	if (timezone_config)
 		connman_dbus_dict_append_basic(&dict, "Timezone",
 					DBUS_TYPE_STRING, &timezone_config);
 
 	str = timezone_updates2string(timezone_updates_config);
-	if (str != NULL)
+	if (str)
 		connman_dbus_dict_append_basic(&dict, "TimezoneUpdates",
 						DBUS_TYPE_STRING, &str);
 
@@ -344,10 +344,10 @@ static DBusMessage *set_property(DBusConnection *conn,
 			dbus_message_iter_next(&entry);
 		}
 
-		if (list != NULL) {
+		if (list) {
 			str = g_new0(char *, count+1);
 
-			while (list != NULL) {
+			while (list) {
 				count--;
 				str[count] = list->data;
 				list = g_slist_delete_link(list, list);
@@ -356,7 +356,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		__connman_timeserver_system_set(str);
 
-		if (str != NULL)
+		if (str)
 			g_strfreev(str);
 
 		connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
@@ -393,7 +393,7 @@ void __connman_clock_update_timezone(void)
 	g_free(timezone_config);
 	timezone_config = __connman_timezone_lookup();
 
-	if (timezone_config == NULL)
+	if (!timezone_config)
 		return;
 
 	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
@@ -406,7 +406,7 @@ int __connman_clock_init(void)
 	DBG("");
 
 	connection = connman_dbus_get_connection();
-	if (connection == NULL)
+	if (!connection)
 		return -1;
 
 	__connman_timezone_init();
@@ -426,7 +426,7 @@ void __connman_clock_cleanup(void)
 {
 	DBG("");
 
-	if (connection == NULL)
+	if (!connection)
 		return;
 
 	g_dbus_unregister_interface(connection, CONNMAN_MANAGER_PATH,

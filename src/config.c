@@ -171,12 +171,12 @@ static void unregister_service(gpointer data)
 	if (config_service->virtual)
 		goto free_only;
 
-	for (list = config_service->service_identifiers; list != NULL;
+	for (list = config_service->service_identifiers; list;
 							list = list->next) {
 		service_id = list->data;
 
 		service = __connman_service_lookup_from_ident(service_id);
-		if (service != NULL) {
+		if (service) {
 			__connman_service_set_immutable(service, false);
 			__connman_service_set_config(service, NULL, NULL);
 			__connman_service_remove(service);
@@ -247,7 +247,7 @@ static void check_keys(GKeyFile *keyfile, const char *group,
 	gsize nb_avail_keys, i, j;
 
 	avail_keys = g_key_file_get_keys(keyfile, group, &nb_avail_keys, NULL);
-	if (avail_keys == NULL)
+	if (!avail_keys)
 		return;
 
 	/*
@@ -259,7 +259,7 @@ static void check_keys(GKeyFile *keyfile, const char *group,
 			if (g_strcmp0(avail_keys[i], possible_keys[j]) == 0)
 				break;
 
-		if (possible_keys[j] == NULL)
+		if (!possible_keys[j])
 			connman_warn("Unknown configuration key %s in [%s]",
 					avail_keys[i], group);
 	}
@@ -313,11 +313,11 @@ static int parse_address(const char *address_str, int address_family,
 	char **route;
 
 	route = g_strsplit(address_str, "/", 0);
-	if (route == NULL)
+	if (!route)
 		return -EINVAL;
 
 	addr_str = route[0];
-	if (addr_str == NULL || addr_str[0] == '\0') {
+	if (!addr_str || addr_str[0] == '\0') {
 		err = -EINVAL;
 		goto out;
 	}
@@ -326,13 +326,13 @@ static int parse_address(const char *address_str, int address_family,
 		goto out;
 
 	mask_str = route[1];
-	if (mask_str == NULL || mask_str[0] == '\0') {
+	if (!mask_str || mask_str[0] == '\0') {
 		err = -EINVAL;
 		goto out;
 	}
 
 	gw_str = route[2];
-	if (gw_str == NULL || gw_str[0] == '\0') {
+	if (!gw_str || gw_str[0] == '\0') {
 		err = -EINVAL;
 		goto out;
 	}
@@ -378,7 +378,7 @@ static bool load_service_generic(GKeyFile *keyfile,
 	gsize length;
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IPv4, NULL);
-	if (str != NULL && check_address(str, &service->ipv4_address)) {
+	if (str && check_address(str, &service->ipv4_address)) {
 		mask = NULL;
 
 		if (parse_address(str, AF_INET, &service->ipv4_address,
@@ -389,7 +389,7 @@ static bool load_service_generic(GKeyFile *keyfile,
 			goto err;
 		}
 
-		if (g_strrstr(mask, ".") == NULL) {
+		if (!g_strrstr(mask, ".")) {
 			/* We have netmask length */
 			in_addr_t addr;
 			struct in_addr netmask_in;
@@ -413,7 +413,7 @@ static bool load_service_generic(GKeyFile *keyfile,
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IPv6, NULL);
-	if (str != NULL && check_address(str, &service->ipv6_address)) {
+	if (str && check_address(str, &service->ipv6_address)) {
 		long int value;
 		char *ptr;
 
@@ -439,19 +439,19 @@ static bool load_service_generic(GKeyFile *keyfile,
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IPv6_PRIVACY,
 									NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->ipv6_privacy);
 		service->ipv6_privacy = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_MAC, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->mac);
 		service->mac = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_DOMAIN, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->domain_name);
 		service->domain_name = str;
 	}
@@ -459,7 +459,7 @@ static bool load_service_generic(GKeyFile *keyfile,
 	strlist = g_key_file_get_string_list(keyfile, group,
 					SERVICE_KEY_NAMESERVERS,
 					&length, NULL);
-	if (strlist != NULL) {
+	if (strlist) {
 		if (length != 0) {
 			g_strfreev(service->nameservers);
 			service->nameservers = strlist;
@@ -470,7 +470,7 @@ static bool load_service_generic(GKeyFile *keyfile,
 	strlist = g_key_file_get_string_list(keyfile, group,
 					SERVICE_KEY_SEARCH_DOMAINS,
 					&length, NULL);
-	if (strlist != NULL) {
+	if (strlist) {
 		if (length != 0) {
 			g_strfreev(service->search_domains);
 			service->search_domains = strlist;
@@ -481,7 +481,7 @@ static bool load_service_generic(GKeyFile *keyfile,
 	strlist = g_key_file_get_string_list(keyfile, group,
 					SERVICE_KEY_TIMESERVERS,
 					&length, NULL);
-	if (strlist != NULL) {
+	if (strlist) {
 		if (length != 0) {
 			g_strfreev(service->timeservers);
 			service->timeservers = strlist;
@@ -523,9 +523,9 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 	check_keys(keyfile, group, service_possible_keys);
 
 	service = g_hash_table_lookup(config->service_table, ident);
-	if (service == NULL) {
+	if (!service) {
 		service = g_try_new0(struct connman_config_service, 1);
-		if (service == NULL)
+		if (!service)
 			return false;
 
 		service->ident = g_strdup(ident);
@@ -534,7 +534,7 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_TYPE, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->type);
 		service->type = str;
 	} else {
@@ -557,20 +557,20 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_NAME, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->name);
 		service->name = str;
 	}
 
 	hex_ssid = g_key_file_get_string(keyfile, group, SERVICE_KEY_SSID,
 					 NULL);
-	if (hex_ssid != NULL) {
+	if (hex_ssid) {
 		char *ssid;
 		unsigned int i, j = 0, hex;
 		size_t hex_ssid_len = strlen(hex_ssid);
 
 		ssid = g_try_malloc0(hex_ssid_len / 2);
-		if (ssid == NULL) {
+		if (!ssid) {
 			g_free(hex_ssid);
 			goto err;
 		}
@@ -590,13 +590,13 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 		g_free(service->ssid);
 		service->ssid = ssid;
 		service->ssid_len = hex_ssid_len / 2;
-	} else if (service->name != NULL) {
+	} else if (service->name) {
 		char *ssid;
 		unsigned int ssid_len;
 
 		ssid_len = strlen(service->name);
 		ssid = g_try_malloc0(ssid_len);
-		if (ssid == NULL)
+		if (!ssid)
 			goto err;
 
 		memcpy(ssid, service->name, ssid_len);
@@ -606,58 +606,58 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_EAP, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->eap);
 		service->eap = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_CA_CERT, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->ca_cert_file);
 		service->ca_cert_file = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_CL_CERT, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->client_cert_file);
 		service->client_cert_file = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_PRV_KEY, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->private_key_file);
 		service->private_key_file = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group,
 						SERVICE_KEY_PRV_KEY_PASS, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->private_key_passphrase);
 		service->private_key_passphrase = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group,
 					SERVICE_KEY_PRV_KEY_PASS_TYPE, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->private_key_passphrase_type);
 		service->private_key_passphrase_type = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IDENTITY, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->identity);
 		service->identity = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_PHASE2, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->phase2);
 		service->phase2 = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_PASSPHRASE,
 					NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(service->passphrase);
 		service->passphrase = str;
 	}
@@ -697,7 +697,7 @@ static bool load_service_from_keyfile(GKeyFile *keyfile,
 
 	groups = g_key_file_get_groups(keyfile, NULL);
 
-	for (i = 0; groups[i] != NULL; i++) {
+	for (i = 0; groups[i]; i++) {
 		if (!g_str_has_prefix(groups[i], "service_"))
 			continue;
 		if (load_service(keyfile, groups[i], config))
@@ -717,20 +717,20 @@ static int load_config(struct connman_config *config)
 	DBG("config %p", config);
 
 	keyfile = __connman_storage_load_config(config->ident);
-	if (keyfile == NULL)
+	if (!keyfile)
 		return -EIO;
 
 	/* Verify keys validity of the global section */
 	check_keys(keyfile, "global", config_possible_keys);
 
 	str = g_key_file_get_string(keyfile, "global", CONFIG_KEY_NAME, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(config->name);
 		config->name = str;
 	}
 
 	str = g_key_file_get_string(keyfile, "global", CONFIG_KEY_DESC, NULL);
-	if (str != NULL) {
+	if (str) {
 		g_free(config->description);
 		config->description = str;
 	}
@@ -751,11 +751,11 @@ static struct connman_config *create_config(const char *ident)
 
 	DBG("ident %s", ident);
 
-	if (g_hash_table_lookup(config_table, ident) != NULL)
+	if (g_hash_table_lookup(config_table, ident))
 		return NULL;
 
 	config = g_try_new0(struct connman_config, 1);
-	if (config == NULL)
+	if (!config)
 		return NULL;
 
 	config->ident = g_strdup(ident);
@@ -774,7 +774,7 @@ static bool validate_ident(const char *ident)
 {
 	unsigned int i;
 
-	if (ident == NULL)
+	if (!ident)
 		return false;
 
 	for (i = 0; i < strlen(ident); i++)
@@ -791,10 +791,10 @@ static int read_configs(void)
 	DBG("");
 
 	dir = g_dir_open(STORAGEDIR, 0, NULL);
-	if (dir != NULL) {
+	if (dir) {
 		const gchar *file;
 
-		while ((file = g_dir_read_name(dir)) != NULL) {
+		while ((file = g_dir_read_name(dir))) {
 			GString *str;
 			gchar *ident;
 
@@ -802,11 +802,11 @@ static int read_configs(void)
 				continue;
 
 			ident = g_strrstr(file, ".config");
-			if (ident == NULL)
+			if (!ident)
 				continue;
 
 			str = g_string_new_len(file, ident - file);
-			if (str == NULL)
+			if (!str)
 				continue;
 
 			ident = g_string_free(str, FALSE);
@@ -815,7 +815,7 @@ static int read_configs(void)
 				struct connman_config *config;
 
 				config = create_config(ident);
-				if (config != NULL)
+				if (config)
 					load_config(config);
 			} else {
 				connman_error("Invalid config ident %s", ident);
@@ -834,14 +834,14 @@ static void config_notify_handler(struct inotify_event *event,
 {
 	char *ext;
 
-	if (ident == NULL)
+	if (!ident)
 		return;
 
 	if (!g_str_has_suffix(ident, ".config"))
 		return;
 
 	ext = g_strrstr(ident, ".config");
-	if (ext == NULL)
+	if (!ext)
 		return;
 
 	*ext = '\0';
@@ -858,7 +858,7 @@ static void config_notify_handler(struct inotify_event *event,
 		struct connman_config *config;
 
 		config = g_hash_table_lookup(config_table, ident);
-		if (config != NULL) {
+		if (config) {
 			int ret;
 
 			g_hash_table_remove_all(config->service_table);
@@ -912,7 +912,7 @@ static char *config_pem_fsid(const char *pem_file)
 	unsigned *fsid = (unsigned *) &buf.f_fsid;
 	unsigned long long fsid64;
 
-	if (pem_file == NULL)
+	if (!pem_file)
 		return NULL;
 
 	if (statfs(pem_file, &buf) < 0) {
@@ -932,38 +932,38 @@ static void provision_service_wifi(gpointer key,
 				struct connman_network *network,
 				const void *ssid, unsigned int ssid_len)
 {
-	if (config->eap != NULL)
+	if (config->eap)
 		__connman_service_set_string(service, "EAP", config->eap);
 
-	if (config->identity != NULL)
+	if (config->identity)
 		__connman_service_set_string(service, "Identity",
 							config->identity);
 
-	if (config->ca_cert_file != NULL)
+	if (config->ca_cert_file)
 		__connman_service_set_string(service, "CACertFile",
 							config->ca_cert_file);
 
-	if (config->client_cert_file != NULL)
+	if (config->client_cert_file)
 		__connman_service_set_string(service, "ClientCertFile",
 						config->client_cert_file);
 
-	if (config->private_key_file != NULL)
+	if (config->private_key_file)
 		__connman_service_set_string(service, "PrivateKeyFile",
 						config->private_key_file);
 
 	if (g_strcmp0(config->private_key_passphrase_type, "fsid") == 0 &&
-					config->private_key_file != NULL) {
+					config->private_key_file) {
 		char *fsid;
 
 		fsid = config_pem_fsid(config->private_key_file);
-		if (fsid == NULL)
+		if (!fsid)
 			return;
 
 		g_free(config->private_key_passphrase);
 		config->private_key_passphrase = fsid;
 	}
 
-	if (config->private_key_passphrase != NULL) {
+	if (config->private_key_passphrase) {
 		__connman_service_set_string(service, "PrivateKeyPassphrase",
 						config->private_key_passphrase);
 		/*
@@ -975,10 +975,10 @@ static void provision_service_wifi(gpointer key,
 		 */
 	}
 
-	if (config->phase2 != NULL)
+	if (config->phase2)
 		__connman_service_set_string(service, "Phase2", config->phase2);
 
-	if (config->passphrase != NULL)
+	if (config->passphrase)
 		__connman_service_set_string(service, "Passphrase",
 						config->passphrase);
 
@@ -1027,7 +1027,7 @@ static void provision_service(gpointer key, gpointer value,
 					__connman_service_get_ident(service));
 
 	network = __connman_service_get_network(service);
-	if (network == NULL) {
+	if (!network) {
 		connman_error("Service has no network set");
 		return;
 	}
@@ -1035,12 +1035,12 @@ static void provision_service(gpointer key, gpointer value,
 	DBG("network %p ident %s", network,
 				connman_network_get_identifier(network));
 
-	if (config->mac != NULL) {
+	if (config->mac) {
 		struct connman_device *device;
 		const char *device_addr;
 
 		device = connman_network_get_device(network);
-		if (device == NULL) {
+		if (!device) {
 			connman_error("Network device is missing");
 			return;
 		}
@@ -1057,19 +1057,19 @@ static void provision_service(gpointer key, gpointer value,
 				type == CONNMAN_SERVICE_TYPE_WIFI) {
 		ssid = connman_network_get_blob(network, "WiFi.SSID",
 						&ssid_len);
-		if (ssid == NULL) {
+		if (!ssid) {
 			connman_error("Network SSID not set");
 			return;
 		}
 
-		if (config->ssid == NULL || ssid_len != config->ssid_len)
+		if (!config->ssid || ssid_len != config->ssid_len)
 			return;
 
 		if (memcmp(config->ssid, ssid, ssid_len) != 0)
 			return;
 	}
 
-	if (config->ipv6_address == NULL) {
+	if (!config->ipv6_address) {
 		connman_network_set_ipv6_method(network,
 						CONNMAN_IPCONFIG_METHOD_AUTO);
 	} else if (g_ascii_strcasecmp(config->ipv6_address, "off") == 0) {
@@ -1083,13 +1083,13 @@ static void provision_service(gpointer key, gpointer value,
 		struct connman_ipaddress *address;
 
 		if (config->ipv6_prefix_length == 0 ||
-					config->ipv6_gateway == NULL) {
+					!config->ipv6_gateway) {
 			DBG("IPv6 prefix or gateway missing");
 			return;
 		}
 
 		address = connman_ipaddress_alloc(AF_INET6);
-		if (address == NULL)
+		if (!address)
 			return;
 
 		connman_ipaddress_set_ipv6(address, config->ipv6_address,
@@ -1106,16 +1106,16 @@ static void provision_service(gpointer key, gpointer value,
 		connman_ipaddress_free(address);
 	}
 
-	if (config->ipv6_privacy != NULL) {
+	if (config->ipv6_privacy) {
 		struct connman_ipconfig *ipconfig;
 
 		ipconfig = __connman_service_get_ip6config(service);
-		if (ipconfig != NULL)
+		if (ipconfig)
 			__connman_ipconfig_ipv6_set_privacy(ipconfig,
 							config->ipv6_privacy);
 	}
 
-	if (config->ipv4_address == NULL) {
+	if (!config->ipv4_address) {
 		connman_network_set_ipv4_method(network,
 						CONNMAN_IPCONFIG_METHOD_DHCP);
 	} else if (g_ascii_strcasecmp(config->ipv4_address, "off") == 0) {
@@ -1129,13 +1129,13 @@ static void provision_service(gpointer key, gpointer value,
 		struct connman_ipaddress *address;
 
 		if (config->ipv4_netmask == 0 ||
-					config->ipv4_gateway == NULL) {
+					!config->ipv4_gateway) {
 			DBG("IPv4 netmask or gateway missing");
 			return;
 		}
 
 		address = connman_ipaddress_alloc(AF_INET);
-		if (address == NULL)
+		if (!address)
 			return;
 
 		connman_ipaddress_set_ipv4(address, config->ipv4_address,
@@ -1167,25 +1167,25 @@ static void provision_service(gpointer key, gpointer value,
 	__connman_service_set_config(service, config->config_ident,
 						config->config_entry);
 
-	if (config->domain_name != NULL)
+	if (config->domain_name)
 		__connman_service_set_domainname(service, config->domain_name);
 
-	if (config->nameservers != NULL) {
+	if (config->nameservers) {
 		int i;
 
 		__connman_service_nameserver_clear(service);
 
-		for (i = 0; config->nameservers[i] != NULL; i++) {
+		for (i = 0; config->nameservers[i]; i++) {
 			__connman_service_nameserver_append(service,
 						config->nameservers[i], false);
 		}
 	}
 
-	if (config->search_domains != NULL)
+	if (config->search_domains)
 		__connman_service_set_search_domains(service,
 						config->search_domains);
 
-	if (config->timeservers != NULL)
+	if (config->timeservers)
 		__connman_service_set_timeservers(service,
 						config->timeservers);
 
@@ -1256,7 +1256,7 @@ int __connman_config_provision_service_ident(struct connman_service *service,
 		return -ENOSYS;
 
 	config = g_hash_table_lookup(config_table, ident);
-	if (config != NULL) {
+	if (config) {
 		GHashTableIter iter;
 		gpointer value, key;
 		bool found = false;
@@ -1267,7 +1267,7 @@ int __connman_config_provision_service_ident(struct connman_service *service,
 		 * Check if we need to remove individual service if it
 		 * is missing from config file.
 		 */
-		if (file != NULL && entry != NULL) {
+		if (file && entry) {
 			while (g_hash_table_iter_next(&iter, &key,
 							&value)) {
 				struct connman_config_service *config_service;
@@ -1338,7 +1338,7 @@ int connman_config_provision_mutable_service(GKeyFile *keyfile)
 	vfile = g_strdup_printf("service_mutable_%s.config", rstr);
 
 	config = create_config(vfile);
-	if (config == NULL)
+	if (!config)
 		return -ENOMEM;
 
 	if (!load_service_from_keyfile(keyfile, config))
@@ -1347,7 +1347,7 @@ int connman_config_provision_mutable_service(GKeyFile *keyfile)
 	group = g_key_file_get_start_group(keyfile);
 
 	service_config = g_hash_table_lookup(config->service_table, group+8);
-	if (service_config == NULL)
+	if (!service_config)
 		goto error;
 
 	/* Specific to non file based config: */
@@ -1389,7 +1389,7 @@ struct connman_config_entry **connman_config_get_entries(const char *type)
 
 		entries = g_try_realloc(entries, (i + count + 1) *
 					sizeof(struct connman_config_entry *));
-		if (entries == NULL)
+		if (!entries)
 			return NULL;
 
 		g_hash_table_iter_init(&iter_config,
@@ -1398,19 +1398,19 @@ struct connman_config_entry **connman_config_get_entries(const char *type)
 							&value)) {
 			struct connman_config_service *config = value;
 
-			if (type != NULL &&
+			if (type &&
 					g_strcmp0(config->type, type) != 0)
 				continue;
 
 			entries[i] = g_try_new0(struct connman_config_entry,
 						1);
-			if (entries[i] == NULL)
+			if (!entries[i])
 				goto cleanup;
 
 			entries[i]->ident = g_strdup(config->ident);
 			entries[i]->name = g_strdup(config->name);
 			entries[i]->ssid = g_try_malloc0(config->ssid_len + 1);
-			if (entries[i]->ssid == NULL)
+			if (!entries[i]->ssid)
 				goto cleanup;
 
 			memcpy(entries[i]->ssid, config->ssid,
@@ -1422,10 +1422,10 @@ struct connman_config_entry **connman_config_get_entries(const char *type)
 		}
 	}
 
-	if (entries != NULL) {
+	if (entries) {
 		entries = g_try_realloc(entries, (i + 1) *
 					sizeof(struct connman_config_entry *));
-		if (entries == NULL)
+		if (!entries)
 			return NULL;
 
 		entries[i] = NULL;
@@ -1444,7 +1444,7 @@ void connman_config_free_entries(struct connman_config_entry **entries)
 {
 	int i;
 
-	if (entries == NULL)
+	if (!entries)
 		return;
 
 	for (i = 0; entries[i]; i++) {

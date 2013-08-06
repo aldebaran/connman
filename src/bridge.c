@@ -46,14 +46,14 @@ static int set_forward_delay(const char *name, unsigned int delay)
 	forward_delay_path =
 		g_strdup_printf("/sys/class/net/%s/bridge/forward_delay", name);
 
-	if (forward_delay_path == NULL)
+	if (!forward_delay_path)
 		return -ENOMEM;
 
 	f = fopen(forward_delay_path, "r+");
 
 	g_free(forward_delay_path);
 
-	if (f == NULL)
+	if (!f)
 		return -errno;
 
 	fprintf(f, "%d", delay);

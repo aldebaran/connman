@@ -38,7 +38,7 @@ struct connman_ipaddress *connman_ipaddress_alloc(int family)
 	struct connman_ipaddress *ipaddress;
 
 	ipaddress = g_try_new0(struct connman_ipaddress, 1);
-	if (ipaddress == NULL)
+	if (!ipaddress)
 		return NULL;
 
 	ipaddress->family = family;
@@ -53,7 +53,7 @@ struct connman_ipaddress *connman_ipaddress_alloc(int family)
 
 void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
 {
-	if (ipaddress == NULL)
+	if (!ipaddress)
 		return;
 
 	g_free(ipaddress->broadcast);
@@ -69,7 +69,7 @@ unsigned char __connman_ipaddress_netmask_prefix_len(const char *netmask)
 	in_addr_t mask;
 	in_addr_t host;
 
-	if (netmask == NULL)
+	if (!netmask)
 		return 32;
 
 	mask = inet_network(netmask);
@@ -91,7 +91,7 @@ static bool check_ipv6_address(const char *address)
 	unsigned char buf[sizeof(struct in6_addr)];
 	int err;
 
-	if (address == NULL)
+	if (!address)
 		return false;
 
 	err = inet_pton(AF_INET6, address, buf);
@@ -106,7 +106,7 @@ int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
 				unsigned char prefix_length,
 				const char *gateway)
 {
-	if (ipaddress == NULL)
+	if (!ipaddress)
 		return -EINVAL;
 
 	if (!check_ipv6_address(address))
@@ -131,7 +131,7 @@ int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
 int connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 		const char *address, const char *netmask, const char *gateway)
 {
-	if (ipaddress == NULL)
+	if (!ipaddress)
 		return -EINVAL;
 
 	ipaddress->family = AF_INET;
@@ -150,7 +150,7 @@ int connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 void connman_ipaddress_set_peer(struct connman_ipaddress *ipaddress,
 				const char *peer)
 {
-	if (ipaddress == NULL)
+	if (!ipaddress)
 		return;
 
 	g_free(ipaddress->peer);
@@ -159,7 +159,7 @@ void connman_ipaddress_set_peer(struct connman_ipaddress *ipaddress,
 
 void connman_ipaddress_clear(struct connman_ipaddress *ipaddress)
 {
-	if (ipaddress == NULL)
+	if (!ipaddress)
 		return;
 
 	ipaddress->prefixlen = 0;
@@ -185,7 +185,7 @@ void connman_ipaddress_clear(struct connman_ipaddress *ipaddress)
 void connman_ipaddress_copy_address(struct connman_ipaddress *ipaddress,
 					struct connman_ipaddress *source)
 {
-	if (ipaddress == NULL || source == NULL)
+	if (!ipaddress || !source)
 		return;
 
 	ipaddress->family = source->family;

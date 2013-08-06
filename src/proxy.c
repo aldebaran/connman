@@ -69,7 +69,7 @@ static gboolean lookup_callback(gpointer user_data)
 	struct proxy_lookup *lookup = user_data;
 	GSList *list;
 
-	if (lookup == NULL)
+	if (!lookup)
 		return FALSE;
 
 	lookup->watch = 0;
@@ -77,14 +77,14 @@ static gboolean lookup_callback(gpointer user_data)
 	for (list = driver_list; list; list = list->next) {
 		struct connman_proxy_driver *proxy = list->data;
 
-		if (proxy->request_lookup == NULL)
+		if (!proxy->request_lookup)
 			continue;
 
 		lookup->proxy = proxy;
 		break;
 	}
 
-	if (lookup->proxy == NULL ||
+	if (!lookup->proxy ||
 		lookup->proxy->request_lookup(lookup->service,
 						lookup->url) < 0) {
 
@@ -106,11 +106,11 @@ unsigned int connman_proxy_lookup(const char *interface, const char *url,
 
 	DBG("interface %s url %s", interface, url);
 
-	if (interface == NULL)
+	if (!interface)
 		return 0;
 
 	lookup = g_try_new0(struct proxy_lookup, 1);
-	if (lookup == NULL)
+	if (!lookup)
 		return 0;
 
 	lookup->token = next_lookup_token++;
@@ -149,14 +149,14 @@ void connman_proxy_lookup_cancel(unsigned int token)
 		lookup = NULL;
 	}
 
-	if (lookup != NULL) {
+	if (lookup) {
 		if (lookup->watch > 0) {
 			g_source_remove(lookup->watch);
 			lookup->watch = 0;
 		}
 
-		if (lookup->proxy != NULL &&
-					lookup->proxy->cancel_lookup != NULL)
+		if (lookup->proxy &&
+					lookup->proxy->cancel_lookup)
 			lookup->proxy->cancel_lookup(lookup->service,
 								lookup->url);
 
@@ -185,7 +185,7 @@ void connman_proxy_driver_lookup_notify(struct connman_service *service,
 		}
 	}
 
-	if (matches != NULL)
+	if (matches)
 		remove_lookups(matches);
 }
 

@@ -122,7 +122,7 @@ static void send_packet(int fd, const char *server);
 
 static void next_server(void)
 {
-	if (timeserver != NULL) {
+	if (timeserver) {
 		g_free(timeserver);
 		timeserver = NULL;
 	}
@@ -200,7 +200,7 @@ static void send_packet(int fd, const char *server)
 
 static gboolean next_poll(gpointer user_data)
 {
-	if (timeserver == NULL || transmit_fd == 0)
+	if (!timeserver || transmit_fd == 0)
 		return FALSE;
 
 	send_packet(transmit_fd, timeserver);
@@ -229,7 +229,7 @@ static void decode_msg(void *base, size_t len, struct timeval *tv,
 		return;
 	}
 
-	if (tv == NULL) {
+	if (!tv) {
 		connman_error("Invalid packet timestamp from time server");
 		return;
 	}
@@ -390,7 +390,7 @@ static void start_ntp(char *server)
 	struct sockaddr_in addr;
 	int tos = IPTOS_LOWDELAY, timestamp = 1;
 
-	if (server == NULL)
+	if (!server)
 		return;
 
 	DBG("server %s", server);
@@ -427,7 +427,7 @@ static void start_ntp(char *server)
 	}
 
 	channel = g_io_channel_unix_new(transmit_fd);
-	if (channel == NULL) {
+	if (!channel) {
 		close(transmit_fd);
 		return;
 	}
@@ -451,10 +451,10 @@ int __connman_ntp_start(char *server)
 {
 	DBG("%s", server);
 
-	if (server == NULL)
+	if (!server)
 		return -EINVAL;
 
-	if (timeserver != NULL)
+	if (timeserver)
 		g_free(timeserver);
 
 	timeserver = g_strdup(server);
@@ -479,7 +479,7 @@ void __connman_ntp_stop()
 		transmit_fd = 0;
 	}
 
-	if (timeserver != NULL) {
+	if (timeserver) {
 		g_free(timeserver);
 		timeserver = NULL;
 	}

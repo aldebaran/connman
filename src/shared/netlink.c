@@ -78,7 +78,7 @@ struct netlink_info {
 
 static void destroy_command(struct command *command)
 {
-	if (command->destroy != NULL)
+	if (command->destroy)
 		command->destroy(command->user_data);
 
 	g_free(command);
@@ -86,7 +86,7 @@ static void destroy_command(struct command *command)
 
 static void destroy_notify(struct notify *notify)
 {
-	if (notify->destroy != NULL)
+	if (notify->destroy)
 		notify->destroy(notify->user_data);
 
 	g_free(notify);
@@ -103,7 +103,7 @@ static gboolean can_write_data(GIOChannel *chan,
 	int sk;
 
 	command = g_queue_pop_head(netlink->command_queue);
-	if (command == NULL)
+	if (!command)
 		return FALSE;
 
 	sk = g_io_channel_unix_get_fd(chan);
@@ -137,7 +137,7 @@ static void do_notify(gpointer key, gpointer value, gpointer user_data)
 	struct nlmsghdr *nlmsg = user_data;
 	struct notify *notify = value;
 
-	if (notify->handler != NULL) {
+	if (notify->handler) {
 		notify->handler(nlmsg->nlmsg_type, NLMSG_DATA(nlmsg),
 			nlmsg->nlmsg_len - NLMSG_HDRLEN, notify->user_data);
 	}
@@ -150,7 +150,7 @@ static void process_broadcast(struct netlink_info *netlink, uint32_t group,
 
 	notify_list = g_hash_table_lookup(netlink->notify_groups,
 					       GUINT_TO_POINTER(group));
-	if (notify_list == NULL)
+	if (!notify_list)
 		return;
 
 	g_hash_table_foreach(notify_list, do_notify, nlmsg);
@@ -164,13 +164,13 @@ static void process_message(struct netlink_info *netlink,
 
 	command = g_hash_table_lookup(netlink->command_pending,
 					GUINT_TO_POINTER(nlmsg->nlmsg_seq));
-	if (command == NULL)
+	if (!command)
 		return;
 
 	g_hash_table_remove(netlink->command_pending,
 					GUINT_TO_POINTER(nlmsg->nlmsg_seq));
 
-	if (command->handler == NULL)
+	if (!command->handler)
 		goto done;
 
 	if (nlmsg->nlmsg_type < NLMSG_MIN_TYPE) {
@@ -204,10 +204,10 @@ static void process_multi(struct netlink_info *netlink, struct nlmsghdr *nlmsg)
 
 	command = g_hash_table_lookup(netlink->command_pending,
 					GUINT_TO_POINTER(nlmsg->nlmsg_seq));
-	if (command == NULL)
+	if (!command)
 		return;
 
-	if (command->handler == NULL)
+	if (!command->handler)
 		goto done;
 
 	if (nlmsg->nlmsg_type < NLMSG_MIN_TYPE) {
@@ -271,7 +271,7 @@ static gboolean can_read_data(GIOChannel *chan,
 	util_hexdump('>', buffer, len, netlink->debug_handler,
 			netlink->debug_data);
 
-	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
+	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg;
 					cmsg = CMSG_NXTHDR(&msg, cmsg)) {
 		struct nl_pktinfo *pktinfo;
 
@@ -356,7 +356,7 @@ struct netlink_info *netlink_new(int protocol)
 	int sk;
 
 	netlink = g_try_new0(struct netlink_info, 1);
-	if (netlink == NULL)
+	if (!netlink)
 		return NULL;
 
 	netlink->next_seq = 1;
@@ -455,19 +455,19 @@ unsigned int netlink_send(struct netlink_info *netlink,
 	struct nlmsghdr *nlmsg;
 	size_t size;
 
-	if (netlink == NULL)
+	if (!netlink)
 		return 0;
 
-	if (netlink->command_queue == NULL ||
-			netlink->command_pending == NULL ||
-			netlink->command_lookup == NULL)
+	if (!netlink->command_queue ||
+			!netlink->command_pending ||
+			!netlink->command_lookup)
 		return 0;
 
 	size = NLMSG_ALIGN(sizeof(struct command)) +
 					NLMSG_HDRLEN + NLMSG_ALIGN(len);
 
 	command = g_try_malloc0(size);
-	if (command == NULL)
+	if (!command)
 		return 0;
 
 	command->handler = function;
@@ -509,17 +509,17 @@ bool netlink_cancel(struct netlink_info *netlink, unsigned int id)
 {
 	struct command *command;
 
-	if (netlink == NULL || id == 0)
+	if (!netlink || id == 0)
 		return false;
 
-	if (netlink->command_queue == NULL ||
-			netlink->command_pending == NULL||
-			netlink->command_lookup == NULL)
+	if (!netlink->command_queue ||
+			!netlink->command_pending||
+			!netlink->command_lookup)
 		return false;
 
 	command = g_hash_table_lookup(netlink->command_lookup,
 					GUINT_TO_POINTER(id));
-	if (command == NULL)
+	if (!command)
 		return false;
 
 	g_hash_table_remove(netlink->command_lookup, GUINT_TO_POINTER(id));
@@ -568,17 +568,17 @@ unsigned int netlink_register(struct netlink_info *netlink,
 	struct notify *notify;
 	unsigned int id;
 
-	if (netlink == NULL)
+	if (!netlink)
 		return 0;
 
-	if (netlink->notify_groups == NULL || netlink->notify_lookup == NULL)
+	if (!netlink->notify_groups || !netlink->notify_lookup)
 		return 0;
 
 	notify_list = g_hash_table_lookup(netlink->notify_groups,
 						GUINT_TO_POINTER(group));
-	if (notify_list == NULL) {
+	if (!notify_list) {
 		notify_list = g_hash_table_new(g_direct_hash, g_direct_equal);
-		if (notify_list == NULL)
+		if (!notify_list)
 			return 0;
 
 		g_hash_table_replace(netlink->notify_groups,
@@ -620,22 +620,22 @@ bool netlink_unregister(struct netlink_info *netlink, unsigned int id)
 	GHashTable *notify_list;
 	struct notify *notify;
 
-	if (netlink == NULL || id == 0)
+	if (!netlink || id == 0)
 		return false;
 
-	if (netlink->notify_groups == NULL || netlink->notify_lookup == NULL)
+	if (!netlink->notify_groups || !netlink->notify_lookup)
 		return false;
 
 	notify_list = g_hash_table_lookup(netlink->notify_lookup,
 						GUINT_TO_POINTER(id));
 
-	if (notify_list == NULL)
+	if (!notify_list)
 		return false;
 
 	g_hash_table_remove(netlink->notify_lookup, GUINT_TO_POINTER(id));
 
 	notify = g_hash_table_lookup(notify_list, GUINT_TO_POINTER(id));
-	if (notify == NULL)
+	if (!notify)
 		return false;
 
 	g_hash_table_remove(notify_list, GUINT_TO_POINTER(id));
@@ -652,10 +652,10 @@ bool netlink_set_debug(struct netlink_info *netlink,
 			netlink_debug_func_t function,
 			void *user_data, netlink_destroy_func_t destroy)
 {
-	if (netlink == NULL)
+	if (!netlink)
 		return false;
 
-	if (netlink->debug_destroy != NULL)
+	if (netlink->debug_destroy)
 		netlink->debug_destroy(netlink->debug_data);
 
 	netlink->debug_handler = function;

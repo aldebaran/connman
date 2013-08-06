@@ -45,7 +45,7 @@ static int enable_ip_forward(bool enable)
 	FILE *f;
 
 	f = fopen("/proc/sys/net/ipv4/ip_forward", "r+");
-	if (f == NULL)
+	if (!f)
 		return -errno;
 
 	if (enable)
@@ -66,7 +66,7 @@ static int enable_nat(struct connman_nat *nat)
 	g_free(nat->interface);
 	nat->interface = g_strdup(default_interface);
 
-	if (nat->interface == NULL)
+	if (!nat->interface)
 		return 0;
 
 	/* Enable masquerading */
@@ -86,7 +86,7 @@ static int enable_nat(struct connman_nat *nat)
 
 static void disable_nat(struct connman_nat *nat)
 {
-	if (nat->interface == NULL)
+	if (!nat->interface)
 		return;
 
 	/* Disable masquerading */
@@ -106,11 +106,11 @@ int __connman_nat_enable(const char *name, const char *address,
 	}
 
 	nat = g_try_new0(struct connman_nat, 1);
-	if (nat == NULL)
+	if (!nat)
 		goto err;
 
 	nat->fw = __connman_firewall_create();
-	if (nat->fw == NULL)
+	if (!nat->fw)
 		goto err;
 
 	nat->address = g_strdup(address);
@@ -121,7 +121,7 @@ int __connman_nat_enable(const char *name, const char *address,
 	return enable_nat(nat);
 
 err:
-	if (nat != NULL)
+	if (nat)
 		__connman_firewall_destroy(nat->fw);
 
 	if (g_hash_table_size(nat_hash) == 0)
@@ -135,7 +135,7 @@ void __connman_nat_disable(const char *name)
 	struct connman_nat *nat;
 
 	nat = g_hash_table_lookup(nat_hash, name);
-	if (nat == NULL)
+	if (!nat)
 		return;
 
 	disable_nat(nat);

@@ -60,15 +60,15 @@ void connman_agent_get_info(const char **sender, const char **path)
 
 static void agent_data_free(struct connman_agent *data)
 {
-	if (data == NULL)
+	if (!data)
 		return;
-	if (data->user_context != NULL) {
-		if (data->driver != NULL && data->driver->context_unref != NULL)
+	if (data->user_context) {
+		if (data->driver && data->driver->context_unref)
 			data->driver->context_unref(data->user_context);
 	}
-	if (data->msg != NULL)
+	if (data->msg)
 		dbus_message_unref(data->msg);
-	if (data->call != NULL)
+	if (data->call)
 		dbus_pending_call_cancel(data->call);
 
 	g_free(data);
@@ -78,10 +78,10 @@ static void agent_receive_message(DBusPendingCall *call, void *user_data);
 
 static int agent_send_next_request(void)
 {
-	if (agent_request != NULL)
+	if (agent_request)
 		return -EBUSY;
 
-	if (agent_queue == NULL)
+	if (!agent_queue)
 		return 0;
 
 	agent_request = agent_queue->data;
@@ -92,7 +92,7 @@ static int agent_send_next_request(void)
 						agent_request->timeout))
 		goto fail;
 
-	if (agent_request->call == NULL)
+	if (!agent_request->call)
 		goto fail;
 
 	if (!dbus_pending_call_set_notify(agent_request->call,
@@ -114,12 +114,12 @@ static int agent_send_cancel(struct connman_agent *agent)
 {
 	DBusMessage *message;
 
-	if (agent_sender == NULL || agent == NULL || agent->driver == NULL)
+	if (!agent_sender || !agent || !agent->driver)
 		return 0;
 
 	message = dbus_message_new_method_call(agent_sender, agent_path,
 			agent->driver->interface, "Cancel");
-	if (message != NULL) {
+	if (message) {
 		dbus_message_set_no_reply(message, TRUE);
 		g_dbus_send_message(connection, message);
 		return 0;
@@ -178,17 +178,17 @@ int connman_agent_queue_message(void *user_context,
 	struct connman_agent_driver *driver;
 	int err;
 
-	if (user_context == NULL || callback == NULL)
+	if (!user_context || !callback)
 		return -EBADMSG;
 
 	queue_data = g_new0(struct connman_agent, 1);
-	if (queue_data == NULL)
+	if (!queue_data)
 		return -ENOMEM;
 
 	driver = get_driver();
 	DBG("driver %p", driver);
 
-	if (driver != NULL && driver->context_ref != NULL) {
+	if (driver && driver->context_ref) {
 		queue_data->user_context = driver->context_ref(user_context);
 		queue_data->driver = driver;
 	} else
@@ -217,12 +217,12 @@ void connman_agent_cancel(void *user_context)
 
 	item = agent_queue;
 
-	while (item != NULL) {
+	while (item) {
 		next = g_list_next(item);
 		queued_req = item->data;
 
 		if (queued_req->user_context == user_context ||
-							user_context == NULL) {
+							!user_context) {
 			agent_data_free(queued_req);
 			agent_queue = g_list_delete_link(agent_queue, item);
 		}
@@ -230,11 +230,11 @@ void connman_agent_cancel(void *user_context)
 		item = next;
 	}
 
-	if (agent_request == NULL)
+	if (!agent_request)
 		return;
 
 	if (agent_request->user_context != user_context &&
-						user_context != NULL)
+						user_context)
 		return;
 
 	agent_send_cancel(agent_request);
@@ -272,7 +272,7 @@ static void agent_disconnect(DBusConnection *conn, void *data)
 int connman_agent_register(const char *sender, const char *path)
 {
 	DBG("sender %s path %s", sender, path);
-	if (agent_path != NULL)
+	if (agent_path)
 		return -EEXIST;
 
 	agent_sender = g_strdup(sender);
@@ -288,7 +288,7 @@ int connman_agent_unregister(const char *sender, const char *path)
 {
 	DBG("sender %s path %s", sender, path);
 
-	if (agent_path == NULL)
+	if (!agent_path)
 		return -ESRCH;
 
 	if (agent_watch > 0)
@@ -313,7 +313,7 @@ static void report_error_reply(DBusMessage *reply, void *user_data)
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		dbus_err = dbus_message_get_error_name(reply);
-		if (dbus_err != NULL &&
+		if (dbus_err &&
 			strcmp(dbus_err,
 				CONNMAN_AGENT_INTERFACE ".Error.Retry") == 0)
 			retry = true;
@@ -333,14 +333,14 @@ int connman_agent_report_error(void *user_context, const char *path,
 	struct report_error_data *report_error;
 	int err;
 
-	if (user_context == NULL || agent_path == NULL || error == NULL ||
-							callback == NULL)
+	if (!user_context || !agent_path || !error ||
+							!callback)
 		return -ESRCH;
 
 	message = dbus_message_new_method_call(agent_sender, agent_path,
 					CONNMAN_AGENT_INTERFACE,
 					"ReportError");
-	if (message == NULL)
+	if (!message)
 		return -ENOMEM;
 
 	dbus_message_iter_init_append(message, &iter);
@@ -351,7 +351,7 @@ int connman_agent_report_error(void *user_context, const char *path,
 				DBUS_TYPE_STRING, &error);
 
 	report_error = g_try_new0(struct report_error_data, 1);
-	if (report_error == NULL) {
+	if (!report_error) {
 		dbus_message_unref(message);
 		return -ENOMEM;
 	}
@@ -411,12 +411,12 @@ void connman_agent_driver_unregister(struct connman_agent_driver *driver)
 {
 	GSList *list;
 
-	if (driver == NULL)
+	if (!driver)
 		return;
 
 	DBG("Unregistering driver %p name %s", driver, driver->name);
 
-	if (agent_sender == NULL && agent_path == NULL)
+	if (!agent_sender && !agent_path)
 		goto out;
 
 	for (list = driver_list; list; list = list->next) {
@@ -430,7 +430,7 @@ void connman_agent_driver_unregister(struct connman_agent_driver *driver)
 
 		message = dbus_message_new_method_call(agent_sender, agent_path,
 				driver->interface, "Release");
-		if (message != NULL) {
+		if (message) {
 			dbus_message_set_no_reply(message, TRUE);
 			g_dbus_send_message(connection, message);
 		}
@@ -459,7 +459,7 @@ int __connman_agent_init(void)
 	DBG("");
 
 	connection = connman_dbus_get_connection();
-	if (connection == NULL)
+	if (!connection)
 		return -1;
 
 	return 0;
@@ -469,7 +469,7 @@ void __connman_agent_cleanup(void)
 {
 	DBG("");
 
-	if (connection == NULL)
+	if (!connection)
 		return;
 
 	if (agent_watch > 0)

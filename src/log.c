@@ -119,7 +119,7 @@ static void print_backtrace(unsigned int offset)
 	int pathlen;
 	pid_t pid;
 
-	if (program_exec == NULL)
+	if (!program_exec)
 		return;
 
 	pathlen = strlen(program_path);
@@ -247,14 +247,14 @@ static bool is_enabled(struct connman_debug_desc *desc)
 {
 	int i;
 
-	if (enabled == NULL)
+	if (!enabled)
 		return false;
 
-	for (i = 0; enabled[i] != NULL; i++) {
-		if (desc->name != NULL && g_pattern_match_simple(enabled[i],
+	for (i = 0; enabled[i]; i++) {
+		if (desc->name && g_pattern_match_simple(enabled[i],
 							desc->name))
 			return true;
-		if (desc->file != NULL && g_pattern_match_simple(enabled[i],
+		if (desc->file && g_pattern_match_simple(enabled[i],
 							desc->file))
 			return true;
 	}
@@ -268,7 +268,7 @@ void __connman_log_enable(struct connman_debug_desc *start,
 	struct connman_debug_desc *desc;
 	const char *name = NULL, *file = NULL;
 
-	if (start == NULL || stop == NULL)
+	if (!start || !stop)
 		return;
 
 	for (desc = start; desc < stop; desc++) {
@@ -278,9 +278,9 @@ void __connman_log_enable(struct connman_debug_desc *start,
 			continue;
 		}
 
-		if (file != NULL || name != NULL) {
+		if (file || name) {
 			if (g_strcmp0(desc->file, file) == 0) {
-				if (desc->name == NULL)
+				if (!desc->name)
 					desc->name = name;
 			} else
 				file = NULL;
@@ -301,7 +301,7 @@ int __connman_log_init(const char *program, const char *debug,
 	program_exec = program;
 	program_path = getcwd(path, sizeof(path));
 
-	if (debug != NULL)
+	if (debug)
 		enabled = g_strsplit_set(debug, ":, ", 0);
 
 	__connman_log_enable(__start___debug, __stop___debug);

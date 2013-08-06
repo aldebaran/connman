@@ -146,7 +146,7 @@ static int insert_managed_rule(const char *table_name,
 		goto out;
 	}
 
-	for (list = managed_tables; list != NULL; list = list->next) {
+	for (list = managed_tables; list; list = list->next) {
 		mtable = list->data;
 
 		if (g_strcmp0(mtable->name, table_name) == 0)
@@ -155,7 +155,7 @@ static int insert_managed_rule(const char *table_name,
 		mtable = NULL;
 	}
 
-	if (mtable == NULL) {
+	if (!mtable) {
 		mtable = g_new0(struct connman_managed_table, 1);
 		mtable->name = g_strdup(table_name);
 
@@ -203,7 +203,7 @@ static int delete_managed_rule(const char *table_name,
 	err = __connman_iptables_delete(table_name, managed_chain,
 					rule_spec);
 
-	for (list = managed_tables; list != NULL; list = list->next) {
+	for (list = managed_tables; list; list = list->next) {
 		mtable = list->data;
 
 		if (g_strcmp0(mtable->name, table_name) == 0)
@@ -212,7 +212,7 @@ static int delete_managed_rule(const char *table_name,
 		mtable = NULL;
 	}
 
-	if (mtable == NULL) {
+	if (!mtable) {
 		err = -ENOENT;
 		goto out;
 	}
@@ -297,7 +297,7 @@ static int firewall_disable(GList *rules)
 	GList *list;
 	int err;
 
-	for (list = rules; list != NULL; list = g_list_previous(list)) {
+	for (list = rules; list; list = g_list_previous(list)) {
 		rule = list->data;
 
 		err = delete_managed_rule(rule->table,
@@ -325,7 +325,7 @@ int __connman_firewall_enable(struct firewall_context *ctx)
 	GList *list;
 	int err;
 
-	for (list = g_list_first(ctx->rules); list != NULL;
+	for (list = g_list_first(ctx->rules); list;
 			list = g_list_next(list)) {
 		rule = list->data;
 
@@ -377,7 +377,7 @@ static void flush_table(const char *table_name)
 	__connman_iptables_iterate_chains(table_name, iterate_chains_cb,
 						&chains);
 
-	for (list = chains; list != NULL; list = list->next) {
+	for (list = chains; list; list = list->next) {
 		id = GPOINTER_TO_INT(list->data);
 
 		managed_chain = g_strdup_printf("%s%s", CHAIN_PREFIX,

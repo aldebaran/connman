@@ -129,7 +129,7 @@ static void set_configuration(struct connman_network *network,
 
 	DBG("network %p", network);
 
-	if (network->device == NULL)
+	if (!network->device)
 		return;
 
 	__connman_device_set_network(network->device, network);
@@ -149,7 +149,7 @@ static void dhcp_success(struct connman_network *network)
 	int err;
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		goto err;
 
 	connman_network_set_associating(network, false);
@@ -177,7 +177,7 @@ static void dhcp_failure(struct connman_network *network)
 	struct connman_service *service;
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		return;
 
 	__connman_service_ipconfig_indicate_state(service,
@@ -243,7 +243,7 @@ static void set_connected_manual(struct connman_network *network)
 
 	ipconfig = __connman_service_get_ip4config(service);
 
-	if (__connman_ipconfig_get_local(ipconfig) == NULL)
+	if (!__connman_ipconfig_get_local(ipconfig))
 		__connman_service_read_ip4config(service);
 
 	set_configuration(network, CONNMAN_IPCONFIG_TYPE_IPV4);
@@ -294,10 +294,10 @@ static int manual_ipv6_set(struct connman_network *network,
 	DBG("network %p ipv6 %p", network, ipconfig_ipv6);
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		return -EINVAL;
 
-	if (__connman_ipconfig_get_local(ipconfig_ipv6) == NULL)
+	if (!__connman_ipconfig_get_local(ipconfig_ipv6))
 		__connman_service_read_ip6config(service);
 
 	__connman_ipconfig_enable_ipv6(ipconfig_ipv6);
@@ -359,7 +359,7 @@ static bool dhcpv6_set_addresses(struct connman_network *network)
 	int err = -EINVAL;
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		goto err;
 
 	connman_network_set_associating(network, false);
@@ -433,7 +433,7 @@ static void check_dhcpv6(struct nd_router_advert *reply,
 
 	DBG("reply %p", reply);
 
-	if (reply == NULL) {
+	if (!reply) {
 		/*
 		 * Router solicitation message seem to get lost easily so
 		 * try to send it again.
@@ -481,7 +481,7 @@ static void receive_refresh_rs_reply(struct nd_router_advert *reply,
 
 	DBG("reply %p", reply);
 
-	if (reply == NULL) {
+	if (!reply) {
 		/*
 		 * Router solicitation message seem to get lost easily so
 		 * try to send it again.
@@ -552,11 +552,11 @@ static void autoconf_ipv6_set(struct connman_network *network)
 	network->connecting = false;
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		return;
 
 	ipconfig = __connman_service_get_ip6config(service);
-	if (ipconfig == NULL)
+	if (!ipconfig)
 		return;
 
 	index = __connman_ipconfig_get_index(ipconfig);
@@ -757,7 +757,7 @@ static int network_probe(struct connman_network *network)
 
 	DBG("network %p name %s", network, network->name);
 
-	if (network->driver != NULL)
+	if (network->driver)
 		return -EALREADY;
 
 	for (list = driver_list; list; list = list->next) {
@@ -776,10 +776,10 @@ static int network_probe(struct connman_network *network)
 		driver = NULL;
 	}
 
-	if (driver == NULL)
+	if (!driver)
 		return -ENODEV;
 
-	if (network->group == NULL)
+	if (!network->group)
 		return -EINVAL;
 
 	switch (network->type) {
@@ -792,7 +792,7 @@ static int network_probe(struct connman_network *network)
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
 	case CONNMAN_NETWORK_TYPE_WIFI:
 		network->driver = driver;
-		if (__connman_service_create_from_network(network) == NULL) {
+		if (!__connman_service_create_from_network(network)) {
 			network->driver = NULL;
 			return -EINVAL;
 		}
@@ -805,7 +805,7 @@ static void network_remove(struct connman_network *network)
 {
 	DBG("network %p name %s", network, network->name);
 
-	if (network->driver == NULL)
+	if (!network->driver)
 		return;
 
 	if (network->connected)
@@ -820,7 +820,7 @@ static void network_remove(struct connman_network *network)
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
 	case CONNMAN_NETWORK_TYPE_WIFI:
-		if (network->group != NULL) {
+		if (network->group) {
 			__connman_service_remove_from_network(network);
 
 			g_free(network->group);
@@ -858,10 +858,10 @@ static void probe_driver(struct connman_network_driver *driver)
 
 	DBG("driver %p name %s", driver, driver->name);
 
-	for (list = network_list; list != NULL; list = list->next) {
+	for (list = network_list; list; list = list->next) {
 		struct connman_network *network = list->data;
 
-		if (network->driver != NULL)
+		if (network->driver)
 			continue;
 
 		if (driver->type != network->type)
@@ -880,7 +880,7 @@ static void remove_driver(struct connman_network_driver *driver)
 
 	DBG("driver %p name %s", driver, driver->name);
 
-	for (list = network_list; list != NULL; list = list->next) {
+	for (list = network_list; list; list = list->next) {
 		struct connman_network *network = list->data;
 
 		if (network->driver == driver)
@@ -978,7 +978,7 @@ struct connman_network *connman_network_create(const char *identifier,
 	DBG("identifier %s type %d", identifier, type);
 
 	network = g_try_new0(struct connman_network, 1);
-	if (network == NULL)
+	if (!network)
 		return NULL;
 
 	DBG("network %p", network);
@@ -987,7 +987,7 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	ident = g_strdup(identifier);
 
-	if (ident == NULL) {
+	if (!ident) {
 		g_free(network);
 		return NULL;
 	}
@@ -1079,11 +1079,11 @@ void connman_network_set_index(struct connman_network *network, int index)
 	struct connman_ipconfig *ipconfig;
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		goto done;
 
 	ipconfig = __connman_service_get_ip4config(service);
-	if (ipconfig == NULL)
+	if (!ipconfig)
 		goto done;
 
 	/* If index changed, the index of ipconfig must be reset. */
@@ -1129,12 +1129,12 @@ void connman_network_set_group(struct connman_network *network,
 	}
 
 	if (g_strcmp0(network->group, group) == 0) {
-		if (group != NULL)
+		if (group)
 			__connman_service_update_from_network(network);
 		return;
 	}
 
-	if (network->group != NULL) {
+	if (network->group) {
 		__connman_service_remove_from_network(network);
 
 		g_free(network->group);
@@ -1142,7 +1142,7 @@ void connman_network_set_group(struct connman_network *network,
 
 	network->group = g_strdup(group);
 
-	if (network->group != NULL)
+	if (network->group)
 		network_probe(network);
 }
 
@@ -1159,7 +1159,7 @@ const char *connman_network_get_group(struct connman_network *network)
 
 const char *__connman_network_get_ident(struct connman_network *network)
 {
-	if (network->device == NULL)
+	if (!network->device)
 		return NULL;
 
 	return connman_device_get_ident(network->device);
@@ -1301,11 +1301,11 @@ void connman_network_set_ipv4_method(struct connman_network *network,
 	struct connman_ipconfig *ipconfig;
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		return;
 
 	ipconfig = __connman_service_get_ip4config(service);
-	if (ipconfig == NULL)
+	if (!ipconfig)
 		return;
 
 	__connman_ipconfig_set_method(ipconfig, method);
@@ -1318,11 +1318,11 @@ void connman_network_set_ipv6_method(struct connman_network *network,
 	struct connman_ipconfig *ipconfig;
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		return;
 
 	ipconfig = __connman_service_get_ip6config(service);
-	if (ipconfig == NULL)
+	if (!ipconfig)
 		return;
 
 	__connman_ipconfig_set_method(ipconfig, method);
@@ -1362,7 +1362,7 @@ void connman_network_clear_error(struct connman_network *network)
 
 	DBG("network %p", network);
 
-	if (network == NULL)
+	if (!network)
 		return;
 
 	if (network->connecting || network->associating)
@@ -1429,7 +1429,7 @@ bool connman_network_get_associating(struct connman_network *network)
 
 void connman_network_clear_hidden(void *user_data)
 {
-	if (user_data == NULL)
+	if (!user_data)
 		return;
 
 	DBG("user_data %p", user_data);
@@ -1453,15 +1453,15 @@ int connman_network_connect_hidden(struct connman_network *network,
 
 	DBG("network %p service %p user_data %p", network, service, user_data);
 
-	if (service == NULL) {
+	if (!service) {
 		err = -EINVAL;
 		goto out;
 	}
 
-	if (identity != NULL)
+	if (identity)
 		__connman_service_set_agent_identity(service, identity);
 
-	if (passphrase != NULL)
+	if (passphrase)
 		err = __connman_service_add_passphrase(service, passphrase);
 
 	if (err == -ENOKEY) {
@@ -1498,13 +1498,13 @@ int __connman_network_connect(struct connman_network *network)
 	if (network->connecting || network->associating)
 		return -EALREADY;
 
-	if (network->driver == NULL)
+	if (!network->driver)
 		return -EUNATCH;
 
-	if (network->driver->connect == NULL)
+	if (!network->driver->connect)
 		return -ENOSYS;
 
-	if (network->device == NULL)
+	if (!network->device)
 		return -ENODEV;
 
 	network->connecting = true;
@@ -1542,10 +1542,10 @@ int __connman_network_disconnect(struct connman_network *network)
 						!network->associating)
 		return -ENOTCONN;
 
-	if (network->driver == NULL)
+	if (!network->driver)
 		return -EUNATCH;
 
-	if (network->driver->disconnect == NULL)
+	if (!network->driver->disconnect)
 		return -ENOSYS;
 
 	network->connecting = false;
@@ -1564,7 +1564,7 @@ static int manual_ipv4_set(struct connman_network *network,
 	int err;
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		return -EINVAL;
 
 	err = __connman_ipconfig_address_add(ipconfig);
@@ -1585,7 +1585,7 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 	enum connman_ipconfig_type type;
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		return -EINVAL;
 
 	method = __connman_ipconfig_get_method(ipconfig);
@@ -1626,7 +1626,7 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 	enum connman_ipconfig_method method;
 	int ret;
 
-	if (network == NULL)
+	if (!network)
 		return -EINVAL;
 
 	if (ipconfig_ipv6) {
@@ -1681,11 +1681,11 @@ int connman_network_set_ipaddress(struct connman_network *network,
 	DBG("network %p", network);
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		return -EINVAL;
 
 	ipconfig = __connman_service_get_ipconfig(service, ipaddress->family);
-	if (ipconfig == NULL)
+	if (!ipconfig)
 		return -EINVAL;
 
 	__connman_ipconfig_set_local(ipconfig, ipaddress->local);
@@ -1707,17 +1707,17 @@ int connman_network_set_nameservers(struct connman_network *network,
 	DBG("network %p nameservers %s", network, nameservers);
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		return -EINVAL;
 
 	__connman_service_nameserver_clear(service);
 
-	if (nameservers == NULL)
+	if (!nameservers)
 		return 0;
 
 	nameservers_array = g_strsplit(nameservers, " ", 0);
 
-	for (i = 0; nameservers_array[i] != NULL; i++) {
+	for (i = 0; nameservers_array[i]; i++) {
 		__connman_service_nameserver_append(service,
 						nameservers_array[i], false);
 	}
@@ -1735,7 +1735,7 @@ int connman_network_set_domain(struct connman_network *network,
 	DBG("network %p domain %s", network, domain);
 
 	service = connman_service_lookup_from_network(network);
-	if (service == NULL)
+	if (!service)
 		return -EINVAL;
 
 	__connman_service_set_domainname(service, domain);
@@ -1992,7 +1992,7 @@ int connman_network_set_blob(struct connman_network *network,
 	if (g_str_equal(key, "WiFi.SSID")) {
 		g_free(network->wifi.ssid);
 		network->wifi.ssid = g_try_malloc(size);
-		if (network->wifi.ssid != NULL) {
+		if (network->wifi.ssid) {
 			memcpy(network->wifi.ssid, data, size);
 			network->wifi.ssid_len = size;
 		} else
@@ -2018,7 +2018,7 @@ const void *connman_network_get_blob(struct connman_network *network,
 	DBG("network %p key %s", network, key);
 
 	if (g_str_equal(key, "WiFi.SSID")) {
-		if (size != NULL)
+		if (size)
 			*size = network->wifi.ssid_len;
 		return network->wifi.ssid;
 	}
@@ -2032,12 +2032,12 @@ void __connman_network_set_device(struct connman_network *network,
 	if (network->device == device)
 		return;
 
-	if (network->device != NULL)
+	if (network->device)
 		network_remove(network);
 
 	network->device = device;
 
-	if (network->device != NULL)
+	if (network->device)
 		network_probe(network);
 }
 
@@ -2089,7 +2089,7 @@ void connman_network_update(struct connman_network *network)
 		break;
 	}
 
-	if (network->group != NULL)
+	if (network->group)
 		__connman_service_update_from_network(network);
 }
 

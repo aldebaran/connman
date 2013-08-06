@@ -224,7 +224,7 @@ void __connman_rfkill_cleanup(void)
 {
 	DBG("");
 
-	if (channel == NULL)
+	if (!channel)
 		return;
 
 	g_io_channel_shutdown(channel, TRUE, NULL);

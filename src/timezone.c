@@ -60,7 +60,7 @@ static char *read_key_file(const char *pathname, const char *key)
 	}
 
 	map = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	if (map == NULL || map == MAP_FAILED) {
+	if (!map || map == MAP_FAILED) {
 		close(fd);
 		return NULL;
 	}
@@ -81,25 +81,25 @@ static char *read_key_file(const char *pathname, const char *key)
 		}
 
 		ptr = memchr(ptr + 1, key[0], ptrlen - 1);
-		if (ptr == NULL)
+		if (!ptr)
 			break;
 
 		ptrlen = st.st_size - (ptr - map);
 	}
 
-	if (ptr != NULL) {
+	if (ptr) {
 		char *end, *val;
 
 		ptrlen = st.st_size - (ptr - map);
 
 		end = memchr(ptr, '\n', ptrlen);
-		if (end != NULL)
+		if (end)
 			ptrlen = end - ptr;
 
 		val = memchr(ptr, '"', ptrlen);
-		if (val != NULL) {
+		if (val) {
 			end = memchr(val + 1, '"', end - val - 1);
-			if (end != NULL)
+			if (end)
 				str = g_strndup(val + 1, end - val - 1);
 			else
 				str = NULL;
@@ -137,7 +137,7 @@ static int compare_file(void *src_map, struct stat *src_st,
 	}
 
 	dst_map = mmap(0, dst_st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	if (dst_map == NULL || dst_map == MAP_FAILED) {
+	if (!dst_map || dst_map == MAP_FAILED) {
 		close(fd);
 		return -1;
 	}
@@ -160,14 +160,14 @@ static char *find_origin(void *src_map, struct stat *src_st,
 	struct stat buf;
 	int ret;
 
-	if (subpath == NULL)
+	if (!subpath)
 		strncpy(pathname, basepath, sizeof(pathname));
 	else
 		snprintf(pathname, sizeof(pathname),
 					"%s/%s", basepath, subpath);
 
 	dir = opendir(pathname);
-	if (dir == NULL)
+	if (!dir)
 		return NULL;
 
 	while ((d = readdir(dir))) {
@@ -179,7 +179,7 @@ static char *find_origin(void *src_map, struct stat *src_st,
 
 		switch (d->d_type) {
 		case DT_REG:
-			if (subpath == NULL)
+			if (!subpath)
 				snprintf(pathname, PATH_MAX,
 						"%s/%s", basepath, d->d_name);
 			else
@@ -206,14 +206,14 @@ static char *find_origin(void *src_map, struct stat *src_st,
 				continue;
 			/* fall through */
 		case DT_DIR:
-			if (subpath == NULL)
+			if (!subpath)
 				strncpy(pathname, d->d_name, sizeof(pathname));
 			else
 				snprintf(pathname, sizeof(pathname),
 						"%s/%s", subpath, d->d_name);
 
 			str = find_origin(src_map, src_st, basepath, pathname);
-			if (str != NULL) {
+			if (str) {
 				closedir(dir);
 				return str;
 			}
@@ -248,14 +248,14 @@ char *__connman_timezone_lookup(void)
 
 	if (S_ISREG(st.st_mode)) {
 		map = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-		if (map == NULL || map == MAP_FAILED) {
+		if (!map || map == MAP_FAILED) {
 			g_free(zone);
 			zone = NULL;
 
 			goto done;
 		}
 
-		if (zone != NULL) {
+		if (zone) {
 			char pathname[PATH_MAX];
 
 			snprintf(pathname, PATH_MAX, "%s/%s",
@@ -267,7 +267,7 @@ char *__connman_timezone_lookup(void)
 			}
 		}
 
-		if (zone == NULL)
+		if (!zone)
 			zone = find_origin(map, &st, USR_SHARE_ZONEINFO, NULL);
 
 		munmap(map, st.st_size);
@@ -331,7 +331,7 @@ int __connman_timezone_change(const char *zone)
 	}
 
 	map = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	if (map == NULL || map == MAP_FAILED) {
+	if (!map || map == MAP_FAILED) {
 		close(fd);
 		return -EIO;
 	}
@@ -415,7 +415,7 @@ int __connman_timezone_init(void)
 		return -EIO;
 
 	channel = g_io_channel_unix_new(fd);
-	if (channel == NULL) {
+	if (!channel) {
 		close(fd);
 		return -EIO;
 	}

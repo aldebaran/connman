@@ -127,7 +127,7 @@ static void connman_wispr_message_init(struct connman_wispr_message *msg)
 
 static void free_wispr_routes(struct connman_wispr_portal_context *wp_context)
 {
-	while (wp_context->route_list != NULL) {
+	while (wp_context->route_list) {
 		struct wispr_route *route = wp_context->route_list->data;
 
 		DBG("free route to %s if %d type %d", route->address,
@@ -160,10 +160,10 @@ static void free_connman_wispr_portal_context(
 {
 	DBG("context %p", wp_context);
 
-	if (wp_context == NULL)
+	if (!wp_context)
 		return;
 
-	if (wp_context->wispr_portal != NULL) {
+	if (wp_context->wispr_portal) {
 		if (wp_context->wispr_portal->ipv4_context == wp_context)
 			wp_context->wispr_portal->ipv4_context = NULL;
 
@@ -180,12 +180,12 @@ static void free_connman_wispr_portal_context(
 	if (wp_context->timeout > 0)
 		g_source_remove(wp_context->timeout);
 
-	if (wp_context->web != NULL)
+	if (wp_context->web)
 		g_web_unref(wp_context->web);
 
 	g_free(wp_context->redirect_url);
 
-	if (wp_context->wispr_parser != NULL)
+	if (wp_context->wispr_parser)
 		g_web_parser_unref(wp_context->wispr_parser);
 
 	connman_wispr_message_init(&wp_context->wispr_msg);
@@ -210,7 +210,7 @@ static void free_connman_wispr_portal(gpointer data)
 
 	DBG("");
 
-	if (wispr_portal == NULL)
+	if (!wispr_portal)
 		return;
 
 	free_connman_wispr_portal_context(wispr_portal->ipv4_context);
@@ -327,7 +327,7 @@ static void xml_wispr_text_handler(GMarkupParseContext *context,
 	struct connman_wispr_message *msg = user_data;
 	int i;
 
-	if (msg->current_element == NULL)
+	if (!msg->current_element)
 		return;
 
 	for (i = 0; wispr_element_map[i].str; i++) {
@@ -468,7 +468,7 @@ static bool wispr_route_request(const char *address, int ai_family,
 
 	DBG("address %s if %d gw %s", address, if_index, gateway);
 
-	if (gateway == NULL)
+	if (!gateway)
 		return false;
 
 	route = g_try_new0(struct wispr_route, 1);
@@ -556,7 +556,7 @@ static void wispr_portal_browser_reply_cb(struct connman_service *service,
 
 	DBG("");
 
-	if (service == NULL || wp_context == NULL)
+	if (!service || !wp_context)
 		return;
 
 	if (!authentication_done) {
@@ -580,7 +580,7 @@ static void wispr_portal_request_wispr_login(struct connman_service *service,
 
 	DBG("");
 
-	if (error != NULL) {
+	if (error) {
 		if (g_strcmp0(error,
 			"net.connman.Agent.Error.LaunchBrowser") == 0) {
 			if (__connman_agent_request_browser(service,
@@ -619,21 +619,21 @@ static bool wispr_manage_message(GWebResult *result,
 		response_code_to_string(wp_context->wispr_msg.response_code),
 					wp_context->wispr_msg.response_code);
 
-	if (wp_context->wispr_msg.access_procedure != NULL)
+	if (wp_context->wispr_msg.access_procedure)
 		DBG("Access procedure: %s",
 			wp_context->wispr_msg.access_procedure);
-	if (wp_context->wispr_msg.access_location != NULL)
+	if (wp_context->wispr_msg.access_location)
 		DBG("Access location: %s",
 			wp_context->wispr_msg.access_location);
-	if (wp_context->wispr_msg.location_name != NULL)
+	if (wp_context->wispr_msg.location_name)
 		DBG("Location name: %s",
 			wp_context->wispr_msg.location_name);
-	if (wp_context->wispr_msg.login_url != NULL)
+	if (wp_context->wispr_msg.login_url)
 		DBG("Login URL: %s", wp_context->wispr_msg.login_url);
-	if (wp_context->wispr_msg.abort_login_url != NULL)
+	if (wp_context->wispr_msg.abort_login_url)
 		DBG("Abort login URL: %s",
 			wp_context->wispr_msg.abort_login_url);
-	if (wp_context->wispr_msg.logoff_url != NULL)
+	if (wp_context->wispr_msg.logoff_url)
 		DBG("Logoff URL: %s", wp_context->wispr_msg.logoff_url);
 
 	switch (wp_context->wispr_msg.message_type) {
@@ -770,12 +770,12 @@ static void proxy_callback(const char *proxy, void *user_data)
 
 	DBG("proxy %s", proxy);
 
-	if (wp_context == NULL)
+	if (!wp_context)
 		return;
 
 	wp_context->token = 0;
 
-	if (proxy != NULL && g_strcmp0(proxy, "DIRECT") != 0)
+	if (proxy && g_strcmp0(proxy, "DIRECT") != 0)
 		g_web_set_proxy(wp_context->web, proxy);
 
 	g_web_set_accept(wp_context->web, NULL);
@@ -833,7 +833,7 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 	}
 
 	interface = connman_service_get_interface(wp_context->service);
-	if (interface == NULL)
+	if (!interface)
 		return -EINVAL;
 
 	DBG("interface %s", interface);
@@ -846,14 +846,14 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 	}
 
 	nameservers = connman_service_get_nameservers(wp_context->service);
-	if (nameservers == NULL) {
+	if (!nameservers) {
 		DBG("Could not get nameservers");
 		err = -EINVAL;
 		goto done;
 	}
 
 	wp_context->web = g_web_new(if_index);
-	if (wp_context->web == NULL) {
+	if (!wp_context->web) {
 		DBG("Could not set up GWeb");
 		err = -ENOMEM;
 		goto done;
@@ -870,7 +870,7 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 		wp_context->status_url = STATUS_URL_IPV6;
 	}
 
-	for (i = 0; nameservers[i] != NULL; i++)
+	for (i = 0; nameservers[i]; i++)
 		g_web_add_nameserver(wp_context->web, nameservers[i]);
 
 	proxy_method = connman_service_get_proxy_method(wp_context->service);
@@ -906,7 +906,7 @@ int __connman_wispr_start(struct connman_service *service,
 
 	DBG("service %p", service);
 
-	if (wispr_portal_list == NULL)
+	if (!wispr_portal_list)
 		return -EINVAL;
 
 	index = __connman_service_get_index(service);
@@ -915,9 +915,9 @@ int __connman_wispr_start(struct connman_service *service,
 
 	wispr_portal = g_hash_table_lookup(wispr_portal_list,
 					GINT_TO_POINTER(index));
-	if (wispr_portal == NULL) {
+	if (!wispr_portal) {
 		wispr_portal = g_try_new0(struct connman_wispr_portal, 1);
-		if (wispr_portal == NULL)
+		if (!wispr_portal)
 			return -ENOMEM;
 
 		g_hash_table_replace(wispr_portal_list,
@@ -932,11 +932,11 @@ int __connman_wispr_start(struct connman_service *service,
 		return -EINVAL;
 
 	/* If there is already an existing context, we wipe it */
-	if (wp_context != NULL)
+	if (wp_context)
 		free_connman_wispr_portal_context(wp_context);
 
 	wp_context = create_wispr_portal_context();
-	if (wp_context == NULL)
+	if (!wp_context)
 		return -ENOMEM;
 
 	wp_context->service = service;
@@ -957,7 +957,7 @@ void __connman_wispr_stop(struct connman_service *service)
 
 	DBG("service %p", service);
 
-	if (wispr_portal_list == NULL)
+	if (!wispr_portal_list)
 		return;
 
 	index = __connman_service_get_index(service);

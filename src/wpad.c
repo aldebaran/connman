@@ -72,7 +72,7 @@ static void wpad_result(GResolvResultStatus status,
 	if (status == G_RESOLV_RESULT_STATUS_SUCCESS) {
 		char *url;
 
-		if (results == NULL || g_strv_length(results) == 0)
+		if (!results || g_strv_length(results) == 0)
 			goto failed;
 
 		url = g_strdup_printf("http://%s/wpad.dat", wpad->hostname);
@@ -80,7 +80,7 @@ static void wpad_result(GResolvResultStatus status,
 		__connman_service_set_proxy_autoconfig(wpad->service, url);
 
 		wpad->addrlist = g_strdupv(results);
-		if (wpad->addrlist != NULL)
+		if (wpad->addrlist)
 			download_pac(wpad, "wpad.dat");
 
 		g_free(url);
@@ -97,10 +97,10 @@ static void wpad_result(GResolvResultStatus status,
 		goto failed;
 
 	ptr = strchr(hostname + 5, '.');
-	if (ptr == NULL || strlen(ptr) < 2)
+	if (!ptr || strlen(ptr) < 2)
 		goto failed;
 
-	if (strchr(ptr + 1, '.') == NULL)
+	if (!strchr(ptr + 1, '.'))
 		goto failed;
 
 	wpad->hostname = g_strdup_printf("wpad.%s", ptr + 1);
@@ -131,7 +131,7 @@ int __connman_wpad_start(struct connman_service *service)
 
 	DBG("service %p", service);
 
-	if (wpad_list == NULL)
+	if (!wpad_list)
 		return -EINVAL;
 
 	index = __connman_service_get_index(service);
@@ -139,22 +139,22 @@ int __connman_wpad_start(struct connman_service *service)
 		return -EINVAL;
 
 	domainname = connman_service_get_domainname(service);
-	if (domainname == NULL)
+	if (!domainname)
 		return -EINVAL;
 
 	nameservers = connman_service_get_nameservers(service);
-	if (nameservers == NULL)
+	if (!nameservers)
 		return -EINVAL;
 
 	wpad = g_try_new0(struct connman_wpad, 1);
-	if (wpad == NULL) {
+	if (!wpad) {
 		g_strfreev(nameservers);
 		return -ENOMEM;
 	}
 
 	wpad->service = service;
 	wpad->resolv = g_resolv_new(index);
-	if (wpad->resolv == NULL) {
+	if (!wpad->resolv) {
 		g_strfreev(nameservers);
 		g_free(wpad);
 		return -ENOMEM;
@@ -163,7 +163,7 @@ int __connman_wpad_start(struct connman_service *service)
 	if (getenv("CONNMAN_RESOLV_DEBUG"))
 		g_resolv_set_debug(wpad->resolv, resolv_debug, "RESOLV");
 
-	for (i = 0; nameservers[i] != NULL; i++)
+	for (i = 0; nameservers[i]; i++)
 		g_resolv_add_nameserver(wpad->resolv, nameservers[i], 53, 0);
 
 	g_strfreev(nameservers);
@@ -187,7 +187,7 @@ void __connman_wpad_stop(struct connman_service *service)
 
 	DBG("service %p", service);
 
-	if (wpad_list == NULL)
+	if (!wpad_list)
 		return;
 
 	index = __connman_service_get_index(service);
