@@ -74,7 +74,7 @@ static bool check_dbus_name(const char *name)
 	 */
 	unsigned int i;
 
-	if (name == NULL || name[0] == '\0')
+	if (!name || name[0] == '\0')
 		return false;
 
 	for (i = 0; name[i] != '\0'; i++)
@@ -89,7 +89,7 @@ static bool check_dbus_name(const char *name)
 
 static int parse_boolean(char *arg)
 {
-	if (arg == NULL)
+	if (!arg)
 		return -1;
 
 	if (strcasecmp(arg, "no") == 0 ||
@@ -117,10 +117,10 @@ static int parse_args(char *arg, struct connman_option *options)
 {
 	int i;
 
-	if (arg == NULL)
+	if (!arg)
 		return -1;
 
-	for (i = 0; options[i].name != NULL; i++) {
+	for (i = 0; options[i].name; i++) {
 		if (strcmp(options[i].name, arg) == 0 ||
 				(strncmp(arg, "--", 2) == 0 &&
 					strcmp(&arg[2], options[i].name) == 0))
@@ -137,12 +137,12 @@ static int enable_return(DBusMessageIter *iter, const char *error,
 	char *str;
 
 	str = strrchr(tech, '/');
-	if (str != NULL)
+	if (str)
 		str++;
 	else
 		str = tech;
 
-	if (error == NULL) {
+	if (!error) {
 		fprintf(stdout, "Enabled %s\n", str);
 	} else
 		fprintf(stderr, "Error %s: %s\n", str, error);
@@ -186,12 +186,12 @@ static int disable_return(DBusMessageIter *iter, const char *error,
 	char *str;
 
 	str = strrchr(tech, '/');
-	if (str != NULL)
+	if (str)
 		str++;
 	else
 		str = tech;
 
-	if (error == NULL) {
+	if (!error) {
 		fprintf(stdout, "Disabled %s\n", str);
 	} else
 		fprintf(stderr, "Error %s: %s\n", str, error);
@@ -233,7 +233,7 @@ static int state_print(DBusMessageIter *iter, const char *error,
 {
 	DBusMessageIter entry;
 
-	if (error != NULL) {
+	if (error) {
 		fprintf(stderr, "Error: %s", error);
 		return 0;
 	}
@@ -258,7 +258,7 @@ static int cmd_state(char *args[], int num, struct connman_option *options)
 static int services_list(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
-	if (error == NULL) {
+	if (!error) {
 		__connmanctl_services_list(iter);
 		fprintf(stdout, "\n");
 	} else {
@@ -275,7 +275,7 @@ static int services_properties(DBusMessageIter *iter, const char *error,
 	char *str;
 	DBusMessageIter dict;
 
-	if (error == NULL) {
+	if (!error) {
 		fprintf(stdout, "%s\n", path);
 
 		dbus_message_iter_recurse(iter, &dict);
@@ -285,7 +285,7 @@ static int services_properties(DBusMessageIter *iter, const char *error,
 
 	} else {
 		str = strrchr(path, '/');
-		if (str != NULL)
+		if (str)
 			str++;
 		else
 			str = path;
@@ -323,7 +323,7 @@ static int cmd_services(char *args[], int num, struct connman_option *options)
 		break;
 	}
 
-	if (service_name == NULL) {
+	if (!service_name) {
 		return __connmanctl_dbus_method_call(connection,
 				CONNMAN_SERVICE, CONNMAN_PATH,
 				"net.connman.Manager", "GetServices",
@@ -344,7 +344,7 @@ static int technology_print(DBusMessageIter *iter, const char *error,
 {
 	DBusMessageIter array;
 
-	if (error != NULL) {
+	if (error) {
 		fprintf(stderr, "Error: %s\n", error);
 		return 0;
 	}
@@ -393,12 +393,12 @@ static int tether_set_return(DBusMessageIter *iter, const char *error,
 	char *str;
 
 	str = strrchr(tether->path, '/');
-	if (str != NULL)
+	if (str)
 		str++;
 	else
 		str = tether->path;
 
-	if (error == NULL) {
+	if (!error) {
 		fprintf(stdout, "%s tethering for %s\n",
 				tether->enable ? "Enabled" : "Disabled",
 				str);
@@ -466,7 +466,7 @@ static int tether_set_ssid_return(DBusMessageIter *iter, const char *error,
 {
 	struct tether_properties *tether = user_data;
 
-	if (error == NULL) {
+	if (!error) {
 		fprintf(stdout, "Wifi SSID set\n");
 		tether->ssid_result = 0;
 	} else {
@@ -482,7 +482,7 @@ static int tether_set_passphrase_return(DBusMessageIter *iter,
 {
 	struct tether_properties *tether = user_data;
 
-	if (error == NULL) {
+	if (!error) {
 		fprintf(stdout, "Wifi passphrase set\n");
 		tether->passphrase_result = 0;
 	} else {
@@ -565,7 +565,7 @@ static int scan_return(DBusMessageIter *iter, const char *error,
 {
 	char *path = user_data;
 
-	if (error == NULL) {
+	if (!error) {
 		char *str = strrchr(path, '/');
 		str++;
 		fprintf(stdout, "Scan completed for %s\n", str);
@@ -601,7 +601,7 @@ static int connect_return(DBusMessageIter *iter, const char *error,
 {
 	char *path = user_data;
 
-	if (error == NULL) {
+	if (!error) {
 		char *str = strrchr(path, '/');
 		str++;
 		fprintf(stdout, "Connected %s\n", str);
@@ -637,7 +637,7 @@ static int disconnect_return(DBusMessageIter *iter, const char *error,
 {
 	char *path = user_data;
 
-	if (error == NULL) {
+	if (!error) {
 		char *str = strrchr(path, '/');
 		str++;
 		fprintf(stdout, "Disconnected %s\n", str);
@@ -673,7 +673,7 @@ static int config_return(DBusMessageIter *iter, const char *error,
 {
 	char *service_name = user_data;
 
-	if (error != NULL)
+	if (error)
 		fprintf(stderr, "Error %s: %s\n", service_name, error);
 
 	g_free(user_data);
@@ -693,10 +693,10 @@ static void config_append_ipv4(DBusMessageIter *iter,
 	char **opts = append->opts;
 	int i = 0;
 
-	if (opts == NULL)
+	if (!opts)
 		return;
 
-	while (opts[i] != NULL && ipv4[i] != NULL) {
+	while (opts[i] && ipv4[i]) {
 		__connmanctl_dbus_append_dict_entry(iter, ipv4[i],
 				DBUS_TYPE_STRING, &opts[i]);
 		i++;
@@ -710,7 +710,7 @@ static void config_append_ipv6(DBusMessageIter *iter, void *user_data)
 	struct config_append *append = user_data;
 	char **opts = append->opts;
 
-	if (opts == NULL)
+	if (!opts)
 		return;
 
 	append->values = 1;
@@ -736,7 +736,7 @@ static void config_append_ipv6(DBusMessageIter *iter, void *user_data)
 			break;
 
 		default:
-			if (opts[1] != NULL) {
+			if (opts[1]) {
 				append->values = 2;
 
 				if (g_strcmp0(opts[1], "prefered") != 0 &&
@@ -758,7 +758,7 @@ static void config_append_ipv6(DBusMessageIter *iter, void *user_data)
 	} else if (g_strcmp0(opts[0], "manual") == 0) {
 		int i = 1;
 
-		while (opts[i] != NULL && ipv6[i] != NULL) {
+		while (opts[i] && ipv6[i]) {
 			if (i == 2) {
 				int value = atoi(opts[i]);
 				__connmanctl_dbus_append_dict_entry(iter,
@@ -790,10 +790,10 @@ static void config_append_str(DBusMessageIter *iter, void *user_data)
 	char **opts = append->opts;
 	int i = 0;
 
-	if (opts == NULL)
+	if (!opts)
 		return;
 
-	while (opts[i] != NULL) {
+	while (opts[i]) {
 		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
 				&opts[i]);
 		i++;
@@ -808,10 +808,10 @@ static void append_servers(DBusMessageIter *iter, void *user_data)
 	char **opts = append->opts;
 	int i = 1;
 
-	if (opts == NULL)
+	if (!opts)
 		return;
 
-	while (opts[i] != NULL && g_strcmp0(opts[i], "--excludes") != 0) {
+	while (opts[i] && g_strcmp0(opts[i], "--excludes") != 0) {
 		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
 				&opts[i]);
 		i++;
@@ -826,12 +826,12 @@ static void append_excludes(DBusMessageIter *iter, void *user_data)
 	char **opts = append->opts;
 	int i = append->values;
 
-	if (opts == NULL || opts[i] == NULL ||
+	if (!opts || !opts[i] ||
 			g_strcmp0(opts[i], "--excludes") != 0)
 		return;
 
 	i++;
-	while (opts[i] != NULL) {
+	while (opts[i]) {
 		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
 				&opts[i]);
 		i++;
@@ -845,7 +845,7 @@ static void config_append_proxy(DBusMessageIter *iter, void *user_data)
 	struct config_append *append = user_data;
 	char **opts = append->opts;
 
-	if (opts == NULL)
+	if (!opts)
 		return;
 
 	if (g_strcmp0(opts[0], "manual") == 0) {
@@ -856,7 +856,7 @@ static void config_append_proxy(DBusMessageIter *iter, void *user_data)
 				append_excludes, append);
 
 	} else if (g_strcmp0(opts[0], "auto") == 0) {
-		if (opts[1] != NULL) {
+		if (opts[1]) {
 			__connmanctl_dbus_append_dict_entry(iter, "URL",
 					DBUS_TYPE_STRING, &opts[1]);
 			append->values++;
@@ -881,13 +881,13 @@ static int cmd_config(char *args[], int num, struct connman_option *options)
 	struct config_append append;
 
 	service_name = args[1];
-	if (service_name == NULL)
+	if (!service_name)
 		return -EINVAL;
 
 	if (check_dbus_name(service_name) == false)
 		return -EINVAL;
 
-	while (index < num && args[index] != NULL) {
+	while (index < num && args[index]) {
 		c = parse_args(args[index], options);
 		opt_start = &args[index + 1];
 		append.opts = opt_start;
@@ -1024,11 +1024,11 @@ static DBusHandlerResult monitor_changed(DBusConnection *connection,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	interface = strrchr(interface, '.');
-	if (interface != NULL && *interface != '\0')
+	if (interface && *interface != '\0')
 		interface++;
 
 	path = strrchr(dbus_message_get_path(message), '/');
-	if (path != NULL && *path != '\0')
+	if (path && *path != '\0')
 		path++;
 
 	__connmanctl_save_rl();
@@ -1092,7 +1092,7 @@ static void monitor_add(char *interface)
 	char *rule;
 	DBusError err;
 
-	for (i = 0; monitor[i].interface != NULL; i++) {
+	for (i = 0; monitor[i].interface; i++) {
 		if (monitor[i].enabled == true)
 			add_filter = false;
 
@@ -1129,7 +1129,7 @@ static void monitor_del(char *interface)
 	char *rule;
 
 
-	for (i = 0; monitor[i].interface != NULL; i++) {
+	for (i = 0; monitor[i].interface; i++) {
 		if (g_strcmp0(interface, monitor[i].interface) == 0) {
 			if (monitor[i].enabled == false)
 				return;
@@ -1282,7 +1282,7 @@ static int vpnconnections_properties(DBusMessageIter *iter, const char *error,
 	char *str;
 	DBusMessageIter dict;
 
-	if (error == NULL) {
+	if (!error) {
 		fprintf(stdout, "%s\n", path);
 
 		dbus_message_iter_recurse(iter, &dict);
@@ -1292,7 +1292,7 @@ static int vpnconnections_properties(DBusMessageIter *iter, const char *error,
 
 	} else {
 		str = strrchr(path, '/');
-		if (str != NULL)
+		if (str)
 			str++;
 		else
 			str = path;
@@ -1308,7 +1308,7 @@ static int vpnconnections_properties(DBusMessageIter *iter, const char *error,
 static int vpnconnections_list(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
-	if (error == NULL)
+	if (!error)
 		__connmanctl_vpnconnections_list(iter);
         else
 		fprintf(stderr, "Error: %s\n", error);
@@ -1326,7 +1326,7 @@ static int cmd_vpnconnections(char *args[], int num,
 
 	vpnconnection_name = args[1];
 
-	if (vpnconnection_name == NULL)
+	if (!vpnconnection_name)
 		return __connmanctl_dbus_method_call(connection,
 				VPN_SERVICE, VPN_PATH,
 				"net.connman.vpn.Manager", "GetConnections",
@@ -1461,20 +1461,20 @@ static int cmd_help(char *args[], int num, struct connman_option *options)
 	if (interactive == false)
 		fprintf(stdout, "Usage: connmanctl [[command] [args]]\n");
 
-	for (i = 0; cmd_table[i].cmd != NULL; i++) {
+	for (i = 0; cmd_table[i].cmd; i++) {
 		const char *cmd = cmd_table[i].cmd;
 		const char *argument = cmd_table[i].argument;
 		const char *desc = cmd_table[i].desc;
 
-		printf("%-16s%-22s%s\n", cmd != NULL? cmd: "",
-				argument != NULL? argument: "",
-				desc != NULL? desc: "");
+		printf("%-16s%-22s%s\n", cmd? cmd: "",
+				argument? argument: "",
+				desc? desc: "");
 
-		if (cmd_table[i].options != NULL) {
-			for (j = 0; cmd_table[i].options[j].name != NULL;
+		if (cmd_table[i].options) {
+			for (j = 0; cmd_table[i].options[j].name;
 			     j++) {
 				const char *options_desc =
-					cmd_table[i].options[j].desc != NULL ?
+					cmd_table[i].options[j].desc ?
 					cmd_table[i].options[j].desc: "";
 
 				printf("   --%-16s%s\n",
@@ -1497,9 +1497,9 @@ int __connmanctl_commands(DBusConnection *dbus_conn, char *argv[], int argc)
 
 	connection = dbus_conn;
 
-	for (i = 0; cmd_table[i].cmd != NULL; i++) {
+	for (i = 0; cmd_table[i].cmd; i++) {
 		if (g_strcmp0(cmd_table[i].cmd, argv[0]) == 0 &&
-				cmd_table[i].func != NULL) {
+				cmd_table[i].func) {
 			result = cmd_table[i].func(argv, argc,
 					cmd_table[i].options);
 			if (result < 0 && result != -EINPROGRESS)
@@ -1523,7 +1523,7 @@ char *__connmanctl_lookup_command(const char *text, int state)
 		len = strlen(text);
 	}
 
-	while (cmd_table[i].cmd != NULL) {
+	while (cmd_table[i].cmd) {
 		const char *command = cmd_table[i].cmd;
 
 		i++;

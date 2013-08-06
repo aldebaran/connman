@@ -57,7 +57,7 @@ static void print_service(char *path, DBusMessageIter *iter)
 			dbus_message_iter_recurse(&entry, &val);
 			dbus_message_iter_get_basic(&val, &str);
 
-			if (str != NULL) {
+			if (str) {
 				if (strcmp(str, "online") == 0)
 					state = 'O';
 				else if (strcmp(str, "ready") == 0)
@@ -80,7 +80,7 @@ static void print_service(char *path, DBusMessageIter *iter)
 	}
 
 	str = strrchr(path, '/');
-	if (str != NULL)
+	if (str)
 		str++;
 	else
 		str = path;

@@ -43,7 +43,7 @@ void __connmanctl_dbus_print(DBusMessageIter *iter, const char *pre,
 	char *str;
 	DBusMessageIter entry;
 
-	if (pre == NULL)
+	if (!pre)
 		pre = "";
 
 	while ((arg_type = dbus_message_iter_get_arg_type(iter))
@@ -180,10 +180,10 @@ static int send_method_call(DBusConnection *connection,
 	if (!dbus_connection_send_with_reply(connection, message, &call, TIMEOUT))
 		goto end;
 
-        if (call == NULL)
+        if (!call)
                 goto end;
 
-	if (cb != NULL) {
+	if (cb) {
 		callback = g_new0(struct dbus_callback, 1);
 		callback->cb = cb;
 		callback->user_data = user_data;
@@ -237,7 +237,7 @@ int __connmanctl_dbus_method_call(DBusConnection *connection,
 	message = dbus_message_new_method_call(service, path, interface,
 			method);
 
-	if (message == NULL)
+	if (!message)
 		return -ENOMEM;
 
 	va_start(args, arg1);
@@ -258,7 +258,7 @@ int __connmanctl_dbus_set_property(DBusConnection *connection,
 	message = dbus_message_new_method_call("net.connman", path,
 			interface, "SetProperty");
 
-	if (message == NULL)
+	if (!message)
 		return -ENOMEM;
 
 	dbus_message_iter_init_append(message, &iter);
@@ -297,7 +297,7 @@ int __connmanctl_dbus_set_property_dict(DBusConnection *connection,
 	message = dbus_message_new_method_call("net.connman", path,
 			interface, "SetProperty");
 
-	if (message == NULL)
+	if (!message)
 		return -ENOMEM;
 
 	dbus_message_iter_init_append(message, &iter);
@@ -377,7 +377,7 @@ int __connmanctl_dbus_set_property_array(DBusConnection *connection,
 	message = dbus_message_new_method_call("net.connman", path,
 			interface, "SetProperty");
 
-	if (message == NULL)
+	if (!message)
 		return -ENOMEM;
 
 	dbus_message_iter_init_append(message, &iter);

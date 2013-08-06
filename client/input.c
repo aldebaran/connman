@@ -45,7 +45,7 @@ static int saved_point;
 
 void __connmanctl_quit(void)
 {
-	if (main_loop != NULL)
+	if (main_loop)
 		g_main_loop_quit(main_loop);
 }
 
@@ -85,7 +85,7 @@ static void rl_handler(char *input)
 	char **args, **trim_args;
 	int num, len, err, i;
 
-	if (input == NULL) {
+	if (!input) {
 		rl_newline(1, '\n');
 		g_main_loop_quit(main_loop);
 		return;
@@ -164,7 +164,7 @@ void __connmanctl_agent_mode(const char *prompt,
 	agent_handler.cb = input_handler;
 	agent_handler.user_data = user_data;
 
-	if (input_handler != NULL)
+	if (input_handler)
 		rl_callback_handler_install(prompt, rl_agent_handler);
 	else {
 		rl_set_prompt(prompt);
@@ -237,7 +237,7 @@ int __connmanctl_input_init(int argc, char *argv[])
 	}
 
 	dbus_connection_unref(connection);
-	if (main_loop != NULL)
+	if (main_loop)
 		g_main_loop_unref(main_loop);
 
 	if (err < 0)
