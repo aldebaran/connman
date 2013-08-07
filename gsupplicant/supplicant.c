@@ -2018,6 +2018,11 @@ static void signal_scan_done(const char *path, DBusMessageIter *iter)
 
 	dbus_message_iter_get_basic(iter, &success);
 
+	if (interface->scanning) {
+		callback_scan_finished(interface);
+		interface->scanning = FALSE;
+	}
+
 	/*
 	 * If scan is unsuccessful return -EIO else get the scanned BSSs
 	 * and update the network details accordingly
