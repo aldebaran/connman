@@ -1170,9 +1170,6 @@ int __connman_device_request_hidden_scan(struct connman_device *device,
 			!device->driver->scan)
 		return -EINVAL;
 
-	if (device->scanning)
-		return -EALREADY;
-
 	return device->driver->scan(device, ssid, ssid_len,
 					identity, passphrase, user_data);
 }
