@@ -71,6 +71,7 @@ struct hidden_params {
 	unsigned int ssid_len;
 	char *identity;
 	char *passphrase;
+	GSupplicantScanParams *scan_params;
 	gpointer user_data;
 };
 
@@ -104,6 +105,7 @@ struct wifi_data {
 	unsigned int watch;
 	int retries;
 	struct hidden_params *hidden;
+	bool postpone_hidden;
 	/**
 	 * autoscan "emulation".
 	 */
@@ -585,6 +587,8 @@ static void hidden_free(struct hidden_params *hidden)
 	if (!hidden)
 		return;
 
+	if (hidden->scan_params)
+		g_supplicant_free_scan_params(hidden->scan_params);
 	g_free(hidden->identity);
 	g_free(hidden->passphrase);
 	g_free(hidden);
@@ -600,7 +604,7 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 	DBG("result %d wifi %p", result, wifi);
 
 	if (wifi) {
-		if (wifi->hidden) {
+		if (wifi->hidden && !wifi->postpone_hidden) {
 			connman_network_clear_hidden(wifi->hidden->user_data);
 			hidden_free(wifi->hidden);
 			wifi->hidden = NULL;
@@ -614,6 +618,26 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 
 	if (result < 0)
 		connman_device_reset_scanning(device);
+
+	/* User is connecting to a hidden AP, let's wait for finished event */
+	if (wifi && wifi->hidden && wifi->postpone_hidden) {
+		GSupplicantScanParams *scan_params;
+		int ret;
+
+		wifi->postpone_hidden = false;
+		scan_params = wifi->hidden->scan_params;
+		wifi->hidden->scan_params = NULL;
+
+		reset_autoscan(device);
+
+		ret = g_supplicant_interface_scan(wifi->interface, scan_params,
+							scan_callback, device);
+		if (ret == 0)
+			return;
+
+		/* On error, let's recall scan_callback, which will cleanup */
+		return scan_callback(ret, interface, user_data);
+	}
 
 	scanning = connman_device_get_scanning(device);
 
@@ -645,6 +669,10 @@ static void scan_callback_hidden(int result,
 	DBG("result %d wifi %p", result, wifi);
 
 	if (!wifi)
+		goto out;
+
+	/* User is trying to connect to a hidden AP */
+	if (wifi->hidden && wifi->postpone_hidden)
 		goto out;
 
 	scan_params = g_try_malloc0(sizeof(GSupplicantScanParams));
@@ -1033,6 +1061,7 @@ static int wifi_scan(struct connman_device *device,
 	int ret;
 	int driver_max_ssids = 0;
 	bool do_hidden;
+	bool scanning;
 
 	if (!wifi)
 		return -ENODEV;
@@ -1042,24 +1071,24 @@ static int wifi_scan(struct connman_device *device,
 	if (wifi->tethering)
 		return 0;
 
-	if (connman_device_get_scanning(device))
-		return -EALREADY;
+	scanning = connman_device_get_scanning(device);
 
 	if (!ssid || ssid_len == 0 || ssid_len > 32) {
-		do_hidden = false;
-	} else {
-		if (wifi->hidden)
-			return -EBUSY;
+		if (scanning)
+			return -EALREADY;
 
-		do_hidden = true;
-	}
-
-	if (!do_hidden) {
 		driver_max_ssids = g_supplicant_interface_get_max_scan_ssids(
 							wifi->interface);
 		DBG("max ssids %d", driver_max_ssids);
 		if (driver_max_ssids == 0)
 			return wifi_scan_simple(device);
+
+		do_hidden = false;
+	} else {
+		if (scanning && wifi->hidden && wifi->postpone_hidden)
+			return -EALREADY;
+
+		do_hidden = true;
 	}
 
 	scan_params = g_try_malloc0(sizeof(GSupplicantScanParams));
@@ -1081,8 +1110,13 @@ static int wifi_scan(struct connman_device *device,
 
 		hidden = g_try_new0(struct hidden_params, 1);
 		if (!hidden) {
-			g_free(scan_params);
+			g_supplicant_free_scan_params(scan_params);
 			return -ENOMEM;
+		}
+
+		if (wifi->hidden) {
+			hidden_free(wifi->hidden);
+			wifi->hidden = NULL;
 		}
 
 		memcpy(hidden->ssid, ssid, ssid_len);
@@ -1092,6 +1126,14 @@ static int wifi_scan(struct connman_device *device,
 		hidden->user_data = user_data;
 		wifi->hidden = hidden;
 
+		if (scanning) {
+			/* Let's keep this active scan for later,
+			 * when current scan will be over. */
+			wifi->postpone_hidden = TRUE;
+			hidden->scan_params = scan_params;
+
+			return 0;
+		}
 	} else {
 		ret = get_latest_connections(driver_max_ssids, scan_params);
 		if (ret <= 0) {
