@@ -1874,7 +1874,7 @@ static int check_pd_restart(struct connman_dhcpv6 *dhcp)
 				NULL, &expired);
 	current = time(NULL);
 
-	if (current >= expired) {
+	if (current > expired) {
 		DBG("expired by %d secs", (int)(current - expired));
 
 		g_timeout_add(0, dhcpv6_restart, dhcp);
