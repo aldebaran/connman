@@ -695,6 +695,7 @@ int __connman_service_indicate_default(struct connman_service *service);
 int __connman_service_connect(struct connman_service *service);
 int __connman_service_disconnect(struct connman_service *service);
 int __connman_service_disconnect_all(void);
+void __connman_service_set_active_session(bool enable, GSList *list);
 void __connman_service_auto_connect(void);
 bool __connman_service_remove(struct connman_service *service);
 bool __connman_service_is_provider_pending(struct connman_service *service);

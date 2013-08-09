@@ -45,6 +45,8 @@ enum connman_service_type {
 	CONNMAN_SERVICE_TYPE_VPN       = 7,
 	CONNMAN_SERVICE_TYPE_GADGET    = 8,
 };
+#define	MAX_CONNMAN_SERVICE_TYPES        9
+
 
 enum connman_service_security {
 	CONNMAN_SERVICE_SECURITY_UNKNOWN = 0,

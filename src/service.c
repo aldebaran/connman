@@ -3407,6 +3407,52 @@ static bool is_ignore(struct connman_service *service)
 	return false;
 }
 
+static int active_sessions[MAX_CONNMAN_SERVICE_TYPES] = {};
+static int active_count = 0;
+
+void __connman_service_set_active_session(bool enable, GSList *list)
+{
+	if (!list)
+		return;
+
+	if (enable)
+		active_count++;
+	else
+		active_count--;
+
+	while (list != NULL) {
+		enum connman_service_type type = GPOINTER_TO_INT(list->data);
+
+		switch (type) {
+		case CONNMAN_SERVICE_TYPE_ETHERNET:
+		case CONNMAN_SERVICE_TYPE_WIFI:
+		case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+		case CONNMAN_SERVICE_TYPE_CELLULAR:
+			if (enable)
+				active_sessions[type]++;
+			else
+				active_sessions[type]--;
+			break;
+
+		case CONNMAN_SERVICE_TYPE_UNKNOWN:
+		case CONNMAN_SERVICE_TYPE_SYSTEM:
+		case CONNMAN_SERVICE_TYPE_GPS:
+		case CONNMAN_SERVICE_TYPE_VPN:
+		case CONNMAN_SERVICE_TYPE_GADGET:
+			break;
+		}
+
+		list = g_slist_next(list);
+	}
+
+	DBG("eth %d wifi %d bt %d cellular %d sessions %d",
+			active_sessions[CONNMAN_SERVICE_TYPE_ETHERNET],
+			active_sessions[CONNMAN_SERVICE_TYPE_WIFI],
+			active_sessions[CONNMAN_SERVICE_TYPE_BLUETOOTH],
+			active_sessions[CONNMAN_SERVICE_TYPE_CELLULAR],
+			active_count);
+}
+
 struct preferred_tech_data {
 	GList *preferred_list;
 	enum connman_service_type type;
