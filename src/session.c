@@ -474,6 +474,10 @@ static void cleanup_session_final(struct connman_session *session)
 
 	DBG("remove %s", session->session_path);
 
+	if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+		__connman_service_set_active_session(false,
+				session->info->config.allowed_bearers);
+
 	g_slist_free(session->user_allowed_bearers);
 	if (session->service_hash)
 		g_hash_table_destroy(session->service_hash);
@@ -1359,6 +1363,10 @@ static void deselect_and_disconnect(struct connman_session *session)
 {
 	struct session_info *info = session->info;
 
+	if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+		__connman_service_set_active_session(false,
+				info->config.allowed_bearers);
+
 	deselect_service(info);
 
 	info->reason = CONNMAN_SESSION_REASON_FREE_RIDE;
@@ -1422,6 +1430,11 @@ static void select_and_connect(struct connman_session *session,
 	GList *list;
 
 	DBG("session %p reason %s", session, reason2string(reason));
+
+	if (info->reason != reason &&
+			reason == CONNMAN_SESSION_REASON_CONNECT)
+		__connman_service_set_active_session(true,
+				info->config.allowed_bearers);
 
 	info->reason = reason;
 
@@ -1692,8 +1705,16 @@ int connman_session_config_update(struct connman_session *session)
 	if (err < 0)
 		return err;
 
+	if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+		__connman_service_set_active_session(false,
+				info->config.allowed_bearers);
+
 	g_slist_free(info->config.allowed_bearers);
 	info->config.allowed_bearers = allowed_bearers;
+
+	if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+		__connman_service_set_active_session(true,
+				info->config.allowed_bearers);
 
 	info->config.type = apply_policy_on_type(
 				session->policy_config->type,
@@ -1783,6 +1804,10 @@ static DBusMessage *change_session(DBusConnection *conn,
 			if (err < 0)
 				return __connman_error_failed(msg, -err);
 
+			if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+				__connman_service_set_active_session(false,
+						info->config.allowed_bearers);
+
 			g_slist_free(info->config.allowed_bearers);
 			session->user_allowed_bearers = allowed_bearers;
 
@@ -1793,6 +1818,11 @@ static DBusMessage *change_session(DBusConnection *conn,
 
 			if (err < 0)
 				return __connman_error_failed(msg, -err);
+
+			if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+				__connman_service_set_active_session(true,
+						info->config.allowed_bearers);
+
 		} else {
 			goto err;
 		}
