@@ -64,7 +64,6 @@ struct connman_stats_counter {
 
 struct connman_service {
 	int refcount;
-	int session_usage_count;
 	char *identifier;
 	char *path;
 	enum connman_service_type type;
@@ -2144,25 +2143,6 @@ int __connman_service_iterate_services(service_iterate_cb cb, void *user_data)
 	}
 
 	return 0;
-}
-
-void __connman_service_session_inc(struct connman_service *service)
-{
-	DBG("service %p ref count %d", service,
-		service->session_usage_count + 1);
-
-	__sync_fetch_and_add(&service->session_usage_count, 1);
-}
-
-bool __connman_service_session_dec(struct connman_service *service)
-{
-	DBG("service %p ref count %d", service,
-		service->session_usage_count - 1);
-
-	if (__sync_fetch_and_sub(&service->session_usage_count, 1) != 1)
-		return false;
-
-	return true;
 }
 
 static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
@@ -4410,7 +4390,6 @@ static void service_initialize(struct connman_service *service)
 	DBG("service %p", service);
 
 	service->refcount = 1;
-	service->session_usage_count = 0;
 
 	service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
 
