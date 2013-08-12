@@ -3337,6 +3337,9 @@ static void set_error(struct connman_service *service,
 
 static void set_idle(struct connman_service *service)
 {
+	if (service->state == CONNMAN_SERVICE_STATE_IDLE)
+		return;
+
 	service->state = service->state_ipv4 = service->state_ipv6 =
 						CONNMAN_SERVICE_STATE_IDLE;
 	set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
