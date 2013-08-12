@@ -483,11 +483,6 @@ static void cleanup_session_final(struct connman_session *session)
 		g_hash_table_destroy(session->service_hash);
 	g_list_free(session->service_list);
 
-	if (info->entry &&
-			info->entry->reason == CONNMAN_SESSION_REASON_CONNECT) {
-		__connman_service_disconnect(info->entry->service);
-	}
-
 	free_session(session);
 }
 
@@ -1307,28 +1302,17 @@ static bool pending_timeout_add(unsigned int seconds,
 
 static gboolean call_disconnect(gpointer user_data)
 {
-	struct service_entry *entry = user_data;
-	struct connman_service *service = entry->service;
-
 	/*
 	 * TODO: We should mark this entry as pending work. In case
 	 * disconnect fails we just unassign this session from the
 	 * service and can't do anything later on it
 	 */
-	DBG("disconnect service %p", service);
-	__connman_service_disconnect(service);
 
 	return FALSE;
 }
 
 static gboolean call_connect(gpointer user_data)
 {
-	struct service_entry *entry = user_data;
-	struct connman_service *service = entry->service;
-
-	DBG("connect service %p", service);
-	__connman_service_connect(service);
-
 	return FALSE;
 }
 
@@ -1406,6 +1390,7 @@ static void select_offline_service(struct session_info *info,
 	info->entry->reason = info->reason;
 
 	__connman_service_session_inc(info->entry->service);
+
 	pending_timeout_add(0, call_connect, entry);
 }
 
@@ -1432,9 +1417,12 @@ static void select_and_connect(struct connman_session *session,
 	DBG("session %p reason %s", session, reason2string(reason));
 
 	if (info->reason != reason &&
-			reason == CONNMAN_SESSION_REASON_CONNECT)
+			reason == CONNMAN_SESSION_REASON_CONNECT) {
 		__connman_service_set_active_session(true,
 				info->config.allowed_bearers);
+
+		__connman_service_auto_connect();
+	}
 
 	info->reason = reason;
 
