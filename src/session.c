@@ -1235,9 +1235,6 @@ static bool explicit_disconnect(struct session_info *info)
 	if (!explicit_connect(info->entry->reason))
 		return false;
 
-	if (!__connman_service_session_dec(info->entry->service))
-		return false;
-
 	return true;
 }
 
@@ -1381,8 +1378,6 @@ static void select_connected_service(struct session_info *info,
 
 	if (!explicit_connect(info->reason))
 		return;
-
-	__connman_service_session_inc(info->entry->service);
 }
 
 static void select_offline_service(struct session_info *info,
@@ -1395,8 +1390,6 @@ static void select_offline_service(struct session_info *info,
 
 	info->entry = entry;
 	info->entry->reason = info->reason;
-
-	__connman_service_session_inc(info->entry->service);
 
 	pending_timeout_add(0, call_connect, entry);
 }
@@ -1638,7 +1631,6 @@ static void session_changed(struct connman_session *session,
 			if (info->entry->reason == CONNMAN_SESSION_REASON_CONNECT)
 				break;
 			info->entry->reason = CONNMAN_SESSION_REASON_CONNECT;
-			__connman_service_session_inc(info->entry->service);
 			break;
 		}
 
