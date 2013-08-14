@@ -2085,7 +2085,8 @@ int __connman_session_create(DBusMessage *msg)
 	struct creation_data *creation_data = NULL;
 	bool user_allowed_bearers = false;
 	bool user_connection_type = false;
-	int err;
+	int err, i;
+	char *str;
 
 	owner = dbus_message_get_sender(msg);
 
@@ -2178,7 +2179,13 @@ int __connman_session_create(DBusMessage *msg)
 		goto err;
 	}
 
-	session_path = g_strdup_printf("/sessions%s", notify_path);
+	str = g_strdup(owner);
+	for (i = 0; str[i] != '\0'; i++)
+		if (str[i] == ':' || str[i] == '.')
+			str[i] = '_';
+	session_path = g_strdup_printf("/sessions/%s%s", str, notify_path);
+	g_free(str);
+
 	if (!session_path) {
 		err = -ENOMEM;
 		goto err;
