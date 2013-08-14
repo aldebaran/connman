@@ -1781,7 +1781,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 		if (g_str_equal(name, "AllowedBearers")) {
 			err = parse_bearers(&value, &allowed_bearers);
 			if (err < 0)
-				return __connman_error_failed(msg, err);
+				return __connman_error_failed(msg, -err);
 
 			g_slist_free(info->config.allowed_bearers);
 			session->user_allowed_bearers = allowed_bearers;
@@ -1792,7 +1792,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 					&info->config.allowed_bearers);
 
 			if (err < 0)
-				return __connman_error_failed(msg, err);
+				return __connman_error_failed(msg, -err);
 		} else {
 			goto err;
 		}
