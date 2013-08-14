@@ -3448,8 +3448,7 @@ static GList *preferred_tech_list_get(void)
 	return tech_data.preferred_list;
 }
 
-static bool auto_connect_service(GList *services,
-		bool preferred)
+static bool auto_connect_service(GList *services, bool preferred)
 {
 	struct connman_service *service = NULL;
 	GList *list;
