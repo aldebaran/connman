@@ -63,7 +63,7 @@ enum request_type {
 
 struct connman_dhcpv6 {
 	struct connman_network *network;
-	dhcp_cb callback;
+	dhcpv6_cb callback;
 
 	char **nameservers;
 	char **timeservers;
@@ -354,8 +354,10 @@ static void info_req_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	if (dhcp->callback) {
 		uint16_t status = g_dhcpv6_client_get_status(dhcp_client);
-		dhcp->callback(dhcp->network, status == 0 ? TRUE : FALSE,
-									NULL);
+		dhcp->callback(dhcp->network, status == 0 ?
+						CONNMAN_DHCPV6_STATUS_SUCCEED :
+						CONNMAN_DHCPV6_STATUS_FAIL,
+				NULL);
 	}
 }
 
@@ -569,7 +571,7 @@ struct own_address {
 	GDHCPClient *dhcp_client;
 	struct connman_ipconfig *ipconfig;
 	GSList *prefixes;
-	dhcp_cb callback;
+	dhcpv6_cb callback;
 
 	GSList *dad_failed;
 	GSList *dad_succeed;
@@ -638,7 +640,7 @@ static void dad_reply(struct nd_neighbor_advert *reply,
 	struct own_address *data = user_data;
 	GSList *list;
 	char address[INET6_ADDRSTRLEN];
-	bool status = false;
+	enum __connman_dhcpv6_status status = CONNMAN_DHCPV6_STATUS_FAIL;
 
 	inet_ntop(AF_INET6, addr, address, INET6_ADDRSTRLEN);
 
@@ -674,9 +676,9 @@ static void dad_reply(struct nd_neighbor_advert *reply,
 	}
 
 	if (data->dad_succeed)
-		status = true;
+		status = CONNMAN_DHCPV6_STATUS_SUCCEED;
 	else if (data->dad_failed)
-		status = false;
+		status = CONNMAN_DHCPV6_STATUS_RESTART;
 
 	if (data->callback) {
 		struct connman_network *network;
@@ -711,7 +713,8 @@ static void do_dad(GDHCPClient *dhcp_client, struct connman_dhcpv6 *dhcp)
 	if (!option) {
 		DBG("Skip DAD as no addresses found in reply");
 		if (dhcp->callback)
-			dhcp->callback(dhcp->network, TRUE, NULL);
+			dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_SUCCEED, NULL);
 
 		return;
 	}
@@ -736,7 +739,8 @@ static void do_dad(GDHCPClient *dhcp_client, struct connman_dhcpv6 *dhcp)
 	if (g_list_length(option) == 0) {
 		DBG("No addresses when doing DAD");
 		if (dhcp->callback)
-			dhcp->callback(dhcp->network, TRUE, NULL);
+			dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_SUCCEED, NULL);
 
 		return;
 	}
@@ -796,7 +800,8 @@ fail:
 
 error:
 	if (dhcp->callback)
-		dhcp->callback(dhcp->network, FALSE, NULL);
+		dhcp->callback(dhcp->network, CONNMAN_DHCPV6_STATUS_FAIL,
+								NULL);
 }
 
 static gboolean timeout_request_resend(gpointer user_data)
@@ -807,7 +812,8 @@ static gboolean timeout_request_resend(gpointer user_data)
 		DBG("max request retry attempts %d", dhcp->request_count);
 		dhcp->request_count = 0;
 		if (dhcp->callback)
-			dhcp->callback(dhcp->network, FALSE, NULL);
+			dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 		return FALSE;
 	}
 
@@ -845,7 +851,8 @@ static void do_resend_request(struct connman_dhcpv6 *dhcp)
 		DBG("max request retry attempts %d", dhcp->request_count);
 		dhcp->request_count = 0;
 		if (dhcp->callback)
-			dhcp->callback(dhcp->network, FALSE, NULL);
+			dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 		return;
 	}
 
@@ -889,7 +896,8 @@ static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 			start_solicitation(dhcp);
 		} else {
 			if (dhcp->callback)
-				dhcp->callback(dhcp->network, FALSE, NULL);
+				dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 		}
 	} else if (status  == G_DHCPV6_ERROR_FAILURE) {
 		if (req_type == REQ_REQUEST) {
@@ -897,7 +905,8 @@ static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 			do_resend_request(dhcp);
 		} else {
 			if (dhcp->callback)
-				dhcp->callback(dhcp->network, FALSE, NULL);
+				dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 		}
 	} else {
 
@@ -931,7 +940,8 @@ static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 		if (status == G_DHCPV6_ERROR_SUCCESS)
 			do_dad(dhcp_client, dhcp);
 		else if (dhcp->callback)
-			dhcp->callback(dhcp->network, FALSE, NULL);
+			dhcp->callback(dhcp->network,
+				CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 	}
 }
 
@@ -982,7 +992,8 @@ static gboolean dhcpv6_restart(gpointer user_data)
 	struct connman_dhcpv6 *dhcp = user_data;
 
 	if (dhcp->callback)
-		dhcp->callback(dhcp->network, FALSE, NULL);
+		dhcp->callback(dhcp->network, CONNMAN_DHCPV6_STATUS_FAIL,
+								NULL);
 
 	return FALSE;
 }
@@ -1103,7 +1114,8 @@ static gboolean timeout_request(gpointer user_data)
 		DBG("max request retry attempts %d", dhcp->request_count);
 		dhcp->request_count = 0;
 		if (dhcp->callback)
-			dhcp->callback(dhcp->network, FALSE, NULL);
+			dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 		return FALSE;
 	}
 
@@ -1214,7 +1226,7 @@ static gboolean start_renew(gpointer user_data)
 }
 
 int __connman_dhcpv6_start_renew(struct connman_network *network,
-							dhcp_cb callback)
+							dhcpv6_cb callback)
 {
 	struct connman_dhcpv6 *dhcp;
 	uint32_t T1, T2;
@@ -1283,7 +1295,7 @@ static void release_cb(GDHCPClient *dhcp_client, gpointer user_data)
 }
 
 int __connman_dhcpv6_start_release(struct connman_network *network,
-				dhcp_cb callback)
+				dhcpv6_cb callback)
 {
 	struct connman_dhcpv6 *dhcp;
 	GDHCPClient *dhcp_client;
@@ -1409,7 +1421,7 @@ static gboolean start_info_req(gpointer user_data)
 }
 
 int __connman_dhcpv6_start_info(struct connman_network *network,
-				dhcp_cb callback)
+				dhcpv6_cb callback)
 {
 	struct connman_dhcpv6 *dhcp;
 	int delay;
@@ -1457,7 +1469,8 @@ static void advertise_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	if (g_dhcpv6_client_get_status(dhcp_client) != 0) {
 		if (dhcp->callback)
-			dhcp->callback(dhcp->network, FALSE, NULL);
+			dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 		return;
 	}
 
@@ -1692,7 +1705,8 @@ static gboolean timeout_max_confirm(gpointer user_data)
 	g_dhcpv6_client_clear_retransmit(dhcp->dhcp_client);
 
 	if (dhcp->callback)
-		dhcp->callback(dhcp->network, FALSE, NULL);
+		dhcp->callback(dhcp->network, CONNMAN_DHCPV6_STATUS_FAIL,
+								NULL);
 
 	return FALSE;
 }
@@ -1715,7 +1729,7 @@ static gboolean start_confirm(gpointer user_data)
 }
 
 int __connman_dhcpv6_start(struct connman_network *network,
-				GSList *prefixes, dhcp_cb callback)
+				GSList *prefixes, dhcpv6_cb callback)
 {
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig_ipv6;
@@ -1898,7 +1912,8 @@ static int set_prefixes(GDHCPClient *dhcp_client, struct connman_dhcpv6 *dhcp)
 	if (dhcp->callback) {
 		uint16_t status = g_dhcpv6_client_get_status(dhcp_client);
 		if (status == G_DHCPV6_ERROR_NO_PREFIX)
-			dhcp->callback(dhcp->network, FALSE, NULL);
+			dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 		else {
 			struct connman_service *service;
 			struct connman_ipconfig *ipconfig;
@@ -1912,7 +1927,8 @@ static int set_prefixes(GDHCPClient *dhcp_client, struct connman_dhcpv6 *dhcp)
 				__connman_service_save(service);
 			}
 
-			dhcp->callback(dhcp->network, TRUE, dhcp->prefixes);
+			dhcp->callback(dhcp->network,
+				CONNMAN_DHCPV6_STATUS_SUCCEED, dhcp->prefixes);
 		}
 	} else {
 		g_slist_free_full(dhcp->prefixes, free_prefix);
@@ -1939,7 +1955,8 @@ static void re_pd_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		ret = set_prefixes(dhcp_client, dhcp);
 		if (ret < 0) {
 			if (dhcp->callback)
-				dhcp->callback(dhcp->network, FALSE, NULL);
+				dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 			return;
 		}
 	}
@@ -2160,7 +2177,8 @@ static gboolean timeout_pd_max_confirm(gpointer user_data)
 	g_dhcpv6_client_clear_retransmit(dhcp->dhcp_client);
 
 	if (dhcp->callback)
-		dhcp->callback(dhcp->network, FALSE, NULL);
+		dhcp->callback(dhcp->network,
+			CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 
 	return FALSE;
 }
@@ -2218,7 +2236,7 @@ static gboolean start_pd_renew(gpointer user_data)
 }
 
 int __connman_dhcpv6_start_pd_renew(struct connman_network *network,
-				dhcp_cb callback)
+				dhcpv6_cb callback)
 {
 	struct connman_dhcpv6 *dhcp;
 	uint32_t T1, T2;
@@ -2289,7 +2307,7 @@ static void release_pd_cb(GDHCPClient *dhcp_client, gpointer user_data)
 }
 
 int __connman_dhcpv6_start_pd_release(struct connman_network *network,
-				dhcp_cb callback)
+				dhcpv6_cb callback)
 {
 	struct connman_dhcpv6 *dhcp;
 	GDHCPClient *dhcp_client;
@@ -2339,7 +2357,8 @@ static gboolean timeout_pd_request(gpointer user_data)
 		DBG("max request retry attempts %d", dhcp->request_count);
 		dhcp->request_count = 0;
 		if (dhcp->callback)
-			dhcp->callback(dhcp->network, FALSE, NULL);
+			dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 		return FALSE;
 	}
 
@@ -2416,7 +2435,8 @@ static void advertise_pd_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	if (g_dhcpv6_client_get_status(dhcp_client) != 0) {
 		if (dhcp->callback)
-			dhcp->callback(dhcp->network, FALSE, NULL);
+			dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_FAIL, NULL);
 		return;
 	}
 
@@ -2486,7 +2506,7 @@ static gboolean start_pd_solicitation(gpointer user_data)
 	return FALSE;
 }
 
-int __connman_dhcpv6_start_pd(int index, GSList *prefixes, dhcp_cb callback)
+int __connman_dhcpv6_start_pd(int index, GSList *prefixes, dhcpv6_cb callback)
 {
 	struct connman_service *service;
 	struct connman_network *network;

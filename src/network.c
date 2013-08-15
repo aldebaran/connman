@@ -331,9 +331,10 @@ static void stop_dhcpv6(struct connman_network *network)
 }
 
 static void dhcpv6_release_callback(struct connman_network *network,
-				bool success, gpointer data)
+				enum __connman_dhcpv6_status status,
+				gpointer data)
 {
-	DBG("success %d", success);
+	DBG("status %d", status);
 
 	stop_dhcpv6(network);
 }
@@ -345,9 +346,10 @@ static void release_dhcpv6(struct connman_network *network)
 }
 
 static void dhcpv6_info_callback(struct connman_network *network,
-				bool success, gpointer data)
+				enum __connman_dhcpv6_status status,
+				gpointer data)
 {
-	DBG("success %d", success);
+	DBG("status %d", status);
 
 	stop_dhcpv6(network);
 }
@@ -385,7 +387,7 @@ err:
 
 static void autoconf_ipv6_set(struct connman_network *network);
 static void dhcpv6_callback(struct connman_network *network,
-			bool success, gpointer data);
+			enum __connman_dhcpv6_status status, gpointer data);
 
 /*
  * Have a separate callback for renew so that we do not do autoconf
@@ -393,25 +395,30 @@ static void dhcpv6_callback(struct connman_network *network,
  * DHCPv6 solicitation.
  */
 static void dhcpv6_renew_callback(struct connman_network *network,
-				bool success, gpointer data)
+				enum __connman_dhcpv6_status status,
+				gpointer data)
 {
-	if (success)
-		dhcpv6_callback(network, success, data);
-	else {
+	switch (status) {
+	case CONNMAN_DHCPV6_STATUS_SUCCEED:
+		dhcpv6_callback(network, status, data);
+		break;
+	case CONNMAN_DHCPV6_STATUS_FAIL:
+	case CONNMAN_DHCPV6_STATUS_RESTART:
 		stop_dhcpv6(network);
 
 		/* restart and do solicit again. */
 		autoconf_ipv6_set(network);
+		break;
 	}
 }
 
 static void dhcpv6_callback(struct connman_network *network,
-				bool success, gpointer data)
+			enum __connman_dhcpv6_status status, gpointer data)
 {
-	DBG("success %d", success);
+	DBG("status %d", status);
 
 	/* Start the renew process if necessary */
-	if (success) {
+	if (status == CONNMAN_DHCPV6_STATUS_SUCCEED) {
 
 		if (dhcpv6_set_addresses(network) < 0) {
 			stop_dhcpv6(network);
@@ -420,7 +427,13 @@ static void dhcpv6_callback(struct connman_network *network,
 
 		if (__connman_dhcpv6_start_renew(network,
 					dhcpv6_renew_callback) == -ETIMEDOUT)
-			dhcpv6_renew_callback(network, false, data);
+			dhcpv6_renew_callback(network,
+						CONNMAN_DHCPV6_STATUS_FAIL,
+						data);
+
+	} else if (status == CONNMAN_DHCPV6_STATUS_RESTART) {
+		stop_dhcpv6(network);
+		autoconf_ipv6_set(network);
 	} else
 		stop_dhcpv6(network);
 }

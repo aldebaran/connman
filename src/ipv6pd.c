@@ -46,7 +46,7 @@ static void *rs_context;
 
 static int setup_prefix_delegation(struct connman_service *service);
 static void dhcpv6_callback(struct connman_network *network,
-			bool success, gpointer data);
+			enum __connman_dhcpv6_status status, gpointer data);
 
 static int enable_ipv6_forward(bool enable)
 {
@@ -147,12 +147,13 @@ static gboolean do_setup(gpointer data)
 }
 
 static void dhcpv6_renew_callback(struct connman_network *network,
-				bool success, gpointer data)
+				enum __connman_dhcpv6_status status,
+				gpointer data)
 {
-	DBG("network %p success %d data %p", network, success, data);
+	DBG("network %p status %d data %p", network, status, data);
 
-	if (success)
-		dhcpv6_callback(network, success, data);
+	if (status == CONNMAN_DHCPV6_STATUS_SUCCEED)
+		dhcpv6_callback(network, status, data);
 	else
 		setup_prefix_delegation(__connman_service_get_default());
 }
@@ -174,13 +175,13 @@ static void cleanup(void)
 }
 
 static void dhcpv6_callback(struct connman_network *network,
-			bool success, gpointer data)
+			enum __connman_dhcpv6_status status, gpointer data)
 {
 	GSList *prefix_list = data;
 
-	DBG("network %p success %d data %p", network, success, data);
+	DBG("network %p status %d data %p", network, status, data);
 
-	if (!success) {
+	if (status == CONNMAN_DHCPV6_STATUS_FAIL) {
 		DBG("Prefix delegation request failed");
 		cleanup();
 		return;
@@ -202,7 +203,8 @@ static void dhcpv6_callback(struct connman_network *network,
 
 	if (__connman_dhcpv6_start_pd_renew(network,
 					dhcpv6_renew_callback) == -ETIMEDOUT)
-		dhcpv6_renew_callback(network, false, NULL);
+		dhcpv6_renew_callback(network, CONNMAN_DHCPV6_STATUS_FAIL,
+									NULL);
 }
 
 static int setup_prefix_delegation(struct connman_service *service)

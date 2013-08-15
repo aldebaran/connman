@@ -421,6 +421,15 @@ GSList *__connman_timeserver_get_all(struct connman_service *service);
 int __connman_timeserver_sync(struct connman_service *service);
 void __connman_timeserver_sync_next();
 
+enum __connman_dhcpv6_status {
+	CONNMAN_DHCPV6_STATUS_FAIL     = 0,
+	CONNMAN_DHCPV6_STATUS_SUCCEED  = 1,
+	CONNMAN_DHCPV6_STATUS_RESTART  = 2,
+};
+
+typedef void (* dhcpv6_cb) (struct connman_network *network,
+			enum __connman_dhcpv6_status status, gpointer data);
+
 typedef void (* dhcp_cb) (struct connman_network *network,
 			bool success, gpointer data);
 int __connman_dhcp_start(struct connman_network *network, dhcp_cb callback);
@@ -430,20 +439,20 @@ void __connman_dhcp_cleanup(void);
 int __connman_dhcpv6_init(void);
 void __connman_dhcpv6_cleanup(void);
 int __connman_dhcpv6_start_info(struct connman_network *network,
-				dhcp_cb callback);
+				dhcpv6_cb callback);
 void __connman_dhcpv6_stop(struct connman_network *network);
 int __connman_dhcpv6_start(struct connman_network *network,
-				GSList *prefixes, dhcp_cb callback);
+				GSList *prefixes, dhcpv6_cb callback);
 int __connman_dhcpv6_start_renew(struct connman_network *network,
-				dhcp_cb callback);
+				dhcpv6_cb callback);
 int __connman_dhcpv6_start_release(struct connman_network *network,
-				dhcp_cb callback);
-int __connman_dhcpv6_start_pd(int index, GSList *prefixes, dhcp_cb callback);
+				dhcpv6_cb callback);
+int __connman_dhcpv6_start_pd(int index, GSList *prefixes, dhcpv6_cb callback);
 void __connman_dhcpv6_stop_pd(int index);
 int __connman_dhcpv6_start_pd_renew(struct connman_network *network,
-							dhcp_cb callback);
+							dhcpv6_cb callback);
 int __connman_dhcpv6_start_pd_release(struct connman_network *network,
-				dhcp_cb callback);
+				dhcpv6_cb callback);
 
 int __connman_ipv4_init(void);
 void __connman_ipv4_cleanup(void);
