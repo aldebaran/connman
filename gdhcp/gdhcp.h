@@ -164,6 +164,7 @@ int g_dhcpv6_client_set_duid(GDHCPClient *dhcp_client, unsigned char *duid,
 int g_dhcpv6_client_set_pd(GDHCPClient *dhcp_client, uint32_t *T1, uint32_t *T2,
 			GSList *prefixes);
 GSList *g_dhcpv6_copy_prefixes(GSList *prefixes);
+gboolean g_dhcpv6_client_clear_send(GDHCPClient *dhcp_client, uint16_t code);
 void g_dhcpv6_client_set_send(GDHCPClient *dhcp_client, uint16_t option_code,
 			uint8_t *option_value, uint16_t option_len);
 uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client);
