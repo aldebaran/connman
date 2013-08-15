@@ -1301,9 +1301,10 @@ static gboolean rs_timeout_cb(gpointer user_data)
 	if (!data)
 		return FALSE;
 
-	if (data->callback)
-		((__connman_inet_rs_cb_t)(data->callback))(NULL, 0,
-							data->user_data);
+	if (data->callback) {
+		__connman_inet_rs_cb_t cb = data->callback;
+		cb(NULL, 0, data->user_data);
+	}
 
 	data->timeout = 0;
 	xs_cleanup(data);
@@ -1320,6 +1321,7 @@ static int icmpv6_recv(int fd, gpointer user_data)
 	struct nd_router_advert *hdr;
 	struct sockaddr_in6 saddr;
 	ssize_t len;
+	__connman_inet_rs_cb_t cb = data->callback;
 
 	DBG("");
 
@@ -1335,8 +1337,7 @@ static int icmpv6_recv(int fd, gpointer user_data)
 
 	len = recvmsg(fd, &mhdr, 0);
 	if (len < 0) {
-		((__connman_inet_rs_cb_t)(data->callback))(NULL, 0,
-							data->user_data);
+		cb(NULL, 0, data->user_data);
 		xs_cleanup(data);
 		return -errno;
 	}
@@ -1347,7 +1348,7 @@ static int icmpv6_recv(int fd, gpointer user_data)
 	if (hdr->nd_ra_code != 0)
 		return 0;
 
-	((__connman_inet_rs_cb_t)(data->callback))(hdr, len, data->user_data);
+	cb(hdr, len, data->user_data);
 	xs_cleanup(data);
 
 	return len;
@@ -1732,6 +1733,7 @@ static int icmpv6_rs_recv(int fd, gpointer user_data)
 	struct nd_router_solicit *hdr;
 	struct sockaddr_in6 saddr;
 	ssize_t len;
+	__connman_inet_recv_rs_cb_t cb = data->callback;
 
 	DBG("");
 
@@ -1747,8 +1749,7 @@ static int icmpv6_rs_recv(int fd, gpointer user_data)
 
 	len = recvmsg(fd, &mhdr, 0);
 	if (len < 0) {
-		((__connman_inet_recv_rs_cb_t)(data->callback))(NULL, 0,
-							data->user_data);
+		cb(NULL, 0, data->user_data);
 		return -errno;
 	}
 
@@ -1758,8 +1759,7 @@ static int icmpv6_rs_recv(int fd, gpointer user_data)
 	if (hdr->nd_rs_code != 0)
 		return 0;
 
-	((__connman_inet_recv_rs_cb_t)(data->callback))(hdr, len,
-							data->user_data);
+	cb(hdr, len, data->user_data);
 	return len;
 }
 
