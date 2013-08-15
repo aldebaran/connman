@@ -1252,11 +1252,15 @@ int connman_inet_create_tunnel(char **iface)
 	return fd;
 }
 
-struct rs_cb_data {
+/*
+ * This callback struct is used when sending router and neighbor
+ * solicitation and advertisement messages.
+ */
+struct xs_cb_data {
 	GIOChannel *channel;
 	void *callback;
 	struct sockaddr_in6 addr;
-	guint rs_timeout;
+	guint timeout;
 	guint watch_id;
 	void *user_data;
 };
@@ -1271,7 +1275,7 @@ static const struct in6_addr in6addr_all_nodes_mc = IN6ADDR_ALL_NODES_MC_INIT;
 static const struct in6_addr in6addr_all_routers_mc =
 						IN6ADDR_ALL_ROUTERS_MC_INIT;
 
-static void rs_cleanup(struct rs_cb_data *data)
+static void xs_cleanup(struct xs_cb_data *data)
 {
 	if (data->channel) {
 		g_io_channel_shutdown(data->channel, TRUE, NULL);
@@ -1279,8 +1283,8 @@ static void rs_cleanup(struct rs_cb_data *data)
 		data->channel = NULL;
 	}
 
-	if (data->rs_timeout > 0)
-		g_source_remove(data->rs_timeout);
+	if (data->timeout > 0)
+		g_source_remove(data->timeout);
 
 	if (data->watch_id > 0)
 		g_source_remove(data->watch_id);
@@ -1290,7 +1294,7 @@ static void rs_cleanup(struct rs_cb_data *data)
 
 static gboolean rs_timeout_cb(gpointer user_data)
 {
-	struct rs_cb_data *data = user_data;
+	struct xs_cb_data *data = user_data;
 
 	DBG("user data %p", user_data);
 
@@ -1301,8 +1305,8 @@ static gboolean rs_timeout_cb(gpointer user_data)
 		((__connman_inet_rs_cb_t)(data->callback))(NULL, 0,
 							data->user_data);
 
-	data->rs_timeout = 0;
-	rs_cleanup(data);
+	data->timeout = 0;
+	xs_cleanup(data);
 	return FALSE;
 }
 
@@ -1312,7 +1316,7 @@ static int icmpv6_recv(int fd, gpointer user_data)
 	struct iovec iov;
 	unsigned char chdr[CMSG_BUF_LEN];
 	unsigned char buf[1540];
-	struct rs_cb_data *data = user_data;
+	struct xs_cb_data *data = user_data;
 	struct nd_router_advert *hdr;
 	struct sockaddr_in6 saddr;
 	ssize_t len;
@@ -1333,7 +1337,7 @@ static int icmpv6_recv(int fd, gpointer user_data)
 	if (len < 0) {
 		((__connman_inet_rs_cb_t)(data->callback))(NULL, 0,
 							data->user_data);
-		rs_cleanup(data);
+		xs_cleanup(data);
 		return -errno;
 	}
 
@@ -1344,7 +1348,7 @@ static int icmpv6_recv(int fd, gpointer user_data)
 		return 0;
 
 	((__connman_inet_rs_cb_t)(data->callback))(hdr, len, data->user_data);
-	rs_cleanup(data);
+	xs_cleanup(data);
 
 	return len;
 }
@@ -1449,6 +1453,9 @@ static int ndisc_send_unspec(int type, int oif, const struct in6_addr *dest,
 	else if (type == ND_ROUTER_ADVERT) {
 		datalen = sizeof(frame.i.ra); /* 16, csum() safe */
 		frame.i.ra.nd_ra_router_lifetime = htons(lifetime);
+	} else if (type == ND_NEIGHBOR_SOLICIT) {
+		datalen = sizeof(frame.i.ns); /* 24, csum() safe */
+		memcpy(&frame.i.ns.nd_ns_target, buf, sizeof(struct in6_addr));
 	} else
 		return -EINVAL;
 
@@ -1562,7 +1569,7 @@ static int if_mc_group(int sock, int ifindex, const struct in6_addr *mc_addr,
 int __connman_inet_ipv6_send_rs(int index, int timeout,
 			__connman_inet_rs_cb_t callback, void *user_data)
 {
-	struct rs_cb_data *data;
+	struct xs_cb_data *data;
 	struct icmp6_filter filter;
 	struct in6_addr solicit;
 	struct in6_addr dst = in6addr_all_routers_mc;
@@ -1571,13 +1578,13 @@ int __connman_inet_ipv6_send_rs(int index, int timeout,
 	if (timeout <= 0)
 		return -EINVAL;
 
-	data = g_try_malloc0(sizeof(struct rs_cb_data));
+	data = g_try_malloc0(sizeof(struct xs_cb_data));
 	if (!data)
 		return -ENOMEM;
 
 	data->callback = callback;
 	data->user_data = user_data;
-	data->rs_timeout = g_timeout_add_seconds(timeout, rs_timeout_cb, data);
+	data->timeout = g_timeout_add_seconds(timeout, rs_timeout_cb, data);
 
 	sk = socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
 	if (sk < 0)
@@ -1712,7 +1719,7 @@ void __connman_inet_ipv6_stop_recv_rs(void *context)
 	if (!context)
 		return;
 
-	rs_cleanup(context);
+	xs_cleanup(context);
 }
 
 static int icmpv6_rs_recv(int fd, gpointer user_data)
@@ -1721,7 +1728,7 @@ static int icmpv6_rs_recv(int fd, gpointer user_data)
 	struct iovec iov;
 	unsigned char chdr[CMSG_BUF_LEN];
 	unsigned char buf[1540];
-	struct rs_cb_data *data = user_data;
+	struct xs_cb_data *data = user_data;
 	struct nd_router_solicit *hdr;
 	struct sockaddr_in6 saddr;
 	ssize_t len;
@@ -1779,12 +1786,12 @@ int __connman_inet_ipv6_start_recv_rs(int index,
 					void *user_data,
 					void **context)
 {
-	struct rs_cb_data *data;
+	struct xs_cb_data *data;
 	struct icmp6_filter filter;
 	char addr_str[INET6_ADDRSTRLEN];
 	int sk, err;
 
-	data = g_try_malloc0(sizeof(struct rs_cb_data));
+	data = g_try_malloc0(sizeof(struct xs_cb_data));
 	if (!data)
 		return -ENOMEM;
 
@@ -1824,6 +1831,177 @@ int __connman_inet_ipv6_start_recv_rs(int index,
 	*context = data;
 
 	return 0;
+}
+
+static gboolean ns_timeout_cb(gpointer user_data)
+{
+	struct xs_cb_data *data = user_data;
+
+	DBG("user data %p", user_data);
+
+	if (!data)
+		return FALSE;
+
+	if (data->callback) {
+		__connman_inet_ns_cb_t cb = data->callback;
+		cb(NULL, 0, &data->addr.sin6_addr, data->user_data);
+	}
+
+	data->timeout = 0;
+	xs_cleanup(data);
+	return FALSE;
+}
+
+static int icmpv6_nd_recv(int fd, gpointer user_data)
+{
+	struct msghdr mhdr;
+	struct iovec iov;
+	unsigned char chdr[CMSG_BUF_LEN];
+	unsigned char buf[1540];
+	struct xs_cb_data *data = user_data;
+	struct nd_neighbor_advert *hdr;
+	struct sockaddr_in6 saddr;
+	ssize_t len;
+	__connman_inet_ns_cb_t cb = data->callback;
+
+	DBG("");
+
+	iov.iov_len = sizeof(buf);
+	iov.iov_base = buf;
+
+	mhdr.msg_name = (void *)&saddr;
+	mhdr.msg_namelen = sizeof(struct sockaddr_in6);
+	mhdr.msg_iov = &iov;
+	mhdr.msg_iovlen = 1;
+	mhdr.msg_control = (void *)chdr;
+	mhdr.msg_controllen = CMSG_BUF_LEN;
+
+	len = recvmsg(fd, &mhdr, 0);
+	if (len < 0) {
+		cb(NULL, 0, &data->addr.sin6_addr, data->user_data);
+		xs_cleanup(data);
+		return -errno;
+	}
+
+	hdr = (struct nd_neighbor_advert *)buf;
+	DBG("code %d len %zd hdr %zd", hdr->nd_na_code, len,
+				sizeof(struct nd_neighbor_advert));
+	if (hdr->nd_na_code != 0)
+		return 0;
+
+	/*
+	 * We can receive any neighbor advertisement so we need to check if the
+	 * packet was meant for us and ignore the packet otherwise.
+	 */
+	if (memcmp(&data->addr.sin6_addr, &hdr->nd_na_target,
+			sizeof(struct in6_addr)))
+		return 0;
+
+	cb(hdr, len, &data->addr.sin6_addr, data->user_data);
+	xs_cleanup(data);
+
+	return len;
+}
+
+static gboolean icmpv6_nd_event(GIOChannel *chan, GIOCondition cond,
+								gpointer data)
+{
+	int fd, ret;
+
+	DBG("");
+
+	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
+		return FALSE;
+
+	fd = g_io_channel_unix_get_fd(chan);
+	ret = icmpv6_nd_recv(fd, data);
+	if (ret == 0)
+		return TRUE;
+
+	return FALSE;
+}
+
+int __connman_inet_ipv6_do_dad(int index, int timeout_ms,
+				struct in6_addr *addr,
+				__connman_inet_ns_cb_t callback,
+				void *user_data)
+{
+	struct xs_cb_data *data;
+	struct icmp6_filter filter;
+	struct in6_addr solicit;
+	int sk, err, val = 1;
+
+	if (timeout_ms <= 0)
+		return -EINVAL;
+
+	data = g_try_malloc0(sizeof(struct xs_cb_data));
+	if (!data)
+		return -ENOMEM;
+
+	data->callback = callback;
+	data->user_data = user_data;
+	data->timeout = g_timeout_add_full(G_PRIORITY_DEFAULT,
+					(guint)timeout_ms,
+					ns_timeout_cb,
+					data,
+                                        NULL);
+	memcpy(&data->addr.sin6_addr, addr, sizeof(struct in6_addr));
+
+	sk = socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
+	if (sk < 0)
+		return -errno;
+
+	DBG("sock %d", sk);
+
+	ICMP6_FILTER_SETBLOCKALL(&filter);
+	ICMP6_FILTER_SETPASS(ND_NEIGHBOR_ADVERT, &filter);
+
+	setsockopt(sk, IPPROTO_ICMPV6, ICMP6_FILTER, &filter,
+						sizeof(struct icmp6_filter));
+
+        if (setsockopt(sk, IPPROTO_IPV6, IPV6_RECVPKTINFO,
+						&val, sizeof(val)) < 0) {
+		err = -errno;
+                DBG("Cannot set IPV6_RECVPKTINFO %d/%s", err,
+							strerror(-err));
+		close(sk);
+		return err;
+        }
+
+        if (setsockopt(sk, IPPROTO_IPV6, IPV6_RECVHOPLIMIT,
+						&val, sizeof(val)) < 0) {
+		err = -errno;
+                DBG("Cannot set IPV6_RECVHOPLIMIT %d/%s", err,
+							strerror(-err));
+		close(sk);
+		return err;
+        }
+
+	val = 0;
+	setsockopt(sk, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &val, sizeof(val));
+
+	ipv6_addr_solict_mult(addr, &solicit);
+	if_mc_group(sk, index, &in6addr_all_nodes_mc, IPV6_JOIN_GROUP);
+	if_mc_group(sk, index, &solicit, IPV6_JOIN_GROUP);
+
+	data->channel = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(data->channel, TRUE);
+
+	g_io_channel_set_encoding(data->channel, NULL, NULL);
+	g_io_channel_set_buffered(data->channel, FALSE);
+
+	data->watch_id = g_io_add_watch(data->channel,
+			G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+			icmpv6_nd_event, data);
+
+	err = ndisc_send_unspec(ND_NEIGHBOR_SOLICIT, index, &solicit, NULL,
+			(unsigned char *)addr, 0, 0);
+	if (err < 0) {
+		DBG("Cannot send NS %d/%s", err, strerror(-err));
+		xs_cleanup(data);
+	}
+
+	return err;
 }
 
 GSList *__connman_inet_ipv6_get_prefixes(struct nd_router_advert *hdr,
