@@ -1036,6 +1036,8 @@ static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 	struct connman_dhcpv6 *dhcp = user_data;
 	uint16_t status;
 
+	clear_timer(dhcp);
+
 	status = g_dhcpv6_client_get_status(dhcp_client);
 
 	DBG("dhcpv6 cb msg %p status %d", dhcp, status);
