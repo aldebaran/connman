@@ -458,26 +458,17 @@ static int check_ipv6_addr_prefix(GSList *prefixes, char *address)
 	return ret;
 }
 
-static int set_addresses(GDHCPClient *dhcp_client,
+static int set_other_addresses(GDHCPClient *dhcp_client,
 						struct connman_dhcpv6 *dhcp)
 {
 	struct connman_service *service;
-	struct connman_ipconfig *ipconfig;
 	int entries, i;
 	GList *option, *list;
 	char **nameservers, **timeservers;
-	const char *c_address;
-	char *address = NULL;
 
 	service = connman_service_lookup_from_network(dhcp->network);
 	if (!service) {
 		connman_error("Can not lookup service");
-		return -EINVAL;
-	}
-
-	ipconfig = __connman_service_get_ip6config(service);
-	if (!ipconfig) {
-		connman_error("Could not lookup ip6config");
 		return -EINVAL;
 	}
 
@@ -553,39 +544,259 @@ static int set_addresses(GDHCPClient *dhcp_client,
 	} else
 		g_strfreev(timeservers);
 
+	return 0;
+}
 
-	option = g_dhcp_client_get_option(dhcp_client, G_DHCPV6_IA_NA);
-	if (option)
-		address = g_strdup(option->data);
-	else {
-		option = g_dhcp_client_get_option(dhcp_client, G_DHCPV6_IA_TA);
-		if (option)
-			address = g_strdup(option->data);
-	}
+static GSList *copy_prefixes(GSList *prefixes)
+{
+	GSList *list, *copy = NULL;
 
-	c_address = __connman_ipconfig_get_local(ipconfig);
+	for (list = prefixes; list; list = list->next)
+		copy = g_slist_prepend(copy, g_strdup(list->data));
 
-	if (address &&
-			((c_address &&
-				g_strcmp0(address, c_address) != 0) ||
-			(!c_address))) {
+	return copy;
+}
+
+/*
+ * Helper struct for doing DAD (duplicate address detection).
+ * It is refcounted and freed after all reply's to neighbor
+ * discovery request are received.
+ */
+struct own_address {
+	int refcount;
+
+	int ifindex;
+	GDHCPClient *dhcp_client;
+	struct connman_ipconfig *ipconfig;
+	GSList *prefixes;
+	dhcp_cb callback;
+
+	GSList *dad_failed;
+	GSList *dad_succeed;
+};
+
+static void free_own_address(struct own_address *data)
+{
+	g_dhcp_client_unref(data->dhcp_client);
+	__connman_ipconfig_unref(data->ipconfig);
+	g_slist_free_full(data->prefixes, free_prefix);
+	g_slist_free_full(data->dad_failed, g_free);
+	g_slist_free_full(data->dad_succeed, g_free);
+
+	g_free(data);
+}
+
+static struct own_address *ref_own_address(struct own_address *address)
+{
+	DBG("%p ref %d", address, address->refcount + 1);
+
+	__sync_fetch_and_add(&address->refcount, 1);
+
+	return address;
+}
+
+static void unref_own_address(struct own_address *address)
+{
+	if (!address)
+		return;
+
+	DBG("%p ref %d", address, address->refcount - 1);
+
+	if (__sync_fetch_and_sub(&address->refcount, 1) != 1)
+		return;
+
+	free_own_address(address);
+}
+
+static void set_own_address(struct own_address *data, char *address)
+{
+	const char *c_address;
+
+	c_address = __connman_ipconfig_get_local(data->ipconfig);
+
+	if (address && ((c_address && g_strcmp0(address, c_address) != 0) ||
+								!c_address)) {
 		int prefix_len;
 
 		/* Is this prefix part of the subnet we are suppose to use? */
-		prefix_len = check_ipv6_addr_prefix(dhcp->prefixes, address);
+		prefix_len = check_ipv6_addr_prefix(data->prefixes, address);
 
-		__connman_ipconfig_set_local(ipconfig, address);
-		__connman_ipconfig_set_prefixlen(ipconfig, prefix_len);
+		__connman_ipconfig_set_local(data->ipconfig, address);
+		__connman_ipconfig_set_prefixlen(data->ipconfig, prefix_len);
 
 		DBG("new address %s/%d", address, prefix_len);
 
-		__connman_ipconfig_set_dhcp_address(ipconfig, address);
-		__connman_service_save(service);
+		__connman_ipconfig_set_dhcp_address(data->ipconfig, address);
+		__connman_service_save(
+			__connman_service_lookup_from_index(data->ifindex));
+	}
+}
+
+static void dad_reply(struct nd_neighbor_advert *reply,
+		unsigned int length, struct in6_addr *addr, void *user_data)
+{
+	struct own_address *data = user_data;
+	GSList *list;
+	char address[INET6_ADDRSTRLEN];
+	bool status = false;
+
+	inet_ntop(AF_INET6, addr, address, INET6_ADDRSTRLEN);
+
+	DBG("user %p reply %p len %d address %s index %d data %p", user_data,
+		reply, length, address, data->ifindex, data);
+
+	if (!reply) {
+		if (length == 0)
+			DBG("DAD succeed for %s", address);
+		else
+			DBG("DAD cannot be done for %s", address);
+
+		data->dad_succeed = g_slist_prepend(data->dad_succeed,
+						g_strdup(address));
+
+	} else {
+		DBG("DAD failed for %s", address);
+
+		data->dad_failed = g_slist_prepend(data->dad_failed,
+						g_strdup(address));
 	}
 
-	g_free(address);
+	/*
+	 * If refcount == 1 then we got the final reply and can continue.
+	 */
+	if (data->refcount > 1)
+		return;
 
-	return 0;
+	for (list = data->dad_succeed; list; list = list->next) {
+		char *addr = list->data;
+
+		set_own_address(data, addr);
+	}
+
+	if (data->dad_succeed)
+		status = true;
+	else if (data->dad_failed)
+		status = false;
+
+	if (data->callback) {
+		struct connman_network *network;
+		struct connman_service *service;
+
+		service = __connman_service_lookup_from_index(data->ifindex);
+		network = __connman_service_get_network(service);
+		data->callback(network, status, NULL);
+	}
+
+	unref_own_address(data);
+}
+
+static void do_dad(GDHCPClient *dhcp_client, struct connman_dhcpv6 *dhcp)
+{
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig;
+	int ifindex;
+	GList *option, *list;
+	struct own_address *user_data;
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCPV6_IA_NA);
+	if (!option)
+		option = g_dhcp_client_get_option(dhcp_client, G_DHCPV6_IA_TA);
+
+	/*
+	 * Even if we didn't had any addresses, just try to set
+	 * the other options.
+	 */
+	set_other_addresses(dhcp_client, dhcp);
+
+	if (!option) {
+		DBG("Skip DAD as no addresses found in reply");
+		if (dhcp->callback)
+			dhcp->callback(dhcp->network, TRUE, NULL);
+
+		return;
+	}
+
+	ifindex = connman_network_get_index(dhcp->network);
+
+	DBG("index %d", ifindex);
+
+	service = connman_service_lookup_from_network(dhcp->network);
+	if (!service) {
+		connman_error("Can not lookup service for index %d", ifindex);
+		goto error;
+	}
+
+	ipconfig = __connman_service_get_ip6config(service);
+	if (!ipconfig) {
+		connman_error("Could not lookup ip6config for index %d",
+								ifindex);
+		goto error;
+	}
+
+	if (g_list_length(option) == 0) {
+		DBG("No addresses when doing DAD");
+		if (dhcp->callback)
+			dhcp->callback(dhcp->network, TRUE, NULL);
+
+		return;
+	}
+
+	user_data = g_try_new0(struct own_address, 1);
+	if (!user_data)
+		goto error;
+
+	user_data->refcount = 0;
+	user_data->ifindex = ifindex;
+	user_data->dhcp_client = g_dhcp_client_ref(dhcp_client);
+	user_data->ipconfig = __connman_ipconfig_ref(ipconfig);
+	user_data->prefixes = copy_prefixes(dhcp->prefixes);
+	user_data->callback = dhcp->callback;
+
+	/*
+	 * We send one neighbor discovery request / address
+	 * and after all checks are done, then report the status
+	 * via dhcp callback.
+	 */
+
+	for (list = option; list; list = list->next) {
+		char *address = option->data;
+		struct in6_addr addr;
+		int ret;
+
+		ref_own_address(user_data);
+
+		if (inet_pton(AF_INET6, address, &addr) < 0) {
+			DBG("Invalid IPv6 address %s %d/%s", address,
+				-errno, strerror(errno));
+			goto fail;
+		}
+
+		DBG("user %p address %s client %p ipconfig %p prefixes %p",
+			user_data, address,
+			user_data->dhcp_client, user_data->ipconfig,
+			user_data->prefixes);
+
+		ret = __connman_inet_ipv6_do_dad(ifindex, 1000,
+						&addr,
+						dad_reply,
+						user_data);
+		if (ret < 0) {
+			DBG("Could not send neighbor solicitation for %s",
+								address);
+			dad_reply(NULL, -1, &addr, user_data);
+		} else {
+			DBG("Sent neighbor solicitation %d bytes", ret);
+		}
+	}
+
+	return;
+
+fail:
+	unref_own_address(user_data);
+
+error:
+	if (dhcp->callback)
+		dhcp->callback(dhcp->network, FALSE, NULL);
 }
 
 static gboolean timeout_request_resend(gpointer user_data)
@@ -718,11 +929,9 @@ static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 		}
 
 		if (status == G_DHCPV6_ERROR_SUCCESS)
-			set_addresses(dhcp_client, dhcp);
-
-		if (dhcp->callback)
-			dhcp->callback(dhcp->network,
-					status == 0 ? TRUE : FALSE, NULL);
+			do_dad(dhcp_client, dhcp);
+		else if (dhcp->callback)
+			dhcp->callback(dhcp->network, FALSE, NULL);
 	}
 }
 
@@ -1270,7 +1479,7 @@ static void solicitation_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	clear_timer(dhcp);
 
-	set_addresses(dhcp_client, dhcp);
+	do_dad(dhcp_client, dhcp);
 
 	g_dhcpv6_client_clear_retransmit(dhcp_client);
 }
@@ -1392,10 +1601,7 @@ static void confirm_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		g_dhcp_client_unref(dhcp->dhcp_client);
 		start_solicitation(dhcp);
 	} else {
-		set_addresses(dhcp_client, dhcp);
-
-		if (dhcp->callback)
-			dhcp->callback(dhcp->network, TRUE, NULL);
+		do_dad(dhcp_client, dhcp);
 	}
 }
 
