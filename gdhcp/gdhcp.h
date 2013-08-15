@@ -179,6 +179,9 @@ void g_dhcpv6_client_set_iaid(GDHCPClient *dhcp_client, uint32_t iaid);
 int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
 			int code, uint32_t *T1, uint32_t *T2,
 			bool add_addresses, const char *address);
+int g_dhcpv6_client_set_ias(GDHCPClient *dhcp_client, int index,
+			int code, uint32_t *T1, uint32_t *T2,
+			GSList *addresses);
 void g_dhcpv6_client_reset_request(GDHCPClient *dhcp_client);
 void g_dhcpv6_client_set_retransmit(GDHCPClient *dhcp_client);
 void g_dhcpv6_client_clear_retransmit(GDHCPClient *dhcp_client);
