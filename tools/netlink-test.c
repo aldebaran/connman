@@ -120,9 +120,9 @@ static void test_nfacct_dump_callback(unsigned int error, uint16_t type,
 {
 	const struct nfgenmsg *msg = data;
 	const struct nlattr *attr;
+	uint64_t packets = 0 , bytes = 0;
+	char *name = NULL;
 	int attrlen;
-	char *name;
-	uint64_t packets, bytes;
 
 	if (error == EINVAL)
 		printf("nfnetlink_acct not loaded\n");
