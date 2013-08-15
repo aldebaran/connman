@@ -703,6 +703,9 @@ done:
 
 void __connman_service_save(struct connman_service *service)
 {
+	if (!service)
+		return;
+
 	service_save(service);
 }
 
