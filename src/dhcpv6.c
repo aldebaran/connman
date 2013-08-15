@@ -54,6 +54,8 @@
 #define CNF_TIMEOUT	(1 * 1000)
 #define CNF_MAX_RT	(4 * 1000)
 #define CNF_MAX_RD	(10 * 1000)
+#define DEC_TIMEOUT     (1 * 1000)
+#define DEC_MAX_RC      5
 
 enum request_type {
 	REQ_REQUEST = 1,
@@ -271,6 +273,10 @@ static void clear_callbacks(GDHCPClient *dhcp_client)
 
 	g_dhcp_client_register_event(dhcp_client,
 				G_DHCP_CLIENT_EVENT_RELEASE,
+				NULL, NULL);
+
+	g_dhcp_client_register_event(dhcp_client,
+				G_DHCP_CLIENT_EVENT_DECLINE,
 				NULL, NULL);
 
 	g_dhcp_client_register_event(dhcp_client,
@@ -634,6 +640,114 @@ static void set_own_address(struct own_address *data, char *address)
 	}
 }
 
+/*
+ * Helper struct that is used when waiting a reply to DECLINE message.
+ */
+struct decline_cb_data {
+	GDHCPClient *dhcp_client;
+	dhcpv6_cb callback;
+	int ifindex;
+	guint timeout;
+};
+
+static void decline_reply_callback(struct decline_cb_data *data)
+{
+	struct connman_network *network;
+	struct connman_service *service;
+
+	service = __connman_service_lookup_from_index(data->ifindex);
+	network = __connman_service_get_network(service);
+
+	if (data->callback)
+		data->callback(network, CONNMAN_DHCPV6_STATUS_RESTART, NULL);
+
+	g_dhcp_client_unref(data->dhcp_client);
+}
+
+static gboolean decline_timeout(gpointer user_data)
+{
+	struct decline_cb_data *data = user_data;
+
+	DBG("ifindex %d", data->ifindex);
+
+	/*
+	 * We ignore all DECLINE replies that are received after the timeout
+	 */
+	g_dhcp_client_register_event(data->dhcp_client,
+					G_DHCP_CLIENT_EVENT_DECLINE,
+					NULL, NULL);
+
+	decline_reply_callback(data);
+
+	g_free(data);
+
+	return FALSE;
+}
+
+static void decline_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	struct decline_cb_data *data = user_data;
+
+	DBG("ifindex %d", data->ifindex);
+
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
+
+	if (data->timeout)
+		g_source_remove(data->timeout);
+
+	decline_reply_callback(data);
+
+	g_free(data);
+}
+
+static int dhcpv6_decline(GDHCPClient *dhcp_client, int ifindex,
+			dhcpv6_cb callback, GSList *failed)
+{
+	struct decline_cb_data *data;
+	GList *option;
+	int code;
+
+	DBG("dhcp_client %p", dhcp_client);
+
+	g_dhcp_client_clear_requests(dhcp_client);
+
+	g_dhcpv6_client_clear_send(dhcp_client, G_DHCPV6_ORO);
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SERVERID);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCPV6_IA_NA);
+	if (!option) {
+		option = g_dhcp_client_get_option(dhcp_client, G_DHCPV6_IA_TA);
+		if (option)
+			code = G_DHCPV6_IA_TA;
+		else
+			return -EINVAL;
+	} else
+		code = G_DHCPV6_IA_NA;
+
+	g_dhcpv6_client_clear_send(dhcp_client, code);
+
+	g_dhcpv6_client_set_ias(dhcp_client, ifindex, code, NULL, NULL,
+				failed);
+
+	clear_callbacks(dhcp_client);
+
+	data = g_try_new(struct decline_cb_data, 1);
+	if (!data)
+		return -ENOMEM;
+
+	data->ifindex = ifindex;
+	data->callback = callback;
+	data->dhcp_client = g_dhcp_client_ref(dhcp_client);
+	data->timeout = g_timeout_add(DEC_TIMEOUT, decline_timeout, data);
+
+	g_dhcp_client_register_event(dhcp_client, G_DHCP_CLIENT_EVENT_DECLINE,
+				decline_cb, data);
+
+	return g_dhcp_client_start(dhcp_client, NULL);
+}
+
 static void dad_reply(struct nd_neighbor_advert *reply,
 		unsigned int length, struct in6_addr *addr, void *user_data)
 {
@@ -675,18 +789,22 @@ static void dad_reply(struct nd_neighbor_advert *reply,
 		set_own_address(data, addr);
 	}
 
-	if (data->dad_succeed)
-		status = CONNMAN_DHCPV6_STATUS_SUCCEED;
-	else if (data->dad_failed)
-		status = CONNMAN_DHCPV6_STATUS_RESTART;
+	if (data->dad_failed) {
+		dhcpv6_decline(data->dhcp_client, data->ifindex,
+			data->callback, data->dad_failed);
+	} else {
+		if (data->dad_succeed)
+			status = CONNMAN_DHCPV6_STATUS_SUCCEED;
 
-	if (data->callback) {
-		struct connman_network *network;
-		struct connman_service *service;
+		if (data->callback) {
+			struct connman_network *network;
+			struct connman_service *service;
 
-		service = __connman_service_lookup_from_index(data->ifindex);
-		network = __connman_service_get_network(service);
-		data->callback(network, status, NULL);
+			service = __connman_service_lookup_from_index(
+								data->ifindex);
+			network = __connman_service_get_network(service);
+			data->callback(network, status, NULL);
+		}
 	}
 
 	unref_own_address(data);
