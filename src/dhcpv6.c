@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <net/if.h>
 
 #include <connman/ipconfig.h>
 #include <connman/storage.h>
@@ -616,29 +617,31 @@ static void unref_own_address(struct own_address *address)
 	free_own_address(address);
 }
 
-static void set_own_address(struct own_address *data, char *address)
+static void set_address(int ifindex, struct connman_ipconfig *ipconfig,
+			GSList *prefixes, char *address)
 {
 	const char *c_address;
 
-	c_address = __connman_ipconfig_get_local(data->ipconfig);
+	c_address = __connman_ipconfig_get_local(ipconfig);
 
 	if (address && ((c_address && g_strcmp0(address, c_address) != 0) ||
 								!c_address)) {
 		int prefix_len;
 
 		/* Is this prefix part of the subnet we are suppose to use? */
-		prefix_len = check_ipv6_addr_prefix(data->prefixes, address);
+		prefix_len = check_ipv6_addr_prefix(prefixes, address);
 
-		__connman_ipconfig_set_local(data->ipconfig, address);
-		__connman_ipconfig_set_prefixlen(data->ipconfig, prefix_len);
+		__connman_ipconfig_set_local(ipconfig, address);
+		__connman_ipconfig_set_prefixlen(ipconfig, prefix_len);
 
 		DBG("new address %s/%d", address, prefix_len);
 
-		__connman_ipconfig_set_dhcp_address(data->ipconfig, address);
+		__connman_ipconfig_set_dhcp_address(ipconfig, address);
 		__connman_service_save(
-			__connman_service_lookup_from_index(data->ifindex));
+			__connman_service_lookup_from_index(ifindex));
 	}
 }
+
 
 /*
  * Helper struct that is used when waiting a reply to DECLINE message.
@@ -783,11 +786,9 @@ static void dad_reply(struct nd_neighbor_advert *reply,
 	if (data->refcount > 1)
 		return;
 
-	for (list = data->dad_succeed; list; list = list->next) {
-		char *addr = list->data;
-
-		set_own_address(data, addr);
-	}
+	for (list = data->dad_succeed; list; list = list->next)
+		set_address(data->ifindex, data->ipconfig, data->prefixes,
+								list->data);
 
 	if (data->dad_failed) {
 		dhcpv6_decline(data->dhcp_client, data->ifindex,
@@ -808,6 +809,40 @@ static void dad_reply(struct nd_neighbor_advert *reply,
 	}
 
 	unref_own_address(data);
+}
+
+/*
+ * Is the kernel configured to do DAD? If 0, then do not do DAD.
+ * See also RFC 4862 chapter 5.4 about DupAddrDetectTransmits
+ */
+static int dad_transmits(int ifindex)
+{
+	char name[IF_NAMESIZE];
+	gchar *path;
+	int value = 1;
+	FILE *f;
+
+	if (!if_indextoname(ifindex, name))
+		return value;
+
+	path = g_strdup_printf("/proc/sys/net/ipv6/conf/%s/dad_transmits",
+								name);
+
+	if (!path)
+		return value;
+
+	f = fopen(path, "r");
+
+	g_free(path);
+
+	if (f) {
+		if (fscanf(f, "%d", &value) < 0)
+			value = 1;
+
+		fclose(f);
+	}
+
+	return value;
 }
 
 static void do_dad(GDHCPClient *dhcp_client, struct connman_dhcpv6 *dhcp)
@@ -852,6 +887,20 @@ static void do_dad(GDHCPClient *dhcp_client, struct connman_dhcpv6 *dhcp)
 		connman_error("Could not lookup ip6config for index %d",
 								ifindex);
 		goto error;
+	}
+
+	if (!dad_transmits(ifindex)) {
+		DBG("Skip DAD because of kernel configuration");
+
+		for (list = option; list; list = list->next)
+			set_address(ifindex, ipconfig, dhcp->prefixes,
+							option->data);
+
+		if (dhcp->callback)
+			dhcp->callback(dhcp->network,
+					CONNMAN_DHCPV6_STATUS_SUCCEED, NULL);
+
+		return;
 	}
 
 	if (g_list_length(option) == 0) {
