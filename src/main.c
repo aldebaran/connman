@@ -161,6 +161,8 @@ static uint *parse_service_types(char **str_list, gsize len)
 		i += 1;
 	}
 
+	type_list[j] = CONNMAN_SERVICE_TYPE_UNKNOWN;
+
 	return type_list;
 }
 
