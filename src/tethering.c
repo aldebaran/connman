@@ -267,9 +267,17 @@ void __connman_tethering_set_enabled(void)
 		return;
 	}
 
-	prefixlen =
-		__connman_ipaddress_netmask_prefix_len(subnet_mask);
-	__connman_nat_enable(BRIDGE_NAME, start_ip, prefixlen);
+	prefixlen = __connman_ipaddress_netmask_prefix_len(subnet_mask);
+	err = __connman_nat_enable(BRIDGE_NAME, start_ip, prefixlen);
+	if (err < 0) {
+		connman_error("Cannot enable NAT %d/%s", err, strerror(-err));
+		dhcp_server_stop(tethering_dhcp_server);
+		__connman_bridge_disable(BRIDGE_NAME);
+		__connman_ippool_unref(dhcp_ippool);
+		__connman_bridge_remove(BRIDGE_NAME);
+		__sync_fetch_and_sub(&tethering_enabled, 1);
+		return;
+	}
 
 	err = __connman_ipv6pd_setup(BRIDGE_NAME);
 	if (err < 0 && err != -EINPROGRESS)
