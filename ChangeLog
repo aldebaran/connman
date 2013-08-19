@@ -1,3 +1,15 @@
+ver 1.17:
+	Fix issue with handling consecutive WiFi scanning.
+	Fix issue with WiFi handling and RFKILL soft block.
+	Fix issue with handling external RFKILL events.
+	Fix issue with handling USB gadget devices.
+	Fix issue with network reference handling.
+	Fix issue with byte order and DHCP discover options.
+	Fix issue with DHCP retry handling during IPv4-LL.
+	Fix issue with DHCPv6 rebind handling.
+	Add support for DHCPv6 decline message handling.
+	Add support for DHCPv6 duplicate address detection.
+
 ver 1.16:
 	Fix issue with missing signals during connection changes.
 	Fix issue with missing notification of proxy properties.
