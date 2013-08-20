@@ -42,6 +42,7 @@
 
 static DBusConnection *connection;
 static GHashTable *service_hash;
+static GHashTable *technology_hash;
 
 struct connman_option {
 	const char *name;
@@ -1398,6 +1399,26 @@ static char *lookup_service(const char *text, int state)
 	return NULL;
 }
 
+static char *lookup_technology(const char *text, int state)
+{
+	static int len = 0;
+	static GHashTableIter iter;
+	gpointer key, value;
+
+	if (state == 0) {
+		g_hash_table_iter_init(&iter, technology_hash);
+		len = strlen(text);
+	}
+
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
+		const char *technology = key;
+		if (strncmp(text, technology, len) == 0)
+			return strdup(technology);
+	}
+
+	return NULL;
+}
+
 static struct connman_option service_options[] = {
 	{"properties", 'p', "[<service>]      (obsolete)"},
 	{ NULL, }
@@ -1441,18 +1462,18 @@ static const struct {
 	{ "technologies", NULL,           NULL,            cmd_technologies,
 	  "Display technologies", NULL },
 	{ "enable",       "<technology>|offline", NULL,    cmd_enable,
-	  "Enables given technology or offline mode", NULL },
+	  "Enables given technology or offline mode", lookup_technology },
 	{ "disable",      "<technology>|offline", NULL,    cmd_disable,
-	  "Disables given technology or offline mode", NULL },
+	  "Disables given technology or offline mode", lookup_technology },
 	{ "tether", "<technology> on|off\n"
 	            "            wifi [on|off] <ssid> <passphrase> ",
 	                                  NULL,            cmd_tether,
 	  "Enable, disable tethering, set SSID and passphrase for wifi",
-	  NULL },
+	  lookup_technology },
 	{ "services",     "[<service>]",  service_options, cmd_services,
 	  "Display services", lookup_service },
 	{ "scan",         "<technology>", NULL,            cmd_scan,
-	  "Scans for new services for given technology", NULL },
+	  "Scans for new services for given technology", lookup_technology },
 	{ "connect",      "<service>",    NULL,            cmd_connect,
 	  "Connect a given service", lookup_service },
 	{ "disconnect",   "<service>",    NULL,            cmd_disconnect,
@@ -1645,7 +1666,68 @@ static int populate_service_hash(DBusMessageIter *iter, const char *error,
 	return 0;
 }
 
-static DBusHandlerResult services_changed(
+static void add_technology_id(const char *path)
+{
+	g_hash_table_replace(technology_hash, g_strdup(path),
+			GINT_TO_POINTER(TRUE));
+}
+
+static void remove_technology_id(const char *path)
+{
+	g_hash_table_remove(technology_hash, path);
+}
+
+static void remove_technology(DBusMessageIter *iter)
+{
+	char *path = NULL;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_OBJECT_PATH)
+		return;
+
+	dbus_message_iter_get_basic(iter, &path);
+	remove_technology_id(get_path(path));
+}
+
+static void add_technology(DBusMessageIter *iter)
+{
+	char *path = NULL;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_OBJECT_PATH)
+		return;
+
+	dbus_message_iter_get_basic(iter, &path);
+	add_technology_id(get_path(path));
+}
+
+static void update_technologies(DBusMessageIter *iter)
+{
+	DBusMessageIter array;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRUCT) {
+		DBusMessageIter object_path;
+
+		dbus_message_iter_recurse(&array, &object_path);
+
+		add_technology(&object_path);
+
+		dbus_message_iter_next(&array);
+	}
+}
+
+static int populate_technology_hash(DBusMessageIter *iter, const char *error,
+				void *user_data)
+{
+	update_technologies(iter);
+
+	return 0;
+}
+
+static DBusHandlerResult services_or_technologies_changed(
 		DBusConnection *connection,
 		DBusMessage *message, void *user_data)
 {
@@ -1658,6 +1740,20 @@ static DBusHandlerResult services_changed(
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
+	if (dbus_message_is_signal(message, "net.connman.Manager",
+					"TechnologyAdded")) {
+		dbus_message_iter_init(message, &iter);
+		add_technology(&iter);
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	if (dbus_message_is_signal(message, "net.connman.Manager",
+					"TechnologyRemoved")) {
+		dbus_message_iter_init(message, &iter);
+		remove_technology(&iter);
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
@@ -1667,11 +1763,12 @@ void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 
 	if (!dbus_conn) {
 		g_hash_table_destroy(service_hash);
+		g_hash_table_destroy(technology_hash);
 
 		dbus_bus_remove_match(connection,
 			"type='signal',interface='net.connman.Manager'", NULL);
 		dbus_connection_remove_filter(connection,
-					services_changed,
+					services_or_technologies_changed,
 					NULL);
 		return;
 	}
@@ -1681,13 +1778,22 @@ void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 	service_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 								g_free, NULL);
 
+	technology_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+								g_free, NULL);
+
 	__connmanctl_dbus_method_call(connection,
 				CONNMAN_SERVICE, CONNMAN_PATH,
 				"net.connman.Manager", "GetServices",
 				populate_service_hash, NULL, DBUS_TYPE_INVALID);
 
+	__connmanctl_dbus_method_call(connection,
+				CONNMAN_SERVICE, CONNMAN_PATH,
+				"net.connman.Manager", "GetTechnologies",
+				populate_technology_hash, NULL,
+				DBUS_TYPE_INVALID);
+
 	dbus_connection_add_filter(connection,
-				services_changed, NULL, NULL);
+				services_or_technologies_changed, NULL, NULL);
 
 	dbus_error_init(&err);
 	dbus_bus_add_match(connection,
