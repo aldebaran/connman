@@ -135,17 +135,66 @@ static char **complete_agent(const char *text, int start, int end)
 	return NULL;
 }
 
+/* Return how many parameters we have typed */
+static int calc_level(char *line)
+{
+	int count = 0;
+	char *ptr = line;
+
+	while (*ptr) {
+		if (*ptr == ' ') {
+			if (*(ptr + 1) == ' ') {
+				ptr++;
+				continue;
+			} else
+				count++;
+		}
+		ptr++;
+	}
+
+	return count;
+}
+
+static char *get_command_name(char *line)
+{
+	char *start, *ptr;
+
+	start = ptr = line;
+
+	while (*ptr && *ptr != ' ')
+		ptr++;
+
+	return g_strndup(start, ptr - start);
+}
+
 static char **complete_command(const char *text, int start, int end)
 {
-	char **command = NULL;
-
-	rl_attempted_completion_over = 1;
-
-	if (start == 0)
-		command = rl_completion_matches(text,
+	if (start == 0) {
+		return rl_completion_matches(text,
 				__connmanctl_lookup_command);
 
-	return command;
+	} else {
+		__connmanctl_lookup_cb cb;
+		char *current_command;
+		char **str = NULL;
+
+		if (calc_level(rl_line_buffer) > 1) {
+			rl_attempted_completion_over = 1;
+			return NULL;
+		}
+
+		current_command = get_command_name(rl_line_buffer);
+
+		cb = __connmanctl_get_lookup_func(current_command);
+		if (cb)
+			str = rl_completion_matches(text, cb);
+		else
+			rl_attempted_completion_over = 1;
+
+		g_free(current_command);
+
+		return str;
+	}
 }
 
 static struct {
@@ -208,6 +257,8 @@ int __connmanctl_input_init(int argc, char *argv[])
 	if (argc < 2) {
 		interactive = true;
 
+		__connmanctl_monitor_completions(connection);
+
 		__connmanctl_command_mode();
 		err = -EINPROGRESS;
 
@@ -232,6 +283,7 @@ int __connmanctl_input_init(int argc, char *argv[])
 	g_source_remove(source);
 
 	if (interactive == true) {
+		__connmanctl_monitor_completions(NULL);
 		rl_callback_handler_remove();
 		rl_message("");
 	}

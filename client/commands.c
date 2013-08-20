@@ -41,6 +41,7 @@
 #include "vpnconnections.h"
 
 static DBusConnection *connection;
+static GHashTable *service_hash;
 
 struct connman_option {
 	const char *name;
@@ -1377,6 +1378,26 @@ static int cmd_exit(char *args[], int num, struct connman_option *options)
 	return 1;
 }
 
+static char *lookup_service(const char *text, int state)
+{
+	static int len = 0;
+	static GHashTableIter iter;
+	gpointer key, value;
+
+	if (state == 0) {
+		g_hash_table_iter_init(&iter, service_hash);
+		len = strlen(text);
+	}
+
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
+		const char *service = key;
+		if (strncmp(text, service, len) == 0)
+			return strdup(service);
+	}
+
+	return NULL;
+}
+
 static struct connman_option service_options[] = {
 	{"properties", 'p', "[<service>]      (obsolete)"},
 	{ NULL, }
@@ -1413,43 +1434,45 @@ static const struct {
         struct connman_option *options;
         int (*func) (char *args[], int num, struct connman_option *options);
         const char *desc;
+	__connmanctl_lookup_cb cb;
 } cmd_table[] = {
 	{ "state",        NULL,           NULL,            cmd_state,
-	  "Shows if the system is online or offline" },
+	  "Shows if the system is online or offline", NULL },
 	{ "technologies", NULL,           NULL,            cmd_technologies,
-	  "Display technologies" },
+	  "Display technologies", NULL },
 	{ "enable",       "<technology>|offline", NULL,    cmd_enable,
-	  "Enables given technology or offline mode" },
+	  "Enables given technology or offline mode", NULL },
 	{ "disable",      "<technology>|offline", NULL,    cmd_disable,
-	  "Disables given technology or offline mode"},
+	  "Disables given technology or offline mode", NULL },
 	{ "tether", "<technology> on|off\n"
 	            "            wifi [on|off] <ssid> <passphrase> ",
 	                                  NULL,            cmd_tether,
-	  "Enable, disable tethering, set SSID and passphrase for wifi" },
+	  "Enable, disable tethering, set SSID and passphrase for wifi",
+	  NULL },
 	{ "services",     "[<service>]",  service_options, cmd_services,
-	  "Display services" },
+	  "Display services", lookup_service },
 	{ "scan",         "<technology>", NULL,            cmd_scan,
-	  "Scans for new services for given technology" },
+	  "Scans for new services for given technology", NULL },
 	{ "connect",      "<service>",    NULL,            cmd_connect,
-	  "Connect a given service" },
+	  "Connect a given service", lookup_service },
 	{ "disconnect",   "<service>",    NULL,            cmd_disconnect,
-	  "Disconnect a given service" },
+	  "Disconnect a given service", lookup_service },
 	{ "config",       "<service>",    config_options,  cmd_config,
-	  "Set service configuration options" },
+	  "Set service configuration options", lookup_service },
 	{ "monitor",      "[off]",        monitor_options, cmd_monitor,
-	  "Monitor signals from interfaces" },
+	  "Monitor signals from interfaces", NULL },
 	{ "agent", "on|off",              NULL,            cmd_agent,
-	  "Agent mode" },
+	  "Agent mode", NULL },
 	{"vpnconnections", "[<connection>]", NULL,         cmd_vpnconnections,
-	 "Display VPN connections" },
+	 "Display VPN connections", NULL },
 	{ "vpnagent",     "on|off",     NULL,            cmd_vpnagent,
-	  "VPN Agent mode" },
+	  "VPN Agent mode", NULL },
 	{ "help",         NULL,           NULL,            cmd_help,
-	  "Show help" },
+	  "Show help", NULL },
 	{ "exit",         NULL,           NULL,            cmd_exit,
-	  "Exit" },
+	  "Exit", NULL },
 	{ "quit",         NULL,           NULL,            cmd_exit,
-	  "Quit" },
+	  "Quit", NULL },
 	{  NULL, },
 };
 
@@ -1489,6 +1512,18 @@ static int cmd_help(char *args[], int num, struct connman_option *options)
 				"EXPERIMENTAL for now.\n");
 
 	return 0;
+}
+
+__connmanctl_lookup_cb __connmanctl_get_lookup_func(const char *text)
+{
+	int i;
+
+	for (i = 0; cmd_table[i].cmd; i++) {
+		if (g_strcmp0(cmd_table[i].cmd, text) == 0)
+			return cmd_table[i].cb;
+	}
+
+	return NULL;
 }
 
 int __connmanctl_commands(DBusConnection *dbus_conn, char *argv[], int argc)
@@ -1533,4 +1568,131 @@ char *__connmanctl_lookup_command(const char *text, int state)
 	}
 
 	return NULL;
+}
+
+static char *get_path(char *full_path)
+{
+	char *path;
+
+	path = strrchr(full_path, '/');
+	if (path && *path != '\0')
+		path++;
+	else
+		path = full_path;
+
+	return path;
+}
+
+static void add_service_id(const char *path)
+{
+	g_hash_table_replace(service_hash, g_strdup(path),
+			GINT_TO_POINTER(TRUE));
+}
+
+static void remove_service_id(const char *path)
+{
+	g_hash_table_remove(service_hash, path);
+}
+
+static void services_added(DBusMessageIter *iter)
+{
+	DBusMessageIter array;
+	char *path = NULL;
+
+	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_STRUCT) {
+
+		dbus_message_iter_recurse(iter, &array);
+		if (dbus_message_iter_get_arg_type(&array) !=
+						DBUS_TYPE_OBJECT_PATH)
+			return;
+
+		dbus_message_iter_get_basic(&array, &path);
+		add_service_id(get_path(path));
+
+		dbus_message_iter_next(iter);
+	}
+}
+
+static void update_services(DBusMessageIter *iter)
+{
+	DBusMessageIter array;
+	char *path;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(iter, &array);
+	services_added(&array);
+
+	dbus_message_iter_next(iter);
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(iter, &array);
+	while (dbus_message_iter_get_arg_type(&array) ==
+						DBUS_TYPE_OBJECT_PATH) {
+		dbus_message_iter_get_basic(&array, &path);
+		remove_service_id(get_path(path));
+
+		dbus_message_iter_next(&array);
+	}
+}
+
+static int populate_service_hash(DBusMessageIter *iter, const char *error,
+				void *user_data)
+{
+	update_services(iter);
+	return 0;
+}
+
+static DBusHandlerResult services_changed(
+		DBusConnection *connection,
+		DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter;
+
+	if (dbus_message_is_signal(message, "net.connman.Manager",
+					"ServicesChanged")) {
+		dbus_message_iter_init(message, &iter);
+		update_services(&iter);
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	}
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
+{
+	DBusError err;
+
+	if (!dbus_conn) {
+		g_hash_table_destroy(service_hash);
+
+		dbus_bus_remove_match(connection,
+			"type='signal',interface='net.connman.Manager'", NULL);
+		dbus_connection_remove_filter(connection,
+					services_changed,
+					NULL);
+		return;
+	}
+
+	connection = dbus_conn;
+
+	service_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+								g_free, NULL);
+
+	__connmanctl_dbus_method_call(connection,
+				CONNMAN_SERVICE, CONNMAN_PATH,
+				"net.connman.Manager", "GetServices",
+				populate_service_hash, NULL, DBUS_TYPE_INVALID);
+
+	dbus_connection_add_filter(connection,
+				services_changed, NULL, NULL);
+
+	dbus_error_init(&err);
+	dbus_bus_add_match(connection,
+			"type='signal',interface='net.connman.Manager'", &err);
+
+	if (dbus_error_is_set(&err))
+		fprintf(stderr, "Error: %s\n", err.message);
 }
