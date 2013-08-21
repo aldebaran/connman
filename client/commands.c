@@ -168,7 +168,7 @@ static int cmd_enable(char *args[], int num, struct connman_option *options)
 	if (check_dbus_name(args[1]) == false)
 		return -EINVAL;
 
-	if (strcmp(args[1], "offlinemode") == 0) {
+	if (strcmp(args[1], "offline") == 0) {
 		tech = g_strdup(args[1]);
 		return __connmanctl_dbus_set_property(connection, "/",
 				"net.connman.Manager", enable_return, tech,
@@ -217,7 +217,7 @@ static int cmd_disable(char *args[], int num, struct connman_option *options)
 	if (check_dbus_name(args[1]) == false)
 		return -EINVAL;
 
-	if (strcmp(args[1], "offlinemode") == 0) {
+	if (strcmp(args[1], "offline") == 0) {
 		tech = g_strdup(args[1]);
 		return __connmanctl_dbus_set_property(connection, "/",
 				"net.connman.Manager", disable_return, tech,
@@ -1419,6 +1419,32 @@ static char *lookup_technology(const char *text, int state)
 	return NULL;
 }
 
+static char *lookup_technology_offline(const char *text, int state)
+{
+	static int len = 0;
+	static bool end = false;
+	char *str;
+
+	if (state == 0) {
+		len = strlen(text);
+		end = false;
+	}
+
+	if (end)
+		return NULL;
+
+	str = lookup_technology(text, state);
+	if (str)
+		return str;
+
+	end = true;
+
+	if (strncmp(text, "offline", len) == 0)
+		return strdup("offline");
+
+	return NULL;
+}
+
 static struct connman_option service_options[] = {
 	{"properties", 'p', "[<service>]      (obsolete)"},
 	{ NULL, }
@@ -1462,9 +1488,11 @@ static const struct {
 	{ "technologies", NULL,           NULL,            cmd_technologies,
 	  "Display technologies", NULL },
 	{ "enable",       "<technology>|offline", NULL,    cmd_enable,
-	  "Enables given technology or offline mode", lookup_technology },
+	  "Enables given technology or offline mode",
+	  lookup_technology_offline },
 	{ "disable",      "<technology>|offline", NULL,    cmd_disable,
-	  "Disables given technology or offline mode", lookup_technology },
+	  "Disables given technology or offline mode",
+	  lookup_technology_offline },
 	{ "tether", "<technology> on|off\n"
 	            "            wifi [on|off] <ssid> <passphrase> ",
 	                                  NULL,            cmd_tether,
