@@ -448,9 +448,6 @@ struct tether_properties {
 
 static int tether_update(struct tether_properties *tether)
 {
-	printf("%d %d %d\n", tether->ssid_result, tether->passphrase_result,
-		tether->set_tethering);
-
 	if (tether->ssid_result == 0 && tether->passphrase_result == 0)
 		return tether_set("wifi", tether->set_tethering);
 
