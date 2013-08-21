@@ -1755,7 +1755,7 @@ static int populate_technology_hash(DBusMessageIter *iter, const char *error,
 	return 0;
 }
 
-static DBusHandlerResult services_or_technologies_changed(
+static DBusHandlerResult monitor_completions_changed(
 		DBusConnection *connection,
 		DBusMessage *message, void *user_data)
 {
@@ -1796,7 +1796,7 @@ void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 		dbus_bus_remove_match(connection,
 			"type='signal',interface='net.connman.Manager'", NULL);
 		dbus_connection_remove_filter(connection,
-					services_or_technologies_changed,
+					monitor_completions_changed,
 					NULL);
 		return;
 	}
@@ -1821,7 +1821,7 @@ void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 				DBUS_TYPE_INVALID);
 
 	dbus_connection_add_filter(connection,
-				services_or_technologies_changed, NULL, NULL);
+				monitor_completions_changed, NULL, NULL);
 
 	dbus_error_init(&err);
 	dbus_bus_add_match(connection,
