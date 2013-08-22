@@ -351,13 +351,15 @@ int __connman_nfacct_flush(connman_nfacct_flush_cb_t cb, void *user_data)
 	struct nfacct_flush *nff = g_new0(struct nfacct_flush, 1);
 	unsigned int id;
 
-	DBG("");
+	DBG("nfacct %p", nfacct);
 
-	cbd->data = nff;
+	if (nfacct) {
+		cbd->data = nff;
 
-	id = nfacct_dump(nfacct, false, nfacct_flush_cb, cbd);
-	if (id > 0)
-		return id;
+		id = nfacct_dump(nfacct, false, nfacct_flush_cb, cbd);
+		if (id > 0)
+			return id;
+	}
 
 	g_free(nff);
 	g_free(cbd);
