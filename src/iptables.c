@@ -606,13 +606,13 @@ static int iptables_add_chain(struct connman_iptables *table,
 	 */
 
 	/* head entry */
-	entry_head_size = sizeof(struct ipt_entry) +
-				sizeof(struct error_target);
+	entry_head_size = ALIGN(sizeof(struct ipt_entry)) +
+			ALIGN(sizeof(struct error_target));
 	entry_head = g_try_malloc0(entry_head_size);
 	if (!entry_head)
 		goto err_head;
 
-	entry_head->target_offset = sizeof(struct ipt_entry);
+	entry_head->target_offset = ALIGN(sizeof(struct ipt_entry));
 	entry_head->next_offset = entry_head_size;
 
 	error = (struct error_target *) entry_head->elems;
@@ -624,13 +624,13 @@ static int iptables_add_chain(struct connman_iptables *table,
 		goto err_head;
 
 	/* tail entry */
-	entry_return_size = sizeof(struct ipt_entry) +
-				sizeof(struct ipt_standard_target);
+	entry_return_size = ALIGN(sizeof(struct ipt_entry))+
+			ALIGN(sizeof(struct ipt_standard_target));
 	entry_return = g_try_malloc0(entry_return_size);
 	if (!entry_return)
 		goto err;
 
-	entry_return->target_offset = sizeof(struct ipt_entry);
+	entry_return->target_offset = ALIGN(sizeof(struct ipt_entry));
 	entry_return->next_offset = entry_return_size;
 
 	standard = (struct ipt_standard_target *) entry_return->elems;
@@ -700,20 +700,21 @@ static struct ipt_entry *new_rule(struct ipt_ip *ip,
 		match_size += tmp_xt_rm->match->m->u.match_size;
 
 	if (xt_t)
-		target_size = ALIGN(xt_t->t->u.target_size);
+		target_size = xt_t->t->u.target_size;
 	else
 		target_size = ALIGN(sizeof(struct xt_standard_target));
 
-	new_entry = g_try_malloc0(sizeof(struct ipt_entry) + target_size +
-								match_size);
+	new_entry = g_try_malloc0(ALIGN(sizeof(struct ipt_entry)) +
+				target_size + match_size);
 	if (!new_entry)
 		return NULL;
 
 	memcpy(&new_entry->ip, ip, sizeof(struct ipt_ip));
 
-	new_entry->target_offset = sizeof(struct ipt_entry) + match_size;
-	new_entry->next_offset = sizeof(struct ipt_entry) + target_size +
-								match_size;
+	new_entry->target_offset = ALIGN(sizeof(struct ipt_entry)) +
+							match_size;
+	new_entry->next_offset = ALIGN(sizeof(struct ipt_entry)) +
+					target_size + match_size;
 
 	match_size = 0;
 	for (tmp_xt_rm = xt_rm; tmp_xt_rm;
