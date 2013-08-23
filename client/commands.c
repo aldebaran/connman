@@ -1628,6 +1628,86 @@ static int session_destroy(void)
 			session_destroy_append, session_path);
 }
 
+static int session_config_return(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	char *property_name = user_data;
+
+	if (error)
+		fprintf(stderr, "Error setting session %s: %s\n",
+				property_name, error);
+
+	return 0;
+}
+
+static void session_config_append_array(DBusMessageIter *iter,
+		void *user_data)
+{
+	struct config_append *append = user_data;
+	char **opts = append->opts;
+	int i = 1;
+
+	if (!opts)
+		return;
+
+	while (opts[i] && strncmp(opts[i], "--", 2) != 0) {
+		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+				&opts[i]);
+		i++;
+	}
+
+	append->values = i;
+}
+
+static int session_config(char *args[], int num,
+		struct connman_option *options)
+{
+	int index = 0, res = 0;
+	struct config_append append;
+	char c;
+
+	while (index < num && args[index]) {
+		append.opts = &args[index];
+		append.values = 0;
+
+		c = parse_args(args[index], options);
+
+		switch (c) {
+		case 'b':
+			res = __connmanctl_dbus_session_change_array(connection,
+					session_path, session_config_return,
+					"AllowedBearers", "AllowedBearers",
+					session_config_append_array, &append);
+			break;
+		case 't':
+			if (!args[index + 1]) {
+				res = -EINVAL;
+				break;
+			}
+
+			res = __connmanctl_dbus_session_change(connection,
+					session_path, session_config_return,
+					"ConnectionType", "ConnectionType",
+					DBUS_TYPE_STRING, &args[index + 1]);
+			append.values = 2;
+			break;
+
+		default:
+			res = -EINVAL;
+		}
+
+		if (res < 0 && res != -EINPROGRESS) {
+			printf("Error '%s': %s\n", args[index],
+					strerror(-res));
+			return 0;
+		}
+
+		index += append.values;
+	}
+
+	return 0;
+}
+
 static int cmd_session(char *args[], int num, struct connman_option *options)
 {
 	char *command;
@@ -1674,6 +1754,16 @@ static int cmd_session(char *args[], int num, struct connman_option *options)
 			}
 
 			return session_disconnect();
+		} else if (!strcmp(command, "config")) {
+			if (!session_path) {
+				fprintf(stdout, "Session does not exist\n");
+				return 0;
+			}
+
+			if (num == 2)
+				return -EINVAL;
+
+			return session_config(&args[2], num - 2, options);
 		}
 
 	}
@@ -1783,6 +1873,8 @@ static struct connman_option monitor_options[] = {
 };
 
 static struct connman_option session_options[] = {
+	{"bearers", 'b', "<technology1> [<technology2> [...]]"},
+	{"type", 't', "local|internet|any"},
 	{ NULL, }
 };
 
@@ -1827,7 +1919,7 @@ static const struct {
 	 "Display VPN connections", NULL },
 	{ "vpnagent",     "on|off",     NULL,            cmd_vpnagent,
 	  "VPN Agent mode", NULL },
-	{ "session",      "on|off|connect|disconnect", session_options,
+	{ "session",      "on|off|connect|disconnect|config", session_options,
 	  cmd_session, "Enable or disable a session", NULL },
 	{ "help",         NULL,           NULL,            cmd_help,
 	  "Show help", NULL },
