@@ -273,6 +273,22 @@ int __connmanctl_dbus_set_property(DBusConnection *connection,
 	return send_method_call(connection, message, cb, user_data);
 }
 
+void __connmanctl_dbus_append_dict(DBusMessageIter *iter,
+		connmanctl_dbus_append_func_t append_fn, void *append_data)
+{
+	DBusMessageIter dict;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+                        DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+                        DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+                        DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	if (append_fn)
+		append_fn(&dict, append_data);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
 void __connmanctl_dbus_append_dict_entry(DBusMessageIter *iter,
 		const char *property, int type, void *value)
 {
