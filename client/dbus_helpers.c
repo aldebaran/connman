@@ -229,10 +229,11 @@ static int append_variant(DBusMessageIter *iter, const char *property,
 int __connmanctl_dbus_method_call(DBusConnection *connection,
 		const char *service, const char *path, const char *interface,
 		const char *method, connmanctl_dbus_method_return_func_t cb,
-		void *user_data, int arg1, ...)
+		void *user_data, connmanctl_dbus_append_func_t append_func,
+		void *append_data)
 {
 	DBusMessage *message;
-	va_list args;
+	DBusMessageIter iter;
 
 	message = dbus_message_new_method_call(service, path, interface,
 			method);
@@ -240,9 +241,10 @@ int __connmanctl_dbus_method_call(DBusConnection *connection,
 	if (!message)
 		return -ENOMEM;
 
-	va_start(args, arg1);
-	dbus_message_append_args_valist(message, arg1, args);
-	va_end(args);
+	if (append_func) {
+		dbus_message_iter_init_append(message, &iter);
+		append_func(&iter, append_data);
+	}
 
 	return send_method_call(connection, message, cb, user_data);
 }

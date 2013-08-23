@@ -588,6 +588,13 @@ static int agent_register_return(DBusMessageIter *iter, const char *error,
 	return -EINPROGRESS;
 }
 
+static void append_path(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
 int __connmanctl_agent_register(DBusConnection *connection)
 {
 	char *path = agent_path();
@@ -609,8 +616,7 @@ int __connmanctl_agent_register(DBusConnection *connection)
 
 	result = __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE,
 			CONNMAN_PATH, "net.connman.Manager", "RegisterAgent",
-			agent_register_return, connection,
-			DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID);
+			agent_register_return, connection, append_path, path);
 
 	if (result != -EINPROGRESS) {
 		g_dbus_unregister_interface(connection, agent_path(),
@@ -650,8 +656,7 @@ int __connmanctl_agent_unregister(DBusConnection *connection)
 
 	result = __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE,
 			CONNMAN_PATH, "net.connman.Manager", "UnregisterAgent",
-			agent_unregister_return, NULL,
-			DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID);
+			agent_unregister_return, NULL, append_path, path);
 
 	if (result != -EINPROGRESS)
 		fprintf(stderr, "Error: Failed to unregister Agent\n");
@@ -714,8 +719,8 @@ int __connmanctl_vpn_agent_register(DBusConnection *connection)
 
 	result = __connmanctl_dbus_method_call(connection, VPN_SERVICE,
 			VPN_PATH, "net.connman.vpn.Manager", "RegisterAgent",
-			vpn_agent_register_return, connection,
-			DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID);
+			vpn_agent_register_return, connection, append_path,
+			path);
 
 	if (result != -EINPROGRESS) {
 		g_dbus_unregister_interface(connection, agent_path(),
@@ -756,8 +761,7 @@ int __connmanctl_vpn_agent_unregister(DBusConnection *connection)
 
 	result = __connmanctl_dbus_method_call(connection, VPN_SERVICE,
 			VPN_PATH, "net.connman.vpn.Manager", "UnregisterAgent",
-			vpn_agent_unregister_return, NULL,
-			DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID);
+			vpn_agent_unregister_return, NULL, append_path, path);
 
 	if (result != -EINPROGRESS)
 		fprintf(stderr, "Error: Failed to unregister VPN Agent\n");

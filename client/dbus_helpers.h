@@ -39,18 +39,20 @@ void __connmanctl_dbus_print(DBusMessageIter *iter, const char *pre,
 
 typedef int (*connmanctl_dbus_method_return_func_t)(DBusMessageIter *iter,
 		const char *error, void *user_data);
+
+typedef void (*connmanctl_dbus_append_func_t)(DBusMessageIter *iter,
+		void *user_data);
+
 int __connmanctl_dbus_method_call(DBusConnection *connection,
 		const char *service, const char *path, const char *interface,
 		const char *method, connmanctl_dbus_method_return_func_t cb,
-		void * user_data, int arg1, ...);
+		void * user_data, connmanctl_dbus_append_func_t append_fn,
+		void *append_data);
 
 int __connmanctl_dbus_set_property(DBusConnection *connection,
 		const char *path, const char *interface,
 		connmanctl_dbus_method_return_func_t cb, void * user_data,
 		const char *property, int type, void *value);
-
-typedef void (*connmanctl_dbus_append_func_t)(DBusMessageIter *iter,
-		void *user_data);
 
 void __connmanctl_dbus_append_dict_entry(DBusMessageIter *iter,
 		const char *property, int type, void *value);

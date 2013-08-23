@@ -254,7 +254,7 @@ static int cmd_state(char *args[], int num, struct connman_option *options)
 
 	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE,
 			CONNMAN_PATH, "net.connman.Manager", "GetProperties",
-			state_print, NULL, DBUS_TYPE_INVALID);
+			state_print, NULL, NULL, NULL);
 }
 
 static int services_list(DBusMessageIter *iter, const char *error,
@@ -329,7 +329,7 @@ static int cmd_services(char *args[], int num, struct connman_option *options)
 		return __connmanctl_dbus_method_call(connection,
 				CONNMAN_SERVICE, CONNMAN_PATH,
 				"net.connman.Manager", "GetServices",
-				services_list, NULL, DBUS_TYPE_INVALID);
+				services_list, NULL, NULL, NULL);
 	}
 
 	if (check_dbus_name(service_name) == false)
@@ -338,7 +338,7 @@ static int cmd_services(char *args[], int num, struct connman_option *options)
 	path = g_strdup_printf("/net/connman/service/%s", service_name);
 	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE, path,
 			"net.connman.Service", "GetProperties",
-			services_properties, path, DBUS_TYPE_INVALID);
+			services_properties, path, NULL, NULL);
 }
 
 static int technology_print(DBusMessageIter *iter, const char *error,
@@ -380,7 +380,7 @@ static int cmd_technologies(char *args[], int num,
 
 	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE,
 			CONNMAN_PATH, "net.connman.Manager", "GetTechnologies",
-			technology_print, NULL,	DBUS_TYPE_INVALID);
+			technology_print, NULL,	NULL, NULL);
 }
 
 struct tether_enable {
@@ -592,7 +592,7 @@ static int cmd_scan(char *args[], int num, struct connman_option *options)
 	path = g_strdup_printf("/net/connman/technology/%s", args[1]);
 	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE, path,
 			"net.connman.Technology", "Scan",
-			scan_return, path, DBUS_TYPE_INVALID);
+			scan_return, path, NULL, NULL);
 }
 
 static int connect_return(DBusMessageIter *iter, const char *error,
@@ -628,7 +628,7 @@ static int cmd_connect(char *args[], int num, struct connman_option *options)
 	path = g_strdup_printf("/net/connman/service/%s", args[1]);
 	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE, path,
 			"net.connman.Service", "Connect",
-			connect_return, path, DBUS_TYPE_INVALID);
+			connect_return, path, NULL, NULL);
 }
 
 static int disconnect_return(DBusMessageIter *iter, const char *error,
@@ -664,7 +664,7 @@ static int cmd_disconnect(char *args[], int num, struct connman_option *options)
 	path = g_strdup_printf("/net/connman/service/%s", args[1]);
 	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE, path,
 			"net.connman.Service", "Disconnect",
-			disconnect_return, path, DBUS_TYPE_INVALID);
+			disconnect_return, path, NULL, NULL);
 }
 
 static int config_return(DBusMessageIter *iter, const char *error,
@@ -984,7 +984,7 @@ static int cmd_config(char *args[], int num, struct connman_option *options)
 					CONNMAN_SERVICE, path,
 					"net.connman.Service", "Remove",
 					config_return, g_strdup(service_name),
-					DBUS_TYPE_INVALID);
+					NULL, NULL);
 			break;
 		default:
 			res = -EINVAL;
@@ -1330,7 +1330,7 @@ static int cmd_vpnconnections(char *args[], int num,
 				VPN_SERVICE, VPN_PATH,
 				"net.connman.vpn.Manager", "GetConnections",
 				vpnconnections_list, NULL,
-				DBUS_TYPE_INVALID);
+				NULL, NULL);
 
 	if (check_dbus_name(vpnconnection_name) == false)
 		return -EINVAL;
@@ -1339,7 +1339,7 @@ static int cmd_vpnconnections(char *args[], int num,
 			vpnconnection_name);
 	return __connmanctl_dbus_method_call(connection, VPN_SERVICE, path,
 			"net.connman.vpn.Connection", "GetProperties",
-			vpnconnections_properties, path, DBUS_TYPE_INVALID);
+			vpnconnections_properties, path, NULL, NULL);
 
 }
 
@@ -1809,13 +1809,12 @@ void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 	__connmanctl_dbus_method_call(connection,
 				CONNMAN_SERVICE, CONNMAN_PATH,
 				"net.connman.Manager", "GetServices",
-				populate_service_hash, NULL, DBUS_TYPE_INVALID);
+				populate_service_hash, NULL, NULL, NULL);
 
 	__connmanctl_dbus_method_call(connection,
 				CONNMAN_SERVICE, CONNMAN_PATH,
 				"net.connman.Manager", "GetTechnologies",
-				populate_technology_hash, NULL,
-				DBUS_TYPE_INVALID);
+				populate_technology_hash, NULL, NULL, NULL);
 
 	dbus_connection_add_filter(connection,
 				monitor_completions_changed, NULL, NULL);
