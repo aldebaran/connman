@@ -29,6 +29,8 @@
 #include <string.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -43,6 +45,8 @@
 static DBusConnection *connection;
 static GHashTable *service_hash;
 static GHashTable *technology_hash;
+static char *session_path;
+static bool session_connected;
 
 struct connman_option {
 	const char *name;
@@ -1015,11 +1019,16 @@ static DBusHandlerResult monitor_changed(DBusConnection *connection,
 	const char *interface, *path;
 
 	interface = dbus_message_get_interface(message);
+	if (!interface)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
 	if (strncmp(interface, "net.connman.", 12) != 0)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	if (strncmp(interface, "net.connman.Agent", 17) == 0 ||
-			strncmp(interface, "net.connman.vpn.Agent", 21) == 0)
+	if (!strcmp(interface, "net.connman.Agent") ||
+			!strcmp(interface, "net.connman.vpn.Agent") ||
+			!strcmp(interface, "net.connman.Session") ||
+			!strcmp(interface, "net.connman.Notification"))
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	interface = strrchr(interface, '.');
@@ -1371,6 +1380,182 @@ static int cmd_vpnagent(char *args[], int num, struct connman_option *options)
 	return 0;
 }
 
+static int session_connect_cb(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	if (error) {
+		fprintf(stderr, "Error: %s", error);
+		return 0;
+	}
+
+	return -EINPROGRESS;
+}
+
+
+static int session_connect(void)
+{
+	return __connmanctl_dbus_method_call(connection, "net.connman",
+			session_path, "net.connman.Session", "Connect",
+			session_connect_cb, NULL, NULL, NULL);
+}
+
+static int session_disconnect_cb(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	if (error)
+		fprintf(stderr, "Error: %s", error);
+
+	return 0;
+}
+
+static int session_disconnect(void)
+{
+	return __connmanctl_dbus_method_call(connection, "net.connman",
+			session_path, "net.connman.Session", "Disconnect",
+			session_disconnect_cb, NULL, NULL, NULL);
+}
+
+static int session_create_cb(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	gboolean connect = GPOINTER_TO_INT(user_data);
+	char *str;
+
+	if (error) {
+		fprintf(stderr, "Error creating session: %s", error);
+		return 0;
+	}
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_OBJECT_PATH) {
+		fprintf(stderr, "Error creating session: No session path\n");
+		return -EINVAL;
+	}
+
+	g_free(session_path);
+
+	dbus_message_iter_get_basic(iter, &str);
+	session_path = g_strdup(str);
+
+	fprintf(stdout, "Session %s created\n", session_path);
+
+	if (connect)
+		return session_connect();
+
+	return -EINPROGRESS;
+}
+
+static void session_create_append(DBusMessageIter *iter, void *user_data)
+{
+	const char *notify_path = user_data;
+
+	__connmanctl_dbus_append_dict(iter, NULL, NULL);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
+			&notify_path);
+}
+
+static int session_create(gboolean connect)
+{
+	int res;
+	char *notify_path;
+
+	notify_path = g_strdup_printf("/net/connman/connmanctl%d", getpid());
+
+	res = __connmanctl_dbus_method_call(connection, "net.connman", "/",
+			"net.connman.Manager", "CreateSession",
+			session_create_cb, GINT_TO_POINTER(connect),
+			session_create_append, notify_path);
+
+	g_free(notify_path);
+
+	return res;
+}
+
+static int session_destroy_cb(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	if (error) {
+		fprintf(stderr, "Error destroying session: %s", error);
+		return 0;
+	}
+
+	fprintf(stdout, "Session %s ended\n", session_path);
+
+	g_free(session_path);
+	session_path = NULL;
+	session_connected = false;
+
+	return 0;
+}
+
+static void session_destroy_append(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+static int session_destroy(void)
+{
+	return __connmanctl_dbus_method_call(connection, "net.connman", "/",
+			"net.connman.Manager", "DestroySession",
+			session_destroy_cb, NULL,
+			session_destroy_append, session_path);
+}
+
+static int cmd_session(char *args[], int num, struct connman_option *options)
+{
+	char *command;
+
+	if (num < 2)
+		return -EINVAL;
+
+	command = args[1];
+
+	switch(parse_boolean(command)) {
+	case 0:
+		if (!session_path)
+			return -EALREADY;
+		return session_destroy();
+
+	case 1:
+		if (session_path)
+			return -EALREADY;
+		return session_create(FALSE);
+
+	default:
+		if (!strcmp(command, "connect")) {
+			if (!session_path)
+				return session_create(TRUE);
+
+			if (session_connected == true) {
+				fprintf(stdout, "Session already connected\n");
+				return 0;
+			}
+
+			return session_connect();
+
+		} else if (!strcmp(command, "disconnect")) {
+
+			if (!session_path) {
+				fprintf(stdout, "Session does not exist\n");
+				return 0;
+			}
+
+			if (session_connected == false) {
+				fprintf(stdout, "Session already "
+						"disconnected\n");
+				return 0;
+			}
+
+			return session_disconnect();
+		}
+
+	}
+
+	return -EINVAL;
+}
+
 static int cmd_exit(char *args[], int num, struct connman_option *options)
 {
 	return 1;
@@ -1472,6 +1657,10 @@ static struct connman_option monitor_options[] = {
 	{ NULL, }
 };
 
+static struct connman_option session_options[] = {
+	{ NULL, }
+};
+
 static const struct {
         const char *cmd;
 	const char *argument;
@@ -1513,6 +1702,8 @@ static const struct {
 	 "Display VPN connections", NULL },
 	{ "vpnagent",     "on|off",     NULL,            cmd_vpnagent,
 	  "VPN Agent mode", NULL },
+	{ "session",      "on|off|connect|disconnect", session_options,
+	  cmd_session, "Enable or disable a session", NULL },
 	{ "help",         NULL,           NULL,            cmd_help,
 	  "Show help", NULL },
 	{ "exit",         NULL,           NULL,            cmd_exit,
