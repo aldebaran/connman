@@ -77,6 +77,18 @@ int __connmanctl_dbus_set_property_array(DBusConnection *connection,
 		connmanctl_dbus_append_func_t append_fn,
 		void *append_user_data);
 
+int __connmanctl_dbus_session_change(DBusConnection *connection,
+		const char *session_path,
+		connmanctl_dbus_method_return_func_t cb, void * user_data,
+		const char *property, int type, void *value);
+
+int __connmanctl_dbus_session_change_array(DBusConnection *connection,
+		const char *session_path,
+		connmanctl_dbus_method_return_func_t cb, void *user_data,
+		const char *property,
+		connmanctl_dbus_append_func_t append_fn,
+		void *append_user_data);
+
 #ifdef __cplusplus
 }
 #endif
