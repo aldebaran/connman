@@ -45,6 +45,7 @@
 static DBusConnection *connection;
 static GHashTable *service_hash;
 static GHashTable *technology_hash;
+static char *session_notify_path;
 static char *session_path;
 static bool session_connected;
 
@@ -1380,6 +1381,125 @@ static int cmd_vpnagent(char *args[], int num, struct connman_option *options)
 	return 0;
 }
 
+static DBusMessage *session_release(DBusConnection *connection,
+		DBusMessage *message, void *user_data)
+{
+	__connmanctl_save_rl();
+
+	fprintf(stdout, "Session %s released\n", session_path);
+
+	__connmanctl_redraw_rl();
+
+	g_free(session_path);
+	session_path = NULL;
+	session_connected = false;
+
+	return g_dbus_create_reply(message, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *session_update(DBusConnection *connection,
+		DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter, dict;
+
+	__connmanctl_save_rl();
+
+	fprintf(stdout, "Session      Update               = {\n");
+
+	dbus_message_iter_init(message, &iter);
+	dbus_message_iter_recurse(&iter, &dict);
+
+	__connmanctl_dbus_print(&dict, "", " = ", "\n");
+	fprintf(stdout, "\n}\n");
+
+	dbus_message_iter_recurse(&iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, variant;
+		char *field, *state;
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		dbus_message_iter_get_basic(&entry, &field);
+
+		if (dbus_message_iter_get_arg_type(&entry)
+				== DBUS_TYPE_STRING
+				&& !strcmp(field, "State")) {
+
+			dbus_message_iter_next(&entry);
+			dbus_message_iter_recurse(&entry, &variant);
+			if (dbus_message_iter_get_arg_type(&variant)
+					!= DBUS_TYPE_STRING)
+				break;
+
+			dbus_message_iter_get_basic(&variant, &state);
+
+			if (!session_connected && (!strcmp(state, "connected")
+					|| !strcmp(state, "online"))) {
+
+				fprintf(stdout, "Session %s connected\n",
+					session_path);
+				session_connected = true;
+
+				break;
+			}
+
+			if (!strcmp(state, "disconnected") &&
+					!session_connected) {
+
+				fprintf(stdout, "Session %s disconnected\n",
+					session_path);
+				session_connected = false;
+			}
+			break;
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	__connmanctl_redraw_rl();
+
+	return g_dbus_create_reply(message, DBUS_TYPE_INVALID);
+}
+
+static const GDBusMethodTable notification_methods[] = {
+	{ GDBUS_METHOD("Release", NULL, NULL, session_release) },
+	{ GDBUS_METHOD("Update", GDBUS_ARGS({"settings", "a{sv}"}),
+				NULL, session_update) },
+	{ },
+};
+
+static int session_notify_add(const char *path)
+{
+	if (session_notify_path)
+		return 0;
+
+	if (!g_dbus_register_interface(connection, path,
+					"net.connman.Notification",
+					notification_methods, NULL, NULL,
+					NULL, NULL)) {
+		fprintf(stderr, "Error: Failed to register VPN Agent "
+				"callbacks\n");
+		return -EIO;
+	}
+
+	session_notify_path = g_strdup(path);
+
+	return 0;
+}
+
+static void session_notify_remove(void)
+{
+	if (!session_notify_path)
+		return;
+
+	g_dbus_unregister_interface(connection, session_notify_path,
+			"net.connman.Notification");
+
+	g_free(session_notify_path);
+	session_notify_path = NULL;
+}
+
 static int session_connect_cb(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
@@ -1423,6 +1543,7 @@ static int session_create_cb(DBusMessageIter *iter, const char *error,
 
 	if (error) {
 		fprintf(stderr, "Error creating session: %s", error);
+		session_notify_remove();
 		return 0;
 	}
 
@@ -1460,6 +1581,7 @@ static int session_create(gboolean connect)
 	char *notify_path;
 
 	notify_path = g_strdup_printf("/net/connman/connmanctl%d", getpid());
+	session_notify_add(notify_path);
 
 	res = __connmanctl_dbus_method_call(connection, "net.connman", "/",
 			"net.connman.Manager", "CreateSession",
@@ -1467,6 +1589,9 @@ static int session_create(gboolean connect)
 			session_create_append, notify_path);
 
 	g_free(notify_path);
+
+	if (res < 0 && res != -EINPROGRESS)
+		session_notify_remove();
 
 	return res;
 }
