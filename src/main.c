@@ -454,10 +454,10 @@ static gchar *option_plugin = NULL;
 static gchar *option_nodevice = NULL;
 static gchar *option_noplugin = NULL;
 static gchar *option_wifi = NULL;
-static bool option_detach = true;
-static bool option_dnsproxy = true;
-static bool option_backtrace = true;
-static bool option_version = false;
+static gboolean option_detach = TRUE;
+static gboolean option_dnsproxy = TRUE;
+static gboolean option_backtrace = TRUE;
+static gboolean option_version = FALSE;
 
 static bool parse_debug(const char *key, const char *value,
 					gpointer user_data, GError **error)

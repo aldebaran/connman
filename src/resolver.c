@@ -578,7 +578,7 @@ static void free_resolvfile(gpointer data)
 	g_free(entry);
 }
 
-int __connman_resolver_init(bool dnsproxy)
+int __connman_resolver_init(gboolean dnsproxy)
 {
 	int i;
 	char **ns;

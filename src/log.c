@@ -292,7 +292,7 @@ void __connman_log_enable(struct connman_debug_desc *start,
 }
 
 int __connman_log_init(const char *program, const char *debug,
-		bool detach, bool backtrace,
+		gboolean detach, gboolean backtrace,
 		const char *program_name, const char *program_version)
 {
 	static char path[PATH_MAX];
@@ -319,7 +319,7 @@ int __connman_log_init(const char *program, const char *debug,
 	return 0;
 }
 
-void __connman_log_cleanup(bool backtrace)
+void __connman_log_cleanup(gboolean backtrace)
 {
 	syslog(LOG_INFO, "Exit");
 

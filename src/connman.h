@@ -112,9 +112,9 @@ int __connman_agent_request_browser(struct connman_service *service,
 #include <connman/log.h>
 
 int __connman_log_init(const char *program, const char *debug,
-		bool detach, bool backtrace,
+		gboolean detach, gboolean backtrace,
 		const char *program_name, const char *program_version);
-void __connman_log_cleanup(bool backtrace);
+void __connman_log_cleanup(gboolean backtrace);
 void __connman_log_enable(struct connman_debug_desc *start,
 					struct connman_debug_desc *stop);
 
@@ -225,7 +225,7 @@ int __connman_inet_del_default_from_table(uint32_t table_id, int ifindex, const 
 
 #include <connman/resolver.h>
 
-int __connman_resolver_init(bool dnsproxy);
+int __connman_resolver_init(gboolean dnsproxy);
 void __connman_resolver_cleanup(void);
 int __connman_resolvfile_append(int index, const char *domain, const char *server);
 int __connman_resolvfile_remove(int index, const char *domain, const char *server);
