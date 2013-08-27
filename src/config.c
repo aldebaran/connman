@@ -553,7 +553,7 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 
 		g_hash_table_insert(config->service_table, service->ident,
 								service);
-		return 0;
+		return true;
 	}
 
 	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_NAME, NULL);
