@@ -3510,30 +3510,52 @@ static GList *preferred_tech_list_get(void)
 static bool auto_connect_service(GList *services, bool preferred)
 {
 	struct connman_service *service = NULL;
+	bool ignore[MAX_CONNMAN_SERVICE_TYPES] = { };
+	bool autoconnecting = false;
 	GList *list;
+
+	DBG("preferred %d sessions %d", preferred, active_count);
 
 	for (list = services; list; list = list->next) {
 		service = list->data;
 
-		if (service->pending)
-			return true;
+		if (ignore[service->type]) {
+			DBG("service %p type %s ignore", service,
+				__connman_service_type2string(service->type));
+			continue;
+		}
 
-		if (is_connecting(service))
-			return true;
+		if (service->pending ||
+				is_connecting(service) ||
+				is_connected(service)) {
+			if (!active_count)
+				return true;
 
-		if (is_connected(service))
-			return true;
+			ignore[service->type] = true;
+			autoconnecting = true;
+
+			DBG("service %p type %s busy", service,
+				__connman_service_type2string(service->type));
+
+			continue;
+		}
 
 		if (!service->favorite) {
 			if (preferred)
 			       continue;
 
-			return false;
+			return autoconnecting;
 		}
 
 		if (is_ignore(service) || service->state !=
 				CONNMAN_SERVICE_STATE_IDLE)
 			continue;
+
+		if (autoconnecting && !active_sessions[service->type]) {
+			DBG("service %p type %s has no users", service,
+				__connman_service_type2string(service->type));
+			continue;
+		}
 
 		DBG("service %p %s %s", service, service->name,
 				(preferred) ? "preferred" : "auto");
@@ -3541,10 +3563,13 @@ static bool auto_connect_service(GList *services, bool preferred)
 		service->userconnect = false;
 		__connman_service_connect(service);
 
-		return true;
+		if (!active_count)
+			return true;
+
+		ignore[service->type] = true;
 	}
 
-	return false;
+	return autoconnecting;
 }
 
 static gboolean run_auto_connect(gpointer data)
@@ -3562,7 +3587,7 @@ static gboolean run_auto_connect(gpointer data)
 		g_list_free(preferred_tech);
 	}
 
-	if (!autoconnecting)
+	if (!autoconnecting || active_count)
 		auto_connect_service(service_list, false);
 
 	return FALSE;
