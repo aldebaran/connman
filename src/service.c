@@ -3597,11 +3597,6 @@ void __connman_service_auto_connect(void)
 {
 	DBG("");
 
-	if (__connman_session_mode()) {
-		DBG("Session mode enabled: auto connect disabled");
-		return;
-	}
-
 	if (autoconnect_timeout != 0)
 		return;
 

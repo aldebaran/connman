@@ -34,7 +34,6 @@
 
 static DBusConnection *connection;
 static GHashTable *session_hash;
-static bool sessionmode;
 static struct connman_session *ecall_session;
 static GSList *policy_list;
 static uint32_t session_mark = 256;
@@ -2306,30 +2305,6 @@ int __connman_session_destroy(DBusMessage *msg)
 	return 0;
 }
 
-bool __connman_session_mode()
-{
-	return sessionmode;
-}
-
-void __connman_session_set_mode(bool enable)
-{
-	dbus_bool_t mode;
-
-	DBG("enable %d", enable);
-
-	if (sessionmode != enable) {
-		sessionmode = enable;
-
-		mode = sessionmode;
-		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "SessionMode",
-				DBUS_TYPE_BOOLEAN, &mode);
-	}
-
-	if (sessionmode)
-		__connman_service_disconnect_all();
-}
-
 static void service_add(struct connman_service *service,
 		enum connman_service_state state, const char *name)
 {
@@ -2490,8 +2465,6 @@ int __connman_session_init(void)
 
 	session_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, cleanup_session);
-
-	sessionmode = false;
 
 	__connman_nfacct_flush(session_nfacct_flush_cb, NULL);
 
