@@ -69,7 +69,6 @@ struct service_entry {
 	struct connman_service *service;
 	char *ifname;
 	const char *bearer;
-	GSList *pending_timeouts;
 };
 
 struct session_info {
@@ -1238,113 +1237,19 @@ static bool explicit_disconnect(struct session_info *info)
 	return true;
 }
 
-struct pending_data {
-	unsigned int timeout;
-	struct service_entry *entry;
-	GSourceFunc cb;
-};
-
-static void pending_timeout_free(gpointer data, gpointer user_data)
-{
-	struct pending_data *pending = data;
-
-	DBG("pending %p timeout %d", pending, pending->timeout);
-	g_source_remove(pending->timeout);
-	g_free(pending);
-}
-
-static void pending_timeout_remove_all(struct service_entry *entry)
-{
-	DBG("");
-
-	g_slist_foreach(entry->pending_timeouts, pending_timeout_free, NULL);
-	g_slist_free(entry->pending_timeouts);
-	entry->pending_timeouts = NULL;
-}
-
-static gboolean pending_timeout_cb(gpointer data)
-{
-	struct pending_data *pending = data;
-	struct service_entry *entry = pending->entry;
-	bool ret;
-
-	DBG("pending %p timeout %d", pending, pending->timeout);
-
-	ret = pending->cb(pending->entry);
-	if (!ret) {
-		entry->pending_timeouts =
-			g_slist_remove(entry->pending_timeouts,
-					pending);
-		g_free(pending);
-	}
-	return ret;
-}
-
-static bool pending_timeout_add(unsigned int seconds,
-					GSourceFunc cb,
-					struct service_entry *entry)
-{
-	struct pending_data *pending = g_try_new0(struct pending_data, 1);
-
-	if (!pending || !cb || !entry) {
-		g_free(pending);
-		return false;
-	}
-
-	pending->cb = cb;
-	pending->entry = entry;
-	pending->timeout = g_timeout_add_seconds(seconds, pending_timeout_cb,
-						pending);
-	entry->pending_timeouts = g_slist_prepend(entry->pending_timeouts,
-						pending);
-
-	DBG("pending %p entry %p timeout id %d", pending, entry,
-		pending->timeout);
-
-	return true;
-}
-
-static gboolean call_disconnect(gpointer user_data)
-{
-	/*
-	 * TODO: We should mark this entry as pending work. In case
-	 * disconnect fails we just unassign this session from the
-	 * service and can't do anything later on it
-	 */
-
-	return FALSE;
-}
-
-static gboolean call_connect(gpointer user_data)
-{
-	return FALSE;
-}
-
 static void deselect_service(struct session_info *info)
 {
-	struct service_entry *entry;
-	bool disconnect, connected;
-
 	DBG("");
 
 	if (!info->entry)
 		return;
 
-	disconnect = explicit_disconnect(info);
-
-	connected = is_connecting(info->entry->state) ||
-			is_connected(info->entry->state);
+	explicit_disconnect(info);
 
 	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
 	info->entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 
-	entry = info->entry;
 	info->entry = NULL;
-
-	DBG("disconnect %d connected %d", disconnect, connected);
-
-	if (disconnect && connected)
-		pending_timeout_add(0, call_disconnect, entry);
 }
 
 static void deselect_and_disconnect(struct connman_session *session)
@@ -1390,8 +1295,6 @@ static void select_offline_service(struct session_info *info,
 
 	info->entry = entry;
 	info->entry->reason = info->reason;
-
-	pending_timeout_add(0, call_connect, entry);
 }
 
 static void select_service(struct session_info *info,
@@ -1512,7 +1415,6 @@ static void destroy_service_entry(gpointer data)
 		deselect_and_disconnect(session);
 	}
 
-	pending_timeout_remove_all(entry);
 	g_free(entry->ifname);
 
 	g_free(entry);
