@@ -3475,32 +3475,29 @@ static bool auto_connect_service(GList *services, bool preferred)
 		if (is_connecting(service))
 			return true;
 
-		if (!service->favorite) {
-			if (preferred)
-				goto next_service;
-			return false;
-		}
-
 		if (is_connected(service))
 			return true;
 
-		if (!is_ignore(service) && service->state ==
+		if (!service->favorite) {
+			if (preferred)
+			       continue;
+
+			return false;
+		}
+
+		if (is_ignore(service) || service->state !=
 				CONNMAN_SERVICE_STATE_IDLE)
-			break;
-
-	next_service:
-		service = NULL;
-	}
-
-	if (service) {
+			continue;
 
 		DBG("service %p %s %s", service, service->name,
 				(preferred) ? "preferred" : "auto");
 
 		service->userconnect = false;
 		__connman_service_connect(service);
+
 		return true;
 	}
+
 	return false;
 }
 
