@@ -255,14 +255,14 @@ static void parse_config(GKeyFile *config)
 
 	g_clear_error(&error);
 
-	timeservers = g_key_file_get_string_list(config, "General",
+	timeservers = __connman_config_get_string_list(config, "General",
 					CONF_PREF_TIMESERVERS, NULL, &error);
 	if (!error)
 		connman_settings.pref_timeservers = timeservers;
 
 	g_clear_error(&error);
 
-	str_list = g_key_file_get_string_list(config, "General",
+	str_list = __connman_config_get_string_list(config, "General",
 			CONF_AUTO_CONNECT, &len, &error);
 
 	if (!error)
@@ -276,7 +276,7 @@ static void parse_config(GKeyFile *config)
 
 	g_clear_error(&error);
 
-	str_list = g_key_file_get_string_list(config, "General",
+	str_list = __connman_config_get_string_list(config, "General",
 			CONF_PREFERRED_TECHS, &len, &error);
 
 	if (!error)
@@ -287,7 +287,7 @@ static void parse_config(GKeyFile *config)
 
 	g_clear_error(&error);
 
-	str_list = g_key_file_get_string_list(config, "General",
+	str_list = __connman_config_get_string_list(config, "General",
 			CONF_FALLBACK_NAMESERVERS, &len, &error);
 
 	if (!error)
@@ -312,7 +312,7 @@ static void parse_config(GKeyFile *config)
 
 	g_clear_error(&error);
 
-	interfaces = g_key_file_get_string_list(config, "General",
+	interfaces = __connman_config_get_string_list(config, "General",
 			CONF_BLACKLISTED_INTERFACES, &len, &error);
 
 	if (!error)
@@ -323,7 +323,7 @@ static void parse_config(GKeyFile *config)
 
 	g_clear_error(&error);
 
-	boolean = g_key_file_get_boolean(config, "General",
+	boolean = __connman_config_get_bool(config, "General",
 					CONF_ALLOW_HOSTNAME_UPDATES,
 					&error);
 	if (!error)
@@ -331,14 +331,14 @@ static void parse_config(GKeyFile *config)
 
 	g_clear_error(&error);
 
-	boolean = g_key_file_get_boolean(config, "General",
+	boolean = __connman_config_get_bool(config, "General",
 			CONF_SINGLE_TECH, &error);
 	if (!error)
 		connman_settings.single_tech = boolean;
 
 	g_clear_error(&error);
 
-	tethering = g_key_file_get_string_list(config, "General",
+	tethering = __connman_config_get_string_list(config, "General",
 			CONF_TETHERING_TECHNOLOGIES, &len, &error);
 
 	if (!error)
@@ -346,7 +346,7 @@ static void parse_config(GKeyFile *config)
 
 	g_clear_error(&error);
 
-	boolean = g_key_file_get_boolean(config, "General",
+	boolean = __connman_config_get_bool(config, "General",
 					CONF_PERSISTENT_TETHERING_MODE,
 					&error);
 	if (!error)

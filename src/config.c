@@ -377,7 +377,7 @@ static bool load_service_generic(GKeyFile *keyfile,
 	char **strlist;
 	gsize length;
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IPv4, NULL);
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_IPv4, NULL);
 	if (str && check_address(str, &service->ipv4_address)) {
 		mask = NULL;
 
@@ -412,7 +412,7 @@ static bool load_service_generic(GKeyFile *keyfile,
 		g_free(str);
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IPv6, NULL);
+	str =  __connman_config_get_string(keyfile, group, SERVICE_KEY_IPv6, NULL);
 	if (str && check_address(str, &service->ipv6_address)) {
 		long int value;
 		char *ptr;
@@ -437,26 +437,26 @@ static bool load_service_generic(GKeyFile *keyfile,
 		g_free(str);
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IPv6_PRIVACY,
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_IPv6_PRIVACY,
 									NULL);
 	if (str) {
 		g_free(service->ipv6_privacy);
 		service->ipv6_privacy = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_MAC, NULL);
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_MAC, NULL);
 	if (str) {
 		g_free(service->mac);
 		service->mac = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_DOMAIN, NULL);
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_DOMAIN, NULL);
 	if (str) {
 		g_free(service->domain_name);
 		service->domain_name = str;
 	}
 
-	strlist = g_key_file_get_string_list(keyfile, group,
+	strlist = __connman_config_get_string_list(keyfile, group,
 					SERVICE_KEY_NAMESERVERS,
 					&length, NULL);
 	if (strlist) {
@@ -467,7 +467,7 @@ static bool load_service_generic(GKeyFile *keyfile,
 			g_strfreev(strlist);
 	}
 
-	strlist = g_key_file_get_string_list(keyfile, group,
+	strlist = __connman_config_get_string_list(keyfile, group,
 					SERVICE_KEY_SEARCH_DOMAINS,
 					&length, NULL);
 	if (strlist) {
@@ -478,7 +478,7 @@ static bool load_service_generic(GKeyFile *keyfile,
 			g_strfreev(strlist);
 	}
 
-	strlist = g_key_file_get_string_list(keyfile, group,
+	strlist = __connman_config_get_string_list(keyfile, group,
 					SERVICE_KEY_TIMESERVERS,
 					&length, NULL);
 	if (strlist) {
@@ -533,7 +533,7 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 		service_created = true;
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_TYPE, NULL);
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_TYPE, NULL);
 	if (str) {
 		g_free(service->type);
 		service->type = str;
@@ -556,13 +556,13 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 		return 0;
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_NAME, NULL);
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_NAME, NULL);
 	if (str) {
 		g_free(service->name);
 		service->name = str;
 	}
 
-	hex_ssid = g_key_file_get_string(keyfile, group, SERVICE_KEY_SSID,
+	hex_ssid = __connman_config_get_string(keyfile, group, SERVICE_KEY_SSID,
 					 NULL);
 	if (hex_ssid) {
 		char *ssid;
@@ -605,57 +605,57 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 		service->ssid_len = ssid_len;
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_EAP, NULL);
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_EAP, NULL);
 	if (str) {
 		g_free(service->eap);
 		service->eap = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_CA_CERT, NULL);
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_CA_CERT, NULL);
 	if (str) {
 		g_free(service->ca_cert_file);
 		service->ca_cert_file = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_CL_CERT, NULL);
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_CL_CERT, NULL);
 	if (str) {
 		g_free(service->client_cert_file);
 		service->client_cert_file = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_PRV_KEY, NULL);
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_PRV_KEY, NULL);
 	if (str) {
 		g_free(service->private_key_file);
 		service->private_key_file = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group,
+	str = __connman_config_get_string(keyfile, group,
 						SERVICE_KEY_PRV_KEY_PASS, NULL);
 	if (str) {
 		g_free(service->private_key_passphrase);
 		service->private_key_passphrase = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group,
+	str = __connman_config_get_string(keyfile, group,
 					SERVICE_KEY_PRV_KEY_PASS_TYPE, NULL);
 	if (str) {
 		g_free(service->private_key_passphrase_type);
 		service->private_key_passphrase_type = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IDENTITY, NULL);
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_IDENTITY, NULL);
 	if (str) {
 		g_free(service->identity);
 		service->identity = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_PHASE2, NULL);
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_PHASE2, NULL);
 	if (str) {
 		g_free(service->phase2);
 		service->phase2 = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_PASSPHRASE,
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_PASSPHRASE,
 					NULL);
 	if (str) {
 		g_free(service->passphrase);
@@ -665,7 +665,7 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 	service->config_ident = g_strdup(config->ident);
 	service->config_entry = g_strdup_printf("service_%s", service->ident);
 
-	service->hidden = g_key_file_get_boolean(keyfile, group,
+	service->hidden = __connman_config_get_bool(keyfile, group,
 						SERVICE_KEY_HIDDEN, NULL);
 
 	if (service_created)
@@ -723,13 +723,13 @@ static int load_config(struct connman_config *config)
 	/* Verify keys validity of the global section */
 	check_keys(keyfile, "global", config_possible_keys);
 
-	str = g_key_file_get_string(keyfile, "global", CONFIG_KEY_NAME, NULL);
+	str = __connman_config_get_string(keyfile, "global", CONFIG_KEY_NAME, NULL);
 	if (str) {
 		g_free(config->name);
 		config->name = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "global", CONFIG_KEY_DESC, NULL);
+	str = __connman_config_get_string(keyfile, "global", CONFIG_KEY_DESC, NULL);
 	if (str) {
 		g_free(config->description);
 		config->description = str;
