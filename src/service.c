@@ -4968,9 +4968,6 @@ static void request_input_cb(struct connman_service *service,
 
 		__connman_service_connect(service);
 
-		/* Never cache agent provided credentials */
-		__connman_service_set_agent_identity(service, NULL);
-		__connman_service_set_agent_passphrase(service, NULL);
 	} else if (err == -ENOKEY) {
 		__connman_service_indicate_error(service,
 					CONNMAN_SERVICE_ERROR_INVALID_KEY);
@@ -5266,6 +5263,13 @@ int __connman_service_indicate_error(struct connman_service *service,
 
 	if (service->error == CONNMAN_SERVICE_ERROR_INVALID_KEY)
 		__connman_service_set_passphrase(service, NULL);
+
+	/*
+	 * Supplicant does not always return invalid key error for
+	 * WPA-EAP so clear the credentials always.
+	 */
+	__connman_service_set_agent_identity(service, NULL);
+	__connman_service_set_agent_passphrase(service, NULL);
 
 	__connman_service_ipconfig_indicate_state(service,
 						CONNMAN_SERVICE_STATE_FAILURE,
