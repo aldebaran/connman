@@ -3506,24 +3506,21 @@ static bool auto_connect_service(GList *services, bool preferred)
 
 static gboolean run_auto_connect(gpointer data)
 {
-	GList *list = NULL, *preferred_tech;
+	bool autoconnecting = false;
+	GList *preferred_tech;
 
 	autoconnect_timeout = 0;
 
 	DBG("");
 
 	preferred_tech = preferred_tech_list_get();
-	if (preferred_tech)
-		list = preferred_tech;
-
-	if (!list || !auto_connect_service(list, true))
-		list = service_list;
-
-	if (list)
-		auto_connect_service(list, false);
-
-	if (preferred_tech)
+	if (preferred_tech) {
+		autoconnecting = auto_connect_service(preferred_tech, true);
 		g_list_free(preferred_tech);
+	}
+
+	if (!autoconnecting)
+		auto_connect_service(service_list, false);
 
 	return FALSE;
 }
