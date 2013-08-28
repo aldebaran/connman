@@ -1851,7 +1851,7 @@ static struct connman_option config_options[] = {
 	{"nameservers", 'n', "<dns1> [<dns2>] [<dns3>]"},
 	{"timeservers", 't', "<ntp1> [<ntp2>] [...]"},
 	{"domains", 'd', "<domain1> [<domain2>] [...]"},
-	{"ipv6", 'v', "off|auto [enable|disable|prefered]|\n"
+	{"ipv6", 'v', "off|auto [enable|disable|preferred]|\n"
 	              "\t\t\tmanual <address> <prefixlength> <gateway>"},
 	{"proxy", 'x', "direct|auto <URL>|manual <URL1> [<URL2>] [...]\n"
 	               "\t\t\t[exclude <exclude1> [<exclude2>] [...]]"},
