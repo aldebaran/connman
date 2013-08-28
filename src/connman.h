@@ -586,6 +586,15 @@ int __connman_config_provision_service(struct connman_service *service);
 int __connman_config_provision_service_ident(struct connman_service *service,
 		const char *ident, const char *file, const char *entry);
 
+char *__connman_config_get_string(GKeyFile *key_file,
+	const char *group_name, const char *key, GError **error);
+
+char **__connman_config_get_string_list(GKeyFile *key_file,
+	const char *group_name, const char *key, gsize *length, GError **error);
+
+bool __connman_config_get_bool(GKeyFile *key_file,
+	const char *group_name, const char *key, GError **error);
+
 int __connman_tethering_init(void);
 void __connman_tethering_cleanup(void);
 
