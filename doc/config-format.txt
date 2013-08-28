@@ -46,8 +46,9 @@ Allowed fields:
   If the setting is "auto", then SLAAC or DHCPv6 is used.
   Example: 2001:db8::2/64/2001:db8::1
 - IPv6.Privacy: IPv6 privacy option. Value can be either "disabled",
-  "enabled" or "prefered". See use_tempaddr variable description in Linux
-  kernel Documentation/networking/ip-sysctl.txt file.
+  "enabled" or "preferred" (or the misspelled "prefered"). See use_tempaddr
+  variable description in Linux kernel Documentation/networking/ip-sysctl.txt
+  file.
 - MAC: MAC address of the interface where this setting should be applied.
   The MAC address is optional and if it is missing, then the first found
   interface is used. The byte values must have prefix 0 added,
