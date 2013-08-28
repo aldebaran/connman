@@ -5,27 +5,28 @@ Connman uses configuration files to provision existing services. Connman will
 be looking for its configuration files at STORAGEDIR which by default points
 to /var/lib/connman/. Configuration file names must not include other
 characters than letters or numbers and must have a .config suffix.
-Those configuration files are text files with a simple format and we typically
-have one file per provisioned network.
+Those configuration files are text files with a simple key-value pair format,
+organized into sections. Values do not comprise leading or trailing whitespace.
+We typically have one file per provisioned network.
 
 If the config file is removed, then Connman tries to remove the
-provisioned service. If individual service entry inside config is removed,
-then the corresponding provisioned service is removed. If service
-entry is changed, then corresponding service is removed and then
-immediately re-provisioned.
+provisioned services. If an individual service inside a config is removed,
+then the corresponding provisioned service is removed. If a service section
+is changed, then the corresponding service is removed and immediately
+re-provisioned.
 
 
-Global entry [global]
-=====================
+Global section [global]
+=======================
 
-These files can have an optional global entry describing the actual file.
-The 2 allowed fields for that entry are:
+These files can have an optional global section describing the actual file.
+The two allowed fields for this section are:
 - Name: Name of the network.
 - Description: Description of the network.
 
 
-Service entry [service_*]
-=========================
+Service sections [service_*]
+============================
 
 Each provisioned service must start with the [service_*] tag. Replace * with
 an identifier unique to the config file.
@@ -65,8 +66,9 @@ then SLAAC or DHCPv6 is used.
 The following options are valid if Type is "wifi"
 - Name: A string representation of an 802.11 SSID. If the SSID field is
   present, the Name field is ignored.
-- SSID: A hexadecimal representation of an 802.11 SSID. If the SSID field is
-  omitted, the Name field is used instead.
+- SSID: A hexadecimal representation of an 802.11 SSID. Use this format to
+  encode special characters including starting or ending spaces. If the SSID
+  field is omitted, the Name field is used instead.
 - EAP: EAP type. We currently only support tls, ttls or peap.
 - CACertFile: File path to CA certificate file (PEM/DER).
 - ClientCertFile: File path to client certificate file (PEM/DER).
