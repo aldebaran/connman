@@ -5,7 +5,7 @@ Advanced configuration interface
 Configuration basics
 ====================
 
-The default configuration method for all servers is automatic or something
+The default configuration method for all services is automatic or something
 like DHCP. In almost every case that should be just good enough, but if it
 is not, Connection Manager supports manual configuration for Ethernet and
 IP settings.
@@ -44,12 +44,12 @@ configuration this call could be used:
     						"Netmask": "255.255.255.0" })
 
 The configuration itself is a dictionary with various fields. Not all of
-them need to present. A lot of combinations are valid.
+them need to be present. A lot of combinations are valid.
 
 For example the "Method" field has valid settings of "off", "fixed", "manual"
 and "dhcp". The "fixed" value however can not be set by any user program. It
 is an internal value that some 3G cards require. Switching to "off" will
-remove and IP configuration from the interface. The "manual" method allows
+remove any IP configuration from the interface. The "manual" method allows
 for static address configuration. And "dhcp" will use DHCP to retrieve all
 required information automatically.
 
