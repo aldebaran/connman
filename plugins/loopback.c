@@ -153,7 +153,7 @@ static int setup_loopback(void)
 			goto done;
 		}
 
-		connman_warn("Correcting wrong lookback settings");
+		connman_warn("Correcting wrong loopback settings");
 	}
 
 	memset(&addr, 0, sizeof(addr));
