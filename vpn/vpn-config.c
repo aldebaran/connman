@@ -332,13 +332,13 @@ static int load_config(struct vpn_config *config, char *path, enum what action)
 	/* Verify keys validity of the global section */
 	check_keys(keyfile, "global", config_possible_keys);
 
-	str = g_key_file_get_string(keyfile, "global", CONFIG_KEY_NAME, NULL);
+	str = __vpn_config_get_string(keyfile, "global", CONFIG_KEY_NAME, NULL);
 	if (str) {
 		g_free(config->name);
 		config->name = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "global", CONFIG_KEY_DESC, NULL);
+	str = __vpn_config_get_string(keyfile, "global", CONFIG_KEY_DESC, NULL);
 	if (str) {
 		g_free(config->description);
 		config->description = str;

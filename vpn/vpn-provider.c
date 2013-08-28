@@ -743,7 +743,7 @@ static int provider_load_from_keyfile(struct vpn_provider *provider,
 		key = settings[idx];
 		if (key) {
 			if (g_str_equal(key, "Networks")) {
-				networks = g_key_file_get_string_list(keyfile,
+				networks = __vpn_config_get_string_list(keyfile,
 						provider->identifier,
 						key,
 						&num_user_networks,
@@ -751,7 +751,7 @@ static int provider_load_from_keyfile(struct vpn_provider *provider,
 				provider->user_networks = get_routes(networks);
 
 			} else {
-				value = g_key_file_get_string(keyfile,
+				value = __vpn_config_get_string(keyfile,
 							provider->identifier,
 							key, NULL);
 				vpn_provider_set_string(provider, key,
@@ -1735,7 +1735,7 @@ static void provider_create_all_from_type(const char *provider_type)
 		if (!keyfile)
 			continue;
 
-		type = g_key_file_get_string(keyfile, id, "Type", NULL);
+		type = __vpn_config_get_string(keyfile, id, "Type", NULL);
 
 		DBG("keyfile %p id %s type %s", keyfile, id, type);
 
@@ -2577,12 +2577,12 @@ static void remove_unprovisioned_providers()
 		if (!keyfile)
 			continue;
 
-		file = g_key_file_get_string(keyfile, group,
+		file = __vpn_config_get_string(keyfile, group,
 					"Config.file", NULL);
 		if (!file)
 			goto next;
 
-		section = g_key_file_get_string(keyfile, group,
+		section = __vpn_config_get_string(keyfile, group,
 					"Config.ident", NULL);
 		if (!section)
 			goto next;
