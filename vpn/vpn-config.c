@@ -551,3 +551,31 @@ void __vpn_config_cleanup(void)
 
 	cleanup = false;
 }
+
+char *__vpn_config_get_string(GKeyFile *key_file,
+	const char *group_name, const char *key, GError **error)
+{
+	char *str = g_key_file_get_string(key_file, group_name, key, error);
+	if (!str)
+		return NULL;
+
+	return g_strchomp(str);
+}
+
+char **__vpn_config_get_string_list(GKeyFile *key_file,
+	const char *group_name, const char *key, gsize *length, GError **error)
+{
+	char **p;
+	char **strlist = g_key_file_get_string_list(key_file, group_name, key,
+		length, error);
+	if (!strlist)
+		return NULL;
+
+	p = strlist;
+	while (*p) {
+		*p = g_strstrip(*p);
+		p++;
+	}
+
+	return strlist;
+}
