@@ -1445,7 +1445,7 @@ static DBusMessage *session_update(DBusConnection *connection,
 			}
 
 			if (!strcmp(state, "disconnected") &&
-					!session_connected) {
+					session_connected) {
 
 				fprintf(stdout, "Session %s disconnected\n",
 					session_path);
