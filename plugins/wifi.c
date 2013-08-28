@@ -1367,9 +1367,10 @@ static int network_connect(struct connman_network *network)
 
 	ssid_init(ssid, network);
 
-	if (wifi->disconnecting)
+	if (wifi->disconnecting) {
 		wifi->pending_network = network;
-	else {
+		g_free(ssid);
+	} else {
 		wifi->network = connman_network_ref(network);
 		wifi->retries = 0;
 
