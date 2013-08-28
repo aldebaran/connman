@@ -1753,6 +1753,8 @@ static int string2privacy(const char *privacy)
 		return 0;
 	else if (g_strcmp0(privacy, "enabled") == 0)
 		return 1;
+	else if (g_strcmp0(privacy, "preferred") == 0)
+		return 2;
 	else if (g_strcmp0(privacy, "prefered") == 0)
 		return 2;
 	else
