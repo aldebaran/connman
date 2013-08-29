@@ -946,7 +946,7 @@ static void rtnl_newlink(struct nlmsghdr *hdr)
 	rtnl_link(hdr);
 
 	if (hdr->nlmsg_type == IFLA_WIRELESS)
-		connman_warn_ratelimit("Obsolete WEXT WiFi driver detected");
+		connman_warn_once("Obsolete WEXT WiFi driver detected");
 
 	process_newlink(msg->ifi_type, msg->ifi_index, msg->ifi_flags,
 				msg->ifi_change, msg, IFA_PAYLOAD(hdr));

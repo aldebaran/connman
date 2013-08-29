@@ -22,8 +22,6 @@
 #ifndef __CONNMAN_LOG_H
 #define __CONNMAN_LOG_H
 
-#include <glib.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -43,32 +41,12 @@ void connman_error(const char *format, ...)
 void connman_debug(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
 
-struct connman_ratelimit_desc {
-	gint64 begin;
-	int interval;
-};
-
-/* Default ratelimit interval is once / 30 min */
-#define CONNMAN_RATELIMIT_INTERVAL (30 * 60 * 1000 * 1000)
-
-#define CONNMAN_DEFINE_RATELIMIT(interval_init)				\
-	struct connman_ratelimit_desc __ratelimit_desc = {		\
-		.interval	= interval_init,			\
-	}
-
-#define connman_warn_ratelimit(fmt, arg...) do {			\
-	static CONNMAN_DEFINE_RATELIMIT(CONNMAN_RATELIMIT_INTERVAL);	\
-	bool skip = true;						\
-	gint64 current;							\
-	if (!__ratelimit_desc.interval)					\
-		break;							\
-	current = g_get_monotonic_time();				\
-	if (current > __ratelimit_desc.begin + __ratelimit_desc.interval) { \
-		__ratelimit_desc.begin = current;			\
-		skip = false;						\
-	}								\
-	if (!skip)							\
-		connman_warn(fmt, ## arg);				\
+#define connman_warn_once(fmt, arg...) do {		\
+	static bool printed;				\
+	if (!printed) {					\
+		connman_warn(fmt, ## arg);		\
+		printed = true;				\
+	}						\
 } while (0)
 
 struct connman_debug_desc {
