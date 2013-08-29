@@ -232,11 +232,9 @@ Properties	string State [readonly]
 			the limited usage of WiFi or Bluetooth devices might
 			be allowed in some situations.
 
-		boolean SessionMode [readwrite]  [experminental]
+		boolean SessionMode [readwrite]  [experminental][deprecated]
 
-			This disables the auto connect feature. It should be
-			enabled when the Session API is used. When SessionMode
-			is enabled, 'ConnectService' and 'ConnectProvider'
-			method calls are disallowed.
+			This property exists only for compatibility reasons
+			and does not affect ConnMan in any way.
 
 			The default value is false.
