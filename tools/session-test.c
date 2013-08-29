@@ -132,7 +132,7 @@ static void test_session_create_destroy(struct test_fix *fix)
 	util_idle_call(fix, util_quit_loop, util_session_destroy);
 }
 
-static void test_session_create_already_exists(struct test_fix *fix)
+static void test_session_create_dup_notification(struct test_fix *fix)
 {
 	struct test_session *session0, *session1;
 	DBusMessage *msg;
@@ -149,7 +149,7 @@ static void test_session_create_already_exists(struct test_fix *fix)
 	msg = manager_create_session(session1->connection,
 					session1->info,
 					session1->notify_path);
-	g_assert(!msg);
+	g_assert(msg);
 
 	util_session_cleanup(session0);
 
@@ -664,8 +664,8 @@ int main(int argc, char *argv[])
 		test_session_create, setup_cb, teardown_cb);
 	util_test_add("/manager/session create destroy",
 		test_session_create_destroy, setup_cb, teardown_cb);
-	util_test_add("/manager/session create already exists",
-		test_session_create_already_exists, setup_cb, teardown_cb);
+	util_test_add("/manager/session create duplicate notification",
+		test_session_create_dup_notification, setup_cb, teardown_cb);
 	util_test_add("/manager/session create many",
 		test_session_create_many, setup_cb, teardown_cb);
 
