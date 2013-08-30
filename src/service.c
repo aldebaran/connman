@@ -5326,7 +5326,16 @@ int __connman_service_clear_error(struct connman_service *service)
 
 int __connman_service_indicate_default(struct connman_service *service)
 {
-	DBG("service %p", service);
+	DBG("service %p state %s", service, state2string(service->state));
+
+	if (!is_connected(service)) {
+		/*
+		 * If service is not yet fully connected, then we must not
+		 * change the default yet. The default gw will be changed
+		 * after the service state is in ready.
+		 */
+		return -EINPROGRESS;
+	}
 
 	default_changed();
 
