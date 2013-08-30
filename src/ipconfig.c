@@ -2229,21 +2229,25 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 	g_free(key);
 
 	key = g_strdup_printf("%slocal_address", prefix);
+	g_free(ipconfig->address->local);
 	ipconfig->address->local = g_key_file_get_string(
 			keyfile, identifier, key, NULL);
 	g_free(key);
 
 	key = g_strdup_printf("%speer_address", prefix);
+	g_free(ipconfig->address->peer);
 	ipconfig->address->peer = g_key_file_get_string(
 				keyfile, identifier, key, NULL);
 	g_free(key);
 
 	key = g_strdup_printf("%sbroadcast_address", prefix);
+	g_free(ipconfig->address->broadcast);
 	ipconfig->address->broadcast = g_key_file_get_string(
 				keyfile, identifier, key, NULL);
 	g_free(key);
 
 	key = g_strdup_printf("%sgateway", prefix);
+	g_free(ipconfig->address->gateway);
 	ipconfig->address->gateway = g_key_file_get_string(
 				keyfile, identifier, key, NULL);
 	g_free(key);
