@@ -193,14 +193,13 @@ VPN
 Tools
 =====
 
-- Add Session mode, VPN and Clock API support to connmanctl command line tool
+- Add Clock API and MoveBefore/MoveAfter support to connmanctl
 
    Priority: Low
    Complexity: C2
 
-   The connmanctl command line tool should support Session mode and VPN
-   Agent with a set of suitable commands used in both interactive and
-   non-interactive mode. Also add support for Clock API.
+   The connmanctl command line tool should support Clock API and Service API
+   MoveBefore/MoveAfter.
 
 
 User Interface
