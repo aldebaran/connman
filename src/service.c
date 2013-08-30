@@ -5433,8 +5433,13 @@ static void service_rp_filter(struct connman_service *service,
 static gboolean redo_wispr(gpointer user_data)
 {
 	struct connman_service *service = user_data;
+	int refcount = service->refcount - 1;
 
-	DBG("");
+	connman_service_unref(service);
+	if (refcount == 0) {
+		DBG("Service %p already removed", service);
+		return FALSE;
+	}
 
 	__connman_wispr_start(service, CONNMAN_IPCONFIG_TYPE_IPV6);
 
@@ -5462,7 +5467,7 @@ int __connman_service_online_check_failed(struct connman_service *service,
 	 * necessary IPv6 router advertisement messages that might have
 	 * DNS data etc.
 	 */
-	g_timeout_add_seconds(1, redo_wispr, service);
+	g_timeout_add_seconds(1, redo_wispr, connman_service_ref(service));
 
 	return EAGAIN;
 }
