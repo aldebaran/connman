@@ -1340,6 +1340,10 @@ static void default_changed(void)
 	if (service == current_default)
 		return;
 
+	DBG("current default %p %s", current_default,
+		current_default ? current_default->identifier : "");
+	DBG("new default %p %s", service, service ? service->identifier : "");
+
 	__connman_service_timeserver_changed(current_default, NULL);
 
 	current_default = service;
