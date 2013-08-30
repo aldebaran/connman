@@ -5163,6 +5163,10 @@ static int service_indicate_state(struct connman_service *service)
 
 		service->new_service = false;
 
+		default_changed();
+
+		def_service = __connman_service_get_default();
+
 		service_update_preferred_order(def_service, service, new_state);
 
 		set_reconnect_state(service, true);
@@ -5195,8 +5199,6 @@ static int service_indicate_state(struct connman_service *service)
 			connman_network_set_bool(service->network,
 							"WiFi.UseWPS", false);
 		}
-
-		default_changed();
 
 		method = __connman_ipconfig_get_method(service->ipconfig_ipv6);
 		if (method == CONNMAN_IPCONFIG_METHOD_OFF)
