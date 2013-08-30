@@ -12,21 +12,6 @@ Background
 Core
 ====
 
-- Session API implementation
-
-   Priority: High
-   Complexity: C4
-   Owner: Daniel Wagner <daniel.wagner@bmw-carit.de>
-   Owner: Patrik Flykt <patrik.flykt@linux.intel.com>
-
-   The session API should provide a connection abstraction in order to
-   prioritize applications network accesses, prevent or allow network
-   and bearer roaming, or provide applications with a way to request
-   for periodic network connections. On-demand connections will be
-   implemented through this API as well.
-   See http://www.mail-archive.com/connman@connman.net/msg01653.html
-
-
 - Personal firewall
 
    Priority: Low
