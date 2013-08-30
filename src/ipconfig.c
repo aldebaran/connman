@@ -2265,13 +2265,15 @@ int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 	const char *method;
 	char *key;
 
-	DBG("ipconfig %p identifier %s", ipconfig, identifier);
-
 	method = __connman_ipconfig_method2string(ipconfig->method);
 
-	key = g_strdup_printf("%smethod", prefix);
-	g_key_file_set_string(keyfile, identifier, key, method);
-	g_free(key);
+	DBG("ipconfig %p identifier %s method %s", ipconfig, identifier,
+								method);
+	if (method) {
+		key = g_strdup_printf("%smethod", prefix);
+		g_key_file_set_string(keyfile, identifier, key, method);
+		g_free(key);
+	}
 
 	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6) {
 		const char *privacy;
