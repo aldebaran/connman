@@ -332,13 +332,10 @@ static int parse_address(const char *address_str, int address_family,
 	}
 
 	gw_str = route[2];
-	if (!gw_str || gw_str[0] == '\0') {
-		err = -EINVAL;
-		goto out;
+	if (gw_str && gw_str[0]) {
+		if ((err = check_family(gw_str, address_family)) < 0)
+			goto out;
 	}
-
-	if ((err = check_family(gw_str, address_family)) < 0)
-		goto out;
 
 	g_free(*address);
 	*address = g_strdup(addr_str);
@@ -349,7 +346,10 @@ static int parse_address(const char *address_str, int address_family,
 	g_free(*gateway);
 	*gateway = g_strdup(gw_str);
 
-	DBG("address %s/%s via %s", *address, *netmask, *gateway);
+	if (*gateway)
+		DBG("address %s/%s via %s", *address, *netmask, *gateway);
+	else
+		DBG("address %s/%s", *address, *netmask);
 
 out:
 	g_strfreev(route);
@@ -1129,9 +1129,8 @@ static void provision_service(gpointer key, gpointer value,
 	} else {
 		struct connman_ipaddress *address;
 
-		if (config->ipv6_prefix_length == 0 ||
-					!config->ipv6_gateway) {
-			DBG("IPv6 prefix or gateway missing");
+		if (config->ipv6_prefix_length == 0) {
+			DBG("IPv6 prefix missing");
 			return;
 		}
 
@@ -1175,9 +1174,8 @@ static void provision_service(gpointer key, gpointer value,
 	} else {
 		struct connman_ipaddress *address;
 
-		if (config->ipv4_netmask == 0 ||
-					!config->ipv4_gateway) {
-			DBG("IPv4 netmask or gateway missing");
+		if (!config->ipv4_netmask) {
+			DBG("IPv4 netmask missing");
 			return;
 		}
 
