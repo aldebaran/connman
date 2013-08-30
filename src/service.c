@@ -4326,6 +4326,9 @@ static void service_free(gpointer user_data)
 	if (service->stats_roaming.timer)
 		g_timer_destroy(service->stats_roaming.timer);
 
+	if (current_default == service)
+		current_default = NULL;
+
 	g_free(service);
 }
 
