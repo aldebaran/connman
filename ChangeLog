@@ -1,3 +1,10 @@
+ver 1.18:
+	Fix issue with alignment calculation for iptables.
+	Fix issue with WEP key index parameter handling.
+	Fix issue with handling of 802.1x credentials.
+	Fix issue with command line parameter parsing.
+	Add support for completion handling in client tool.
+
 ver 1.17:
 	Fix issue with handling consecutive WiFi scanning.
 	Fix issue with WiFi handling and RFKILL soft block.
