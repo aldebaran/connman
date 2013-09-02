@@ -312,8 +312,8 @@ static void btnetwork_property_change(GDBusProxy *proxy, const char *name,
 
 	network_connected = connman_network_get_connected(pan->network);
 
-       DBG("network %p network connected %d proxy connected %d",
-                       pan->network, network_connected, proxy_connected);
+	DBG("network %p network connected %d proxy connected %d",
+			pan->network, network_connected, proxy_connected);
 
        if (network_connected != proxy_connected)
                connman_network_set_connected(pan->network, proxy_connected);
