@@ -539,7 +539,10 @@ static gboolean device_changed(DBusConnection *conn,
 	 * That means we don't have to order here.
 	 */
 	if (g_str_equal(key, "Active")) {
-		dbus_message_iter_get_basic(&value, &info->active);
+		dbus_bool_t active;
+
+		dbus_message_iter_get_basic(&value, &active);
+		info->active = active;
 
 		DBG("%s Active %d", info->path, info->active);
 
@@ -595,7 +598,10 @@ static void add_device(const char *path, DBusMessageIter *properties)
 		dbus_message_iter_recurse(&entry, &value);
 
 		if (g_str_equal(key, "Active")) {
-			dbus_message_iter_get_basic(&value, &info->active);
+			dbus_bool_t active;
+
+			dbus_message_iter_get_basic(&value, &active);
+			info->active = active;
 
 			DBG("%s Active %d", info->path, info->active);
 		} else if (g_str_equal(key, "Settings")) {
