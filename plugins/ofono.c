@@ -169,7 +169,6 @@ struct modem_data {
 
 	/* ConnectionContext Interface */
 	bool active;
-	bool set_active;
 	bool valid_apn; /* APN is 'valid' if length > 0 */
 
 	/* SimManager Interface */
