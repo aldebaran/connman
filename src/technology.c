@@ -839,8 +839,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 	DBG("property %s", name);
 
 	if (g_str_equal(name, "Tethering")) {
+		dbus_bool_t tethering;
 		int err;
-		bool tethering;
 
 		if (type != DBUS_TYPE_BOOLEAN)
 			return __connman_error_invalid_arguments(msg);
@@ -913,7 +913,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 					&technology->tethering_passphrase);
 		}
 	} else if (g_str_equal(name, "Powered")) {
-		bool enable;
+		dbus_bool_t enable;
 
 		if (type != DBUS_TYPE_BOOLEAN)
 			return __connman_error_invalid_arguments(msg);
