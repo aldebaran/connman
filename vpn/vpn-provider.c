@@ -211,10 +211,13 @@ static GSList *read_route_dict(GSList *routes, DBusMessageIter *dicts)
 		type = dbus_message_iter_get_arg_type(&value);
 
 		switch (type) {
-		case DBUS_TYPE_STRING:
+		case DBUS_TYPE_INT32:
 			if (g_str_equal(key, "ProtocolFamily"))
 				dbus_message_iter_get_basic(&value, &family);
-			else if (g_str_equal(key, "Network"))
+			break;
+
+		case DBUS_TYPE_STRING:
+			if (g_str_equal(key, "Network"))
 				dbus_message_iter_get_basic(&value, &network);
 			else if (g_str_equal(key, "Netmask"))
 				dbus_message_iter_get_basic(&value, &netmask);
