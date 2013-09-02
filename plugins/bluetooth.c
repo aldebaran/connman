@@ -297,6 +297,7 @@ static void btnetwork_property_change(GDBusProxy *proxy, const char *name,
 		DBusMessageIter *iter, void *user_data)
 {
 	struct bluetooth_pan *pan;
+	dbus_bool_t connected;
 	bool proxy_connected, network_connected;
 
 	if (strcmp(name, "Connected") != 0)
@@ -306,7 +307,9 @@ static void btnetwork_property_change(GDBusProxy *proxy, const char *name,
 	if (!pan || !pan->network)
 		return;
 
-	dbus_message_iter_get_basic(iter, &proxy_connected);
+	dbus_message_iter_get_basic(iter, &connected);
+	proxy_connected = connected;
+
 	network_connected = connman_network_get_connected(pan->network);
 
        DBG("network %p network connected %d proxy connected %d",
