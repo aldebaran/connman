@@ -1412,15 +1412,18 @@ static void immutable_changed(struct connman_service *service)
 
 static void roaming_changed(struct connman_service *service)
 {
+	dbus_bool_t roaming;
+
 	if (!service->path)
 		return;
 
 	if (!allow_property_changed(service))
 		return;
 
+	roaming = service->roaming;
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Roaming",
-					DBUS_TYPE_BOOLEAN, &service->roaming);
+					DBUS_TYPE_BOOLEAN, &roaming);
 }
 
 static void autoconnect_changed(struct connman_service *service)
@@ -3062,7 +3065,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 	type = dbus_message_iter_get_arg_type(&value);
 
 	if (g_str_equal(name, "AutoConnect")) {
-		bool autoconnect;
+		dbus_bool_t autoconnect;
 
 		if (type != DBUS_TYPE_BOOLEAN)
 			return __connman_error_invalid_arguments(msg);
