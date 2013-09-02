@@ -1066,7 +1066,7 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 {
 	const char *context_type = NULL;
 	struct network_context *context = NULL;
-	bool active = false;
+	dbus_bool_t active = FALSE;
 
 	DBG("%s context path %s", modem->path, context_path);
 
@@ -1698,7 +1698,10 @@ static int cdma_netreg_get_properties(struct modem_data *modem)
 static void cm_update_attached(struct modem_data *modem,
 				DBusMessageIter *value)
 {
-	dbus_message_iter_get_basic(value, &modem->attached);
+	dbus_bool_t attached;
+
+	dbus_message_iter_get_basic(value, &attached);
+	modem->attached = attached;
 
 	DBG("%s Attached %d", modem->path, modem->attached);
 
