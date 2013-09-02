@@ -605,7 +605,10 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 			dbus_message_iter_get_basic(&value, &str);
 			data->type = g_strdup(str);
 		} else if (g_str_equal(key, "Immutable")) {
-			dbus_message_iter_get_basic(&value, &data->immutable);
+			dbus_bool_t immutable;
+
+			dbus_message_iter_get_basic(&value, &immutable);
+			data->immutable = immutable;
 		} else if (g_str_equal(key, "Host")) {
 			dbus_message_iter_get_basic(&value, &str);
 			data->host = g_strdup(str);
