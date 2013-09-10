@@ -6833,6 +6833,8 @@ void __connman_service_cleanup(void)
 		autoconnect_timeout = 0;
 	}
 
+	connman_agent_driver_unregister(&agent_driver);
+
 	g_list_free(service_list);
 	service_list = NULL;
 
@@ -6849,8 +6851,6 @@ void __connman_service_cleanup(void)
 		g_hash_table_destroy(services_notify->add);
 	}
 	g_free(services_notify);
-
-	connman_agent_driver_unregister(&agent_driver);
 
 	dbus_connection_unref(connection);
 }
