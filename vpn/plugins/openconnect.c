@@ -405,7 +405,7 @@ static int request_cookie_input(struct vpn_provider *provider,
 
 	agent = connman_agent_get_info(dbus_sender, &agent_sender,
 							&agent_path);
-	if (!provider || !agent_path)
+	if (!provider || !agent || !agent_path)
 		return -ESRCH;
 
 	message = dbus_message_new_method_call(agent_sender, agent_path,
