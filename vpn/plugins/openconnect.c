@@ -392,7 +392,8 @@ err:
 }
 
 static int request_cookie_input(struct vpn_provider *provider,
-		struct oc_private_data *data)
+				struct oc_private_data *data,
+				const char *dbus_sender)
 {
 	DBusMessage *message;
 	const char *path, *agent_sender, *agent_path;
@@ -400,9 +401,10 @@ static int request_cookie_input(struct vpn_provider *provider,
 	DBusMessageIter dict;
 	const char *str;
 	int err;
+	void *agent;
 
-	connman_agent_get_info(&agent_sender, &agent_path);
-
+	agent = connman_agent_get_info(dbus_sender, &agent_sender,
+							&agent_path);
 	if (!provider || !agent_path)
 		return -ESRCH;
 
@@ -447,7 +449,7 @@ static int request_cookie_input(struct vpn_provider *provider,
 
 	err = connman_agent_queue_message(provider, message,
 			connman_timeout_input_request(),
-			request_input_cookie_reply, data);
+			request_input_cookie_reply, data, agent);
 
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending agent request", err);
@@ -463,7 +465,8 @@ static int request_cookie_input(struct vpn_provider *provider,
 
 static int oc_connect(struct vpn_provider *provider,
 			struct connman_task *task, const char *if_name,
-			vpn_provider_connect_cb_t cb, void *user_data)
+			vpn_provider_connect_cb_t cb,
+			const char *dbus_sender, void *user_data)
 {
 	const char *vpnhost, *vpncookie, *servercert;
 	int err;
@@ -490,7 +493,7 @@ static int oc_connect(struct vpn_provider *provider,
 		data->cb = cb;
 		data->user_data = user_data;
 
-		err = request_cookie_input(provider, data);
+		err = request_cookie_input(provider, data, dbus_sender);
 		if (err != -EINPROGRESS) {
 			vpn_provider_indicate_error(data->provider,
 					VPN_PROVIDER_ERROR_LOGIN_FAILED);

@@ -1078,7 +1078,9 @@ int __vpn_provider_connect(struct vpn_provider *provider, DBusMessage *msg)
 
 	if (provider->driver && provider->driver->connect) {
 		dbus_message_ref(msg);
-		err = provider->driver->connect(provider, connect_cb, msg);
+		err = provider->driver->connect(provider, connect_cb,
+						dbus_message_get_sender(msg),
+						msg);
 	} else
 		return -EOPNOTSUPP;
 

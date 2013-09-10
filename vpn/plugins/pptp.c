@@ -353,7 +353,8 @@ typedef void (* request_cb_t)(struct vpn_provider *provider,
 				const char *error, void *user_data);
 
 static int request_input(struct vpn_provider *provider,
-				request_cb_t callback, void *user_data)
+			request_cb_t callback, const char *dbus_sender,
+			void *user_data)
 {
 	DBusMessage *message;
 	const char *path, *agent_sender, *agent_path;
@@ -361,9 +362,10 @@ static int request_input(struct vpn_provider *provider,
 	DBusMessageIter dict;
 	struct request_input_reply *pptp_reply;
 	int err;
+	void *agent;
 
-	connman_agent_get_info(&agent_sender, &agent_path);
-
+	agent = connman_agent_get_info(dbus_sender, &agent_sender,
+							&agent_path);
 	if (!provider || !agent_path || !callback)
 		return -ESRCH;
 
@@ -399,7 +401,7 @@ static int request_input(struct vpn_provider *provider,
 
 	err = connman_agent_queue_message(provider, message,
 			connman_timeout_input_request(),
-			request_input_reply, pptp_reply);
+			request_input_reply, pptp_reply, agent);
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending agent request", err);
 		dbus_message_unref(message);
@@ -522,7 +524,8 @@ static void request_input_cb(struct vpn_provider *provider,
 
 static int pptp_connect(struct vpn_provider *provider,
 			struct connman_task *task, const char *if_name,
-			vpn_provider_connect_cb_t cb, void *user_data)
+			vpn_provider_connect_cb_t cb, const char *dbus_sender,
+			void *user_data)
 {
 	const char *username, *password;
 	int err;
@@ -552,7 +555,8 @@ static int pptp_connect(struct vpn_provider *provider,
 		data->cb = cb;
 		data->user_data = user_data;
 
-		err = request_input(provider, request_input_cb, data);
+		err = request_input(provider, request_input_cb, dbus_sender,
+									data);
 		if (err != -EINPROGRESS) {
 			free_private_data(data);
 			goto done;

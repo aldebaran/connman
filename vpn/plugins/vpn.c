@@ -354,7 +354,8 @@ exist_err:
 }
 
 static int vpn_connect(struct vpn_provider *provider,
-			vpn_provider_connect_cb_t cb, void *user_data)
+			vpn_provider_connect_cb_t cb,
+			const char *dbus_sender, void *user_data)
 {
 	struct vpn_data *data = vpn_provider_get_data(provider);
 	struct vpn_driver_data *vpn_driver_data;
@@ -430,7 +431,8 @@ static int vpn_connect(struct vpn_provider *provider,
 	}
 
 	ret = vpn_driver_data->vpn_driver->connect(provider, data->task,
-						data->if_name, cb, user_data);
+						data->if_name, cb, dbus_sender,
+						user_data);
 	if (ret < 0 && ret != -EINPROGRESS) {
 		stop_vpn(provider);
 		connman_task_destroy(data->task);

@@ -102,7 +102,8 @@ typedef void (* browser_authentication_cb_t) (struct connman_service *service,
 				bool authentication_done,
 				const char *error, void *user_data);
 int __connman_agent_request_passphrase_input(struct connman_service *service,
-				authentication_cb_t callback, void *user_data);
+				authentication_cb_t callback,
+				const char *dbus_sender, void *user_data);
 int __connman_agent_request_login_input(struct connman_service *service,
 				authentication_cb_t callback, void *user_data);
 int __connman_agent_request_browser(struct connman_service *service,

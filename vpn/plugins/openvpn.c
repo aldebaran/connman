@@ -308,7 +308,8 @@ static int task_append_config_data(struct vpn_provider *provider,
 
 static int ov_connect(struct vpn_provider *provider,
 			struct connman_task *task, const char *if_name,
-			vpn_provider_connect_cb_t cb, void *user_data)
+			vpn_provider_connect_cb_t cb, const char *dbus_sender,
+			void *user_data)
 {
 	const char *option;
 	int err = 0, fd;

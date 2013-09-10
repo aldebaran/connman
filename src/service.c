@@ -5080,6 +5080,14 @@ static void single_connected_tech(struct connman_service *allowed)
 	g_slist_free(services);
 }
 
+static const char *get_dbus_sender(struct connman_service *service)
+{
+	if (!service->pending)
+		return NULL;
+
+	return dbus_message_get_sender(service->pending);
+}
+
 static int service_indicate_state(struct connman_service *service)
 {
 	enum connman_service_state old_state, new_state;
@@ -5242,7 +5250,9 @@ static int service_indicate_state(struct connman_service *service)
 		if (service->userconnect &&
 			connman_agent_report_error(service, service->path,
 					error2string(service->error),
-					report_error_cb, NULL) == -EINPROGRESS)
+					report_error_cb,
+					get_dbus_sender(service),
+					NULL) == -EINPROGRESS)
 			return 0;
 		service_complete(service);
 	} else
@@ -5821,7 +5831,9 @@ int __connman_service_connect(struct connman_service *service)
 			}
 
 			err = __connman_agent_request_passphrase_input(service,
-					request_input_cb, pending);
+					request_input_cb,
+					get_dbus_sender(service),
+					pending);
 			if (service->hidden && err != -EINPROGRESS)
 				service->pending = pending;
 

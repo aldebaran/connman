@@ -52,10 +52,13 @@ static GList *agent_queue = NULL;
 static struct connman_agent_request *agent_request = NULL;
 static GSList *driver_list = NULL;
 
-void connman_agent_get_info(const char **sender, const char **path)
+void *connman_agent_get_info(const char *dbus_sender, const char **sender,
+							const char **path)
 {
 	*sender = agent_sender;
 	*path = agent_path;
+
+	return NULL;
 }
 
 static void agent_data_free(struct connman_agent_request *data)
@@ -172,7 +175,8 @@ static struct connman_agent_driver *get_driver(void)
 
 int connman_agent_queue_message(void *user_context,
 				DBusMessage *msg, int timeout,
-				agent_queue_cb callback, void *user_data)
+				agent_queue_cb callback, void *user_data,
+				void *agent_data)
 {
 	struct connman_agent_request *queue_data;
 	struct connman_agent_driver *driver;
@@ -326,7 +330,8 @@ static void report_error_reply(DBusMessage *reply, void *user_data)
 
 int connman_agent_report_error(void *user_context, const char *path,
 				const char *error,
-				report_error_cb_t callback, void *user_data)
+				report_error_cb_t callback,
+				const char *dbus_sender, void *user_data)
 {
 	DBusMessage *message;
 	DBusMessageIter iter;
@@ -362,7 +367,8 @@ int connman_agent_report_error(void *user_context, const char *path,
 
 	err = connman_agent_queue_message(user_context, message,
 					connman_timeout_input_request(),
-					report_error_reply, report_error);
+					report_error_reply, report_error,
+					NULL);
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending error request", err);
 		g_free(report_error);

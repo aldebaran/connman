@@ -403,7 +403,8 @@ done:
 }
 
 int __connman_agent_request_passphrase_input(struct connman_service *service,
-				authentication_cb_t callback, void *user_data)
+				authentication_cb_t callback,
+				const char *dbus_sender, void *user_data)
 {
 	DBusMessage *message;
 	const char *path, *agent_sender, *agent_path;
@@ -411,8 +412,12 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 	DBusMessageIter dict;
 	struct request_input_reply *passphrase_reply;
 	int err;
+	void *agent;
 
-	connman_agent_get_info(&agent_sender, &agent_path);
+	agent = connman_agent_get_info(dbus_sender, &agent_sender,
+							&agent_path);
+
+	DBG("agent %p service %p path %s", agent, service, agent_path);
 
 	if (!service || !agent_path || !callback)
 		return -ESRCH;
@@ -471,7 +476,7 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 	err = connman_agent_queue_message(service, message,
 			connman_timeout_input_request(),
 			request_input_passphrase_reply,
-			passphrase_reply);
+			passphrase_reply, agent);
 
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending agent message", err);
@@ -494,8 +499,9 @@ int __connman_agent_request_login_input(struct connman_service *service,
 	DBusMessageIter dict;
 	struct request_input_reply *username_password_reply;
 	int err;
+	void *agent;
 
-	connman_agent_get_info(&agent_sender, &agent_path);
+	agent = connman_agent_get_info(NULL, &agent_sender, &agent_path);
 
 	if (!service || !agent_path || !callback)
 		return -ESRCH;
@@ -534,7 +540,8 @@ int __connman_agent_request_login_input(struct connman_service *service,
 
 	err = connman_agent_queue_message(service, message,
 			connman_timeout_input_request(),
-			request_input_login_reply, username_password_reply);
+			request_input_login_reply, username_password_reply,
+			agent);
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending agent request", err);
 		dbus_message_unref(message);
@@ -581,8 +588,9 @@ int __connman_agent_request_browser(struct connman_service *service,
 	DBusMessageIter iter;
 	const char *path, *agent_sender, *agent_path;
 	int err;
+	void *agent;
 
-	connman_agent_get_info(&agent_sender, &agent_path);
+	agent = connman_agent_get_info(NULL, &agent_sender, &agent_path);
 
 	if (!service || !agent_path || !callback)
 		return -ESRCH;
@@ -615,7 +623,8 @@ int __connman_agent_request_browser(struct connman_service *service,
 
 	err = connman_agent_queue_message(service, message,
 				connman_timeout_browser_launch(),
-				request_browser_reply, browser_reply_data);
+				request_browser_reply, browser_reply_data,
+				agent);
 
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending browser request", err);

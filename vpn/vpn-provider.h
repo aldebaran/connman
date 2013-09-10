@@ -126,7 +126,8 @@ struct vpn_provider_driver {
 	int (*probe) (struct vpn_provider *provider);
 	int (*remove) (struct vpn_provider *provider);
 	int (*connect) (struct vpn_provider *provider,
-			vpn_provider_connect_cb_t cb, void *user_data);
+			vpn_provider_connect_cb_t cb, const char *dbus_sender,
+			void *user_data);
 	int (*disconnect) (struct vpn_provider *provider);
 	int (*save) (struct vpn_provider *provider, GKeyFile *keyfile);
 };
