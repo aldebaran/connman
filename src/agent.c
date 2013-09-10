@@ -38,7 +38,7 @@ static guint agent_watch = 0;
 static gchar *agent_path = NULL;
 static gchar *agent_sender = NULL;
 
-struct connman_agent {
+struct connman_agent_request {
 	void *user_context;
 	void *user_data;
 	DBusMessage *msg;
@@ -49,7 +49,7 @@ struct connman_agent {
 };
 
 static GList *agent_queue = NULL;
-static struct connman_agent *agent_request = NULL;
+static struct connman_agent_request *agent_request = NULL;
 static GSList *driver_list = NULL;
 
 void connman_agent_get_info(const char **sender, const char **path)
@@ -58,7 +58,7 @@ void connman_agent_get_info(const char **sender, const char **path)
 	*path = agent_path;
 }
 
-static void agent_data_free(struct connman_agent *data)
+static void agent_data_free(struct connman_agent_request *data)
 {
 	if (!data)
 		return;
@@ -110,7 +110,7 @@ fail:
 	return -ESRCH;
 }
 
-static int agent_send_cancel(struct connman_agent *agent)
+static int agent_send_cancel(struct connman_agent_request *agent)
 {
 	DBusMessage *message;
 
@@ -131,7 +131,7 @@ static int agent_send_cancel(struct connman_agent *agent)
 
 static void agent_receive_message(DBusPendingCall *call, void *user_data)
 {
-	struct connman_agent *queue_data = user_data;
+	struct connman_agent_request *queue_data = user_data;
 	DBusMessage *reply;
 	int err;
 
@@ -174,14 +174,14 @@ int connman_agent_queue_message(void *user_context,
 				DBusMessage *msg, int timeout,
 				agent_queue_cb callback, void *user_data)
 {
-	struct connman_agent *queue_data;
+	struct connman_agent_request *queue_data;
 	struct connman_agent_driver *driver;
 	int err;
 
 	if (!user_context || !callback)
 		return -EBADMSG;
 
-	queue_data = g_new0(struct connman_agent, 1);
+	queue_data = g_new0(struct connman_agent_request, 1);
 	if (!queue_data)
 		return -ENOMEM;
 
@@ -210,7 +210,7 @@ int connman_agent_queue_message(void *user_context,
 void connman_agent_cancel(void *user_context)
 {
 	GList *item, *next;
-	struct connman_agent *queued_req;
+	struct connman_agent_request *queued_req;
 	int err;
 
 	DBG("context %p", user_context);
