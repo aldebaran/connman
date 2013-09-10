@@ -421,7 +421,7 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 
 	DBG("agent %p service %p path %s", agent, service, agent_path);
 
-	if (!service || !agent_path || !callback)
+	if (!service || !agent || !agent_path || !callback)
 		return -ESRCH;
 
 	message = dbus_message_new_method_call(agent_sender, agent_path,
@@ -505,7 +505,7 @@ int __connman_agent_request_login_input(struct connman_service *service,
 
 	agent = connman_agent_get_info(NULL, &agent_sender, &agent_path);
 
-	if (!service || !agent_path || !callback)
+	if (!service || !agent || !agent_path || !callback)
 		return -ESRCH;
 
 	message = dbus_message_new_method_call(agent_sender, agent_path,
@@ -594,7 +594,7 @@ int __connman_agent_request_browser(struct connman_service *service,
 
 	agent = connman_agent_get_info(NULL, &agent_sender, &agent_path);
 
-	if (!service || !agent_path || !callback)
+	if (!service || !agent || !agent_path || !callback)
 		return -ESRCH;
 
 	if (!url)
