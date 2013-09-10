@@ -75,7 +75,7 @@ static void request_input_passphrase_reply(DBusMessage *reply, void *user_data)
 	DBusMessageIter iter, dict;
 
 	if (!reply)
-		goto done;
+		goto out;
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		error = dbus_message_get_error_name(reply);
@@ -156,6 +156,8 @@ done:
 				identity, passphrase,
 				wps, wpspin, error,
 				passphrase_reply->user_data);
+
+out:
 	g_free(passphrase_reply);
 }
 
