@@ -2434,10 +2434,7 @@ char **connman_service_get_timeservers(struct connman_service *service)
 	if (!service)
 		return NULL;
 
-	if (service->timeservers)
-		return service->timeservers;
-
-	return NULL;
+	return service->timeservers;
 }
 
 void connman_service_set_proxy_method(struct connman_service *service,
