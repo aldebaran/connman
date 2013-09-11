@@ -73,17 +73,15 @@ void connman_notifier_unregister(struct connman_notifier *notifier)
 	notifier_list = g_slist_remove(notifier_list, notifier);
 }
 
-#define MAX_TECHNOLOGIES 10
-
-static int connected[MAX_TECHNOLOGIES];
-static int online[MAX_TECHNOLOGIES];
+static int connected[MAX_CONNMAN_SERVICE_TYPES];
+static int online[MAX_CONNMAN_SERVICE_TYPES];
 
 static bool notifier_is_online(void)
 {
 	unsigned int i;
 
 	__sync_synchronize();
-	for (i = 0; i < MAX_TECHNOLOGIES; i++) {
+	for (i = 0; i < MAX_CONNMAN_SERVICE_TYPES; i++) {
 		if (online[i] > 0)
 			return true;
 	}
@@ -96,7 +94,7 @@ bool __connman_notifier_is_connected(void)
 	unsigned int i;
 
 	__sync_synchronize();
-	for (i = 0; i < MAX_TECHNOLOGIES; i++) {
+	for (i = 0; i < MAX_CONNMAN_SERVICE_TYPES; i++) {
 		if (connected[i] > 0)
 			return true;
 	}
