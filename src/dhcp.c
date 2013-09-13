@@ -299,7 +299,6 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	GList *list, *option = NULL;
 	char *address, *netmask = NULL, *gateway = NULL;
 	const char *c_address, *c_gateway;
-	char *domainname = NULL, *hostname = NULL;
 	char **nameservers, **timeservers, *pac = NULL;
 	int ns_entries;
 	struct connman_ipconfig *ipconfig;
@@ -374,14 +373,11 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DOMAIN_NAME);
 	if (option)
-		domainname = g_strdup(option->data);
+		__connman_service_set_domainname(service, option->data);
 
-	if (connman_setting_get_bool("AllowHostnameUpdates")) {
-		option = g_dhcp_client_get_option(dhcp_client,
-						G_DHCP_HOST_NAME);
-		if (option)
-			hostname = g_strdup(option->data);
-	}
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_HOST_NAME);
+	if (option)
+		__connman_service_set_hostname(service, option->data);
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_NTP_SERVER);
 	ns_entries = g_list_length(option);
@@ -451,14 +447,6 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		__connman_service_set_pac(service, dhcp->pac);
 	}
 
-	__connman_service_set_domainname(service, domainname);
-
-	if (domainname)
-		__connman_utsname_set_domainname(domainname);
-
-	if (hostname)
-		__connman_utsname_set_hostname(hostname);
-
 	if (ip_change)
 		dhcp_valid(dhcp);
 
@@ -467,8 +455,6 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	g_free(address);
 	g_free(netmask);
 	g_free(gateway);
-	g_free(domainname);
-	g_free(hostname);
 }
 
 static void ipv4ll_available_cb(GDHCPClient *ipv4ll_client, gpointer user_data)
@@ -531,7 +517,12 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 
 	g_dhcp_client_set_id(dhcp_client);
 
-	hostname = connman_utsname_get_hostname();
+	service = connman_service_lookup_from_network(dhcp->network);
+
+	hostname = __connman_service_get_hostname(service);
+	if (!hostname)
+		hostname = connman_utsname_get_hostname();
+
 	if (hostname)
 		g_dhcp_client_set_send(dhcp_client, G_DHCP_HOST_NAME, hostname);
 
@@ -555,7 +546,6 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 
 	dhcp->dhcp_client = dhcp_client;
 
-	service = connman_service_lookup_from_network(dhcp->network);
 	ipconfig = __connman_service_get_ip4config(service);
 
 	/*
