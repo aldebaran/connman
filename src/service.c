@@ -1348,6 +1348,15 @@ static void default_changed(void)
 
 	current_default = service;
 
+	if (service) {
+		if (service->hostname &&
+				connman_setting_get_bool("AllowHostnameUpdates"))
+			__connman_utsname_set_hostname(service->hostname);
+
+		if (service->domainname)
+			__connman_utsname_set_domainname(service->domainname);
+	}
+
 	__connman_notifier_default_changed(service);
 }
 
