@@ -93,6 +93,7 @@ struct connman_service {
 	char **nameservers_config;
 	char **nameservers_auto;
 	char **domains;
+	char *hostname;
 	char *domainname;
 	char **timeservers;
 	char **timeservers_config;
@@ -2336,6 +2337,24 @@ void __connman_service_set_hidden(struct connman_service *service)
 	service->hidden_service = true;
 }
 
+void __connman_service_set_hostname(struct connman_service *service,
+						const char *hostname)
+{
+	if (!service || service->hidden)
+		return;
+
+	g_free(service->hostname);
+	service->hostname = g_strdup(hostname);
+}
+
+const char *__connman_service_get_hostname(struct connman_service *service)
+{
+	if (!service)
+		return NULL;
+
+	return service->hostname;
+}
+
 void __connman_service_set_domainname(struct connman_service *service,
 						const char *domainname)
 {
@@ -4344,6 +4363,7 @@ static void service_free(gpointer user_data)
 	g_strfreev(service->proxies);
 	g_strfreev(service->excludes);
 
+	g_free(service->hostname);
 	g_free(service->domainname);
 	g_free(service->pac);
 	g_free(service->name);
