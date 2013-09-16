@@ -125,7 +125,7 @@ struct stats_iter {
 	struct stats_record *it;
 };
 
-GHashTable *stats_hash = NULL;
+static GHashTable *stats_hash = NULL;
 
 static struct stats_file_header *get_hdr(struct stats_file *file)
 {
