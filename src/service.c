@@ -4755,7 +4755,7 @@ int __connman_service_set_favorite_delayed(struct connman_service *service,
 	service->favorite = favorite;
 
 	if (!delay_ordering)
-		service->order = __connman_service_get_order(service);
+		__connman_service_get_order(service);
 
 	favorite_changed(service);
 
@@ -6406,27 +6406,29 @@ const char *__connman_service_get_name(struct connman_service *service)
 
 unsigned int __connman_service_get_order(struct connman_service *service)
 {
+	unsigned int order = 0;
+
 	if (!service)
 		return 0;
 
-	if (!service->favorite) {
-		service->order = 0;
-		goto done;
-	}
+	service->order = 0;
+
+	if (!service->favorite)
+		return 0;
 
 	if (service == service_list->data)
-		service->order = 1;
-	else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
-			!service->do_split_routing)
+		order = 1;
+
+	if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
+			!service->do_split_routing) {
 		service->order = 10;
-	else
-		service->order = 0;
+		order = 10;
+	}
 
 	DBG("service %p name %s order %d split %d", service, service->name,
-		service->order, service->do_split_routing);
+		order, service->do_split_routing);
 
-done:
-	return service->order;
+	return order;
 }
 
 void __connman_service_update_ordering(void)
