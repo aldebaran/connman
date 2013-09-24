@@ -40,6 +40,7 @@ static GSList *driver_list = NULL;
 
 struct connman_provider {
 	int refcount;
+	bool immutable;
 	struct connman_service *vpn_service;
 	int index;
 	char *identifier;
@@ -347,17 +348,24 @@ int connman_provider_create_service(struct connman_provider *provider)
 	return 0;
 }
 
+bool __connman_provider_is_immutable(struct connman_provider *provider)
+
+{
+	if (provider)
+		return provider->immutable;
+
+	return false;
+}
+
 int connman_provider_set_immutable(struct connman_provider *provider,
 						bool immutable)
 {
 	if (!provider)
 		return -EINVAL;
 
-	if (!provider->vpn_service)
-		return -ESRCH;
+	provider->immutable = immutable;
 
-	return __connman_service_set_immutable(provider->vpn_service,
-						immutable);
+	return 0;
 }
 
 static struct connman_provider *provider_lookup(const char *identifier)

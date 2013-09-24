@@ -616,6 +616,7 @@ int __connman_provider_append_user_route(struct connman_provider *provider,
 			int family, const char *network, const char *netmask);
 void __connman_provider_append_properties(struct connman_provider *provider, DBusMessageIter *iter);
 void __connman_provider_list(DBusMessageIter *iter, void *user_data);
+bool __connman_provider_is_immutable(struct connman_provider *provider);
 int __connman_provider_create_and_connect(DBusMessage *msg);
 const char * __connman_provider_get_ident(struct connman_provider *provider);
 int __connman_provider_indicate_state(struct connman_provider *provider,
