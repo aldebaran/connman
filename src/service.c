@@ -3101,7 +3101,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 		int index;
 		const char *gw;
 
-		if (service->immutable)
+		if (__connman_provider_is_immutable(service->provider) ||
+				service->immutable)
 			return __connman_error_not_supported(msg);
 
 		if (type != DBUS_TYPE_ARRAY)
@@ -3281,7 +3282,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 			CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 		int err = 0;
 
-		if (service->immutable)
+		if (service->type == CONNMAN_SERVICE_TYPE_VPN ||
+				service->immutable)
 			return __connman_error_not_supported(msg);
 
 		DBG("%s", name);
@@ -3907,7 +3909,8 @@ bool __connman_service_remove(struct connman_service *service)
 	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
 		return false;
 
-	if (service->immutable || service->hidden)
+	if (service->immutable || service->hidden ||
+			__connman_provider_is_immutable(service->provider))
 		return false;
 
 	if (!service->favorite && service->state !=
