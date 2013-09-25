@@ -48,7 +48,7 @@ struct vpn_driver {
 			vpn_provider_connect_cb_t cb, const char *dbus_sender,
 			void *user_data);
 	void (*disconnect) (struct vpn_provider *provider);
-	int (*error_code) (int exit_code);
+	int (*error_code) (struct vpn_provider *provider, int exit_code);
 	int (*save) (struct vpn_provider *provider, GKeyFile *keyfile);
 };
 

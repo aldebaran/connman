@@ -547,7 +547,7 @@ static int oc_save(struct vpn_provider *provider, GKeyFile *keyfile)
 	return 0;
 }
 
-static int oc_error_code(int exit_code)
+static int oc_error_code(struct vpn_provider *provider, int exit_code)
 {
 
 	switch (exit_code) {

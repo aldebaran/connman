@@ -154,7 +154,8 @@ vpn_exit:
 
 		if (vpn_data &&
 				vpn_data->vpn_driver->error_code)
-			ret = vpn_data->vpn_driver->error_code(exit_code);
+			ret = vpn_data->vpn_driver->error_code(provider,
+					exit_code);
 		else
 			ret = VPN_PROVIDER_ERROR_UNKNOWN;
 
