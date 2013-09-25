@@ -554,6 +554,8 @@ static int oc_error_code(struct vpn_provider *provider, int exit_code)
 	case 1:
 		return VPN_PROVIDER_ERROR_CONNECT_FAILED;
 	case 2:
+		vpn_provider_set_string_hide_value(provider,
+				"OpenConnect.Cookie", NULL);
 		return VPN_PROVIDER_ERROR_LOGIN_FAILED;
 	default:
 		return VPN_PROVIDER_ERROR_UNKNOWN;
