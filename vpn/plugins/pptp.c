@@ -575,7 +575,7 @@ error:
 	return err;
 }
 
-static int pptp_error_code(int exit_code)
+static int pptp_error_code(struct vpn_provider *provider, int exit_code)
 {
 
 	switch (exit_code) {
