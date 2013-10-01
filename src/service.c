@@ -45,6 +45,7 @@ static GList *service_list = NULL;
 static GHashTable *service_hash = NULL;
 static GSList *counter_list = NULL;
 static unsigned int autoconnect_timeout = 0;
+static unsigned int vpn_autoconnect_timeout = 0;
 static struct connman_service *current_default = NULL;
 static bool services_dirty = false;
 
@@ -3523,6 +3524,8 @@ static bool auto_connect_service(GList *services, bool preferred)
 
 	DBG("preferred %d sessions %d", preferred, active_count);
 
+	ignore[CONNMAN_SERVICE_TYPE_VPN] = true;
+
 	for (list = services; list; list = list->next) {
 		service = list->data;
 
@@ -3608,6 +3611,57 @@ void __connman_service_auto_connect(void)
 		return;
 
 	autoconnect_timeout = g_timeout_add_seconds(0, run_auto_connect, NULL);
+}
+
+static gboolean run_vpn_auto_connect(gpointer data) {
+	GList *list;
+
+	vpn_autoconnect_timeout = 0;
+
+	for (list = service_list; list; list = list->next) {
+		struct connman_service *service = list->data;
+		bool need_split = false;
+		int res;
+
+		if (service->type != CONNMAN_SERVICE_TYPE_VPN)
+			continue;
+
+		if (is_connected(service) || is_connecting(service)) {
+			if (!service->do_split_routing)
+				need_split = true;
+			continue;
+		}
+
+		if (is_ignore(service) || !service->favorite)
+			continue;
+
+		if (need_split && !service->do_split_routing) {
+			DBG("service %p no split routing", service);
+			continue;
+		}
+
+		DBG("service %p %s %s", service, service->name,
+				service->do_split_routing ?
+				"split routing" : "");
+
+		res = __connman_service_connect(service);
+		if (res < 0 && res != -EINPROGRESS)
+			continue;
+
+		if (!service->do_split_routing)
+			need_split = true;
+	}
+
+	return FALSE;
+}
+
+static void vpn_auto_connect(void)
+{
+	if (vpn_autoconnect_timeout)
+		return;
+
+	vpn_autoconnect_timeout =
+		g_timeout_add_seconds(0, run_vpn_auto_connect, NULL);
 }
 
 static void remove_timeout(struct connman_service *service)
@@ -5299,9 +5353,10 @@ static int service_indicate_state(struct connman_service *service)
 			__connman_ipconfig_disable_ipv6(
 						service->ipconfig_ipv6);
 
-		if (connman_setting_get_bool("SingleConnectedTechnology")
-				)
+		if (connman_setting_get_bool("SingleConnectedTechnology"))
 			single_connected_tech(service);
+		else if (service->type != CONNMAN_SERVICE_TYPE_VPN)
+			vpn_auto_connect();
 
 	} else if (new_state == CONNMAN_SERVICE_STATE_DISCONNECT) {
 		def_service = __connman_service_get_default();
@@ -6775,6 +6830,7 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	service->provider = connman_provider_ref(provider);
 	service->autoconnect = false;
 	service->userconnect = true;
+	service->favorite = true;
 
 	service->state_ipv4 = service->state_ipv6 = CONNMAN_SERVICE_STATE_IDLE;
 	service->state = combine_state(service->state_ipv4, service->state_ipv6);
@@ -6932,6 +6988,11 @@ int __connman_service_init(void)
 void __connman_service_cleanup(void)
 {
 	DBG("");
+
+	if (vpn_autoconnect_timeout) {
+		g_source_remove(vpn_autoconnect_timeout);
+		vpn_autoconnect_timeout = 0;
+	}
 
 	if (autoconnect_timeout != 0) {
 		g_source_remove(autoconnect_timeout);
