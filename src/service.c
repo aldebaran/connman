@@ -4537,21 +4537,24 @@ static gint service_compare(gconstpointer a, gconstpointer b)
 	struct connman_service *service_a = (void *) a;
 	struct connman_service *service_b = (void *) b;
 	enum connman_service_state state_a, state_b;
+	bool a_connected, b_connected;
+	gint strength;
 
 	state_a = service_a->state;
 	state_b = service_b->state;
+	a_connected = is_connected(service_a);
+	b_connected = is_connected(service_b);
+
+	if (a_connected && b_connected) {
+		if (service_a->order > service_b->order)
+			return -1;
+
+		if (service_a->order < service_b->order)
+			return 1;
+	}
 
 	if (state_a != state_b) {
-		bool a_connected = is_connected(service_a);
-		bool b_connected = is_connected(service_b);
-
 		if (a_connected && b_connected) {
-			if (service_a->order > service_b->order)
-				return -1;
-
-			if (service_a->order < service_b->order)
-				return 1;
-
 			/* We prefer online over ready state */
 			if (state_a == CONNMAN_SERVICE_STATE_ONLINE)
 				return -1;
@@ -4571,12 +4574,6 @@ static gint service_compare(gconstpointer a, gconstpointer b)
 			return 1;
 	}
 
-	if (service_a->order > service_b->order)
-		return -1;
-
-	if (service_a->order < service_b->order)
-		return 1;
-
 	if (service_a->favorite && !service_b->favorite)
 		return -1;
 
@@ -4584,23 +4581,38 @@ static gint service_compare(gconstpointer a, gconstpointer b)
 		return 1;
 
 	if (service_a->type != service_b->type) {
-		switch (service_a->type) {
-		case CONNMAN_SERVICE_TYPE_UNKNOWN:
-		case CONNMAN_SERVICE_TYPE_SYSTEM:
-		case CONNMAN_SERVICE_TYPE_ETHERNET:
-		case CONNMAN_SERVICE_TYPE_GPS:
-		case CONNMAN_SERVICE_TYPE_VPN:
-		case CONNMAN_SERVICE_TYPE_GADGET:
-			break;
-		case CONNMAN_SERVICE_TYPE_WIFI:
-			return 1;
-		case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-		case CONNMAN_SERVICE_TYPE_CELLULAR:
+
+		if (service_a->type == CONNMAN_SERVICE_TYPE_ETHERNET)
 			return -1;
-		}
+		if (service_b->type == CONNMAN_SERVICE_TYPE_ETHERNET)
+			return 1;
+
+		if (service_a->type == CONNMAN_SERVICE_TYPE_WIFI)
+			return -1;
+		if (service_b->type == CONNMAN_SERVICE_TYPE_WIFI)
+			return 1;
+
+		if (service_a->type == CONNMAN_SERVICE_TYPE_CELLULAR)
+			return -1;
+		if (service_b->type == CONNMAN_SERVICE_TYPE_CELLULAR)
+			return 1;
+
+		if (service_a->type == CONNMAN_SERVICE_TYPE_BLUETOOTH)
+			return -1;
+		if (service_b->type == CONNMAN_SERVICE_TYPE_BLUETOOTH)
+			return 1;
+
+		if (service_a->type == CONNMAN_SERVICE_TYPE_VPN)
+			return -1;
+		if (service_b->type == CONNMAN_SERVICE_TYPE_VPN)
+			return 1;
 	}
 
-	return (gint) service_b->strength - (gint) service_a->strength;
+	strength = (gint) service_b->strength - (gint) service_a->strength;
+	if (strength)
+		return strength;
+
+	return g_strcmp0(service_a->name, service_b->name);
 }
 
 /**
