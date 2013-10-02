@@ -774,7 +774,6 @@ void __connman_service_counter_unregister(const char *counter);
 #include <connman/session.h>
 
 typedef void (* service_iterate_cb) (struct connman_service *service,
-					const char *name,
 					enum connman_service_state state,
 					void *user_data);
 

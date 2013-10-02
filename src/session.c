@@ -1358,7 +1358,6 @@ static void select_and_connect(struct connman_session *session,
 static struct service_entry *create_service_entry(
 					struct connman_session * session,
 					struct connman_service *service,
-					const char *name,
 					enum connman_service_state state)
 {
 	struct service_entry *entry;
@@ -1377,7 +1376,6 @@ static struct service_entry *create_service_entry(
 }
 
 static void iterate_service_cb(struct connman_service *service,
-				const char *name,
 				enum connman_service_state state,
 				void *user_data)
 {
@@ -1390,7 +1388,7 @@ static void iterate_service_cb(struct connman_service *service,
 	if (!service_match(session, service))
 		return;
 
-	entry = create_service_entry(session, service, name, state);
+	entry = create_service_entry(session, service, state);
 	if (!entry)
 		return;
 
@@ -2217,8 +2215,7 @@ static void service_add(struct connman_service *service,
 						sort_services, session);
 
 		} else {
-			entry = create_service_entry(session, service, name,
-					state);
+			entry = create_service_entry(session, service, state);
 
 			if (!entry)
 				continue;
