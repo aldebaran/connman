@@ -62,8 +62,6 @@ enum connman_session_state {
 };
 
 struct service_entry {
-	/* track why this service was selected */
-	enum connman_session_reason reason;
 	struct connman_service *service;
 };
 
@@ -1235,7 +1233,6 @@ static void deselect_and_disconnect(struct connman_session *session)
 	if (!session->entry)
 		return;
 
-	session->entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 	session->entry = NULL;
 
 	update_routing_table(session);
@@ -1256,7 +1253,6 @@ static void select_connected_service(struct connman_session *session,
 	info->state = state;
 
 	session->entry = entry;
-	entry->reason = info->reason;
 }
 
 static void select_offline_service(struct connman_session *session,
@@ -1272,7 +1268,6 @@ static void select_offline_service(struct connman_session *session,
 	info->state = service_to_session_state(service_state);
 
 	session->entry = entry;
-	entry->reason = info->reason;
 }
 
 static void select_service(struct connman_session *session,
@@ -1340,7 +1335,6 @@ static struct service_entry *create_service_entry(
 	if (!entry)
 		return entry;
 
-	entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 	entry->service = service;
 
 	g_hash_table_replace(entry_hash, entry, session);
@@ -1496,12 +1490,8 @@ static void session_changed(struct connman_session *session,
 		 * strategy.
 		 */
 	case CONNMAN_SESSION_TRIGGER_CONNECT:
-		if (info->state >= CONNMAN_SESSION_STATE_CONNECTED) {
-			if (session->entry->reason == CONNMAN_SESSION_REASON_CONNECT)
-				break;
-			session->entry->reason = CONNMAN_SESSION_REASON_CONNECT;
+		if (info->state >= CONNMAN_SESSION_STATE_CONNECTED)
 			break;
-		}
 
 		if (session->entry) {
 			service_state = __connman_service_get_state(
