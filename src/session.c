@@ -34,6 +34,7 @@
 
 static DBusConnection *connection;
 static GHashTable *session_hash;
+static GHashTable *entry_hash;
 static struct connman_session *ecall_session;
 static GSList *policy_list;
 static uint32_t session_mark = 256;
@@ -61,7 +62,6 @@ enum connman_session_state {
 };
 
 struct service_entry {
-	struct connman_session *session;
 	/* track why this service was selected */
 	enum connman_session_reason reason;
 	enum connman_service_state state;
@@ -1313,8 +1313,6 @@ static void select_service(struct session_info *info,
 		select_connected_service(info, entry);
 	else
 		select_offline_service(info, entry);
-
-	update_routing_table(entry->session);
 }
 
 static void select_and_connect(struct connman_session *session,
@@ -1347,6 +1345,7 @@ static void select_and_connect(struct connman_session *session,
 		case CONNMAN_SERVICE_STATE_IDLE:
 		case CONNMAN_SERVICE_STATE_DISCONNECT:
 			select_service(info, entry);
+			update_routing_table(session);
 			return;
 		case CONNMAN_SERVICE_STATE_UNKNOWN:
 		case CONNMAN_SERVICE_STATE_FAILURE:
@@ -1370,7 +1369,7 @@ static struct service_entry *create_service_entry(
 	entry->state = state;
 	entry->service = service;
 
-	entry->session = session;
+	g_hash_table_replace(entry_hash, entry, session);
 
 	return entry;
 }
@@ -1398,13 +1397,14 @@ static void iterate_service_cb(struct connman_service *service,
 static void destroy_service_entry(gpointer data)
 {
 	struct service_entry *entry = data;
-	struct session_info *info = entry->session->info;
 	struct connman_session *session;
 
-	if (info && info->entry == entry) {
-		session = entry->session;
+	session = g_hash_table_lookup(entry_hash, entry);
+
+	if (session->info && session->info->entry == entry)
 		deselect_and_disconnect(session);
-	}
+
+	g_hash_table_remove(entry_hash, entry);
 
 	g_free(entry);
 }
@@ -2348,6 +2348,9 @@ int __connman_session_init(void)
 	session_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, cleanup_session);
 
+	entry_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+						NULL, NULL);
+
 	__connman_nfacct_flush(session_nfacct_flush_cb, NULL);
 
 	return 0;
@@ -2366,7 +2369,9 @@ void __connman_session_cleanup(void)
 
 	g_hash_table_foreach(session_hash, release_session, NULL);
 	g_hash_table_destroy(session_hash);
+	g_hash_table_destroy(entry_hash);
 	session_hash = NULL;
+	entry_hash = NULL;
 
 	dbus_connection_unref(connection);
 }
