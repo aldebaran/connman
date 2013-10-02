@@ -1349,13 +1349,14 @@ static struct service_entry *create_service_entry(
 }
 
 static void iterate_service_cb(struct connman_service *service,
-				enum connman_service_state state,
 				void *user_data)
 {
 	struct connman_session *session = user_data;
+	enum connman_service_state service_state;
 	struct service_entry *entry;
 
-	if (!is_connected(state))
+	service_state = __connman_service_get_state(service);
+	if (!is_connected(service_state))
 		return;
 
 	if (!service_match(session, service))

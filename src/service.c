@@ -2148,7 +2148,7 @@ int __connman_service_iterate_services(service_iterate_cb cb, void *user_data)
 	for (list = service_list; list; list = list->next) {
 		struct connman_service *service = list->data;
 
-		cb(service, service->state, user_data);
+		cb(service, user_data);
 	}
 
 	return 0;
