@@ -65,10 +65,7 @@ struct service_entry {
 	/* track why this service was selected */
 	enum connman_session_reason reason;
 	enum connman_service_state state;
-	const char *name;
 	struct connman_service *service;
-	char *ifname;
-	const char *bearer;
 };
 
 struct session_info {
@@ -859,7 +856,10 @@ static void append_notify(DBusMessageIter *dict,
 	struct session_info *info = session->info;
 	struct session_info *info_last = session->info_last;
 	struct connman_service *service;
-	const char *name, *ifname, *bearer;
+	enum connman_service_type type;
+	const char *name, *bearer;
+	char *ifname;
+	int idx;
 
 	if (session->append_all ||
 			info->state != info_last->state) {
@@ -873,16 +873,21 @@ static void append_notify(DBusMessageIter *dict,
 
 	if (session->append_all ||
 			info->entry != info_last->entry) {
-		if (!info->entry) {
-			name = "";
-			ifname = "";
-			service = NULL;
-			bearer = "";
-		} else {
-			name = info->entry->name;
-			ifname = info->entry->ifname;
+		if (info->entry) {
 			service = info->entry->service;
-			bearer = info->entry->bearer;
+			name = __connman_service_get_name(service);
+			idx = __connman_service_get_index(service);
+			ifname = connman_inet_ifname(idx);
+			if (!ifname)
+				ifname = g_strdup("");
+
+			type = connman_service_get_type(service);
+			bearer = service2bearer(type);
+		} else {
+			service = NULL;
+			name = "";
+			ifname = g_strdup("");
+			bearer = "";
 		}
 
 		connman_dbus_dict_append_basic(dict, "Name",
@@ -904,6 +909,8 @@ static void append_notify(DBusMessageIter *dict,
 		connman_dbus_dict_append_basic(dict, "Bearer",
 						DBUS_TYPE_STRING,
 						&bearer);
+
+		g_free(ifname);
 
 		info_last->entry = info->entry;
 	}
@@ -1355,8 +1362,6 @@ static struct service_entry *create_service_entry(
 					enum connman_service_state state)
 {
 	struct service_entry *entry;
-	enum connman_service_type type;
-	int idx;
 
 	entry = g_try_new0(struct service_entry, 1);
 	if (!entry)
@@ -1364,19 +1369,7 @@ static struct service_entry *create_service_entry(
 
 	entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 	entry->state = state;
-	if (name)
-		entry->name = name;
-	else
-		entry->name = "";
 	entry->service = service;
-
-	idx = __connman_service_get_index(entry->service);
-	entry->ifname = connman_inet_ifname(idx);
-	if (!entry->ifname)
-		entry->ifname = g_strdup("");
-
-	type = connman_service_get_type(entry->service);
-	entry->bearer = service2bearer(type);
 
 	entry->session = session;
 
@@ -1415,8 +1408,6 @@ static void destroy_service_entry(gpointer data)
 		deselect_and_disconnect(session);
 	}
 
-	g_free(entry->ifname);
-
 	g_free(entry);
 }
 
@@ -1437,7 +1428,7 @@ static void populate_service_list(struct connman_session *session)
 
 		DBG("service %p type %s name %s", entry->service,
 			service2bearer(connman_service_get_type(entry->service)),
-			entry->name);
+			__connman_service_get_name(entry->service));
 		session->service_list = g_list_prepend(session->service_list,
 							entry);
 	}
