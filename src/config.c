@@ -720,6 +720,8 @@ static int load_config(struct connman_config *config)
 	if (!keyfile)
 		return -EIO;
 
+	g_key_file_set_list_separator(keyfile, ',');
+
 	/* Verify keys validity of the global section */
 	check_keys(keyfile, "global", config_possible_keys);
 
