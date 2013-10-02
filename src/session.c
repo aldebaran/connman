@@ -71,7 +71,6 @@ struct service_entry {
 struct session_info {
 	struct connman_session_config config;
 	enum connman_session_state state;
-	struct service_entry *entry;
 	enum connman_session_reason reason;
 };
 
@@ -86,6 +85,8 @@ struct connman_session {
 	bool append_all;
 	struct session_info *info;
 	struct session_info *info_last;
+	struct service_entry *entry;
+	struct service_entry *entry_last;
 	struct connman_session_config *policy_config;
 	GSList *user_allowed_bearers;
 
@@ -394,14 +395,13 @@ static void del_default_route(struct connman_session *session)
 
 static void add_default_route(struct connman_session *session)
 {
-	struct session_info *info = session->info;
 	struct connman_ipconfig *ipconfig;
 	int err;
 
-	if (!info->entry)
+	if (!session->entry)
 		return;
 
-	ipconfig = __connman_service_get_ip4config(info->entry->service);
+	ipconfig = __connman_service_get_ip4config(session->entry->service);
 	session->index = __connman_ipconfig_get_index(ipconfig);
 	session->gateway = g_strdup(__connman_ipconfig_get_gateway(ipconfig));
 
@@ -861,8 +861,7 @@ static void append_notify(DBusMessageIter *dict,
 	char *ifname;
 	int idx;
 
-	if (session->append_all ||
-			info->state != info_last->state) {
+	if (session->append_all || info->state != info_last->state) {
 		const char *state = state2string(info->state);
 
 		connman_dbus_dict_append_basic(dict, "State",
@@ -872,9 +871,9 @@ static void append_notify(DBusMessageIter *dict,
 	}
 
 	if (session->append_all ||
-			info->entry != info_last->entry) {
-		if (info->entry) {
-			service = info->entry->service;
+			session->entry != session->entry_last) {
+		if (session->entry) {
+			service = session->entry->service;
 			name = __connman_service_get_name(service);
 			idx = __connman_service_get_index(service);
 			ifname = connman_inet_ifname(idx);
@@ -912,7 +911,7 @@ static void append_notify(DBusMessageIter *dict,
 
 		g_free(ifname);
 
-		info_last->entry = info->entry;
+		session->entry_last = session->entry;
 	}
 
 	if (session->append_all ||
@@ -972,7 +971,7 @@ static bool compute_notifiable_changes(struct connman_session *session)
 	if (info->state != info_last->state)
 		return true;
 
-	if (info->entry != info_last->entry &&
+	if (session->entry != session->entry_last &&
 			info->state >= CONNMAN_SESSION_STATE_CONNECTED)
 		return true;
 
@@ -1015,20 +1014,16 @@ static gboolean session_notify(gpointer user_data)
 
 static void ipconfig_ipv4_changed(struct connman_session *session)
 {
-	struct session_info *info = session->info;
-
 	connman_dbus_setting_changed_dict(session->owner, session->notify_path,
 						"IPv4", append_ipconfig_ipv4,
-						info->entry->service);
+						session->entry->service);
 }
 
 static void ipconfig_ipv6_changed(struct connman_session *session)
 {
-	struct session_info *info = session->info;
-
 	connman_dbus_setting_changed_dict(session->owner, session->notify_path,
 						"IPv6", append_ipconfig_ipv6,
-						info->entry->service);
+						session->entry->service);
 }
 
 static bool service_type_match(struct connman_session *session,
@@ -1226,39 +1221,6 @@ static bool explicit_connect(enum connman_session_reason reason)
 	return false;
 }
 
-static bool explicit_disconnect(struct session_info *info)
-{
-	if (!info->entry)
-		return false;
-
-	DBG("reason %s service %p state %d",
-		reason2string(info->entry->reason),
-		info->entry->service, info->entry->state);
-
-	if (info->entry->reason == CONNMAN_SESSION_REASON_UNKNOWN)
-		return false;
-
-	if (!explicit_connect(info->entry->reason))
-		return false;
-
-	return true;
-}
-
-static void deselect_service(struct session_info *info)
-{
-	DBG("");
-
-	if (!info->entry)
-		return;
-
-	explicit_disconnect(info);
-
-	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
-	info->entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
-
-	info->entry = NULL;
-}
-
 static void deselect_and_disconnect(struct connman_session *session)
 {
 	struct session_info *info = session->info;
@@ -1267,16 +1229,23 @@ static void deselect_and_disconnect(struct connman_session *session)
 		__connman_service_set_active_session(false,
 				info->config.allowed_bearers);
 
-	deselect_service(info);
-
 	info->reason = CONNMAN_SESSION_REASON_FREE_RIDE;
+
+	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
+
+	if (!session->entry)
+		return;
+
+	session->entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
+	session->entry = NULL;
 
 	update_routing_table(session);
 }
 
-static void select_connected_service(struct session_info *info,
+static void select_connected_service(struct connman_session *session,
 					struct service_entry *entry)
 {
+	struct session_info *info = session->info;
 	enum connman_session_state state;
 
 	state = service_to_session_state(entry->state);
@@ -1285,34 +1254,33 @@ static void select_connected_service(struct session_info *info,
 
 	info->state = state;
 
-	info->entry = entry;
-	info->entry->reason = info->reason;
-
-	if (!explicit_connect(info->reason))
-		return;
+	session->entry = entry;
+	entry->reason = info->reason;
 }
 
-static void select_offline_service(struct session_info *info,
+static void select_offline_service(struct connman_session *session,
 					struct service_entry *entry)
 {
+	struct session_info *info = session->info;
+
 	if (!explicit_connect(info->reason))
 		return;
 
 	info->state = service_to_session_state(entry->state);
 
-	info->entry = entry;
-	info->entry->reason = info->reason;
+	session->entry = entry;
+	entry->reason = info->reason;
 }
 
-static void select_service(struct session_info *info,
+static void select_service(struct connman_session *session,
 				struct service_entry *entry)
 {
 	DBG("service %p", entry->service);
 
 	if (is_connected(entry->state))
-		select_connected_service(info, entry);
+		select_connected_service(session, entry);
 	else
-		select_offline_service(info, entry);
+		select_offline_service(session, entry);
 }
 
 static void select_and_connect(struct connman_session *session,
@@ -1344,7 +1312,7 @@ static void select_and_connect(struct connman_session *session,
 		case CONNMAN_SERVICE_STATE_ONLINE:
 		case CONNMAN_SERVICE_STATE_IDLE:
 		case CONNMAN_SERVICE_STATE_DISCONNECT:
-			select_service(info, entry);
+			select_service(session, entry);
 			update_routing_table(session);
 			return;
 		case CONNMAN_SERVICE_STATE_UNKNOWN:
@@ -1401,7 +1369,7 @@ static void destroy_service_entry(gpointer data)
 
 	session = g_hash_table_lookup(entry_hash, entry);
 
-	if (session->info && session->info->entry == entry)
+	if (session->entry && session->entry == entry)
 		deselect_and_disconnect(session);
 
 	g_hash_table_remove(entry_hash, entry);
@@ -1452,10 +1420,10 @@ static void session_changed(struct connman_session *session,
 	DBG("session %p trigger %s reason %s", session, trigger2string(trigger),
 						reason2string(info->reason));
 
-	if (info->entry) {
+	if (session->entry) {
 		enum connman_session_state state;
 
-		state = service_to_session_state(info->entry->state);
+		state = service_to_session_state(session->entry->state);
 
 		if (is_type_matching_state(&state, info->config.type))
 			info->state = state;
@@ -1472,17 +1440,17 @@ static void session_changed(struct connman_session *session,
 			g_list_free(session->service_list);
 			session->service_list = NULL;
 
-			if (info->entry)
-				service = info->entry->service;
+			if (session->entry)
+				service = session->entry->service;
 			else
 				service = NULL;
 
 			populate_service_list(session);
 
-			if (info->entry) {
+			if (session->entry) {
 				entry_last = g_hash_table_lookup(
 							service_hash_last,
-							info->entry->service);
+							session->entry->service);
 				entry = g_hash_table_lookup(
 							session->service_hash,
 							service);
@@ -1519,19 +1487,16 @@ static void session_changed(struct connman_session *session,
 		 */
 	case CONNMAN_SESSION_TRIGGER_CONNECT:
 		if (info->state >= CONNMAN_SESSION_STATE_CONNECTED) {
-			if (info->entry->reason == CONNMAN_SESSION_REASON_CONNECT)
+			if (session->entry->reason == CONNMAN_SESSION_REASON_CONNECT)
 				break;
-			info->entry->reason = CONNMAN_SESSION_REASON_CONNECT;
+			session->entry->reason = CONNMAN_SESSION_REASON_CONNECT;
 			break;
 		}
 
-		if (info->entry &&
-				is_connecting(info->entry->state)) {
+		if (session->entry && is_connecting(session->entry->state))
 			break;
-		}
 
-		select_and_connect(session,
-				CONNMAN_SESSION_REASON_CONNECT);
+		select_and_connect(session, CONNMAN_SESSION_REASON_CONNECT);
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_DISCONNECT:
@@ -1539,9 +1504,9 @@ static void session_changed(struct connman_session *session,
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_SERVICE:
-		if (info->entry &&
-			(is_connecting(info->entry->state) ||
-				is_connected(info->entry->state)))
+		if (session->entry &&
+			(is_connecting(session->entry->state) ||
+				is_connected(session->entry->state)))
 			break;
 
 		select_and_connect(session, info->reason);
@@ -1836,7 +1801,6 @@ static int session_create_final(struct creation_data *creation_data,
 				creation_data->type);
 	info->config.priority = session->policy_config->priority;
 	info->config.roaming_policy = session->policy_config->roaming_policy;
-	info->entry = NULL;
 
 	session->user_allowed_bearers = creation_data->allowed_bearers;
 	creation_data->allowed_bearers = NULL;
@@ -1873,7 +1837,6 @@ static int session_create_final(struct creation_data *creation_data,
 	info_last->state = info->state;
 	info_last->config.priority = info->config.priority;
 	info_last->config.roaming_policy = info->config.roaming_policy;
-	info_last->entry = info->entry;
 	info_last->config.allowed_bearers = info->config.allowed_bearers;
 
 	session->append_all = true;
@@ -2235,11 +2198,9 @@ static void service_add(struct connman_service *service,
 
 static void service_remove(struct connman_service *service)
 {
-
 	GHashTableIter iter;
 	gpointer key, value;
 	struct connman_session *session;
-	struct session_info *info;
 
 	DBG("service %p", service);
 
@@ -2248,7 +2209,6 @@ static void service_remove(struct connman_service *service)
 	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct service_entry *entry;
 		session = value;
-		info = session->info;
 
 		entry = g_hash_table_lookup(session->service_hash, service);
 		if (!entry)
@@ -2259,8 +2219,8 @@ static void service_remove(struct connman_service *service)
 
 		g_hash_table_remove(session->service_hash, service);
 
-		if (info->entry && info->entry->service == service)
-			info->entry = NULL;
+		if (session->entry && session->entry->service == service)
+			session->entry = NULL;
 		session_changed(session, CONNMAN_SESSION_TRIGGER_SERVICE);
 	}
 }
@@ -2299,7 +2259,7 @@ static void ipconfig_changed(struct connman_service *service,
 		if (info->state == CONNMAN_SESSION_STATE_DISCONNECTED)
 			continue;
 
-		if (info->entry && info->entry->service == service) {
+		if (session->entry && session->entry->service == service) {
 			if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
 				ipconfig_ipv4_changed(session);
 			else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
