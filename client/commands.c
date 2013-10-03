@@ -2164,35 +2164,55 @@ static DBusHandlerResult monitor_completions_changed(
 		DBusConnection *connection,
 		DBusMessage *message, void *user_data)
 {
+	bool *enabled = user_data;
 	DBusMessageIter iter;
+	DBusHandlerResult handled;
+
+	if (*enabled)
+		handled = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	else
+		handled = DBUS_HANDLER_RESULT_HANDLED;
 
 	if (dbus_message_is_signal(message, "net.connman.Manager",
 					"ServicesChanged")) {
 		dbus_message_iter_init(message, &iter);
 		update_services(&iter);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return handled;
 	}
 
 	if (dbus_message_is_signal(message, "net.connman.Manager",
 					"TechnologyAdded")) {
 		dbus_message_iter_init(message, &iter);
 		add_technology(&iter);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return handled;
 	}
 
 	if (dbus_message_is_signal(message, "net.connman.Manager",
 					"TechnologyRemoved")) {
 		dbus_message_iter_init(message, &iter);
 		remove_technology(&iter);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return handled;
 	}
+
+	if (!g_strcmp0(dbus_message_get_interface(message),
+					"net.connman.Manager"))
+		return handled;
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 {
+	bool *manager_enabled = NULL;
 	DBusError err;
+	int i;
+
+	for (i = 0; monitor[i].interface; i++) {
+		if (!strcmp(monitor[i].interface, "Manager")) {
+			manager_enabled = &monitor[i].enabled;
+			break;
+		}
+	}
 
 	if (!dbus_conn) {
 		g_hash_table_destroy(service_hash);
@@ -2202,7 +2222,7 @@ void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 			"type='signal',interface='net.connman.Manager'", NULL);
 		dbus_connection_remove_filter(connection,
 					monitor_completions_changed,
-					NULL);
+					manager_enabled);
 		return;
 	}
 
@@ -2225,7 +2245,8 @@ void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 				populate_technology_hash, NULL, NULL, NULL);
 
 	dbus_connection_add_filter(connection,
-				monitor_completions_changed, NULL, NULL);
+				monitor_completions_changed, manager_enabled,
+			NULL);
 
 	dbus_error_init(&err);
 	dbus_bus_add_match(connection,
