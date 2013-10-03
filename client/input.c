@@ -229,6 +229,16 @@ void __connmanctl_command_mode(void)
 	rl_attempted_completion_function = complete_command;
 }
 
+static void no_handler(char *input)
+{
+}
+
+static void no_handler_mode(void)
+{
+	rl_callback_handler_install("", no_handler);
+	rl_attempted_completion_function = NULL;
+}
+
 int __connmanctl_input_init(int argc, char *argv[])
 {
 	char *help[] = {
@@ -264,6 +274,7 @@ int __connmanctl_input_init(int argc, char *argv[])
 
 	} else {
 		interactive = false;
+		no_handler_mode();
 
 		if (strcmp(argv[1], "--help") == 0 ||
 				strcmp(argv[1], "-h") == 0)
@@ -282,11 +293,11 @@ int __connmanctl_input_init(int argc, char *argv[])
 
 	g_source_remove(source);
 
-	if (interactive == true) {
+	if (interactive)
 		__connmanctl_monitor_completions(NULL);
-		rl_callback_handler_remove();
-		rl_message("");
-	}
+
+	rl_callback_handler_remove();
+	rl_message("");
 
 	dbus_connection_unref(connection);
 	if (main_loop)
