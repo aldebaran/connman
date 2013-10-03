@@ -350,6 +350,11 @@ static int service_load(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_VPN:
 		service->do_split_routing = g_key_file_get_boolean(keyfile,
 				service->identifier, "SplitRouting", NULL);
+		autoconnect = g_key_file_get_boolean(keyfile,
+				service->identifier, "AutoConnect", &error);
+		if (!error)
+			service->autoconnect = autoconnect;
+		g_clear_error(&error);
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		if (!service->name) {
@@ -536,6 +541,9 @@ static int service_save(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_VPN:
 		g_key_file_set_boolean(keyfile, service->identifier,
 				"SplitRouting", service->do_split_routing);
+		if (service->favorite)
+			g_key_file_set_boolean(keyfile, service->identifier,
+					"AutoConnect", service->autoconnect);
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		if (service->network) {
