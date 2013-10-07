@@ -2977,3 +2977,40 @@ out:
 	freeifaddrs(ifaddr);
 	return err;
 }
+
+int __connman_inet_get_address_netmask(int ifindex,
+					struct sockaddr_in *address,
+					struct sockaddr_in *netmask)
+{
+	int sk, ret = -EINVAL;
+	struct ifreq ifr;
+
+	DBG("index %d", ifindex);
+
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (sk < 0)
+		return -EINVAL;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = ifindex;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0)
+		goto out;
+
+	if (ioctl(sk, SIOCGIFNETMASK, &ifr) < 0)
+		goto out;
+
+	memcpy(netmask, (struct sockaddr_in *)&ifr.ifr_netmask,
+						sizeof(struct sockaddr_in));
+
+	if (ioctl(sk, SIOCGIFADDR, &ifr) < 0)
+		goto out;
+
+	memcpy(address, (struct sockaddr_in *)&ifr.ifr_addr,
+						sizeof(struct sockaddr_in));
+	ret = 0;
+
+out:
+	close(sk);
+	return ret;
+}
