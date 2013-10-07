@@ -163,6 +163,15 @@ VPN
    code and only allow "PPPD." prefix for PPP options.
 
 
+- Update VPNC and OpenVPN with Agent support
+
+   Priority: Medium
+   Complexity: C2
+
+   Update VPNC and OpenVPN with VPN Agent support to request possible user
+   ids and passphrases.
+
+
 Tools
 =====
 
