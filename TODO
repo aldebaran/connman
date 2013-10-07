@@ -42,12 +42,12 @@ Core
 
 - Remove --nobacktrace option
 
- Priority: Medium
- Complexity: C1
- When: 2.0
+   Priority: Medium
+   Complexity: C1
+   When: 2.0
 
- Remove the --nobacktrace option or change it to --backtrace depending on the
- level of systemd integration or other factors.
+   Remove the --nobacktrace option or change it to --backtrace depending on
+   the level of systemd integration or other factors.
 
 
 - Clean up data structure usage
