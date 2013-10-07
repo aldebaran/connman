@@ -549,10 +549,6 @@ int __connman_device_disconnect(struct connman_device *device);
 
 bool __connman_device_has_driver(struct connman_device *device);
 
-void __connman_device_set_reconnect(struct connman_device *device,
-						bool reconnect);
-bool __connman_device_get_reconnect(struct connman_device *device);
-
 const char *__connman_device_get_type(struct connman_device *device);
 
 int __connman_rfkill_init(void);

@@ -54,7 +54,6 @@ struct connman_device {
 	bool powered;
 	bool scanning;
 	bool disconnected;
-	bool reconnect;
 	char *name;
 	char *node;
 	char *address;
@@ -236,7 +235,6 @@ int __connman_device_disable(struct connman_device *device)
 		return -EALREADY;
 
 	device->powered_pending = PENDING_DISABLE;
-	device->reconnect = false;
 
 	if (device->network) {
 		struct connman_service *service =
@@ -654,8 +652,6 @@ int connman_device_disconnect_service(struct connman_device *device)
 {
 	DBG("device %p", device);
 
-	device->reconnect = false;
-
 	if (device->network) {
 		struct connman_service *service =
 			connman_service_lookup_from_network(device->network);
@@ -672,8 +668,6 @@ int connman_device_disconnect_service(struct connman_device *device)
 int connman_device_reconnect_service(struct connman_device *device)
 {
 	DBG("device %p", device);
-
-	device->reconnect = true;
 
 	__connman_service_auto_connect();
 
@@ -951,18 +945,6 @@ void __connman_device_set_network(struct connman_device *device,
 
 		device->network = NULL;
 	}
-}
-
-void __connman_device_set_reconnect(struct connman_device *device,
-						bool reconnect)
-{
-	device->reconnect = reconnect;
-}
-
-bool  __connman_device_get_reconnect(
-				struct connman_device *device)
-{
-	return device->reconnect;
 }
 
 static bool match_driver(struct connman_device *device,
