@@ -651,6 +651,7 @@ int main(int argc, char *argv[])
 	__connman_service_init();
 	__connman_provider_init();
 	__connman_network_init();
+	__connman_config_init();
 	__connman_device_init(option_device, option_nodevice);
 
 	__connman_ippool_init();
@@ -661,7 +662,6 @@ int main(int argc, char *argv[])
 	__connman_tethering_init();
 	__connman_counter_init();
 	__connman_manager_init();
-	__connman_config_init();
 	__connman_stats_init();
 	__connman_clock_init();
 

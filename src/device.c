@@ -1424,6 +1424,7 @@ static void cleanup_devices(void)
 	for (i = 0; interfaces[i]; i++) {
 		bool filtered;
 		int index;
+		struct sockaddr_in sin_addr, sin_mask;
 
 		filtered = __connman_device_isfiltered(interfaces[i]);
 		if (filtered)
@@ -1432,6 +1433,25 @@ static void cleanup_devices(void)
 		index = connman_inet_ifindex(interfaces[i]);
 		if (index < 0)
 			continue;
+
+		if (!__connman_inet_get_address_netmask(index, &sin_addr,
+							&sin_mask)) {
+			char *address = g_strdup(inet_ntoa(sin_addr.sin_addr));
+			char *netmask = g_strdup(inet_ntoa(sin_mask.sin_addr));
+
+			if (__connman_config_address_provisioned(address,
+								netmask)) {
+				DBG("Skip %s which is already provisioned "
+					"with %s/%s", interfaces[i], address,
+					netmask);
+				g_free(address);
+				g_free(netmask);
+				continue;
+			}
+
+			g_free(address);
+			g_free(netmask);
+		}
 
 		DBG("cleaning up %s index %d", interfaces[i], index);
 
