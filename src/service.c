@@ -3823,35 +3823,6 @@ static gboolean connect_timeout(gpointer user_data)
 	return FALSE;
 }
 
-static void set_reconnect_state(struct connman_service *service,
-						bool reconnect)
-{
-	struct connman_device *device;
-
-	if (!service->network)
-		return;
-
-	device = connman_network_get_device(service->network);
-	if (!device)
-		return;
-
-	__connman_device_set_reconnect(device, reconnect);
-}
-
-static bool get_reconnect_state(struct connman_service *service)
-{
-	struct connman_device *device;
-
-	if (!service->network)
-		return false;
-
-	device = connman_network_get_device(service->network);
-	if (!device)
-		return false;
-
-	return __connman_device_get_reconnect(device);
-}
-
 static bool is_interface_available(struct connman_service *service,
 					struct connman_service *other_service)
 {
@@ -3915,8 +3886,6 @@ static DBusMessage *connect_service(DBusConnection *conn,
 
 	service->pending = dbus_message_ref(msg);
 
-	set_reconnect_state(service, false);
-
 	err = __connman_service_connect(service);
 	if (err < 0) {
 		if (!service->pending)
@@ -3945,8 +3914,6 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 
 	service->ignore = true;
 
-	set_reconnect_state(service, false);
-
 	err = __connman_service_disconnect(service);
 	if (err < 0) {
 		if (err != -EINPROGRESS)
@@ -3968,8 +3935,6 @@ bool __connman_service_remove(struct connman_service *service)
 	if (!service->favorite && service->state !=
 						CONNMAN_SERVICE_STATE_FAILURE)
 		return false;
-
-	set_reconnect_state(service, false);
 
 	__connman_service_disconnect(service);
 
@@ -5283,14 +5248,6 @@ static int service_indicate_state(struct connman_service *service)
 		}
 	}
 
-	if (new_state == CONNMAN_SERVICE_STATE_IDLE) {
-		bool reconnect;
-
-		reconnect = get_reconnect_state(service);
-		if (reconnect)
-			__connman_service_auto_connect();
-	}
-
 	if (new_state == CONNMAN_SERVICE_STATE_READY) {
 		enum connman_ipconfig_method method;
 
@@ -5314,8 +5271,6 @@ static int service_indicate_state(struct connman_service *service)
 		def_service = __connman_service_get_default();
 
 		service_update_preferred_order(def_service, service, new_state);
-
-		set_reconnect_state(service, true);
 
 		__connman_service_set_favorite(service, true);
 
@@ -5454,9 +5409,6 @@ int __connman_service_clear_error(struct connman_service *service)
 	service->state_ipv4 = service->state_ipv6 =
 						CONNMAN_SERVICE_STATE_UNKNOWN;
 	set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
-
-	if (service->favorite)
-		set_reconnect_state(service, true);
 
 	__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_IDLE,
@@ -6051,8 +6003,6 @@ int __connman_service_disconnect_all(void)
 		struct connman_service *service = list->data;
 
 		service->ignore = true;
-
-		set_reconnect_state(service, false);
 
 		__connman_service_disconnect(service);
 	}
