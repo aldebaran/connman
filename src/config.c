@@ -1502,3 +1502,31 @@ void connman_config_free_entries(struct connman_config_entry **entries)
 	g_free(entries);
 	return;
 }
+
+bool __connman_config_address_provisioned(const char *address,
+					const char *netmask)
+{
+	GHashTableIter iter, siter;
+	gpointer value, key, svalue, skey;
+
+	if (!address || !netmask)
+		return false;
+
+	g_hash_table_iter_init(&iter, config_table);
+
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
+		struct connman_config *config = value;
+
+		g_hash_table_iter_init(&siter, config->service_table);
+		while (g_hash_table_iter_next(&siter, &skey, &svalue)) {
+			struct connman_config_service *service = svalue;
+
+			if (!g_strcmp0(address, service->ipv4_address) &&
+					!g_strcmp0(netmask,
+						service->ipv4_netmask))
+				return true;
+		}
+	}
+
+	return false;
+}

@@ -595,6 +595,8 @@ char **__connman_config_get_string_list(GKeyFile *key_file,
 
 bool __connman_config_get_bool(GKeyFile *key_file,
 	const char *group_name, const char *key, GError **error);
+bool __connman_config_address_provisioned(const char *address,
+					const char *netmask);
 
 int __connman_tethering_init(void);
 void __connman_tethering_cleanup(void);
