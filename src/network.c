@@ -174,15 +174,7 @@ err:
 
 static void dhcp_failure(struct connman_network *network)
 {
-	struct connman_service *service;
-
-	service = connman_service_lookup_from_network(network);
-	if (!service)
-		return;
-
-	__connman_service_ipconfig_indicate_state(service,
-					CONNMAN_SERVICE_STATE_IDLE,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
+	__connman_dhcp_stop(network);
 }
 
 static void dhcp_callback(struct connman_network *network,
