@@ -6417,8 +6417,6 @@ struct connman_service *connman_service_lookup_from_network(struct connman_netwo
 	const char *ident, *group;
 	char *name;
 
-	DBG("network %p", network);
-
 	if (!network)
 		return NULL;
 
@@ -6720,8 +6718,6 @@ void __connman_service_update_from_network(struct connman_network *network)
 	const char *name;
 	bool stats_enable;
 
-	DBG("network %p", network);
-
 	service = connman_service_lookup_from_network(network);
 	if (!service)
 		return;
@@ -6783,9 +6779,10 @@ void __connman_service_remove_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
 
-	DBG("network %p", network);
-
 	service = connman_service_lookup_from_network(network);
+
+	DBG("network %p service %p", network, service);
+
 	if (!service)
 		return;
 
