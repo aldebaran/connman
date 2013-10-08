@@ -5338,6 +5338,8 @@ static int service_indicate_state(struct connman_service *service)
 		 * to ready so wispr/portal will be rerun on those
 		 */
 		downgrade_connected_services();
+
+		__connman_service_auto_connect();
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_FAILURE) {
