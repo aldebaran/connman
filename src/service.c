@@ -1513,9 +1513,6 @@ static void append_ipv4(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
-	DBG("ipv4 %p state %s", service->ipconfig_ipv4,
-				state2string(service->state_ipv4));
-
 	if (!is_connected_state(service, service->state_ipv4))
 		return;
 
@@ -1526,9 +1523,6 @@ static void append_ipv4(DBusMessageIter *iter, void *user_data)
 static void append_ipv6(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
-
-	DBG("ipv6 %p state %s", service->ipconfig_ipv6,
-				state2string(service->state_ipv6));
 
 	if (!is_connected_state(service, service->state_ipv6))
 		return;
@@ -1690,8 +1684,6 @@ static void append_proxy(DBusMessageIter *iter, void *user_data)
 	const char *method = proxymethod2string(
 		CONNMAN_SERVICE_PROXY_METHOD_DIRECT);
 
-	DBG("");
-
 	if (!is_connected(service))
 		return;
 
@@ -1778,8 +1770,6 @@ static void append_proxyconfig(DBusMessageIter *iter, void *user_data)
 static void append_provider(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
-
-	DBG("%p %p", service, service->provider);
 
 	if (!is_connected(service))
 		return;
