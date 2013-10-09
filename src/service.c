@@ -5945,6 +5945,7 @@ int __connman_service_disconnect(struct connman_service *service)
 	DBG("service %p", service);
 
 	service->userconnect = false;
+	service->proxy = CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN;
 
 	connman_agent_cancel(service);
 
