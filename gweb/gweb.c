@@ -1308,32 +1308,12 @@ static guint do_request(GWeb *web, const char *url,
 			return 0;
 		}
 	} else {
-		struct addrinfo hints;
-		char *port;
-		int ret;
-
 		if (!session->address)
 			session->address = g_strdup(session->host);
 
-		memset(&hints, 0, sizeof(struct addrinfo));
-		hints.ai_flags = AI_NUMERICHOST;
-		hints.ai_family = session->web->family;
-
-		if (session->addr) {
-			freeaddrinfo(session->addr);
-			session->addr = NULL;
-		}
-
-		port = g_strdup_printf("%u", session->port);
-		ret = getaddrinfo(session->address, port, &hints,
-							&session->addr);
-		g_free(port);
-		if (ret != 0 || !session->addr) {
-			free_session(session);
-			return 0;
-		}
-
-		if (create_transport(session) < 0) {
+		session->resolv_action = g_resolv_lookup_hostname(web->resolv,
+					session->address, resolv_result, session);
+		if (session->resolv_action == 0) {
 			free_session(session);
 			return 0;
 		}
