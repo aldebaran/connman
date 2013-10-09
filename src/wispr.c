@@ -775,8 +775,13 @@ static void proxy_callback(const char *proxy, void *user_data)
 
 	wp_context->token = 0;
 
-	if (proxy && g_strcmp0(proxy, "DIRECT") != 0)
+	if (proxy && g_strcmp0(proxy, "DIRECT") != 0) {
+		if (g_str_has_prefix(proxy, "PROXY")) {
+			proxy += 5;
+			for (; *proxy == ' ' && *proxy != '\0'; proxy++);
+		}
 		g_web_set_proxy(wp_context->web, proxy);
+	}
 
 	g_web_set_accept(wp_context->web, NULL);
 	g_web_set_user_agent(wp_context->web, "ConnMan/%s wispr", VERSION);
