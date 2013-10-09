@@ -377,9 +377,6 @@ static int request_lookup(struct connman_service *service, const char *url)
 
 	DBG("");
 
-	if (!daemon_running)
-		return -EINVAL;
-
 	msg = dbus_message_new_method_call(PACRUNNER_SERVICE,
 						PACRUNNER_CLIENT_PATH,
 						PACRUNNER_CLIENT_INTERFACE,
@@ -402,8 +399,6 @@ static int request_lookup(struct connman_service *service, const char *url)
 
 	data->url = g_strdup(url);
 	data->service = connman_service_ref(service);
-
-	dbus_message_set_auto_start(msg, FALSE);
 
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &url,
 					DBUS_TYPE_STRING, &host,
