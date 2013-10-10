@@ -1579,6 +1579,16 @@ static void append_dns(DBusMessageIter *iter, void *user_data)
 
 		if (service->nameservers_auto)
 			append_nameservers(iter, service->nameservers_auto);
+
+		if (!service->nameservers && !service->nameservers_auto) {
+			char **ns;
+
+			DBG("append fallback nameservers");
+
+			ns = connman_setting_get_string_list("FallbackNameservers");
+			if (ns)
+				append_nameservers(iter, ns);
+		}
 	}
 }
 
