@@ -207,6 +207,57 @@ int __connman_resolvfile_remove(int index, const char *domain,
 	return resolvfile_export();
 }
 
+static void append_fallback_nameservers(void)
+{
+	GSList *list;
+
+	for (list = entry_list; list; list = list->next) {
+		struct entry_data *entry = list->data;
+
+		if (entry->index >= 0 && entry->server)
+			return;
+	}
+
+	for (list = entry_list; list; list = list->next) {
+		struct entry_data *entry = list->data;
+
+		if (entry->index != -1 || !entry->server)
+			continue;
+
+		DBG("index %d server %s", entry->index, entry->server);
+
+		if (dnsproxy_enabled) {
+			__connman_dnsproxy_append(entry->index, entry->domain,
+					entry->server);
+		} else {
+			__connman_resolvfile_append(entry->index,
+					entry->domain, entry->server);
+		}
+	}
+}
+
+static void remove_fallback_nameservers(void)
+{
+	GSList *list;
+
+	for (list = entry_list; list; list = list->next) {
+		struct entry_data *entry = list->data;
+
+		if (entry->index >= 0 || !entry->server)
+			continue;
+
+		DBG("index %d server %s", entry->index, entry->server);
+
+		if (dnsproxy_enabled) {
+			__connman_dnsproxy_remove(entry->index, entry->domain,
+					entry->server);
+		} else {
+			__connman_resolvfile_remove(entry->index,
+					entry->domain, entry->server);
+		}
+	}
+}
+
 static void remove_entries(GSList *entries)
 {
 	GSList *list;
@@ -338,6 +389,10 @@ static int append_resolver(int index, const char *domain,
 								server, true);
 		}
 	}
+
+	if (entry->index >= 0 && entry->server)
+		remove_fallback_nameservers();
+
 	entry_list = g_slist_append(entry_list, entry);
 
 	if (dnsproxy_enabled)
@@ -509,6 +564,8 @@ int connman_resolver_remove_all(int index)
  */
 void connman_resolver_flush(void)
 {
+	append_fallback_nameservers();
+
 	if (dnsproxy_enabled)
 		__connman_dnsproxy_flush();
 
