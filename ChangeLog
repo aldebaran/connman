@@ -1,3 +1,14 @@
+ver 1.19:
+	Fix issue with not correctly storing IPv4 method.
+	Fix issue with changing the default service too early.
+	Fix issue with service reference count and WISPr checks.
+	Fix issue with service auto-connect handling and ordering.
+	Fix issue with host and domain names when service changes.
+	Fix issue with proxy result and WISPr handling.
+	Fix issue with proxy reset when disconnecting.
+	Fix issue with handling fallback nameservers.
+	Add support for multiple agents.
+
 ver 1.18:
 	Fix issue with alignment calculation for iptables.
 	Fix issue with WEP key index parameter handling.
