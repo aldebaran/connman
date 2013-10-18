@@ -406,7 +406,7 @@ static bool validate_ident(const char *ident)
 	return true;
 }
 
-static char *get_dir()
+static char *get_dir(void)
 {
 	return g_strdup_printf("%s", VPN_STORAGEDIR);
 }

@@ -2562,7 +2562,7 @@ static struct connman_agent_driver agent_driver = {
 	.remove		= agent_remove,
 };
 
-static void remove_unprovisioned_providers()
+static void remove_unprovisioned_providers(void)
 {
 	gchar **providers;
 	GKeyFile *keyfile, *configkeyfile;
