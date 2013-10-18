@@ -295,7 +295,7 @@ static void set_ipv6_privacy(gchar *ifname, int value)
 	fclose(f);
 }
 
-static int get_rp_filter()
+static int get_rp_filter(void)
 {
 	FILE *f;
 	int value = -EINVAL, tmp;

@@ -66,7 +66,7 @@ static void save_timeservers(char **servers)
 	return;
 }
 
-static char **load_timeservers()
+static char **load_timeservers(void)
 {
 	GKeyFile *keyfile;
 	char **servers = NULL;
@@ -374,7 +374,7 @@ static int timeserver_start(struct connman_service *service)
 	return __connman_timeserver_sync(service);
 }
 
-static void timeserver_stop()
+static void timeserver_stop(void)
 {
 	DBG(" ");
 

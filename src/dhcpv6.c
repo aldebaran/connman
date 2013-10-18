@@ -105,7 +105,7 @@ static void clear_timer(struct connman_dhcpv6 *dhcp)
 	}
 }
 
-static inline float get_random()
+static inline float get_random(void)
 {
 	return (rand() % 200 - 100) / 1000.0;
 }

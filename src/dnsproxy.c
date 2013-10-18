@@ -216,7 +216,7 @@ static GHashTable *listener_table = NULL;
 static time_t next_refresh;
 static GHashTable *partial_tcp_req_table;
 
-static guint16 get_id()
+static guint16 get_id(void)
 {
 	return random();
 }
@@ -773,7 +773,7 @@ static gboolean try_remove_cache(gpointer user_data)
 	return FALSE;
 }
 
-static void create_cache()
+static void create_cache(void)
 {
 	if (__sync_fetch_and_add(&cache_refcount, 1) == 0)
 		cache = g_hash_table_new_full(g_str_hash,

@@ -4777,7 +4777,7 @@ bool __connman_service_wps_enabled(struct connman_service *service)
 	return service->wps;
 }
 
-void __connman_service_mark_dirty()
+void __connman_service_mark_dirty(void)
 {
 	services_dirty = true;
 }
@@ -6826,7 +6826,7 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	return service;
 }
 
-static void remove_unprovisioned_services()
+static void remove_unprovisioned_services(void)
 {
 	gchar **services;
 	GKeyFile *keyfile, *configkeyfile;

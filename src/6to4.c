@@ -91,7 +91,7 @@ static int tunnel_create(struct in_addr *addr)
 	return ret;
 }
 
-static void tunnel_destroy()
+static void tunnel_destroy(void)
 {
 	struct ip_tunnel_parm p;
 	struct ifreq ifr;
@@ -133,7 +133,7 @@ static void tunnel_destroy()
 	tunnel_ip_address = NULL;
 }
 
-static int tunnel_add_route()
+static int tunnel_add_route(void)
 {
 	struct __connman_inet_rtnl_handle rth;
 	struct in6_addr addr6;
