@@ -1402,6 +1402,9 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 	if (hdr->rcode != 0)
 		return 0;
 
+	if (!cache)
+		create_cache();
+
 	rsplen = sizeof(response) - 1;
 	question[sizeof(question) - 1] = '\0';
 
@@ -1418,11 +1421,7 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 	if ((err == -ENOMSG || err == -ENOBUFS) &&
 			reply_query_type(msg + offset,
 					msg_len - offset) == 28) {
-		if (!cache) {
-			create_cache();
-			entry = NULL;
-		} else
-			entry = g_hash_table_lookup(cache, question);
+		entry = g_hash_table_lookup(cache, question);
 		if (entry && entry->ipv4 && !entry->ipv6) {
 			int cache_offset = 0;
 
