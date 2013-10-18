@@ -662,7 +662,7 @@ static bool is_filename_valid(const char *filename)
 	return g_str_has_suffix(filename, ".policy");
 }
 
-static int read_policies()
+static int read_policies(void)
 {
 	GDir *dir;
 	const gchar *filename;
