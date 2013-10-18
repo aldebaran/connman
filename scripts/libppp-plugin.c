@@ -76,7 +76,7 @@ static void append(DBusMessageIter *dict, const char *key, const char *value)
 }
 
 
-static int ppp_have_secret()
+static int ppp_have_secret(void)
 {
 	return 1;
 }
