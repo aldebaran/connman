@@ -237,7 +237,7 @@ static int sendto_msg(int sk, struct sockaddr *sa, socklen_t salen,
 	return 0;
 }
 
-static unsigned short get_id()
+static unsigned short get_id(void)
 {
 	return random();
 }
