@@ -1229,6 +1229,7 @@ static void resolv_result(GResolvResultStatus status,
 		return;
 	}
 
+	g_free(session->address);
 	session->address = g_strdup(results[0]);
 	call_route_func(session);
 
