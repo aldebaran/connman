@@ -480,7 +480,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	 */
 	if (interface)
 		__connman_technology_add_interface(interface->service_type,
-			interface->index, interface->name, interface->ident);
+			interface->index, interface->ident);
 
 	for (list = watch_list; list; list = list->next) {
 		struct watch_data *watch = list->data;

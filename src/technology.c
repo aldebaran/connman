@@ -1221,11 +1221,12 @@ static void enable_tethering(struct connman_technology *technology)
 }
 
 void __connman_technology_add_interface(enum connman_service_type type,
-				int index, const char *name, const char *ident)
+				int index, const char *ident)
 {
 	struct connman_technology *technology;
 	GSList *tech_drivers;
 	struct connman_technology_driver *driver;
+	char *name;
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -1241,13 +1242,14 @@ void __connman_technology_add_interface(enum connman_service_type type,
 		break;
 	}
 
+	name = connman_inet_ifname(index);
 	connman_info("Adding interface %s [ %s ]", name,
 				__connman_service_type2string(type));
 
 	technology = technology_find(type);
 
 	if (!technology)
-		return;
+		goto out;
 
 	for (tech_drivers = technology->driver_list; tech_drivers;
 	     tech_drivers = g_slist_next(tech_drivers)) {
@@ -1263,6 +1265,9 @@ void __connman_technology_add_interface(enum connman_service_type type,
 	 */
 	if (technology->tethering_persistent)
 		enable_tethering(technology);
+
+out:
+	g_free(name);
 }
 
 void __connman_technology_remove_interface(enum connman_service_type type,
