@@ -275,14 +275,14 @@ struct connman_ipaddress {
 };
 
 struct connman_ipconfig_ops {
-	void (*up) (struct connman_ipconfig *ipconfig);
-	void (*down) (struct connman_ipconfig *ipconfig);
-	void (*lower_up) (struct connman_ipconfig *ipconfig);
-	void (*lower_down) (struct connman_ipconfig *ipconfig);
-	void (*ip_bound) (struct connman_ipconfig *ipconfig);
-	void (*ip_release) (struct connman_ipconfig *ipconfig);
-	void (*route_set) (struct connman_ipconfig *ipconfig);
-	void (*route_unset) (struct connman_ipconfig *ipconfig);
+	void (*up) (struct connman_ipconfig *ipconfig, const char *ifname);
+	void (*down) (struct connman_ipconfig *ipconfig, const char *ifname);
+	void (*lower_up) (struct connman_ipconfig *ipconfig, const char *ifname);
+	void (*lower_down) (struct connman_ipconfig *ipconfig, const char *ifname);
+	void (*ip_bound) (struct connman_ipconfig *ipconfig, const char *ifname);
+	void (*ip_release) (struct connman_ipconfig *ipconfig, const char *ifname);
+	void (*route_set) (struct connman_ipconfig *ipconfig, const char *ifname);
+	void (*route_unset) (struct connman_ipconfig *ipconfig, const char *ifname);
 };
 
 struct connman_ipconfig *__connman_ipconfig_create(int index,
@@ -304,7 +304,6 @@ void *__connman_ipconfig_get_data(struct connman_ipconfig *ipconfig);
 void __connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data);
 
 int __connman_ipconfig_get_index(struct connman_ipconfig *ipconfig);
-const char *__connman_ipconfig_get_ifname(struct connman_ipconfig *ipconfig);
 
 void __connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
 				const struct connman_ipconfig_ops *ops);

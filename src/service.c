@@ -6158,11 +6158,12 @@ static int service_register(struct connman_service *service)
 	return 0;
 }
 
-static void service_up(struct connman_ipconfig *ipconfig)
+static void service_up(struct connman_ipconfig *ipconfig,
+		const char *ifname)
 {
 	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 
-	DBG("%s up", __connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s up", ifname);
 
 	link_changed(service);
 
@@ -6170,25 +6171,28 @@ static void service_up(struct connman_ipconfig *ipconfig)
 	service->stats_roaming.valid = false;
 }
 
-static void service_down(struct connman_ipconfig *ipconfig)
+static void service_down(struct connman_ipconfig *ipconfig,
+			const char *ifname)
 {
-	DBG("%s down", __connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s down", ifname);
 }
 
-static void service_lower_up(struct connman_ipconfig *ipconfig)
+static void service_lower_up(struct connman_ipconfig *ipconfig,
+			const char *ifname)
 {
 	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 
-	DBG("%s lower up", __connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s lower up", ifname);
 
 	stats_start(service);
 }
 
-static void service_lower_down(struct connman_ipconfig *ipconfig)
+static void service_lower_down(struct connman_ipconfig *ipconfig,
+			const char *ifname)
 {
 	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 
-	DBG("%s lower down", __connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s lower down", ifname);
 
 	if (!is_idle_state(service, service->state_ipv4))
 		__connman_ipconfig_disable(service->ipconfig_ipv4);
@@ -6200,13 +6204,14 @@ static void service_lower_down(struct connman_ipconfig *ipconfig)
 	service_save(service);
 }
 
-static void service_ip_bound(struct connman_ipconfig *ipconfig)
+static void service_ip_bound(struct connman_ipconfig *ipconfig,
+			const char *ifname)
 {
 	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 	enum connman_ipconfig_type type = CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 
-	DBG("%s ip bound", __connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s ip bound", ifname);
 
 	type = __connman_ipconfig_get_config_type(ipconfig);
 	method = __connman_ipconfig_get_method(ipconfig);
@@ -6223,13 +6228,14 @@ static void service_ip_bound(struct connman_ipconfig *ipconfig)
 	settings_changed(service, ipconfig);
 }
 
-static void service_ip_release(struct connman_ipconfig *ipconfig)
+static void service_ip_release(struct connman_ipconfig *ipconfig,
+			const char *ifname)
 {
 	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 	enum connman_ipconfig_type type = CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 
-	DBG("%s ip release", __connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s ip release", ifname);
 
 	type = __connman_ipconfig_get_config_type(ipconfig);
 	method = __connman_ipconfig_get_method(ipconfig);
@@ -6252,11 +6258,12 @@ static void service_ip_release(struct connman_ipconfig *ipconfig)
 	settings_changed(service, ipconfig);
 }
 
-static void service_route_changed(struct connman_ipconfig *ipconfig)
+static void service_route_changed(struct connman_ipconfig *ipconfig,
+				const char *ifname)
 {
 	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 
-	DBG("%s route changed", __connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s route changed", ifname);
 
 	settings_changed(service, ipconfig);
 }

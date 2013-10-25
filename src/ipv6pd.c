@@ -289,8 +289,9 @@ static void update_ipconfig(struct connman_service *service,
 			g_free(default_interface);
 			default_interface = NULL;
 		}
-		DBG("No IPv6 support for interface %s",
-				__connman_ipconfig_get_ifname(ipconfig));
+
+		DBG("No IPv6 support for interface index %d",
+			__connman_ipconfig_get_index(ipconfig));
 		return;
 	}
 
@@ -298,8 +299,8 @@ static void update_ipconfig(struct connman_service *service,
 	 * Did we had PD activated already? If not, then start it.
 	 */
 	if (!default_interface) {
-		DBG("IPv6 ipconfig %p changed for interface %s", ipconfig,
-			__connman_ipconfig_get_ifname(ipconfig));
+		DBG("IPv6 ipconfig %p changed for interface index %d", ipconfig,
+			__connman_ipconfig_get_index(ipconfig));
 
 		setup_prefix_delegation(service);
 	}
