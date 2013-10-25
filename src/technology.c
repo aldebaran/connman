@@ -1266,11 +1266,12 @@ void __connman_technology_add_interface(enum connman_service_type type,
 }
 
 void __connman_technology_remove_interface(enum connman_service_type type,
-				int index, const char *name, const char *ident)
+				int index, const char *ident)
 {
 	struct connman_technology *technology;
 	GSList *tech_drivers;
 	struct connman_technology_driver *driver;
+	char *name;
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -1286,8 +1287,10 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 		break;
 	}
 
+	name = connman_inet_ifname(index);
 	connman_info("Remove interface %s [ %s ]", name,
 				__connman_service_type2string(type));
+	g_free(name);
 
 	technology = technology_find(type);
 

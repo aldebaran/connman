@@ -78,7 +78,7 @@ static void free_interface(gpointer data)
 	struct interface_data *interface = data;
 
 	__connman_technology_remove_interface(interface->service_type,
-			interface->index, interface->name, interface->ident);
+			interface->index, interface->ident);
 
 	g_free(interface->ident);
 	g_free(interface->name);
