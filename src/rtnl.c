@@ -139,8 +139,11 @@ static void read_uevent(struct interface_data *interface)
 
 	g_free(filename);
 
-	if (!f)
+	if (!f) {
+		interface->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+		interface->device_type = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		return;
+	}
 
 	found_devtype = false;
 	while (fgets(line, sizeof(line), f)) {
