@@ -65,7 +65,6 @@ static guint update_timeout = 0;
 
 struct interface_data {
 	int index;
-	char *name;
 	char *ident;
 	enum connman_service_type service_type;
 	enum connman_device_type device_type;
@@ -81,7 +80,6 @@ static void free_interface(gpointer data)
 			interface->index, interface->ident);
 
 	g_free(interface->ident);
-	g_free(interface->name);
 	g_free(interface);
 }
 
@@ -120,11 +118,13 @@ static bool wext_interface(char *ifname)
 
 static void read_uevent(struct interface_data *interface)
 {
-	char *filename, line[128];
+	char *filename, *name, line[128];
 	bool found_devtype;
 	FILE *f;
 
-	if (ether_blacklisted(interface->name)) {
+	name = connman_inet_ifname(interface->index);
+
+	if (ether_blacklisted(name)) {
 		interface->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 		interface->device_type = CONNMAN_DEVICE_TYPE_UNKNOWN;
 	} else {
@@ -132,8 +132,7 @@ static void read_uevent(struct interface_data *interface)
 		interface->device_type = CONNMAN_DEVICE_TYPE_ETHERNET;
 	}
 
-	filename = g_strdup_printf("/sys/class/net/%s/uevent",
-						interface->name);
+	filename = g_strdup_printf("/sys/class/net/%s/uevent", name);
 
 	f = fopen(filename, "re");
 
@@ -142,7 +141,7 @@ static void read_uevent(struct interface_data *interface)
 	if (!f) {
 		interface->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 		interface->device_type = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		return;
+		goto out;
 	}
 
 	found_devtype = false;
@@ -181,16 +180,18 @@ static void read_uevent(struct interface_data *interface)
 	fclose(f);
 
 	if (found_devtype)
-		return;
+		goto out;
 
 	/* We haven't got a DEVTYPE, let's check if it's a wireless device */
-	if (wext_interface(interface->name)) {
+	if (wext_interface(name)) {
 		interface->service_type = CONNMAN_SERVICE_TYPE_WIFI;
 		interface->device_type = CONNMAN_DEVICE_TYPE_WIFI;
 
-		connman_error("%s runs an unsupported 802.11 driver",
-				interface->name);
+		connman_error("%s runs an unsupported 802.11 driver", name);
 	}
+
+out:
+	g_free(name);
 }
 
 enum connman_device_type __connman_rtnl_get_device_type(int index)
@@ -454,7 +455,6 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	if (!interface) {
 		interface = g_new0(struct interface_data, 1);
 		interface->index = index;
-		interface->name = g_strdup(ifname);
 		interface->ident = g_strdup(ident);
 
 		g_hash_table_insert(interface_list,
