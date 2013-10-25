@@ -69,7 +69,6 @@ static guint update_timeout = 0;
 
 struct interface_data {
 	int index;
-	char *name;
 	char *ident;
 };
 
@@ -80,7 +79,6 @@ static void free_interface(gpointer data)
 	struct interface_data *interface = data;
 
 	g_free(interface->ident);
-	g_free(interface->name);
 	g_free(interface);
 }
 
@@ -318,7 +316,6 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	if (!interface) {
 		interface = g_new0(struct interface_data, 1);
 		interface->index = index;
-		interface->name = g_strdup(ifname);
 		interface->ident = g_strdup(ident);
 
 		g_hash_table_insert(interface_list,
