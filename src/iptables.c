@@ -1380,18 +1380,29 @@ static void dump_ipt_replace(struct ipt_replace *repl)
 static int iptables_get_entries(struct connman_iptables *table)
 {
 	socklen_t entry_size;
+	int err;
 
 	entry_size = sizeof(struct ipt_get_entries) + table->info->size;
 
-	return getsockopt(table->ipt_sock, IPPROTO_IP, IPT_SO_GET_ENTRIES,
+	err = getsockopt(table->ipt_sock, IPPROTO_IP, IPT_SO_GET_ENTRIES,
 				table->blob_entries, &entry_size);
+	if (err < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int iptables_replace(struct connman_iptables *table,
 					struct ipt_replace *r)
 {
-	return setsockopt(table->ipt_sock, IPPROTO_IP, IPT_SO_SET_REPLACE, r,
-			 sizeof(*r) + r->size);
+	int err;
+
+	err = setsockopt(table->ipt_sock, IPPROTO_IP, IPT_SO_SET_REPLACE, r,
+			sizeof(*r) + r->size);
+	if (err < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int add_entry(struct ipt_entry *entry, int builtin, unsigned int hook,
