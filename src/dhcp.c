@@ -565,23 +565,17 @@ static int dhcp_release(struct connman_dhcp *dhcp)
 	if (dhcp->timeout > 0)
 		g_source_remove(dhcp->timeout);
 
-	if (dhcp->ipv4ll_client) {
-		g_dhcp_client_stop(dhcp->ipv4ll_client);
-		g_dhcp_client_unref(dhcp->ipv4ll_client);
-	}
-
 	if (dhcp->dhcp_client) {
 		g_dhcp_client_stop(dhcp->dhcp_client);
 		g_dhcp_client_unref(dhcp->dhcp_client);
 	}
 
-	dhcp->ipv4ll_client = NULL;
 	dhcp->dhcp_client = NULL;
 
-	g_free(dhcp->ipv4ll_debug_prefix);
 	g_free(dhcp->dhcp_debug_prefix);
-	dhcp->ipv4ll_debug_prefix = NULL;
 	dhcp->dhcp_debug_prefix = NULL;
+
+	ipv4ll_stop_client(dhcp);
 
 	return 0;
 }
