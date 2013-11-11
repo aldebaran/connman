@@ -234,8 +234,10 @@ static gboolean dhcp_retry_cb(gpointer user_data)
 static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
 	struct connman_dhcp *dhcp = user_data;
+	int err;
 
-	DBG("No lease available");
+	DBG("No lease available ipv4ll %d client %p", ipv4ll_running,
+		dhcp->ipv4ll_client);
 
 	dhcp->timeout = g_timeout_add_seconds(RATE_LIMIT_INTERVAL,
 						dhcp_retry_cb,
@@ -243,7 +245,9 @@ static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (ipv4ll_running)
 		return;
 
-	ipv4ll_start_client(dhcp);
+	err = ipv4ll_start_client(dhcp);
+	if (err < 0)
+		DBG("Cannot start ipv4ll client (%d/%s)", err, strerror(-err));
 
 	/* Only notify upper layer if we have a problem */
 	dhcp_invalidate(dhcp, !ipv4ll_running);
