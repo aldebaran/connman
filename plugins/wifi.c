@@ -1790,12 +1790,17 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 	bool wps_ready;
 	bool wps_advertizing;
 
-	DBG("");
+	mode = g_supplicant_network_get_mode(supplicant_network);
+	identifier = g_supplicant_network_get_identifier(supplicant_network);
+
+	DBG("%s", identifier);
+
+	if (!g_strcmp0(mode, "adhoc"))
+		return;
 
 	interface = g_supplicant_network_get_interface(supplicant_network);
 	wifi = g_supplicant_interface_get_data(interface);
 	name = g_supplicant_network_get_name(supplicant_network);
-	identifier = g_supplicant_network_get_identifier(supplicant_network);
 	security = g_supplicant_network_get_security(supplicant_network);
 	group = g_supplicant_network_get_identifier(supplicant_network);
 	wps = g_supplicant_network_get_wps(supplicant_network);
@@ -1803,7 +1808,6 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 	wps_ready = g_supplicant_network_is_wps_active(supplicant_network);
 	wps_advertizing = g_supplicant_network_is_wps_advertizing(
 							supplicant_network);
-	mode = g_supplicant_network_get_mode(supplicant_network);
 
 	if (!wifi)
 		return;
