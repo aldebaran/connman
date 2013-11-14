@@ -71,7 +71,8 @@ int supplicant_dbus_method_call(const char *path,
 				const char *interface, const char *method,
 				supplicant_dbus_setup_function setup,
 				supplicant_dbus_result_function function,
-							void *user_data);
+				void *user_data, DBusPendingCall **pending,
+				dbus_int32_t *slot);
 
 void supplicant_dbus_call_callback(DBusPendingCall *call, dbus_int32_t slot);
 

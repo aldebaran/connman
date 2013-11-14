@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <syslog.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -167,6 +168,8 @@ struct _GSupplicantInterface {
 	GHashTable *net_mapping;
 	GHashTable *bss_mapping;
 	void *data;
+	DBusPendingCall *pending_call;
+	dbus_int32_t pending_slot;
 };
 
 struct g_supplicant_bss {
@@ -1863,10 +1866,24 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
 static void interface_removed(DBusMessageIter *iter, void *user_data)
 {
 	const char *path = NULL;
+	GSupplicantInterface *interface = user_data;
 
 	dbus_message_iter_get_basic(iter, &path);
 	if (!path)
 		return;
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (interface && interface->pending_call) {
+		dbus_pending_call_cancel(interface->pending_call);
+		SUPPLICANT_DBG("Cancelled pending DBus call %p slot %d",
+			interface->pending_call, interface->pending_slot);
+
+		supplicant_dbus_call_callback(interface->pending_call,
+					interface->pending_slot);
+
+		interface->pending_call = NULL;
+		interface->pending_slot = -1;
+	}
 
 	g_hash_table_remove(interface_table, path);
 }
@@ -2415,6 +2432,9 @@ int g_supplicant_interface_set_country(GSupplicantInterface *interface,
 
 struct interface_data {
 	GSupplicantInterface *interface;
+	char *path; /* Interface path cannot be taken from interface (above) as
+		     * it might have been freed already.
+		     */
 	GSupplicantInterfaceCallback callback;
 	void *user_data;
 };
@@ -2430,6 +2450,7 @@ struct interface_create_data {
 
 struct interface_connect_data {
 	GSupplicantInterface *interface;
+	char *path;
 	GSupplicantInterfaceCallback callback;
 	GSupplicantSSID *ssid;
 	void *user_data;
@@ -2437,6 +2458,7 @@ struct interface_connect_data {
 
 struct interface_scan_data {
 	GSupplicantInterface *interface;
+	char *path;
 	GSupplicantInterfaceCallback callback;
 	GSupplicantScanParams *scan_params;
 	void *user_data;
@@ -2444,10 +2466,23 @@ struct interface_scan_data {
 
 struct interface_autoscan_data {
 	GSupplicantInterface *interface;
+	char *path;
 	GSupplicantInterfaceCallback callback;
 	const char *autoscan_params;
 	void *user_data;
 };
+
+static bool interface_exists(GSupplicantInterface *interface,
+				const char *path)
+{
+	GSupplicantInterface *tmp;
+
+	tmp = g_hash_table_lookup(interface_table, path);
+	if (tmp && tmp == interface)
+		return true;
+
+	return false;
+}
 
 static void interface_create_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
@@ -2563,6 +2598,8 @@ static void interface_get_result(const char *error,
 		goto done;
 	}
 
+	interface->pending_call = NULL;
+
 	if (data->callback)
 		data->callback(0, interface, data->user_data);
 
@@ -2582,7 +2619,8 @@ create:
 						SUPPLICANT_INTERFACE,
 						"CreateInterface",
 						interface_create_params,
-						interface_create_result, data);
+						interface_create_result, data,
+						NULL, NULL);
 	if (err == 0)
 		return;
 
@@ -2608,6 +2646,7 @@ int g_supplicant_interface_create(const char *ifname, const char *driver,
 							void *user_data)
 {
 	struct interface_create_data *data;
+	int ret;
 
 	SUPPLICANT_DBG("ifname %s", ifname);
 
@@ -2627,11 +2666,16 @@ int g_supplicant_interface_create(const char *ifname, const char *driver,
 	data->callback = callback;
 	data->user_data = user_data;
 
-	return supplicant_dbus_method_call(SUPPLICANT_PATH,
+	ret = supplicant_dbus_method_call(SUPPLICANT_PATH,
 						SUPPLICANT_INTERFACE,
 						"GetInterface",
 						interface_get_params,
-						interface_get_result, data);
+						interface_get_result, data,
+						NULL, NULL);
+	if (ret < 0)
+		dbus_free(data);
+
+	return ret;
 }
 
 static void interface_remove_result(const char *error,
@@ -2657,6 +2701,11 @@ static void interface_remove_result(const char *error,
 	err = 0;
 
 done:
+	if (interface_exists(data->interface, data->path))
+		data->interface->pending_call = NULL;
+
+	g_free(data->path);
+
 	if (data->callback)
 		data->callback(err, NULL, data->user_data);
 
@@ -2678,6 +2727,7 @@ int g_supplicant_interface_remove(GSupplicantInterface *interface,
 							void *user_data)
 {
 	struct interface_data *data;
+	int ret;
 
 	if (!interface)
 		return -EINVAL;
@@ -2685,19 +2735,38 @@ int g_supplicant_interface_remove(GSupplicantInterface *interface,
 	if (!system_available)
 		return -EFAULT;
 
+	if (interface->pending_call) {
+		dbus_pending_call_cancel(interface->pending_call);
+		SUPPLICANT_DBG("Cancelled pending DBus call %p slot %d",
+			interface->pending_call, interface->pending_slot);
+
+		supplicant_dbus_call_callback(interface->pending_call,
+					interface->pending_slot);
+
+		interface->pending_call = NULL;
+		interface->pending_slot = -1;
+	}
+
 	data = dbus_malloc0(sizeof(*data));
 	if (!data)
 		return -ENOMEM;
 
 	data->interface = interface;
+	data->path = g_strdup(interface->path);
 	data->callback = callback;
 	data->user_data = user_data;
 
-	return supplicant_dbus_method_call(SUPPLICANT_PATH,
+	ret = supplicant_dbus_method_call(SUPPLICANT_PATH,
 						SUPPLICANT_INTERFACE,
 						"RemoveInterface",
 						interface_remove_params,
-						interface_remove_result, data);
+						interface_remove_result, data,
+						NULL, NULL);
+	if (ret < 0) {
+		g_free(data->path);
+		dbus_free(data);
+	}
+	return ret;
 }
 
 static void interface_scan_result(const char *error,
@@ -2712,8 +2781,14 @@ static void interface_scan_result(const char *error,
 	}
 
 	/* A non ready interface cannot send/receive anything */
-	if (!data->interface->ready)
-		err = -ENOLINK;
+	if (interface_exists(data->interface, data->path)) {
+		if (!data->interface->ready)
+			err = -ENOLINK;
+
+		data->interface->pending_call = NULL;
+	}
+
+	g_free(data->path);
 
 	if (err != 0) {
 		if (data->callback)
@@ -2887,6 +2962,7 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 		return -ENOMEM;
 
 	data->interface = interface;
+	data->path = g_strdup(interface->path);
 	data->callback = callback;
 	data->user_data = user_data;
 	data->scan_params = scan_data;
@@ -2896,10 +2972,13 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 
 	ret = supplicant_dbus_method_call(interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "Scan",
-			interface_scan_params, interface_scan_result, data);
+			interface_scan_params, interface_scan_result, data,
+			&interface->pending_call, &interface->pending_slot);
 
-	if (ret < 0)
+	if (ret < 0) {
+		g_free(data->path);
 		dbus_free(data);
+	}
 
 	return ret;
 }
@@ -2914,6 +2993,11 @@ static void interface_autoscan_result(const char *error,
 		SUPPLICANT_DBG("error %s", error);
 		err = -EIO;
 	}
+
+	if (interface_exists(data->interface, data->interface->path))
+		data->interface->pending_call = NULL;
+
+	g_free(data->path);
 
 	if (data && data->callback)
 		data->callback(err, data->interface, data->user_data);
@@ -2942,6 +3026,7 @@ int g_supplicant_interface_autoscan(GSupplicantInterface *interface,
 		return -ENOMEM;
 
 	data->interface = interface;
+	data->path = g_strdup(interface->path);
 	data->callback = callback;
 	data->autoscan_params = autoscan_data;
 	data->user_data = user_data;
@@ -2949,9 +3034,13 @@ int g_supplicant_interface_autoscan(GSupplicantInterface *interface,
 	ret = supplicant_dbus_method_call(interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "AutoScan",
 			interface_autoscan_params,
-			interface_autoscan_result, data);
-	if (ret < 0)
+			interface_autoscan_result, data,
+			&interface->pending_call,
+			&interface->pending_slot);
+	if (ret < 0) {
+		g_free(data->path);
 		dbus_free(data);
+	}
 
 	return ret;
 }
@@ -2993,6 +3082,11 @@ static void interface_select_network_result(const char *error,
 		err = parse_supplicant_error(iter);
 	}
 
+	if (interface_exists(data->interface, data->path))
+		data->interface->pending_call = NULL;
+
+	g_free(data->path);
+
 	if (data->callback)
 		data->callback(err, data->interface, data->user_data);
 
@@ -3033,18 +3127,27 @@ static void interface_add_network_result(const char *error,
 	supplicant_dbus_method_call(data->interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "SelectNetwork",
 			interface_select_network_params,
-			interface_select_network_result, data);
+			interface_select_network_result, data,
+			&interface->pending_call,
+			&interface->pending_slot);
 
 	return;
 
 error:
 	SUPPLICANT_DBG("AddNetwork error %s", error);
-	err = parse_supplicant_error(iter);
-	if (data->callback)
-		data->callback(err, data->interface, data->user_data);
 
-	g_free(interface->network_path);
-	interface->network_path = NULL;
+	if (interface_exists(data->interface, data->interface->path)) {
+		interface->pending_call = NULL;
+
+		err = parse_supplicant_error(iter);
+		if (data->callback)
+			data->callback(err, data->interface, data->user_data);
+
+		g_free(interface->network_path);
+		interface->network_path = NULL;
+	}
+
+	g_free(data->path);
 	g_free(data->ssid);
 	g_free(data);
 }
@@ -3480,6 +3583,7 @@ static void interface_wps_start_result(const char *error,
 	if (error)
 		SUPPLICANT_DBG("error: %s", error);
 
+	g_free(data->path);
 	g_free(data->ssid);
 	dbus_free(data);
 }
@@ -3519,6 +3623,7 @@ static void wps_start(const char *error, DBusMessageIter *iter, void *user_data)
 
 	if (error) {
 		SUPPLICANT_DBG("error: %s", error);
+		g_free(data->path);
 		g_free(data->ssid);
 		dbus_free(data);
 		return;
@@ -3527,7 +3632,7 @@ static void wps_start(const char *error, DBusMessageIter *iter, void *user_data)
 	supplicant_dbus_method_call(data->interface->path,
 			SUPPLICANT_INTERFACE ".Interface.WPS", "Start",
 			interface_add_wps_params,
-			interface_wps_start_result, data);
+			interface_wps_start_result, data, NULL, NULL);
 }
 
 static void wps_process_credentials(DBusMessageIter *iter, void *user_data)
@@ -3561,6 +3666,7 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 		return -ENOMEM;
 
 	data->interface = interface;
+	data->path = g_strdup(interface->path);
 	data->callback = callback;
 	data->ssid = ssid;
 	data->user_data = user_data;
@@ -3578,10 +3684,15 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 		ret = supplicant_dbus_method_call(interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "AddNetwork",
 			interface_add_network_params,
-			interface_add_network_result, data);
+			interface_add_network_result, data,
+			&interface->pending_call,
+			&interface->pending_slot);
 
-	if (ret < 0)
+	if (ret < 0) {
+		g_free(data->path);
+		dbus_free(data);
 		return ret;
+	}
 
 	return -EINPROGRESS;
 }
@@ -3600,6 +3711,11 @@ static void network_remove_result(const char *error,
 						error) == 0)
 			result = -ECONNABORTED;
 	}
+
+	if (interface_exists(data->interface, data->path))
+		data->interface->pending_call = NULL;
+
+	g_free(data->path);
 
 	if (data->callback)
 		data->callback(result, data->interface, data->user_data);
@@ -3625,7 +3741,8 @@ static int network_remove(struct interface_data *data)
 
 	return supplicant_dbus_method_call(interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "RemoveNetwork",
-			network_remove_params, network_remove_result, data);
+			network_remove_params, network_remove_result, data,
+			&interface->pending_call, &interface->pending_slot);
 }
 
 static void interface_disconnect_result(const char *error,
@@ -3643,6 +3760,9 @@ static void interface_disconnect_result(const char *error,
 			result = -ECONNABORTED;
 	}
 
+	if (interface_exists(data->interface, data->path))
+		data->interface->pending_call = NULL;
+
 	if (result < 0 && data->callback) {
 		data->callback(result, data->interface, data->user_data);
 		data->callback = NULL;
@@ -3652,14 +3772,20 @@ static void interface_disconnect_result(const char *error,
 	 * association. i.e.: it did not went through AddNetwork,
 	 * and interface->network_path was never set. */
 	if (!data->interface->network_path) {
+		g_free(data->path);
 		dbus_free(data);
 		return;
 	}
 
-	if (result != -ECONNABORTED)
-		network_remove(data);
-	else
+	if (result != -ECONNABORTED) {
+		if (network_remove(data) < 0) {
+			g_free(data->path);
+			dbus_free(data);
+		}
+	} else {
+		g_free(data->path);
 		dbus_free(data);
+	}
 }
 
 int g_supplicant_interface_disconnect(GSupplicantInterface *interface,
@@ -3667,6 +3793,7 @@ int g_supplicant_interface_disconnect(GSupplicantInterface *interface,
 							void *user_data)
 {
 	struct interface_data *data;
+	int ret;
 
 	SUPPLICANT_DBG("");
 
@@ -3681,12 +3808,21 @@ int g_supplicant_interface_disconnect(GSupplicantInterface *interface,
 		return -ENOMEM;
 
 	data->interface = interface;
+	data->path = g_strdup(interface->path);
 	data->callback = callback;
 	data->user_data = user_data;
 
-	return supplicant_dbus_method_call(interface->path,
+	ret = supplicant_dbus_method_call(interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "Disconnect",
-				NULL, interface_disconnect_result, data);
+			NULL, interface_disconnect_result, data,
+			&interface->pending_call, &interface->pending_slot);
+
+	if (ret < 0) {
+		g_free(data->path);
+		dbus_free(data);
+	}
+
+	return ret;
 }
 
 
@@ -3787,7 +3923,7 @@ static void unregister_remove_interface(gpointer key, gpointer value,
 					SUPPLICANT_INTERFACE,
 					"RemoveInterface",
 					unregister_interface_remove_params,
-						NULL, interface->path);
+					NULL, interface->path, NULL, NULL);
 }
 
 void g_supplicant_unregister(const GSupplicantCallbacks *callbacks)

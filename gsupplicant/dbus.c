@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dbus/dbus.h>
+#include <glib.h>
 
 #include "dbus.h"
 
@@ -381,7 +382,7 @@ void supplicant_dbus_call_callback(DBusPendingCall *call, dbus_int32_t slot)
 
 static void method_call_reply(DBusPendingCall *call, void *user_data)
 {
-	struct method_call_data *data = user_data;
+	struct method_call_data *data;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	const char *error;
@@ -395,7 +396,8 @@ static void method_call_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_iter_init(reply, &iter);
 
-	if (data->function)
+	data = dbus_pending_call_get_data(call, GPOINTER_TO_INT(user_data));
+	if (data && data->function)
 		data->function(error, &iter, data->user_data);
 
 	dbus_message_unref(reply);
@@ -407,12 +409,15 @@ int supplicant_dbus_method_call(const char *path,
 				const char *interface, const char *method,
 				supplicant_dbus_setup_function setup,
 				supplicant_dbus_result_function function,
-							void *user_data)
+				void *user_data,
+				DBusPendingCall **pending_call,
+				dbus_int32_t *data_slot)
 {
 	struct method_call_data *data;
 	DBusMessage *message;
 	DBusMessageIter iter;
 	DBusPendingCall *call;
+	dbus_int32_t slot = -1;
 
 	if (!connection)
 		return -EINVAL;
@@ -453,10 +458,19 @@ int supplicant_dbus_method_call(const char *path,
 	data->function = function;
 	data->user_data = user_data;
 
-	dbus_pending_call_set_notify(call, method_call_reply,
-							data, dbus_free);
+	if (dbus_pending_call_allocate_data_slot(&slot)) {
+		dbus_pending_call_set_data(call, slot, data, dbus_free);
+		dbus_pending_call_set_notify(call, method_call_reply,
+					GINT_TO_POINTER(slot), NULL);
+	}
 
 	dbus_message_unref(message);
+
+	if (pending_call)
+		*pending_call = call;
+
+	if (data_slot)
+		*data_slot = slot;
 
 	return 0;
 }
