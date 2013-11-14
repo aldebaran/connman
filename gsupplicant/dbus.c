@@ -366,6 +366,19 @@ struct method_call_data {
 	void *user_data;
 };
 
+void supplicant_dbus_call_callback(DBusPendingCall *call, dbus_int32_t slot)
+{
+	struct method_call_data *data;
+
+	data = dbus_pending_call_get_data(call, slot);
+	if (data && data->function)
+		data->function("net.connman.Error.OperationAborted",
+			NULL, data->user_data);
+
+	dbus_pending_call_free_data_slot(&slot);
+	dbus_pending_call_unref(call);
+}
+
 static void method_call_reply(DBusPendingCall *call, void *user_data)
 {
 	struct method_call_data *data = user_data;

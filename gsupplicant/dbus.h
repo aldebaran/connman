@@ -73,6 +73,8 @@ int supplicant_dbus_method_call(const char *path,
 				supplicant_dbus_result_function function,
 							void *user_data);
 
+void supplicant_dbus_call_callback(DBusPendingCall *call, dbus_int32_t slot);
+
 void supplicant_dbus_property_append_basic(DBusMessageIter *iter,
 					const char *key, int type, void *val);
 
