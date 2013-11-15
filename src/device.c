@@ -221,9 +221,6 @@ int __connman_device_disable(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	if (!device->driver || !device->driver->disable)
-		return -EOPNOTSUPP;
-
 	/* Ongoing power enable request */
 	if (device->powered_pending == PENDING_ENABLE)
 		return -EBUSY;
@@ -245,6 +242,9 @@ int __connman_device_disable(struct connman_device *device)
 		else
 			connman_network_set_connected(device->network, false);
 	}
+
+	if (!device->driver || !device->driver->disable)
+		return -EOPNOTSUPP;
 
 	err = device->driver->disable(device);
 	if (err == 0 || err == -EALREADY) {
