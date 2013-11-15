@@ -1005,6 +1005,8 @@ static int parse_response(unsigned char *buf, int buflen,
 	*response_len = 0;
 	*answers = 0;
 
+	memset(name, 0, sizeof(name));
+
 	/*
 	 * We have a bunch of answers (like A, AAAA, CNAME etc) to
 	 * A or AAAA question. We traverse the answers and parse the
