@@ -941,6 +941,12 @@ out:
 
 static void bluetooth_exit(void)
 {
+	/*
+	 * We unset the disabling of the Bluetooth device when shutting down
+	 * so that non-PAN BT connections are not affected.
+	 */
+	device_driver.disable = NULL;
+
 	connman_network_driver_unregister(&network_driver);
 	g_hash_table_destroy(networks);
 
