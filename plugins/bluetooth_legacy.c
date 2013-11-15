@@ -1347,6 +1347,12 @@ static void bluetooth_exit(void)
 	g_dbus_remove_watch(connection, device_watch);
 	g_dbus_remove_watch(connection, network_watch);
 
+	/*
+	 * We unset the disabling of the Bluetooth device when shutting down
+	 * so that non-PAN BT connections are not affected.
+	 */
+	bluetooth_driver.disable = NULL;
+
 	bluetooth_disconnect(connection, NULL);
 
 	connman_technology_driver_unregister(&tech_driver);
