@@ -3623,12 +3623,12 @@ void __connman_service_auto_connect(void)
 
 static gboolean run_vpn_auto_connect(gpointer data) {
 	GList *list;
+	bool need_split = false;
 
 	vpn_autoconnect_timeout = 0;
 
 	for (list = service_list; list; list = list->next) {
 		struct connman_service *service = list->data;
-		bool need_split = false;
 		int res;
 
 		if (service->type != CONNMAN_SERVICE_TYPE_VPN)
