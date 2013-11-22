@@ -583,18 +583,17 @@ static void extract_ipv6_addr(struct ifaddrmsg *msg, int bytes,
 static void process_newaddr(unsigned char family, unsigned char prefixlen,
 				int index, struct ifaddrmsg *msg, int bytes)
 {
+	struct in_addr ipv4_addr = { INADDR_ANY };
+	struct in6_addr ipv6_address, ipv6_local;
 	const char *label = NULL;
 	void *src;
 	char ip_string[INET6_ADDRSTRLEN];
 
 	if (family == AF_INET) {
-		struct in_addr ipv4_addr = { INADDR_ANY };
 
 		extract_ipv4_addr(msg, bytes, &label, &ipv4_addr, NULL, NULL);
 		src = &ipv4_addr;
 	} else if (family == AF_INET6) {
-		struct in6_addr ipv6_address, ipv6_local;
-
 		extract_ipv6_addr(msg, bytes, &ipv6_address, &ipv6_local);
 		if (IN6_IS_ADDR_LINKLOCAL(&ipv6_address))
 			return;
@@ -624,18 +623,16 @@ static void process_newaddr(unsigned char family, unsigned char prefixlen,
 static void process_deladdr(unsigned char family, unsigned char prefixlen,
 				int index, struct ifaddrmsg *msg, int bytes)
 {
+	struct in_addr ipv4_addr = { INADDR_ANY };
+	struct in6_addr ipv6_address, ipv6_local;
 	const char *label = NULL;
 	void *src;
 	char ip_string[INET6_ADDRSTRLEN];
 
 	if (family == AF_INET) {
-		struct in_addr ipv4_addr = { INADDR_ANY };
-
 		extract_ipv4_addr(msg, bytes, &label, &ipv4_addr, NULL, NULL);
 		src = &ipv4_addr;
 	} else if (family == AF_INET6) {
-		struct in6_addr ipv6_address, ipv6_local;
-
 		extract_ipv6_addr(msg, bytes, &ipv6_address, &ipv6_local);
 		if (IN6_IS_ADDR_LINKLOCAL(&ipv6_address))
 			return;
