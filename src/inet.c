@@ -1330,6 +1330,7 @@ static int icmpv6_recv(int fd, gpointer user_data)
 
 	mhdr.msg_name = (void *)&saddr;
 	mhdr.msg_namelen = sizeof(struct sockaddr_in6);
+	mhdr.msg_flags = 0;
 	mhdr.msg_iov = &iov;
 	mhdr.msg_iovlen = 1;
 	mhdr.msg_control = (void *)chdr;
@@ -1744,6 +1745,7 @@ static int icmpv6_rs_recv(int fd, gpointer user_data)
 
 	mhdr.msg_name = (void *)&saddr;
 	mhdr.msg_namelen = sizeof(struct sockaddr_in6);
+	mhdr.msg_flags = 0;
 	mhdr.msg_iov = &iov;
 	mhdr.msg_iovlen = 1;
 	mhdr.msg_control = (void *)chdr;
@@ -1873,6 +1875,7 @@ static int icmpv6_nd_recv(int fd, gpointer user_data)
 
 	mhdr.msg_name = (void *)&saddr;
 	mhdr.msg_namelen = sizeof(struct sockaddr_in6);
+	mhdr.msg_flags = 0;
 	mhdr.msg_iov = &iov;
 	mhdr.msg_iovlen = 1;
 	mhdr.msg_control = (void *)chdr;
