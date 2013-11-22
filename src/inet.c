@@ -1457,8 +1457,10 @@ static int ndisc_send_unspec(int type, int oif, const struct in6_addr *dest,
 	} else if (type == ND_NEIGHBOR_SOLICIT) {
 		datalen = sizeof(frame.i.ns); /* 24, csum() safe */
 		memcpy(&frame.i.ns.nd_ns_target, buf, sizeof(struct in6_addr));
-	} else
+	} else {
+		close(fd);
 		return -EINVAL;
+	}
 
 	dst.sin6_addr = *dest;
 
