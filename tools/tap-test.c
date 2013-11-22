@@ -49,7 +49,7 @@ static int inet_ifup(const char *ifname)
 		return -errno;
 
 	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+	strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name) - 1);
 
 	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
 		err = -errno;
@@ -89,7 +89,7 @@ static int create_tap(const char *ifname)
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
-	strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+	strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name) - 1);
 
 	if (ioctl(fd, TUNSETIFF, (void *) &ifr) < 0) {
 		perror("Failed to set TUN/TAP interface");
