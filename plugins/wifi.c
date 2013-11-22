@@ -960,8 +960,7 @@ static int get_latest_connections(int max_ssids,
 		str = g_key_file_get_string(keyfile,
 					services[i], "Favorite", NULL);
 		if (!str || g_strcmp0(str, "true")) {
-			if (str)
-				g_free(str);
+			g_free(str);
 			g_key_file_free(keyfile);
 			continue;
 		}
@@ -970,8 +969,7 @@ static int get_latest_connections(int max_ssids,
 		str = g_key_file_get_string(keyfile,
 					services[i], "AutoConnect", NULL);
 		if (!str || g_strcmp0(str, "true")) {
-			if (str)
-				g_free(str);
+			g_free(str);
 			g_key_file_free(keyfile);
 			continue;
 		}
@@ -979,10 +977,12 @@ static int get_latest_connections(int max_ssids,
 
 		str = g_key_file_get_string(keyfile,
 					services[i], "Modified", NULL);
-		if (str) {
-			g_time_val_from_iso8601(str, &modified);
-			g_free(str);
+		if (!str) {
+			g_key_file_free(keyfile);
+			continue;
 		}
+		g_time_val_from_iso8601(str, &modified);
+		g_free(str);
 
 		ssid = g_key_file_get_string(keyfile,
 					services[i], "SSID", NULL);
