@@ -161,7 +161,7 @@ static char *find_origin(void *src_map, struct stat *src_st,
 	int ret;
 
 	if (!subpath)
-		strncpy(pathname, basepath, sizeof(pathname));
+		strncpy(pathname, basepath, sizeof(pathname) - 1);
 	else
 		snprintf(pathname, sizeof(pathname),
 					"%s/%s", basepath, subpath);
