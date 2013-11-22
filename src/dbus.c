@@ -421,7 +421,7 @@ static void get_connection_unix_user_reply(DBusPendingCall *call,
 	DBusMessageIter iter;
 	DBusMessage *reply;
 	int err = 0;
-	unsigned int uid;
+	unsigned int uid = 0;
 
 	reply = dbus_pending_call_steal_reply(call);
 
