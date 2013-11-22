@@ -77,9 +77,9 @@ static int tunnel_create(struct in_addr *addr)
 	p.iph.protocol = IPPROTO_IPV6;
 	p.iph.saddr = addr->s_addr;
 	p.iph.ttl = 64;
-	strncpy(p.name, "tun6to4", IFNAMSIZ);
+	strncpy(p.name, "tun6to4", sizeof(p.name) - 1);
 
-	strncpy(ifr.ifr_name, "sit0", IFNAMSIZ);
+	strncpy(ifr.ifr_name, "sit0", sizeof(ifr.ifr_name) - 1);
 	ifr.ifr_ifru.ifru_data = (void *)&p;
 	fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	ret = ioctl(fd, SIOCADDTUNNEL, &ifr);
@@ -109,9 +109,9 @@ static void tunnel_destroy(void)
 	p.iph.version = 4;
 	p.iph.ihl = 5;
 	p.iph.protocol = IPPROTO_IPV6;
-	strncpy(p.name, "tun6to4", IFNAMSIZ);
+	strncpy(p.name, "tun6to4", sizeof(p.name) - 1);
 
-	strncpy(ifr.ifr_name, "tun6to4", IFNAMSIZ);
+	strncpy(ifr.ifr_name, "tun6to4", sizeof(ifr.ifr_name) - 1);
 	ifr.ifr_ifru.ifru_data = (void *)&p;
 	fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (fd < 0) {

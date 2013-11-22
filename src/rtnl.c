@@ -104,7 +104,7 @@ static bool wext_interface(char *ifname)
 		return false;
 
 	memset(&wrq, 0, sizeof(wrq));
-	strncpy(wrq.ifr_name, ifname, IFNAMSIZ);
+	strncpy(wrq.ifr_name, ifname, sizeof(wrq.ifr_name) - 1);
 
 	err = ioctl(fd, SIOCGIWNAME, &wrq);
 

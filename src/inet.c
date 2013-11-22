@@ -203,7 +203,7 @@ int connman_inet_ifindex(const char *name)
 		return -1;
 
 	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name) - 1);
 
 	err = ioctl(sk, SIOCGIFINDEX, &ifr);
 
@@ -336,7 +336,7 @@ int connman_inet_ifdown(int index)
 	}
 
 	memset(&addr_ifr, 0, sizeof(addr_ifr));
-	memcpy(&addr_ifr.ifr_name, &ifr.ifr_name, sizeof(ifr.ifr_name));
+	memcpy(&addr_ifr.ifr_name, &ifr.ifr_name, sizeof(ifr.ifr_name) - 1);
 	addr = (struct sockaddr_in *)&addr_ifr.ifr_addr;
 	addr->sin_family = AF_INET;
 	if (ioctl(sk, SIOCSIFADDR, &addr_ifr) < 0)
@@ -1106,7 +1106,7 @@ int connman_inet_remove_from_bridge(int index, const char *bridge)
 	}
 
 	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
+	strncpy(ifr.ifr_name, bridge, sizeof(ifr.ifr_name) - 1);
 	ifr.ifr_ifindex = index;
 
 	if (ioctl(sk, SIOCBRDELIF, &ifr) < 0)
@@ -1137,7 +1137,7 @@ int connman_inet_add_to_bridge(int index, const char *bridge)
 	}
 
 	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
+	strncpy(ifr.ifr_name, bridge, sizeof(ifr.ifr_name) - 1);
 	ifr.ifr_ifindex = index;
 
 	if (ioctl(sk, SIOCBRADDIF, &ifr) < 0)
@@ -1196,7 +1196,7 @@ int connman_inet_setup_tunnel(char *tunnel, int mtu)
 		goto done;
 
 	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, tunnel, IFNAMSIZ);
+	strncpy(ifr.ifr_name, tunnel, sizeof(ifr.ifr_name) - 1);
 	err = ioctl(sk, SIOCGIFFLAGS, &ifr);
 	if (err)
 		goto done;
