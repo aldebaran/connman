@@ -93,6 +93,9 @@ struct ntp_msg {
 #define NTP_FLAG_MD_CONTROL    6
 #define NTP_FLAG_MD_PRIVATE    7
 
+#define NTP_FLAG_VN_VER3       3
+#define NTP_FLAG_VN_VER4       4
+
 #define NTP_FLAGS_ENCODE(li, vn, md)  ((uint8_t)( \
                       (((li) & NTP_FLAG_LI_MASK) << NTP_FLAG_LI_SHIFT) | \
                       (((vn) & NTP_FLAG_VN_MASK) << NTP_FLAG_VN_SHIFT) | \
@@ -156,7 +159,8 @@ static void send_packet(int fd, const char *server)
 	 *   msg.precision = (int)log2(ts.tv_sec + (ts.tv_nsec * 1.0e-9));
 	 */
 	memset(&msg, 0, sizeof(msg));
-	msg.flags = NTP_FLAGS_ENCODE(NTP_FLAG_LI_NOTINSYNC, 4, NTP_FLAG_MD_CLIENT);
+	msg.flags = NTP_FLAGS_ENCODE(NTP_FLAG_LI_NOTINSYNC, NTP_FLAG_VN_VER4,
+	    NTP_FLAG_MD_CLIENT);
 	msg.poll = 4;	// min
 	msg.poll = 10;	// max
 	msg.precision = NTP_PRECISION_S;
@@ -253,9 +257,15 @@ static void decode_msg(void *base, size_t len, struct timeval *tv,
 		return;
 	}
 
-	if (NTP_FLAGS_VN_DECODE(msg->flags) != 4) {
-		DBG("unsupported version %d", NTP_FLAGS_VN_DECODE(msg->flags));
-		return;
+
+	if (NTP_FLAGS_VN_DECODE(msg->flags) != NTP_FLAG_VN_VER4) {
+		if (NTP_FLAGS_VN_DECODE(msg->flags) == NTP_FLAG_VN_VER3) {
+			DBG("requested version %d, accepting version %d",
+				NTP_FLAG_VN_VER4, NTP_FLAGS_VN_DECODE(msg->flags));
+		} else {
+			DBG("unsupported version %d", NTP_FLAGS_VN_DECODE(msg->flags));
+			return;
+		}
 	}
 
 	if (NTP_FLAGS_MD_DECODE(msg->flags) != NTP_FLAG_MD_SERVER) {
