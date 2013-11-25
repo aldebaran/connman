@@ -147,6 +147,9 @@ static int connect_tcp_socket(char *server)
 
 	if (sk >= 0 && connect(sk, rp->ai_addr, rp->ai_addrlen) < 0) {
 		err = -errno;
+		close(sk);
+		sk = -1;
+
 		fprintf(stderr, "Failed to connect to DNS server at %s "
 				"errno %d/%s\n",
 			server, -err, strerror(-err));
