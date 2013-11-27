@@ -35,8 +35,8 @@ enum timezone_updates {
 	TIMEZONE_UPDATES_AUTO    = 2,
 };
 
-static enum time_updates time_updates_config = TIME_UPDATES_AUTO;
-static enum timezone_updates timezone_updates_config = TIMEZONE_UPDATES_AUTO;
+static enum time_updates time_updates_config = TIME_UPDATES_MANUAL;
+static enum timezone_updates timezone_updates_config = TIMEZONE_UPDATES_MANUAL;
 
 static char *timezone_config = NULL;
 
