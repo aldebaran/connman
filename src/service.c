@@ -2427,7 +2427,7 @@ char **connman_service_get_nameservers(struct connman_service *service)
 		return nameservers;
 	}
 
-	return NULL;
+	return g_strdupv(connman_setting_get_string_list("FallbackNameservers"));
 }
 
 char **connman_service_get_timeservers_config(struct connman_service *service)
