@@ -1595,11 +1595,6 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 		else if (is_user_defined) {
 			struct connman_iptables_entry *target_rule;
 
-			if (!chain_head) {
-				g_free(xt_t->t);
-				return NULL;
-			}
-
 			target_rule = chain_head->next->data;
 			target->verdict = target_rule->offset;
 		}
