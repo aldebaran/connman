@@ -172,10 +172,7 @@ uint8_t *dhcpv6_get_option(struct dhcpv6_packet *packet, uint16_t pkt_len,
 		if (opt_code == code) {
 			if (option_len)
 				*option_len = opt_len;
-			if (rem < 0)
-				goto bad_packet;
-			else
-				found = optionptr + 2 + 2;
+			found = optionptr + 2 + 2;
 			count++;
 		}
 
