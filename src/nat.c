@@ -121,8 +121,11 @@ int __connman_nat_enable(const char *name, const char *address,
 	return enable_nat(nat);
 
 err:
-	if (nat)
-		__connman_firewall_destroy(nat->fw);
+	if (nat) {
+		if (nat->fw)
+			__connman_firewall_destroy(nat->fw);
+		g_free(nat);
+	}
 
 	if (g_hash_table_size(nat_hash) == 0)
 		enable_ip_forward(false);
