@@ -779,7 +779,7 @@ static void config_append_ipv6(DBusMessageIter *iter, void *user_data)
 		append->values = i;
 
 	} else if (g_strcmp0(opts[0], "off") != 0) {
-		fprintf(stderr, "Error %s: %s\n", opts[0], strerror(-EINVAL));
+		fprintf(stderr, "Error %s: %s\n", opts[0], strerror(EINVAL));
 
 		return;
 	}
