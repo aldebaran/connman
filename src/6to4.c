@@ -82,13 +82,15 @@ static int tunnel_create(struct in_addr *addr)
 	strncpy(ifr.ifr_name, "sit0", sizeof(ifr.ifr_name) - 1);
 	ifr.ifr_ifru.ifru_data = (void *)&p;
 	fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (fd < 0)
+		return -errno;
 	ret = ioctl(fd, SIOCADDTUNNEL, &ifr);
 	if (ret)
 		connman_error("add tunnel %s failed: %s", ifr.ifr_name,
 							strerror(errno));
 	close(fd);
 
-	return ret;
+	return -ret;
 }
 
 static void tunnel_destroy(void)
