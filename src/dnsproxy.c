@@ -1625,6 +1625,9 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 		if (data && req->protocol == IPPROTO_UDP) {
 			int udp_sk = get_req_udp_socket(req);
 
+			if (udp_sk < 0)
+				return -EIO;
+
 			send_cached_response(udp_sk, data->data,
 				data->data_len, &req->sa, req->sa_len,
 				IPPROTO_UDP, req->srcid, data->answers,
