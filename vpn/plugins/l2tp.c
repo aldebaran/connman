@@ -671,6 +671,8 @@ static int run_connect(struct vpn_provider *provider,
 
 	g_free(l2tp_name);
 	g_free(pppd_name);
+	close(l2tp_fd);
+	close(pppd_fd);
 
 	err = connman_task_run(task, l2tp_died, provider,
 				NULL, NULL, NULL);
