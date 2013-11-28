@@ -390,7 +390,7 @@ static void connection_ready(DBusMessage *msg, int error_code, void *user_data)
 
 		provider = provider_lookup(identifier);
 		if (!provider) {
-			reply = __connman_error_failed(msg, -EINVAL);
+			reply = __connman_error_failed(msg, EINVAL);
 			g_dbus_send_message(connection, reply);
 			return;
 		}
