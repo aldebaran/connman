@@ -1754,10 +1754,8 @@ static const char *privacy2string(int privacy)
 		return "disabled";
 	else if (privacy == 1)
 		return "enabled";
-	else if (privacy > 1)
+	else
 		return "prefered";
-
-	return "disabled";
 }
 
 static int string2privacy(const char *privacy)
