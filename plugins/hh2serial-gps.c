@@ -77,7 +77,7 @@ static int hh2serial_disable(struct connman_device *device)
 	return 0;
 }
 
-static struct connman_device_driver hh2seial_device_driver = {
+static struct connman_device_driver hh2serial_device_driver = {
 	.name           = "hh2serial GPS",
 	.type           = CONNMAN_DEVICE_TYPE_GPS,
 	.enable         = hh2serial_enable,
@@ -88,14 +88,24 @@ static struct connman_device_driver hh2seial_device_driver = {
 
 static int hh2serial_init(void)
 {
-	connman_device_driver_register(&hh2seial_device_driver);
+	int err;
+
+	err = connman_device_driver_register(&hh2serial_device_driver);
+	if (err < 0)
+		return err;
 
 	hh2serial_device = connman_device_create("hh2serial_gps",
 						CONNMAN_DEVICE_TYPE_GPS);
-	if (!hh2serial_device)
+	if (!hh2serial_device) {
+		connman_device_driver_unregister(&hh2serial_device_driver);
 		return -ENODEV;
+	}
 
-	connman_device_register(hh2serial_device);
+	err = connman_device_register(hh2serial_device);
+	if (err < 0) {
+		connman_device_unref(hh2serial_device);
+		return err;
+	}
 
 	return 0;
 }
@@ -106,6 +116,8 @@ static void hh2serial_exit(void)
 		connman_device_unregister(hh2serial_device);
 		connman_device_unref(hh2serial_device);
 	}
+
+	connman_device_driver_unregister(&hh2serial_device_driver);
 }
 
 CONNMAN_PLUGIN_DEFINE(hh2serial_gps, "hh2serial GPS", VERSION,
