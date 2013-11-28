@@ -1456,10 +1456,8 @@ int connman_network_connect_hidden(struct connman_network *network,
 
 	DBG("network %p service %p user_data %p", network, service, user_data);
 
-	if (!service) {
-		err = -EINVAL;
-		goto out;
-	}
+	if (!service)
+		return -EINVAL;
 
 	if (identity)
 		__connman_service_set_agent_identity(service, identity);
