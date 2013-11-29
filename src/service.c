@@ -5369,7 +5369,9 @@ static int service_indicate_state(struct connman_service *service)
 		domain_changed(service);
 		proxy_changed(service);
 
-		__connman_notifier_disconnect(service->type);
+		if (old_state == CONNMAN_SERVICE_STATE_READY ||
+				old_state == CONNMAN_SERVICE_STATE_ONLINE)
+			__connman_notifier_disconnect(service->type);
 
 		/*
 		 * Previous services which are connected and which states
@@ -5382,6 +5384,10 @@ static int service_indicate_state(struct connman_service *service)
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_FAILURE) {
+		if (old_state == CONNMAN_SERVICE_STATE_READY ||
+				old_state == CONNMAN_SERVICE_STATE_ONLINE)
+			__connman_notifier_disconnect(service->type);
+
 		if (service->userconnect &&
 			connman_agent_report_error(service, service->path,
 					error2string(service->error),
