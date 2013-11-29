@@ -5320,7 +5320,6 @@ static int service_indicate_state(struct connman_service *service)
 		g_get_current_time(&service->modified);
 		service_save(service);
 
-		update_nameservers(service);
 		dns_changed(service);
 		domain_changed(service);
 		proxy_changed(service);
@@ -5366,7 +5365,6 @@ static int service_indicate_state(struct connman_service *service)
 
 		__connman_wpad_stop(service);
 
-		update_nameservers(service);
 		dns_changed(service);
 		domain_changed(service);
 		proxy_changed(service);
@@ -5633,7 +5631,7 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 {
 	struct connman_ipconfig *ipconfig = NULL;
 	enum connman_service_state old_state;
-	int ret;
+	enum connman_ipconfig_method method;
 
 	if (!service)
 		return -EINVAL;
@@ -5670,8 +5668,6 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 		__connman_ipconfig_enable(ipconfig);
 		break;
 	case CONNMAN_SERVICE_STATE_READY:
-		update_nameservers(service);
-
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
 			check_proxy_setup(service);
 			service_rp_filter(service, true);
@@ -5694,38 +5690,32 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 		break;
 	}
 
-	/* We keep that state */
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		service->state_ipv4 = new_state;
-	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		service->state_ipv6 = new_state;
-
-	ret = service_indicate_state(service);
-
-	/*
-	 * If the ipconfig method is OFF, then we set the state to IDLE
-	 * so that it will not affect the combined state in the future.
+	/* Keep that state, but if the ipconfig method is OFF, then we set
+	   the state to IDLE so that it will not affect the combined state
+	   in the future.
 	 */
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
-		enum connman_ipconfig_method method;
 		method = __connman_ipconfig_get_method(service->ipconfig_ipv4);
+
 		if (method == CONNMAN_IPCONFIG_METHOD_OFF ||
-				method == CONNMAN_IPCONFIG_METHOD_UNKNOWN) {
-			service->state_ipv4 = CONNMAN_SERVICE_STATE_IDLE;
-			ret = service_indicate_state(service);
-		}
+				method == CONNMAN_IPCONFIG_METHOD_UNKNOWN)
+			new_state = CONNMAN_SERVICE_STATE_IDLE;
+
+		service->state_ipv4 = new_state;
 
 	} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
-		enum connman_ipconfig_method method;
 		method = __connman_ipconfig_get_method(service->ipconfig_ipv6);
+
 		if (method == CONNMAN_IPCONFIG_METHOD_OFF ||
-				method == CONNMAN_IPCONFIG_METHOD_UNKNOWN) {
-			service->state_ipv6 = CONNMAN_SERVICE_STATE_IDLE;
-			ret = service_indicate_state(service);
-		}
+				method == CONNMAN_IPCONFIG_METHOD_UNKNOWN)
+			new_state = CONNMAN_SERVICE_STATE_IDLE;
+
+		service->state_ipv6 = new_state;
 	}
 
-	return ret;
+	update_nameservers(service);
+
+	return service_indicate_state(service);
 }
 
 static bool prepare_network(struct connman_service *service)
