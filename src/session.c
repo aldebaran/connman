@@ -37,7 +37,7 @@ static GHashTable *session_hash;
 static struct connman_session *ecall_session;
 static GSList *policy_list;
 static uint32_t session_mark = 256;
-static struct firewall_context *global_firewall;
+static struct firewall_context *global_firewall = NULL;
 
 enum connman_session_trigger {
 	CONNMAN_SESSION_TRIGGER_UNKNOWN		= 0,
@@ -236,6 +236,9 @@ static int init_firewall(void)
 	struct firewall_context *fw;
 	int err;
 
+	if (global_firewall)
+		return 0;
+
 	fw = __connman_firewall_create();
 
 	err = __connman_firewall_add_rule(fw, "mangle", "INPUT",
@@ -280,6 +283,10 @@ static int init_firewall_session(struct connman_session *session)
 		return 0;
 
 	DBG("");
+
+	err = init_firewall();
+	if (err < 0)
+		return err;
 
 	fw = __connman_firewall_create();
 	if (!fw)
@@ -2212,10 +2219,6 @@ int __connman_session_init(void)
 
 	DBG("");
 
-	err = init_firewall();
-	if (err < 0)
-		return err;
-
 	connection = connman_dbus_get_connection();
 	if (!connection)
 		return -1;
@@ -2223,14 +2226,18 @@ int __connman_session_init(void)
 	err = connman_notifier_register(&session_notifier);
 	if (err < 0) {
 		dbus_connection_unref(connection);
-		cleanup_firewall();
 		return err;
 	}
 
 	session_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, cleanup_session);
 
-	__connman_nfacct_flush(session_nfacct_flush_cb, NULL);
+	if (__connman_firewall_is_up()) {
+		err = init_firewall();
+		if (err < 0)
+			return err;
+		__connman_nfacct_flush(session_nfacct_flush_cb, NULL);
+	}
 
 	return 0;
 }

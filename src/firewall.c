@@ -57,6 +57,8 @@ struct firewall_context {
 
 static GSList *managed_tables;
 
+static bool firewall_is_up;
+
 static int chain_to_index(const char *chain_name)
 {
 	if (!g_strcmp0(builtin_chains[NF_IP_PRE_ROUTING], chain_name))
@@ -341,6 +343,8 @@ int __connman_firewall_enable(struct firewall_context *ctx)
 			goto err;
 	}
 
+	firewall_is_up = true;
+
 	return 0;
 
 err:
@@ -354,6 +358,11 @@ err:
 int __connman_firewall_disable(struct firewall_context *ctx)
 {
 	return firewall_disable(g_list_last(ctx->rules));
+}
+
+bool __connman_firewall_is_up(void)
+{
+	return firewall_is_up;
 }
 
 static void iterate_chains_cb(const char *chain_name, void *user_data)
@@ -417,7 +426,17 @@ static void flush_table(const char *table_name)
 
 static void flush_all_tables(void)
 {
-	/* Flush the tables ConnMan might have modified */
+	/* Flush the tables ConnMan might have modified
+	 * But do so if only ConnMan has done something with
+	 * iptables */
+
+	if (!g_file_test("/proc/net/ip_tables_names",
+			G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR)) {
+		firewall_is_up = false;
+		return;
+	}
+
+	firewall_is_up = true;
 
 	flush_table("filter");
 	flush_table("mangle");
