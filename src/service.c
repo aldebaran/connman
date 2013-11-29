@@ -935,9 +935,25 @@ static void remove_searchdomains(struct connman_service *service,
 		connman_resolver_remove(index, sd[i], NULL);
 }
 
+static bool nameserver_available(struct connman_service *service, char *ns)
+{
+	int family;
+
+	family = connman_inet_check_ipaddress(ns);
+
+	if (family == AF_INET)
+		return is_connected_state(service, service->state_ipv4);
+
+	if (family == AF_INET6)
+		return is_connected_state(service, service->state_ipv6);
+
+	return false;
+}
+
 static void update_nameservers(struct connman_service *service)
 {
 	int index;
+	char *ns;
 
 	index = __connman_service_get_index(service);
 	if (index < 0)
@@ -966,17 +982,25 @@ static void update_nameservers(struct connman_service *service)
 		i = g_strv_length(service->nameservers_config);
 		while (i != 0) {
 			i--;
-			connman_resolver_append(index, NULL,
-					service->nameservers_config[i]);
+
+			ns = service->nameservers_config[i];
+
+			if (nameserver_available(service, ns))
+				connman_resolver_append(index, NULL, ns);
 		}
 	} else if (service->nameservers) {
 		int i;
 
+		remove_nameservers(service, index, service->nameservers);
+
 		i = g_strv_length(service->nameservers);
 		while (i != 0) {
 			i--;
-			connman_resolver_append(index, NULL,
-					service->nameservers[i]);
+
+			ns = service->nameservers[i];
+
+			if (nameserver_available(service, ns))
+				connman_resolver_append(index, NULL, ns);
 		}
 	}
 
@@ -1550,15 +1574,20 @@ static void append_ipv6config(DBusMessageIter *iter, void *user_data)
 							iter);
 }
 
-static void append_nameservers(DBusMessageIter *iter, char **servers)
+static void append_nameservers(DBusMessageIter *iter,
+		struct connman_service *service, char **servers)
 {
 	int i;
-
-	DBG("%p", servers);
+	bool available = true;
 
 	for (i = 0; servers[i]; i++) {
-		DBG("servers[%d] %s", i, servers[i]);
-		dbus_message_iter_append_basic(iter,
+		if (service)
+			available = nameserver_available(service, servers[i]);
+
+		DBG("servers[%d] %s available %d", i, servers[i], available);
+
+		if (available)
+			dbus_message_iter_append_basic(iter,
 					DBUS_TYPE_STRING, &servers[i]);
 	}
 }
@@ -1571,14 +1600,16 @@ static void append_dns(DBusMessageIter *iter, void *user_data)
 		return;
 
 	if (service->nameservers_config) {
-		append_nameservers(iter, service->nameservers_config);
+		append_nameservers(iter, service, service->nameservers_config);
 		return;
 	} else {
 		if (service->nameservers)
-			append_nameservers(iter, service->nameservers);
+			append_nameservers(iter, service,
+					service->nameservers);
 
 		if (service->nameservers_auto)
-			append_nameservers(iter, service->nameservers_auto);
+			append_nameservers(iter, service,
+					service->nameservers_auto);
 
 		if (!service->nameservers && !service->nameservers_auto) {
 			char **ns;
@@ -1587,7 +1618,7 @@ static void append_dns(DBusMessageIter *iter, void *user_data)
 
 			ns = connman_setting_get_string_list("FallbackNameservers");
 			if (ns)
-				append_nameservers(iter, ns);
+				append_nameservers(iter, service, ns);
 		}
 	}
 }
@@ -1599,7 +1630,7 @@ static void append_dnsconfig(DBusMessageIter *iter, void *user_data)
 	if (!service->nameservers_config)
 		return;
 
-	append_nameservers(iter, service->nameservers_config);
+	append_nameservers(iter, NULL, service->nameservers_config);
 }
 
 static void append_ts(DBusMessageIter *iter, void *user_data)
