@@ -30,7 +30,7 @@
 #include "src/shared/nfacct.h"
 #include "src/shared/util.h"
 
-static struct nfacct_info *nfacct;
+static struct nfacct_info *nfacct = NULL;
 
 struct nfacct_rule {
 	char *name;
@@ -188,12 +188,17 @@ int __connman_nfacct_enable(struct nfacct_context *ctx,
 				connman_nfacct_enable_cb_t cb,
 				void *user_data)
 {
-	struct cb_data *cbd;
+	struct cb_data *cbd = NULL;
 	struct nfacct_rule *rule;
 	GList *list;
 	unsigned int id;
 
 	DBG("");
+
+	if (!nfacct)
+		nfacct = nfacct_new();
+	if (!nfacct)
+		goto err;
 
 	for (list = ctx->rules; list; list = list->next) {
 		rule = list->data;
@@ -365,17 +370,6 @@ int __connman_nfacct_flush(connman_nfacct_flush_cb_t cb, void *user_data)
 	g_free(cbd);
 
 	return -ECOMM;
-}
-
-int __connman_nfacct_init(void)
-{
-	DBG("");
-
-	nfacct = nfacct_new();
-	if (!nfacct)
-		return -ENOMEM;
-
-	return 0;
 }
 
 void __connman_nfacct_cleanup(void)

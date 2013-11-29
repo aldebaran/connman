@@ -656,7 +656,6 @@ int main(int argc, char *argv[])
 
 	__connman_ippool_init();
 	__connman_iptables_init();
-	__connman_nfacct_init();
 	__connman_firewall_init();
 	__connman_nat_init();
 	__connman_tethering_init();

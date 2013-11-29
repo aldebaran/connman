@@ -986,6 +986,4 @@ int __connman_nfacct_disable(struct nfacct_context *ctx,
 				connman_nfacct_disable_cb_t cb,
 				void *user_data);
 
-
-int __connman_nfacct_init(void);
 void __connman_nfacct_cleanup(void);
