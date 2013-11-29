@@ -274,6 +274,25 @@ static void cleanup_firewall(void)
 	__connman_firewall_destroy(global_firewall);
 }
 
+static int enable_nfacct(struct firewall_context *fw, uint32_t mark)
+{
+	int err;
+
+	err = __connman_firewall_add_rule(fw, "filter", "INPUT",
+			"-m mark --mark %d -m nfacct "
+			"--nfacct-name session-input-%d",
+			mark, mark);
+	if (err < 0)
+		return err;
+
+	err = __connman_firewall_add_rule(fw, "filter", "OUTPUT",
+			"-m mark --mark %d -m nfacct "
+			"--nfacct-name session-output-%d",
+			mark, mark);
+
+	return err;
+}
+
 static int init_firewall_session(struct connman_session *session)
 {
 	struct firewall_context *fw;
@@ -315,19 +334,9 @@ static int init_firewall_session(struct connman_session *session)
 
 	session->id_type = session->policy_config->id_type;
 
-	err = __connman_firewall_add_rule(fw, "filter", "INPUT",
-		"-m mark --mark %d -m nfacct --nfacct-name session-input-%d",
-		session->mark,
-		session->mark);
+	err = enable_nfacct(fw, session->mark);
 	if (err < 0)
-		goto err;
-
-	err = __connman_firewall_add_rule(fw, "filter", "OUTPUT",
-		"-m mark --mark %d -m nfacct --nfacct-name session-output-%d",
-		session->mark,
-		session->mark);
-	if (err < 0)
-		goto err;
+		connman_warn_once("Support for nfacct missing");
 
 	err = __connman_firewall_enable(fw);
 	if (err)
