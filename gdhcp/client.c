@@ -1258,7 +1258,7 @@ static int dhcp_l2_socket(int ifindex)
 
 	fd = socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_IP));
 	if (fd < 0)
-		return fd;
+		return -errno;
 
 	if (SERVER_PORT == 67 && CLIENT_PORT == 68)
 		/* Use only if standard ports are in use */
@@ -1271,8 +1271,9 @@ static int dhcp_l2_socket(int ifindex)
 	sock.sll_ifindex = ifindex;
 
 	if (bind(fd, (struct sockaddr *) &sock, sizeof(sock)) != 0) {
+		int err = -errno;
 		close(fd);
-		return -errno;
+		return err;
 	}
 
 	return fd;
