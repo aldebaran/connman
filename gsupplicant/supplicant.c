@@ -2798,7 +2798,7 @@ static void interface_scan_result(const char *error,
 		data->interface->scan_data = data->user_data;
 	}
 
-	if (data && data->scan_params)
+	if (data->scan_params)
 		g_supplicant_free_scan_params(data->scan_params);
 
 	dbus_free(data);
