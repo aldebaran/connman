@@ -735,7 +735,7 @@ const void *g_supplicant_interface_get_wps_ssid(GSupplicantInterface *interface,
 	if (!ssid_len)
 		return NULL;
 
-	if (!interface || !interface->wps_cred.ssid) {
+	if (!interface || interface->wps_cred.ssid_len == 0) {
 		*ssid_len = 0;
 		return NULL;
 	}
@@ -853,7 +853,7 @@ const char *g_supplicant_network_get_security(GSupplicantNetwork *network)
 const void *g_supplicant_network_get_ssid(GSupplicantNetwork *network,
 						unsigned int *ssid_len)
 {
-	if (!network || !network->ssid) {
+	if (!network || network->ssid_len == 0) {
 		*ssid_len = 0;
 		return NULL;
 	}
