@@ -98,11 +98,16 @@ static void pan_remove(struct connman_network *network)
 
 static void connect_reply(DBusPendingCall *call, void *user_data)
 {
-	struct connman_network *network = user_data;
+	char *path = user_data;
+	struct connman_network *network;
 	DBusMessage *reply;
 	DBusError error;
 	const char *interface = NULL;
 	int index;
+
+	network = g_hash_table_lookup(bluetooth_networks, path);
+	if (!network)
+		return;
 
 	DBG("network %p", network);
 
@@ -187,7 +192,8 @@ static int pan_connect(struct connman_network *network)
 		return -EINVAL;
 	}
 
-	dbus_pending_call_set_notify(call, connect_reply, network, NULL);
+	dbus_pending_call_set_notify(call, connect_reply, g_strdup(path),
+			g_free);
 
 	dbus_message_unref(message);
 
@@ -196,9 +202,14 @@ static int pan_connect(struct connman_network *network)
 
 static void disconnect_reply(DBusPendingCall *call, void *user_data)
 {
-	struct connman_network *network = user_data;
+	char *path = user_data;
+	struct connman_network *network;
 	DBusMessage *reply;
 	DBusError error;
+
+	network = g_hash_table_lookup(bluetooth_networks, path);
+	if (!network)
+		return;
 
 	DBG("network %p", network);
 
@@ -268,7 +279,8 @@ static int pan_disconnect(struct connman_network *network)
 
 	connman_network_set_associating(network, false);
 
-	dbus_pending_call_set_notify(call, disconnect_reply, network, NULL);
+	dbus_pending_call_set_notify(call, disconnect_reply, g_strdup(path),
+			g_free);
 
 	dbus_message_unref(message);
 
