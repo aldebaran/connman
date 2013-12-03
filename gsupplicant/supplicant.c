@@ -2999,7 +2999,7 @@ static void interface_autoscan_result(const char *error,
 
 	g_free(data->path);
 
-	if (data && data->callback)
+	if (data->callback)
 		data->callback(err, data->interface, data->user_data);
 
 	dbus_free(data);
