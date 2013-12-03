@@ -346,7 +346,7 @@ static void dhcpv6_info_callback(struct connman_network *network,
 	stop_dhcpv6(network);
 }
 
-static bool dhcpv6_set_addresses(struct connman_network *network)
+static int dhcpv6_set_addresses(struct connman_network *network)
 {
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig_ipv6;
