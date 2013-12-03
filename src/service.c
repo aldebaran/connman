@@ -5369,10 +5369,6 @@ static int service_indicate_state(struct connman_service *service)
 		domain_changed(service);
 		proxy_changed(service);
 
-		if (old_state == CONNMAN_SERVICE_STATE_READY ||
-				old_state == CONNMAN_SERVICE_STATE_ONLINE)
-			__connman_notifier_disconnect(service->type);
-
 		/*
 		 * Previous services which are connected and which states
 		 * are set to online should reset relevantly ipconfig_state
@@ -5384,9 +5380,6 @@ static int service_indicate_state(struct connman_service *service)
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_FAILURE) {
-		if (old_state == CONNMAN_SERVICE_STATE_READY ||
-				old_state == CONNMAN_SERVICE_STATE_ONLINE)
-			__connman_notifier_disconnect(service->type);
 
 		if (service->userconnect &&
 			connman_agent_report_error(service, service->path,
@@ -5405,6 +5398,13 @@ static int service_indicate_state(struct connman_service *service)
 	}
 
 	__connman_connection_update_gateway();
+
+	if ((old_state == CONNMAN_SERVICE_STATE_ONLINE &&
+			new_state != CONNMAN_SERVICE_STATE_READY) ||
+		(old_state == CONNMAN_SERVICE_STATE_READY &&
+			new_state != CONNMAN_SERVICE_STATE_ONLINE)) {
+		__connman_notifier_disconnect(service->type);
+	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_ONLINE) {
 		__connman_notifier_enter_online(service->type);
