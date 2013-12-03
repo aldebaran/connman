@@ -1812,8 +1812,12 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 
 	if (protocol == IPPROTO_UDP) {
 		sk = get_req_udp_socket(req);
-		err = sendto(sk, req->resp, req->resplen, 0,
-			     &req->sa, req->sa_len);
+		if (sk < 0) {
+			errno = -EIO;
+			err = -EIO;
+		} else
+			err = sendto(sk, req->resp, req->resplen, 0,
+				&req->sa, req->sa_len);
 	} else {
 		sk = req->client_sk;
 		err = send(sk, req->resp, req->resplen, MSG_NOSIGNAL);
