@@ -1,3 +1,14 @@
+ver 1.20:
+	Fix issue with invalid cache of DNS proxy support.
+	Fix issue with stopping DHCP for failed connections.
+	Fix issue with not stopping IPv4 Link-Local state machine.
+	Fix issue with service type handling for unknown interfaces.
+	Fix issue with using interface names instead of indexes.
+	Fix issue with resetting network retry counter on failure.
+	Fix issue with using nameservers when its type is not enabled.
+	Fix issue with fallback nameservers not being used.
+	Add support for NTP version 3 protocol.
+
 ver 1.19:
 	Fix issue with not correctly storing IPv4 method.
 	Fix issue with changing the default service too early.
