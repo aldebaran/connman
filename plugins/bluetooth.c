@@ -605,13 +605,8 @@ static void adapter_property_change(GDBusProxy *proxy, const char *name,
 	DBG("device %p %s device powered %d adapter powered %d", device, path,
 			device_powered, adapter_powered);
 
-	if (device_powered != adapter_powered) {
-		DBG("powering adapter");
-		if (device_powered)
-			bluetooth_device_enable(device);
-		else
-			bluetooth_device_disable(device);
-	}
+	if (device_powered != adapter_powered)
+		connman_device_set_powered(device, adapter_powered);
 }
 
 static void device_free(gpointer data)
