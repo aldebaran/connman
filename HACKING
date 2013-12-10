@@ -107,38 +107,3 @@ can get very complex. The first detail inside "{ ... }" is the interface
 name (without its service name prefix). The second detail inside "[ ... ]"
 is the object path. And after that it is followed by a key and value of
 the property that changed.
-
-
-Generating source code documentation
-====================================
-
-The source code is annotated using the gtk-doc style documentation. This
-allows an easy way of generating API documentation. The "bootstrap-configure"
-script will use the "--enable-gtk-doc" configure to enable the generation of
-the documentation.
-
-To make the gtk-doc process work, the gtk-doc tools need to be installed.
-Every distribution should provide a package for this, but the naming of the
-package might be different:
-
-  Debian
-    # apt-get install gtk-doc-tools
-
-  Ubuntu
-    # apt-get install gtk-doc-utils
-
-  Fedora
-    # yum install gtk-doc
-
-In case "bootstrap-configure" is not used, the manual steps for generating
-the documentation files are like this:
-
-  Configuring the repository
-    # ./configure --enable-gtk-doc
-
-  Generate the documentation
-    # cd doc && make
-
-  View documentation
-    # firefox doc/html/index.html
-

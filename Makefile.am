@@ -385,8 +385,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = connman.pc
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
-				--disable-datafiles \
+DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles \
 				--enable-hh2serial-gps \
 				--enable-openconnect \
 				--enable-openvpn \

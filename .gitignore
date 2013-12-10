@@ -67,10 +67,6 @@ doc/connman.*
 !doc/connman.8
 !doc/connman.conf.5
 doc/connman-*.txt
-doc/*.sgml
-doc/version.xml
-doc/xml
-doc/html
 
 vpn/builtin.h
 vpn/connman-vpnd

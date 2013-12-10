@@ -38,8 +38,6 @@ AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization],
 	fi
 ])
 
-GTK_DOC_CHECK
-
 AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
 			[enable compiling with debugging information]), [
 	if (test "${enableval}" = "yes" &&
@@ -383,4 +381,4 @@ AM_CONDITIONAL(VPN, test "${enable_openconnect}" != "no" -o \
 
 AC_OUTPUT(Makefile include/version.h src/connman.service
 		vpn/connman-vpn.service	vpn/net.connman.vpn.service
-		scripts/connman	doc/version.xml connman.pc)
+		scripts/connman	connman.pc)
