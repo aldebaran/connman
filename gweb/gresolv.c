@@ -665,7 +665,8 @@ static void parse_response(struct resolv_nameserver *nameserver,
 
 	debug(resolv, "response from %s", nameserver->address);
 
-	ns_initparse(buf, len, &msg);
+	if (ns_initparse(buf, len, &msg) < 0)
+		return;
 
 	list = g_queue_find_custom(resolv->query_queue,
 			GUINT_TO_POINTER(ns_msg_id(msg)), compare_query_msgid);
@@ -713,7 +714,8 @@ static void parse_response(struct resolv_nameserver *nameserver,
 		lookup->ipv4_status = status;
 
 	for (i = 0; i < count; i++) {
-		ns_parserr(&msg, ns_s_an, i, &rr);
+		if (ns_parserr(&msg, ns_s_an, i, &rr) < 0)
+			continue;
 
 		if (ns_rr_class(rr) != ns_c_in)
 			continue;
