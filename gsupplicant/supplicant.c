@@ -853,7 +853,7 @@ const char *g_supplicant_network_get_security(GSupplicantNetwork *network)
 const void *g_supplicant_network_get_ssid(GSupplicantNetwork *network,
 						unsigned int *ssid_len)
 {
-	if (!network || network->ssid_len == 0) {
+	if (!network) {
 		*ssid_len = 0;
 		return NULL;
 	}
