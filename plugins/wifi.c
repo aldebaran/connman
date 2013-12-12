@@ -58,8 +58,7 @@
 
 #define CLEANUP_TIMEOUT   8	/* in seconds */
 #define INACTIVE_TIMEOUT  12	/* in seconds */
-#define MAXIMUM_RETRIES   2
-#define FAVORITE_MAXIMUM_RETRIES 4
+#define FAVORITE_MAXIMUM_RETRIES 2
 
 #define BGSCAN_DEFAULT "simple:30:-45:300"
 #define AUTOSCAN_DEFAULT "exponential:3:300"
@@ -1581,8 +1580,7 @@ static bool handle_4way_handshake_failure(GSupplicantInterface *interface,
 	if (connman_service_get_favorite(service)) {
 		if (wifi->retries < FAVORITE_MAXIMUM_RETRIES)
 			return true;
-	} else if (wifi->retries < MAXIMUM_RETRIES)
-		return true;
+	}
 
 	wifi->retries = 0;
 	connman_network_set_error(network, CONNMAN_NETWORK_ERROR_INVALID_KEY);
