@@ -25,6 +25,8 @@
 
 #include <stdlib.h>
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <gdbus.h>
 
 #include "../src/shared/util.h"
