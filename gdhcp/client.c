@@ -62,6 +62,7 @@ typedef enum _listen_mode {
 
 typedef enum _dhcp_client_state {
 	INIT_SELECTING,
+	REBOOTING,
 	REQUESTING,
 	BOUND,
 	RENEWING,
@@ -427,6 +428,30 @@ static int send_discover(GDHCPClient *dhcp_client, uint32_t requested)
 
 	/* Explicitly saying that we want RFC-compliant packets helps
 	 * some buggy DHCP servers to NOT send bigger packets */
+	dhcp_add_option_uint16(&packet, DHCP_MAX_SIZE, 576);
+
+	add_request_options(dhcp_client, &packet);
+
+	add_send_options(dhcp_client, &packet);
+
+	return dhcp_send_raw_packet(&packet, INADDR_ANY, CLIENT_PORT,
+					INADDR_BROADCAST, SERVER_PORT,
+					MAC_BCAST_ADDR, dhcp_client->ifindex);
+}
+
+static int send_rebooting(GDHCPClient *dhcp_client)
+{
+	struct dhcp_packet packet;
+	debug(dhcp_client, "sending DHCP rebooting request");
+
+	init_packet(dhcp_client, &packet, DHCPREQUEST);
+
+	packet.xid = dhcp_client->xid;
+	packet.secs = dhcp_attempt_secs(dhcp_client);
+
+	dhcp_add_option_uint32(&packet, DHCP_REQUESTED_IP,
+					dhcp_client->requested_ip);
+
 	dhcp_add_option_uint16(&packet, DHCP_MAX_SIZE, 576);
 
 	add_request_options(dhcp_client, &packet);
@@ -1756,10 +1781,14 @@ static gboolean restart_dhcp_timeout(gpointer user_data)
 
 	debug(dhcp_client, "restart DHCP timeout");
 
-	dhcp_client->ack_retry_times++;
-
-	restart_dhcp(dhcp_client, dhcp_client->ack_retry_times);
-
+	if (dhcp_client->state == REBOOTING) {
+		g_free(dhcp_client->last_address);
+		dhcp_client->last_address = NULL;
+		restart_dhcp(dhcp_client, 0);
+	} else {
+		dhcp_client->ack_retry_times++;
+		restart_dhcp(dhcp_client, dhcp_client->ack_retry_times);
+	}
 	return FALSE;
 }
 
@@ -2330,6 +2359,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		start_request(dhcp_client);
 
 		return TRUE;
+	case REBOOTING:
 	case REQUESTING:
 	case RENEWING:
 	case REBINDING:
@@ -2565,6 +2595,22 @@ static gboolean discover_timeout(gpointer user_data)
 	return FALSE;
 }
 
+static gboolean reboot_timeout(gpointer user_data)
+{
+	GDHCPClient *dhcp_client = user_data;
+	dhcp_client->retry_times = 0;
+	dhcp_client->requested_ip = 0;
+	dhcp_client->state = INIT_SELECTING;
+	/*
+	 * We do not send the REQUESTED IP option because the server didn't
+	 * respond when we send DHCPREQUEST with the REQUESTED IP option in
+	 * init-reboot state
+	 */
+	g_dhcp_client_start(dhcp_client, NULL);
+
+	return FALSE;
+}
+
 static gboolean ipv4ll_defend_timeout(gpointer dhcp_data)
 {
 	GDHCPClient *dhcp_client = dhcp_data;
@@ -2753,6 +2799,21 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 			dhcp_client->last_address = g_strdup(last_address);
 		}
 	}
+
+	if ((addr != 0) && (dhcp_client->type != G_DHCP_IPV4LL)) {
+		debug(dhcp_client, "DHCP client start with state init_reboot");
+		dhcp_client->requested_ip = addr;
+		dhcp_client->state = REBOOTING;
+		send_rebooting(dhcp_client);
+
+		dhcp_client->timeout = g_timeout_add_seconds_full(
+								G_PRIORITY_HIGH,
+								REQUEST_TIMEOUT,
+								reboot_timeout,
+								dhcp_client,
+								NULL);
+		return 0;
+	}
 	send_discover(dhcp_client, addr);
 
 	dhcp_client->timeout = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
@@ -2919,6 +2980,7 @@ char *g_dhcp_client_get_netmask(GDHCPClient *dhcp_client)
 		if (option)
 			return g_strdup(option->data);
 	case INIT_SELECTING:
+	case REBOOTING:
 	case REQUESTING:
 	case RELEASED:
 	case IPV4LL_PROBE:
