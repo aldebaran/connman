@@ -79,6 +79,7 @@ struct web_session {
 	guint send_watch;
 
 	guint resolv_action;
+	guint address_action;
 	char *request;
 
 	guint8 *receive_buffer;
@@ -162,6 +163,10 @@ static void free_session(struct web_session *session)
 	g_free(session->request);
 
 	web = session->web;
+
+	if (session->address_action > 0)
+		g_source_remove(session->address_action);
+
 	if (session->resolv_action > 0)
 		g_resolv_cancel_lookup(web->resolv, session->resolv_action);
 
@@ -1197,20 +1202,13 @@ static int parse_url(struct web_session *session,
 	return 0;
 }
 
-static void resolv_result(GResolvResultStatus status,
-					char **results, gpointer user_data)
+static void handle_resolved_address(struct web_session *session)
 {
-	struct web_session *session = user_data;
 	struct addrinfo hints;
 	char *port;
 	int ret;
 
-	if (!results || !results[0]) {
-		call_result_func(session, 404);
-		return;
-	}
-
-	debug(session->web, "address %s", results[0]);
+	debug(session->web, "address %s", session->address);
 
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_flags = AI_NUMERICHOST;
@@ -1222,15 +1220,13 @@ static void resolv_result(GResolvResultStatus status,
 	}
 
 	port = g_strdup_printf("%u", session->port);
-	ret = getaddrinfo(results[0], port, &hints, &session->addr);
+	ret = getaddrinfo(session->address, port, &hints, &session->addr);
 	g_free(port);
 	if (ret != 0 || !session->addr) {
 		call_result_func(session, 400);
 		return;
 	}
 
-	g_free(session->address);
-	session->address = g_strdup(results[0]);
 	call_route_func(session);
 
 	if (create_transport(session) < 0) {
@@ -1239,12 +1235,55 @@ static void resolv_result(GResolvResultStatus status,
 	}
 }
 
+static gboolean already_resolved(gpointer data)
+{
+	struct web_session *session = data;
+
+	session->address_action = 0;
+	handle_resolved_address(session);
+
+	return FALSE;
+}
+
+static void resolv_result(GResolvResultStatus status,
+					char **results, gpointer user_data)
+{
+	struct web_session *session = user_data;
+
+	if (!results || !results[0]) {
+		call_result_func(session, 404);
+		return;
+	}
+
+	g_free(session->address);
+	session->address = g_strdup(results[0]);
+
+	handle_resolved_address(session);
+}
+
+static bool is_ip_address(const char *host)
+{
+	struct addrinfo hints;
+	struct addrinfo *addr;
+	int result;
+
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_flags = AI_NUMERICHOST;
+	addr = NULL;
+
+	result = getaddrinfo(host, NULL, &hints, &addr);
+	freeaddrinfo(addr);
+
+	return result == 0;
+}
+
 static guint do_request(GWeb *web, const char *url,
 				const char *type, GWebInputFunc input,
 				int fd, gsize length, GWebResultFunc func,
 				GWebRouteFunc route, gpointer user_data)
 {
 	struct web_session *session;
+	const gchar *host;
 
 	if (!web || !url)
 		return 0;
@@ -1260,7 +1299,7 @@ static guint do_request(GWeb *web, const char *url,
 		return 0;
 	}
 
-	debug(web, "address %s", session->address);
+	debug(web, "proxy host %s", session->address);
 	debug(web, "port %u", session->port);
 	debug(web, "host %s", session->host);
 	debug(web, "flags %lu", session->flags);
@@ -1301,19 +1340,17 @@ static guint do_request(GWeb *web, const char *url,
 	session->header_done = false;
 	session->body_done = false;
 
-	if (!session->address && inet_aton(session->host, NULL) == 0) {
-		session->resolv_action = g_resolv_lookup_hostname(web->resolv,
-					session->host, resolv_result, session);
-		if (session->resolv_action == 0) {
-			free_session(session);
-			return 0;
+	host = session->address ? session->address : session->host;
+	if (is_ip_address(host)) {
+		if (session->address != host) {
+			g_free(session->address);
+			session->address = g_strdup(host);
 		}
+		session->address_action = g_timeout_add(0, already_resolved,
+							session);
 	} else {
-		if (!session->address)
-			session->address = g_strdup(session->host);
-
 		session->resolv_action = g_resolv_lookup_hostname(web->resolv,
-					session->address, resolv_result, session);
+					host, resolv_result, session);
 		if (session->resolv_action == 0) {
 			free_session(session);
 			return 0;
