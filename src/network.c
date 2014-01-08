@@ -2,7 +2,7 @@
  *
  *  Connection Manager
  *
- *  Copyright (C) 2007-2012  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2007-2014  Intel Corporation. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -76,7 +76,6 @@ struct connman_network {
 		unsigned short channel;
 		char *security;
 		char *passphrase;
-		char *agent_passphrase;
 		char *eap;
 		char *identity;
 		char *agent_identity;
@@ -944,7 +943,6 @@ static void network_destruct(struct connman_network *network)
 	g_free(network->wifi.mode);
 	g_free(network->wifi.security);
 	g_free(network->wifi.passphrase);
-	g_free(network->wifi.agent_passphrase);
 	g_free(network->wifi.eap);
 	g_free(network->wifi.identity);
 	g_free(network->wifi.agent_identity);
@@ -1846,9 +1844,6 @@ int connman_network_set_string(struct connman_network *network,
 	} else if (g_str_equal(key, "WiFi.Passphrase")) {
 		g_free(network->wifi.passphrase);
 		network->wifi.passphrase = g_strdup(value);
-	} else if (g_str_equal(key, "WiFi.AgentPassphrase")) {
-		g_free(network->wifi.agent_passphrase);
-		network->wifi.agent_passphrase = g_strdup(value);
 	} else if (g_str_equal(key, "WiFi.EAP")) {
 		g_free(network->wifi.eap);
 		network->wifi.eap = g_strdup(value);
@@ -1907,8 +1902,6 @@ const char *connman_network_get_string(struct connman_network *network,
 		return network->wifi.security;
 	else if (g_str_equal(key, "WiFi.Passphrase"))
 		return network->wifi.passphrase;
-	else if (g_str_equal(key, "WiFi.AgentPassphrase"))
-		return network->wifi.agent_passphrase;
 	else if (g_str_equal(key, "WiFi.EAP"))
 		return network->wifi.eap;
 	else if (g_str_equal(key, "WiFi.Identity"))
