@@ -157,18 +157,6 @@ int __connmanctl_input_calc_level(void)
 	return count;
 }
 
-static char *get_command_name(char *line)
-{
-	char *start, *ptr;
-
-	start = ptr = line;
-
-	while (*ptr && *ptr != ' ')
-		ptr++;
-
-	return g_strndup(start, ptr - start);
-}
-
 static char **complete_command(const char *text, int start, int end)
 {
 	if (start == 0) {
@@ -177,23 +165,13 @@ static char **complete_command(const char *text, int start, int end)
 
 	} else {
 		__connmanctl_lookup_cb cb;
-		char *current_command;
 		char **str = NULL;
 
-		if (__connmanctl_input_calc_level() > 1) {
-			rl_attempted_completion_over = 1;
-			return NULL;
-		}
-
-		current_command = get_command_name(rl_line_buffer);
-
-		cb = __connmanctl_get_lookup_func(current_command);
+		cb = __connmanctl_get_lookup_func(rl_line_buffer);
 		if (cb)
 			str = rl_completion_matches(text, cb);
 		else
 			rl_attempted_completion_over = 1;
-
-		g_free(current_command);
 
 		return str;
 	}

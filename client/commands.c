@@ -1970,10 +1970,20 @@ static int cmd_help(char *args[], int num, struct connman_option *options)
 
 __connmanctl_lookup_cb __connmanctl_get_lookup_func(const char *text)
 {
-	int i;
+	int i, cmdlen, textlen;
+
+	if (!text)
+		return NULL;
+
+	textlen = strlen(text);
 
 	for (i = 0; cmd_table[i].cmd; i++) {
-		if (g_strcmp0(cmd_table[i].cmd, text) == 0)
+		cmdlen = strlen(cmd_table[i].cmd);
+
+		if (textlen > cmdlen && text[cmdlen] != ' ')
+			continue;
+
+		if (strncmp(cmd_table[i].cmd, text, cmdlen) == 0)
 			return cmd_table[i].cb;
 	}
 
