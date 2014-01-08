@@ -33,6 +33,7 @@ void __connmanctl_quit(void);
 bool __connmanctl_is_interactive(void);
 void __connmanctl_save_rl(void);
 void __connmanctl_redraw_rl(void);
+int __connmanctl_input_calc_level(void);
 typedef void (* connmanctl_input_func_t) (char *input, void *user_data);
 void __connmanctl_agent_mode(const char *prompt,
 		connmanctl_input_func_t input_handler, void *user_data);

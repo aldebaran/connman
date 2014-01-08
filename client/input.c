@@ -136,10 +136,12 @@ static char **complete_agent(const char *text, int start, int end)
 }
 
 /* Return how many parameters we have typed */
-static int calc_level(char *line)
+int __connmanctl_input_calc_level(void)
 {
 	int count = 0;
-	char *ptr = line;
+	char *ptr;
+
+	ptr = rl_line_buffer;
 
 	while (*ptr) {
 		if (*ptr == ' ') {
@@ -178,7 +180,7 @@ static char **complete_command(const char *text, int start, int end)
 		char *current_command;
 		char **str = NULL;
 
-		if (calc_level(rl_line_buffer) > 1) {
+		if (__connmanctl_input_calc_level() > 1) {
 			rl_attempted_completion_over = 1;
 			return NULL;
 		}
