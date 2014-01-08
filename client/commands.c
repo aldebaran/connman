@@ -1891,6 +1891,22 @@ static char *lookup_on_off(const char *text, int state)
 	return NULL;
 }
 
+static char *lookup_tether(const char *text, int state)
+{
+	int level;
+
+	level = __connmanctl_input_calc_level();
+	if (level < 2)
+		return lookup_technology(text, state);
+
+	if (level == 2)
+		return lookup_on_off(text, state);
+
+	__connmanctl_input_lookup_end();
+
+	return NULL;
+}
+
 static char *lookup_agent(const char *text, int state)
 {
 	if (__connmanctl_input_calc_level() > 1) {
@@ -1959,7 +1975,7 @@ static const struct {
 	            "            wifi [on|off] <ssid> <passphrase> ",
 	                                  NULL,            cmd_tether,
 	  "Enable, disable tethering, set SSID and passphrase for wifi",
-	  NULL },
+	  lookup_tether },
 	{ "services",     "[<service>]",  service_options, cmd_services,
 	  "Display services", lookup_service_arg },
 	{ "scan",         "<technology>", NULL,            cmd_scan,
