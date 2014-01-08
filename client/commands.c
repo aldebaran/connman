@@ -1796,6 +1796,16 @@ static char *lookup_service(const char *text, int state)
 	return NULL;
 }
 
+static char *lookup_service_arg(const char *text, int state)
+{
+	if (__connmanctl_input_calc_level() > 1) {
+		__connmanctl_input_lookup_end();
+		return NULL;
+	}
+
+	return lookup_service(text, state);
+}
+
 static char *lookup_technology(const char *text, int state)
 {
 	static int len = 0;
@@ -1816,11 +1826,26 @@ static char *lookup_technology(const char *text, int state)
 	return NULL;
 }
 
+static char *lookup_technology_arg(const char *text, int state)
+{
+	if (__connmanctl_input_calc_level() > 1) {
+		__connmanctl_input_lookup_end();
+		return NULL;
+	}
+
+	return lookup_technology(text, state);
+}
+
 static char *lookup_technology_offline(const char *text, int state)
 {
 	static int len = 0;
 	static bool end = false;
 	char *str;
+
+	if (__connmanctl_input_calc_level() > 1) {
+		__connmanctl_input_lookup_end();
+		return NULL;
+	}
 
 	if (state == 0) {
 		len = strlen(text);
@@ -1900,15 +1925,16 @@ static const struct {
 	            "            wifi [on|off] <ssid> <passphrase> ",
 	                                  NULL,            cmd_tether,
 	  "Enable, disable tethering, set SSID and passphrase for wifi",
-	  lookup_technology },
+	  NULL },
 	{ "services",     "[<service>]",  service_options, cmd_services,
-	  "Display services", lookup_service },
+	  "Display services", lookup_service_arg },
 	{ "scan",         "<technology>", NULL,            cmd_scan,
-	  "Scans for new services for given technology", lookup_technology },
+	  "Scans for new services for given technology",
+	  lookup_technology_arg },
 	{ "connect",      "<service>",    NULL,            cmd_connect,
-	  "Connect a given service", lookup_service },
+	  "Connect a given service", lookup_service_arg },
 	{ "disconnect",   "<service>",    NULL,            cmd_disconnect,
-	  "Disconnect a given service", lookup_service },
+	  "Disconnect a given service", lookup_service_arg },
 	{ "config",       "<service>",    config_options,  cmd_config,
 	  "Set service configuration options", lookup_service },
 	{ "monitor",      "[off]",        monitor_options, cmd_monitor,
