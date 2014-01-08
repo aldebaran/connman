@@ -2,7 +2,7 @@
  *
  *  Connection Manager
  *
- *  Copyright (C) 2007-2012  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2007-2014  Intel Corporation. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -1277,7 +1277,7 @@ static GSupplicantSecurity network_security(const char *security)
 
 static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 {
-	const char *security, *passphrase, *agent_passphrase;
+	const char *security;
 
 	memset(ssid, 0, sizeof(*ssid));
 	ssid->mode = G_SUPPLICANT_MODE_INFRA;
@@ -1286,20 +1286,8 @@ static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 	ssid->scan_ssid = 1;
 	security = connman_network_get_string(network, "WiFi.Security");
 	ssid->security = network_security(security);
-	passphrase = connman_network_get_string(network,
+	ssid->passphrase = connman_network_get_string(network,
 						"WiFi.Passphrase");
-	if (!passphrase || strlen(passphrase) == 0) {
-
-		/* Use agent provided passphrase as a fallback */
-		agent_passphrase = connman_network_get_string(network,
-						"WiFi.AgentPassphrase");
-
-		if (!agent_passphrase || strlen(agent_passphrase) == 0)
-			ssid->passphrase = NULL;
-		else
-			ssid->passphrase = agent_passphrase;
-	} else
-		ssid->passphrase = passphrase;
 
 	ssid->eap = connman_network_get_string(network, "WiFi.EAP");
 
