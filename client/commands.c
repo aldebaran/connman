@@ -1992,6 +1992,19 @@ static char *lookup_monitor(const char *text, int state)
 	return NULL;
 }
 
+static char *lookup_config(const char *text, int state)
+{
+	if (__connmanctl_input_calc_level() < 2)
+		return lookup_service(text, state);
+
+	return lookup_options(config_options, text, state);
+}
+
+static char *lookup_session(const char *text, int state)
+{
+	return lookup_options(session_options, text, state);
+}
+
 static const struct {
         const char *cmd;
 	const char *argument;
@@ -2025,7 +2038,7 @@ static const struct {
 	{ "disconnect",   "<service>",    NULL,            cmd_disconnect,
 	  "Disconnect a given service", lookup_service_arg },
 	{ "config",       "<service>",    config_options,  cmd_config,
-	  "Set service configuration options", lookup_service },
+	  "Set service configuration options", lookup_config },
 	{ "monitor",      "[off]",        monitor_options, cmd_monitor,
 	  "Monitor signals from interfaces", lookup_monitor },
 	{ "agent", "on|off",              NULL,            cmd_agent,
@@ -2035,7 +2048,7 @@ static const struct {
 	{ "vpnagent",     "on|off",     NULL,            cmd_vpnagent,
 	  "VPN Agent mode", lookup_agent },
 	{ "session",      "on|off|connect|disconnect|config", session_options,
-	  cmd_session, "Enable or disable a session", NULL },
+	  cmd_session, "Enable or disable a session", lookup_session },
 	{ "help",         NULL,           NULL,            cmd_help,
 	  "Show help", NULL },
 	{ "exit",         NULL,           NULL,            cmd_exit,
