@@ -157,6 +157,11 @@ int __connmanctl_input_calc_level(void)
 	return count;
 }
 
+void __connmanctl_input_lookup_end(void)
+{
+	rl_attempted_completion_over = 1;
+}
+
 static char **complete_command(const char *text, int start, int end)
 {
 	if (start == 0) {
