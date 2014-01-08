@@ -1953,6 +1953,45 @@ static struct connman_option session_options[] = {
 	{ NULL, }
 };
 
+static char *lookup_options(struct connman_option *options, const char *text,
+		int state)
+{
+	static int idx = 0;
+	static int len = 0;
+	const char *str;
+
+	if (state == 0) {
+		idx = 0;
+		len = strlen(text);
+	}
+
+	while (options[idx].name) {
+		str = options[idx].name;
+		idx++;
+
+		if (str && strncmp(text, str, len) == 0)
+			return strdup(str);
+	}
+
+	return NULL;
+}
+
+static char *lookup_monitor(const char *text, int state)
+{
+	int level;
+
+	level = __connmanctl_input_calc_level();
+
+	if (level < 2)
+		return lookup_options(monitor_options, text, state);
+
+	if (level == 2)
+		return lookup_on_off(text, state);
+
+	__connmanctl_input_lookup_end();
+	return NULL;
+}
+
 static const struct {
         const char *cmd;
 	const char *argument;
@@ -1988,7 +2027,7 @@ static const struct {
 	{ "config",       "<service>",    config_options,  cmd_config,
 	  "Set service configuration options", lookup_service },
 	{ "monitor",      "[off]",        monitor_options, cmd_monitor,
-	  "Monitor signals from interfaces", NULL },
+	  "Monitor signals from interfaces", lookup_monitor },
 	{ "agent", "on|off",              NULL,            cmd_agent,
 	  "Agent mode", lookup_agent },
 	{"vpnconnections", "[<connection>]", NULL,         cmd_vpnconnections,
