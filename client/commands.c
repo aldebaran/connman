@@ -1867,6 +1867,40 @@ static char *lookup_technology_offline(const char *text, int state)
 	return NULL;
 }
 
+static char *lookup_on_off(const char *text, int state)
+{
+	char *onoff[] = { "on", "off", NULL };
+	static int idx = 0;
+	static int len = 0;
+
+	char *str;
+
+	if (!state) {
+		idx = 0;
+		len = strlen(text);
+	}
+
+	while (onoff[idx]) {
+		str = onoff[idx];
+		idx++;
+
+		if (!strncmp(text, str, len))
+			return strdup(str);
+	}
+
+	return NULL;
+}
+
+static char *lookup_agent(const char *text, int state)
+{
+	if (__connmanctl_input_calc_level() > 1) {
+		__connmanctl_input_lookup_end();
+		return NULL;
+	}
+
+	return lookup_on_off(text, state);
+}
+
 static struct connman_option service_options[] = {
 	{"properties", 'p', "[<service>]      (obsolete)"},
 	{ NULL, }
@@ -1940,11 +1974,11 @@ static const struct {
 	{ "monitor",      "[off]",        monitor_options, cmd_monitor,
 	  "Monitor signals from interfaces", NULL },
 	{ "agent", "on|off",              NULL,            cmd_agent,
-	  "Agent mode", NULL },
+	  "Agent mode", lookup_agent },
 	{"vpnconnections", "[<connection>]", NULL,         cmd_vpnconnections,
 	 "Display VPN connections", NULL },
 	{ "vpnagent",     "on|off",     NULL,            cmd_vpnagent,
-	  "VPN Agent mode", NULL },
+	  "VPN Agent mode", lookup_agent },
 	{ "session",      "on|off|connect|disconnect|config", session_options,
 	  cmd_session, "Enable or disable a session", NULL },
 	{ "help",         NULL,           NULL,            cmd_help,
