@@ -1365,6 +1365,18 @@ struct connman_service *__connman_service_get_default(void)
 	return service;
 }
 
+bool __connman_service_index_is_default(int index)
+{
+	struct connman_service *service;
+
+	if (index < 0)
+		return false;
+
+	service = __connman_service_get_default();
+
+	return __connman_service_get_index(service) == index;
+}
+
 static void default_changed(void)
 {
 	struct connman_service *service = __connman_service_get_default();
