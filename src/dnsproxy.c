@@ -2289,9 +2289,10 @@ static struct server_data *create_server(int index,
 	}
 
 	if (protocol == IPPROTO_UDP) {
-		/* Enable new servers by default */
-		data->enabled = true;
-		DBG("Adding DNS server %s", data->server);
+		if (__connman_service_index_is_default(data->index)) {
+			data->enabled = true;
+			DBG("Adding DNS server %s", data->server);
+		}
 
 		server_list = g_slist_append(server_list, data);
 	}
