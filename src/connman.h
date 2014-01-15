@@ -534,7 +534,7 @@ int __connman_device_request_scan(enum connman_service_type type);
 int __connman_device_request_hidden_scan(struct connman_device *device,
 				const char *ssid, unsigned int ssid_len,
 				const char *identity, const char *passphrase,
-				gpointer user_data);
+				const char *security, void *user_data);
 
 bool __connman_device_isfiltered(const char *devname);
 

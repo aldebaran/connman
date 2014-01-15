@@ -5042,6 +5042,7 @@ static void request_input_cb(struct connman_service *service,
 			const char *error, void *user_data)
 {
 	struct connman_device *device;
+	const char *security;
 	int err = 0;
 
 	DBG("RequestInput return, %p", service);
@@ -5066,10 +5067,12 @@ static void request_input_cb(struct connman_service *service,
 
 	if (service->hidden && name_len > 0 && name_len <= 32) {
 		device = connman_network_get_device(service->network);
+		security = connman_network_get_string(service->network,
+							"WiFi.Security");
 		err = __connman_device_request_hidden_scan(device,
 						name, name_len,
 						identity, passphrase,
-						user_data);
+						security, user_data);
 		if (err < 0)
 			__connman_service_return_error(service,	-err,
 							user_data);
