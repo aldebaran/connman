@@ -1,3 +1,9 @@
+ver 1.21:
+	Fix issue with WiFi networks and zero SSID length.
+	Fix issue with security details for hidden WiFi networks.
+	Fix issue with handling IPv6 proxy address resolving.
+	Fix issue with enabling Bluetooth controllers.
+
 ver 1.20:
 	Fix issue with invalid cache of DNS proxy support.
 	Fix issue with stopping DHCP for failed connections.
