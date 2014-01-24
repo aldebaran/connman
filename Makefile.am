@@ -375,7 +375,8 @@ EXTRA_DIST += doc/overview-api.txt doc/behavior-api.txt \
 				doc/vpn-manager-api.txt doc/vpn-overview.txt \
 				doc/session-policy-format.txt
 
-EXTRA_DIST += src/main.conf
+EXTRA_DIST += src/main.conf \
+		src/eduroam.config
 
 MANUAL_PAGES += doc/connman.8 doc/connman.conf.5
 
