@@ -216,6 +216,9 @@ void connman_agent_cancel(void *user_context)
 
 	item = agent_queue;
 
+	if (agent_request == NULL)
+		return;
+
 	while (item != NULL) {
 		next = g_list_next(item);
 		queued_req = item->data;
@@ -228,9 +231,6 @@ void connman_agent_cancel(void *user_context)
 
 		item = next;
 	}
-
-	if (agent_request == NULL)
-		return;
 
 	if (agent_request->user_context != user_context &&
 						user_context != NULL)
