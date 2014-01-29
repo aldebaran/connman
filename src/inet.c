@@ -2385,9 +2385,10 @@ int __connman_inet_rtnl_talk(struct __connman_inet_rtnl_handle *rtnl,
 
 	err = sendto(rtnl->fd, &rtnl->req.n, rtnl->req.n.nlmsg_len, 0,
 		(struct sockaddr *) &nladdr, sizeof(nladdr));
-	DBG("handle %p len %d err %d", rtnl, rtnl->req.n.nlmsg_len, err);
+	DBG("handle %p len %d", rtnl, rtnl->req.n.nlmsg_len);
 	if (err < 0) {
-		connman_error("Can not talk to rtnetlink");
+		connman_error("Can not talk to rtnetlink err %d %s",
+			-errno, strerror(errno));
 		return -errno;
 	}
 
