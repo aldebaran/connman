@@ -261,6 +261,11 @@ static void technology_save(struct connman_technology *technology)
 					"Tethering.Passphrase",
 					technology->tethering_passphrase);
 
+        if (technology->regdom != NULL)
+		g_key_file_set_string(keyfile, identifier,
+					"RegulatoryDomain",
+					technology->regdom);
+
 done:
 	g_free(identifier);
 
@@ -508,6 +513,9 @@ static void technology_load(struct connman_technology *technology)
 
 	technology->tethering_passphrase = g_key_file_get_string(keyfile,
 				identifier, "Tethering.Passphrase", NULL);
+
+	technology->regdom = g_key_file_get_string(keyfile,
+				identifier, "RegulatoryDomain", NULL);
 done:
 	g_free(identifier);
 
@@ -602,6 +610,11 @@ static void append_properties(DBusMessageIter *iter,
 		connman_dbus_dict_append_basic(&dict, "TetheringPassphrase",
 					DBUS_TYPE_STRING,
 					&technology->tethering_passphrase);
+
+        if (technology->regdom != NULL)
+          connman_dbus_dict_append_basic(&dict, "RegulatoryDomain",
+                                         DBUS_TYPE_STRING,
+                                         &technology->regdom);
 
 	connman_dbus_dict_close(iter, &dict);
 }
@@ -722,6 +735,12 @@ static int technology_enable(struct connman_technology *technology)
 
 	if (technology->pending_reply != NULL)
 		return -EBUSY;
+
+	if (technology->regdom != NULL)
+		err = set_regdom_by_device(technology, technology->regdom);
+	if (err < 0)
+		connman_error("Fail to set regulatory domain on technology: %s",
+						get_name(technology->type));
 
 	if (connman_setting_get_bool("PersistentTetheringMode")	== TRUE &&
 					technology->tethering == TRUE)
@@ -913,6 +932,33 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &enable);
 
 		return set_powered(technology, msg, enable);
+
+	} else if (g_str_equal(name, "RegulatoryDomain") == TRUE) {
+		int err;
+		const char *alpha2;
+
+		dbus_message_iter_get_basic(&value, &alpha2);
+
+                if (strlen(alpha2) != 2)
+			return __connman_error_invalid_arguments(msg);
+
+		if (technology->type != CONNMAN_SERVICE_TYPE_WIFI)
+			return __connman_error_not_supported(msg);
+
+		if (g_strcmp0(technology->regdom, alpha2) != 0) {
+			err = set_regdom_by_device(technology, alpha2);
+                        if (err < 0)
+				return __connman_error_failed(msg, -err);
+
+			g_free(technology->regdom);
+			technology->regdom = g_strdup(alpha2);
+			technology_save(technology);
+			connman_dbus_property_changed_basic(technology->path,
+					CONNMAN_TECHNOLOGY_INTERFACE,
+					"RegulatoryDomain",
+					DBUS_TYPE_STRING,
+					&technology->regdom);
+                }
 	} else
 		return __connman_error_invalid_property(msg);
 
