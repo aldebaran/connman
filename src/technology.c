@@ -743,10 +743,10 @@ static int technology_enable(struct connman_technology *technology)
 	if (technology->pending_reply)
 		return -EBUSY;
 
-	if (technology->regdom != NULL)
-		err = set_regdom_by_device(technology, technology->regdom);
-	if (err < 0)
-		connman_error("Fail to set regulatory domain on technology: %s",
+	if (technology->regdom &&
+		set_regdom_by_device(technology, technology->regdom) < 0)
+			connman_error(
+			"Fail to set regulatory domain on technology: %s",
 						get_name(technology->type));
 
 	if (connman_setting_get_bool("PersistentTetheringMode")	&&
