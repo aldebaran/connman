@@ -1554,6 +1554,8 @@ static connman_bool_t handle_4way_handshake_failure(GSupplicantInterface *interf
 	} else if (wifi->retries < MAXIMUM_RETRIES)
 		return TRUE;
 
+        wifi->retries = 0;
+
 	connman_network_set_error(network, CONNMAN_NETWORK_ERROR_INVALID_KEY);
 
 	return FALSE;
