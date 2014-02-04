@@ -117,6 +117,7 @@ static struct timespec mtx_time;
 static int transmit_fd = 0;
 
 static char *timeserver = NULL;
+static struct sockaddr_in timeserver_addr;
 static gint poll_id = 0;
 static gint timeout_id = 0;
 static guint retries = 0;
@@ -345,6 +346,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
 	unsigned char buf[128];
+	struct sockaddr_in sender_addr;
 	struct msghdr msg;
 	struct iovec iov;
 	struct cmsghdr *cmsg;
@@ -370,9 +372,15 @@ static gboolean received_data(GIOChannel *channel, GIOCondition condition,
 	msg.msg_iovlen = 1;
 	msg.msg_control = aux;
 	msg.msg_controllen = sizeof(aux);
+	msg.msg_name = &sender_addr;
+	msg.msg_namelen = sizeof(sender_addr);
 
 	len = recvmsg(fd, &msg, MSG_DONTWAIT);
 	if (len < 0)
+		return TRUE;
+
+	if (timeserver_addr.sin_addr.s_addr != sender_addr.sin_addr.s_addr)
+		/* only accept messages from the timeserver */
 		return TRUE;
 
 	tv = NULL;
@@ -468,6 +476,7 @@ int __connman_ntp_start(char *server)
 		g_free(timeserver);
 
 	timeserver = g_strdup(server);
+	timeserver_addr.sin_addr.s_addr = inet_addr(server);
 
 	start_ntp(timeserver);
 
