@@ -646,6 +646,8 @@ static bool wispr_manage_message(GWebResult *result,
 					wispr_portal_request_wispr_login,
 					wp_context) != -EINPROGRESS)
 			wispr_portal_error(wp_context);
+		else
+			return true;
 
 		break;
 	case 120: /* Falling down */
