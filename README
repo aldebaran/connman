@@ -71,6 +71,14 @@ For a working system, certain configuration options need to be enabled:
 		enabled. This option can be used to build a small daemon
 		for a specific system if Ethernet support is not required.
 
+	--disable-gadget
+
+		Disable support for USB Ethernet Gadget devices
+
+		By default USB Ethernet Gadget technology support is built-in and
+		enabled. This option can be used to build a small daemon
+		for a specific system if USB Ethernet Gadget support is not required.
+
 	--disable-wifi
 
 		Disable support for WiFi devices

@@ -16,6 +16,11 @@ builtin_modules += ethernet
 builtin_sources += plugins/ethernet.c
 endif
 
+if GADGET
+builtin_modules += gadget
+builtin_sources += plugins/gadget.c
+endif
+
 gsupplicant_sources = gsupplicant/gsupplicant.h gsupplicant/dbus.h \
 			gsupplicant/supplicant.c gsupplicant/dbus.c
 

@@ -286,6 +286,11 @@ AC_ARG_ENABLE(ethernet, AC_HELP_STRING([--disable-ethernet],
 					[enable_ethernet=${enableval}])
 AM_CONDITIONAL(ETHERNET, test "${enable_ethernet}" != "no")
 
+AC_ARG_ENABLE(gadget, AC_HELP_STRING([--disable-gadget],
+				[disable USB Gadget support]),
+					[enable_gadget=${enableval}])
+AM_CONDITIONAL(GADGET, test "${enable_gadget}" != "no")
+
 AC_ARG_ENABLE(wifi, AC_HELP_STRING([--disable-wifi],
 				[disable WiFi support]),
 					[enable_wifi=${enableval}])
