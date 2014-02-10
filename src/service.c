@@ -344,7 +344,6 @@ static int service_load(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	case CONNMAN_SERVICE_TYPE_VPN:
 		service->do_split_routing = g_key_file_get_boolean(keyfile,
@@ -405,6 +404,7 @@ static int service_load(struct connman_service *service)
 		}
 		/* fall through */
 
+	case CONNMAN_SERVICE_TYPE_GADGET:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		service->favorite = g_key_file_get_boolean(keyfile,
@@ -535,7 +535,6 @@ static int service_save(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	case CONNMAN_SERVICE_TYPE_VPN:
 		g_key_file_set_boolean(keyfile, service->identifier,
@@ -579,6 +578,7 @@ static int service_save(struct connman_service *service)
 		}
 		/* fall through */
 
+	case CONNMAN_SERVICE_TYPE_GADGET:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		g_key_file_set_boolean(keyfile, service->identifier,
@@ -2260,7 +2260,6 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		val = service->roaming;
@@ -2273,6 +2272,7 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 	case CONNMAN_SERVICE_TYPE_WIFI:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		connman_dbus_dict_append_dict(dict, "Ethernet",
 						append_ethernet, service);
 		break;
@@ -3963,7 +3963,8 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 
 bool __connman_service_remove(struct connman_service *service)
 {
-	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
+	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET ||
+			service->type == CONNMAN_SERVICE_TYPE_GADGET)
 		return false;
 
 	if (service->immutable || service->hidden ||
@@ -4656,6 +4657,11 @@ static gint service_compare(gconstpointer a, gconstpointer b)
 		if (service_a->type == CONNMAN_SERVICE_TYPE_VPN)
 			return -1;
 		if (service_b->type == CONNMAN_SERVICE_TYPE_VPN)
+			return 1;
+
+		if (service_a->type == CONNMAN_SERVICE_TYPE_GADGET)
+			return -1;
+		if (service_b->type == CONNMAN_SERVICE_TYPE_GADGET)
 			return 1;
 	}
 
@@ -5739,6 +5745,7 @@ static bool prepare_network(struct connman_service *service)
 				"WiFi.Passphrase", service->passphrase);
 		break;
 	case CONNMAN_NETWORK_TYPE_ETHERNET:
+	case CONNMAN_NETWORK_TYPE_GADGET:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
@@ -5793,9 +5800,9 @@ static int service_connect(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_GADGET:
 		return -EINVAL;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 	case CONNMAN_SERVICE_TYPE_VPN:
@@ -5910,7 +5917,6 @@ int __connman_service_connect(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_GADGET:
 		return -EINVAL;
 	default:
 		if (!is_ipconfig_usable(service))
@@ -6521,6 +6527,8 @@ static enum connman_service_type convert_network_type(struct connman_network *ne
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
+	case CONNMAN_NETWORK_TYPE_GADGET:
+		return CONNMAN_SERVICE_TYPE_GADGET;
 	}
 
 	return CONNMAN_SERVICE_TYPE_UNKNOWN;

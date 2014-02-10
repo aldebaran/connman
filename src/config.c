@@ -182,12 +182,14 @@ static void unregister_service(gpointer data)
 			__connman_service_remove(service);
 
 			/*
-			 * Ethernet service cannot be removed by
+			 * Ethernet or gadget service cannot be removed by
 			 * __connman_service_remove() so reset the ipconfig
 			 * here.
 			 */
 			if (connman_service_get_type(service) ==
-						CONNMAN_SERVICE_TYPE_ETHERNET) {
+						CONNMAN_SERVICE_TYPE_ETHERNET ||
+					connman_service_get_type(service) ==
+						CONNMAN_SERVICE_TYPE_GADGET) {
 				__connman_service_disconnect(service);
 				__connman_service_reset_ipconfig(service,
 					CONNMAN_IPCONFIG_TYPE_IPV4, NULL, NULL);
@@ -1072,6 +1074,10 @@ static void provision_service(gpointer key, gpointer value,
 				g_strcmp0(config->type, "ethernet") != 0)
 		return;
 
+	if (type == CONNMAN_SERVICE_TYPE_GADGET &&
+				g_strcmp0(config->type, "gadget") != 0)
+		return;
+
 	DBG("service %p ident %s", service,
 					__connman_service_get_ident(service));
 
@@ -1265,13 +1271,14 @@ int __connman_config_provision_service(struct connman_service *service)
 	GHashTableIter iter;
 	gpointer value, key;
 
-	/* For now only WiFi and Ethernet services are supported */
+	/* For now only WiFi, Gadget and Ethernet services are supported */
 	type = connman_service_get_type(service);
 
 	DBG("service %p type %d", service, type);
 
 	if (type != CONNMAN_SERVICE_TYPE_WIFI &&
-					type != CONNMAN_SERVICE_TYPE_ETHERNET)
+			type != CONNMAN_SERVICE_TYPE_ETHERNET &&
+			type != CONNMAN_SERVICE_TYPE_GADGET)
 		return -ENOSYS;
 
 	g_hash_table_iter_init(&iter, config_table);
@@ -1293,13 +1300,14 @@ int __connman_config_provision_service_ident(struct connman_service *service,
 	struct connman_config *config;
 	int ret = 0;
 
-	/* For now only WiFi and Ethernet services are supported */
+	/* For now only WiFi, Gadget and Ethernet services are supported */
 	type = connman_service_get_type(service);
 
 	DBG("service %p type %d", service, type);
 
 	if (type != CONNMAN_SERVICE_TYPE_WIFI &&
-					type != CONNMAN_SERVICE_TYPE_ETHERNET)
+			type != CONNMAN_SERVICE_TYPE_ETHERNET &&
+			type != CONNMAN_SERVICE_TYPE_GADGET)
 		return -ENOSYS;
 
 	config = g_hash_table_lookup(config_table, ident);
