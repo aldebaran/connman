@@ -36,27 +36,184 @@
 #include <connman/technology.h>
 #include <connman/plugin.h>
 #include <connman/device.h>
+#include <connman/rtnl.h>
 #include <connman/inet.h>
 #include <connman/log.h>
 
+static bool gadget_tethering = false;
+
+struct gadget_data {
+	int index;
+	unsigned flags;
+	unsigned int watch;
+	struct connman_network *network;
+};
+
+static int gadget_network_probe(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	return 0;
+}
+
+static void gadget_network_remove(struct connman_network *network)
+{
+	DBG("network %p", network);
+}
+
+static int gadget_network_connect(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	connman_network_set_connected(network, true);
+
+	return 0;
+}
+
+static int gadget_network_disconnect(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	connman_network_set_connected(network, false);
+
+	return 0;
+}
+
+static struct connman_network_driver gadget_network_driver = {
+	.name		= "usb",
+	.type		= CONNMAN_NETWORK_TYPE_GADGET,
+	.probe		= gadget_network_probe,
+	.remove		= gadget_network_remove,
+	.connect	= gadget_network_connect,
+	.disconnect	= gadget_network_disconnect,
+};
+
+static void add_network(struct connman_device *device,
+			struct gadget_data *gadget)
+{
+	struct connman_network *network;
+	int index;
+
+	network = connman_network_create("gadget",
+					CONNMAN_NETWORK_TYPE_GADGET);
+	if (!network)
+		return;
+
+	index = connman_device_get_index(device);
+	connman_network_set_index(network, index);
+
+	connman_network_set_name(network, "Wired");
+
+	if (connman_device_add_network(device, network) < 0) {
+		connman_network_unref(network);
+		return;
+	}
+
+	if (!gadget_tethering)
+		/*
+		 * Prevent service from starting the reconnect
+		 * procedure as we do not want the DHCP client
+		 * to run when tethering.
+		 */
+		connman_network_set_group(network, "usb");
+
+	gadget->network = network;
+}
+
+static void remove_network(struct connman_device *device,
+				struct gadget_data *gadget)
+{
+	if (!gadget->network)
+		return;
+
+	connman_device_remove_network(device, gadget->network);
+	connman_network_unref(gadget->network);
+
+	gadget->network = NULL;
+}
+
+static void gadget_newlink(unsigned flags, unsigned change, void *user_data)
+{
+	struct connman_device *device = user_data;
+	struct gadget_data *gadget = connman_device_get_data(device);
+
+	DBG("index %d flags %d change %d", gadget->index, flags, change);
+
+	if ((gadget->flags & IFF_UP) != (flags & IFF_UP)) {
+		if (flags & IFF_UP) {
+			DBG("power on");
+			connman_device_set_powered(device, true);
+		} else {
+			DBG("power off");
+			connman_device_set_powered(device, false);
+		}
+	}
+
+	if ((gadget->flags & IFF_LOWER_UP) != (flags & IFF_LOWER_UP)) {
+		if (flags & IFF_LOWER_UP) {
+			DBG("carrier on");
+			add_network(device, gadget);
+		} else {
+			DBG("carrier off");
+			remove_network(device, gadget);
+		}
+	}
+
+	gadget->flags = flags;
+}
+
 static int gadget_dev_probe(struct connman_device *device)
 {
+	struct gadget_data *gadget;
+
 	DBG("device %p", device);
+
+	gadget = g_try_new0(struct gadget_data, 1);
+	if (!gadget)
+		return -ENOMEM;
+
+	connman_device_set_data(device, gadget);
+
+	gadget->index = connman_device_get_index(device);
+	gadget->flags = 0;
+
+	gadget->watch = connman_rtnl_add_newlink_watch(gadget->index,
+						gadget_newlink, device);
+
 	return 0;
 }
+
 static void gadget_dev_remove(struct connman_device *device)
 {
+	struct gadget_data *gadget = connman_device_get_data(device);
+
 	DBG("device %p", device);
+
+	connman_device_set_data(device, NULL);
+
+	connman_rtnl_remove_watch(gadget->watch);
+
+	remove_network(device, gadget);
+
+	g_free(gadget);
 }
+
 static int gadget_dev_enable(struct connman_device *device)
 {
+	struct gadget_data *gadget = connman_device_get_data(device);
+
 	DBG("device %p", device);
-	return 0;
+
+	return connman_inet_ifup(gadget->index);
 }
+
 static int gadget_dev_disable(struct connman_device *device)
 {
+	struct gadget_data *gadget = connman_device_get_data(device);
+
 	DBG("device %p", device);
-	return 0;
+
+	return connman_inet_ifdown(gadget->index);
 }
 
 static struct connman_device_driver gadget_dev_driver = {
@@ -168,6 +325,10 @@ static int gadget_init(void)
 		return err;
 	}
 
+	err = connman_network_driver_register(&gadget_network_driver);
+	if (err < 0)
+		return err;
+
 	err = connman_device_driver_register(&gadget_dev_driver);
 	if (err < 0) {
 		connman_technology_driver_unregister(&gadget_tech_driver);
@@ -180,6 +341,7 @@ static int gadget_init(void)
 static void gadget_exit(void)
 {
 	connman_technology_driver_unregister(&gadget_tech_driver);
+	connman_network_driver_unregister(&gadget_network_driver);
 	connman_device_driver_unregister(&gadget_dev_driver);
 }
 
