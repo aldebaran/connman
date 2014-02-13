@@ -1,6 +1,7 @@
 [Unit]
 Description=Connection service
 After=syslog.target
+Before=remote-fs.target
 
 [Service]
 Type=dbus
