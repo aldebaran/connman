@@ -3468,6 +3468,24 @@ static bool is_ignore(struct connman_service *service)
 	return false;
 }
 
+static void disconnect_on_last_session(enum connman_service_type type)
+{
+	GList *list;
+
+	for (list = service_list; list; list = list->next) {
+		struct connman_service *service = list->data;
+
+		if (service->type != type)
+			continue;
+
+		if (service->connect_reason != CONNMAN_SERVICE_CONNECT_REASON_SESSION)
+			 continue;
+
+		__connman_service_disconnect(service);
+		return;
+	}
+}
+
 static int active_sessions[MAX_CONNMAN_SERVICE_TYPES] = {};
 static int active_count = 0;
 
@@ -3502,6 +3520,9 @@ void __connman_service_set_active_session(bool enable, GSList *list)
 		case CONNMAN_SERVICE_TYPE_VPN:
 			break;
 		}
+
+		if (active_sessions[type] == 0)
+			disconnect_on_last_session(type);
 
 		list = g_slist_next(list);
 	}
