@@ -193,6 +193,8 @@ static int bearer2service(const char *bearer, enum connman_service_type *type)
 		*type = CONNMAN_SERVICE_TYPE_ETHERNET;
 	else if (g_strcmp0(bearer, "wifi") == 0)
 		*type = CONNMAN_SERVICE_TYPE_WIFI;
+	else if (g_strcmp0(bearer, "gadget") == 0)
+		*type = CONNMAN_SERVICE_TYPE_GADGET;
 	else if (g_strcmp0(bearer, "bluetooth") == 0)
 		*type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
 	else if (g_strcmp0(bearer, "cellular") == 0)
@@ -212,6 +214,8 @@ static char *service2bearer(enum connman_service_type type)
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 		return "ethernet";
+	case CONNMAN_SERVICE_TYPE_GADGET:
+		return "gadget";
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		return "wifi";
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
@@ -224,7 +228,6 @@ static char *service2bearer(enum connman_service_type type)
 		return "*";
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_GADGET:
 		return "";
 	}
 
@@ -1050,13 +1053,16 @@ static int service_type_weight(enum connman_service_type type)
 	 * according their type. The ordering is
 	 *
 	 * 1. Ethernet
-	 * 2. Bluetooth
-	 * 3. WiFi
-	 * 4. Cellular
+	 * 2. Gadget
+	 * 3. Bluetooth
+	 * 4. WiFi
+	 * 5. Cellular
 	 */
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		return 5;
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		return 4;
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		return 3;
@@ -1068,7 +1074,6 @@ static int service_type_weight(enum connman_service_type type)
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	}
 

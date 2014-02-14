@@ -3472,6 +3472,7 @@ void __connman_service_set_active_session(bool enable, GSList *list)
 		case CONNMAN_SERVICE_TYPE_WIFI:
 		case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		case CONNMAN_SERVICE_TYPE_CELLULAR:
+		case CONNMAN_SERVICE_TYPE_GADGET:
 			if (enable)
 				active_sessions[type]++;
 			else
@@ -3482,18 +3483,18 @@ void __connman_service_set_active_session(bool enable, GSList *list)
 		case CONNMAN_SERVICE_TYPE_SYSTEM:
 		case CONNMAN_SERVICE_TYPE_GPS:
 		case CONNMAN_SERVICE_TYPE_VPN:
-		case CONNMAN_SERVICE_TYPE_GADGET:
 			break;
 		}
 
 		list = g_slist_next(list);
 	}
 
-	DBG("eth %d wifi %d bt %d cellular %d sessions %d",
+	DBG("eth %d wifi %d bt %d cellular %d gadget %d sessions %d",
 			active_sessions[CONNMAN_SERVICE_TYPE_ETHERNET],
 			active_sessions[CONNMAN_SERVICE_TYPE_WIFI],
 			active_sessions[CONNMAN_SERVICE_TYPE_BLUETOOTH],
 			active_sessions[CONNMAN_SERVICE_TYPE_CELLULAR],
+			active_sessions[CONNMAN_SERVICE_TYPE_GADGET],
 			active_count);
 }
 
