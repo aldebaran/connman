@@ -1475,9 +1475,9 @@ int connman_network_connect_hidden(struct connman_network *network,
 		goto out;
 	} else {
 		__connman_service_set_hidden(service);
-		__connman_service_set_userconnect(service, true);
 		__connman_service_set_hidden_data(service, user_data);
-		return __connman_service_connect(service);
+		return __connman_service_connect(service,
+					CONNMAN_SERVICE_CONNECT_REASON_USER);
 	}
 
 out:

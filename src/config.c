@@ -1046,7 +1046,8 @@ static gboolean remove_virtual_config(gpointer user_data)
 {
 	struct connect_virtual *virtual = user_data;
 
-	__connman_service_connect(virtual->service);
+	__connman_service_connect(virtual->service,
+				CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 	g_hash_table_remove(config_table, virtual->vfile);
 
 	g_free(virtual);
@@ -1247,7 +1248,8 @@ static void provision_service(gpointer key, gpointer value,
 		provision_service_wifi(key, config, service, network,
 							ssid, ssid_len);
 	} else
-		__connman_service_connect(service);
+		__connman_service_connect(service,
+					CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 
 	__connman_service_mark_dirty();
 

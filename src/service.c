@@ -73,13 +73,13 @@ struct connman_service {
 	enum connman_service_state state_ipv4;
 	enum connman_service_state state_ipv6;
 	enum connman_service_error error;
+	enum connman_service_connect_reason connect_reason;
 	uint8_t strength;
 	bool favorite;
 	bool immutable;
 	bool hidden;
 	bool ignore;
 	bool autoconnect;
-	bool userconnect;
 	GTimeVal modified;
 	unsigned int order;
 	char *name;
@@ -160,6 +160,23 @@ static struct connman_service *find_service(const char *path)
 	g_list_foreach(service_list, compare_path, &data);
 
 	return data.service;
+}
+
+static const char *reason2string(enum connman_service_connect_reason reason)
+{
+
+	switch (reason) {
+	case CONNMAN_SERVICE_CONNECT_REASON_NONE:
+		return "none";
+	case CONNMAN_SERVICE_CONNECT_REASON_USER:
+		return "user";
+	case CONNMAN_SERVICE_CONNECT_REASON_AUTO:
+		return "auto";
+	case CONNMAN_SERVICE_CONNECT_REASON_SESSION:
+		return "session";
+	}
+
+	return "unknown";
 }
 
 const char *__connman_service_type2string(enum connman_service_type type)
@@ -3535,7 +3552,8 @@ static GList *preferred_tech_list_get(void)
 			if (!is_connected(service))
 				break;
 
-			if (service->userconnect) {
+			if (service->connect_reason ==
+					CONNMAN_SERVICE_CONNECT_REASON_USER) {
 				DBG("service %p name %s is user connected",
 						service, service->name);
 				return NULL;
@@ -3607,8 +3625,8 @@ static bool auto_connect_service(GList *services, bool preferred)
 		DBG("service %p %s %s", service, service->name,
 				(preferred) ? "preferred" : "auto");
 
-		service->userconnect = false;
-		__connman_service_connect(service);
+		__connman_service_connect(service,
+				CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 
 		if (!active_count)
 			return true;
@@ -3681,7 +3699,8 @@ static gboolean run_vpn_auto_connect(gpointer data) {
 				service->do_split_routing ?
 				"split routing" : "");
 
-		res = __connman_service_connect(service);
+		res = __connman_service_connect(service,
+				CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 		if (res < 0 && res != -EINPROGRESS)
 			continue;
 
@@ -3856,7 +3875,9 @@ static gboolean connect_timeout(gpointer user_data)
 					CONNMAN_SERVICE_STATE_FAILURE,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 
-	if (autoconnect && !service->userconnect)
+	if (autoconnect &&
+			service->connect_reason !=
+				CONNMAN_SERVICE_CONNECT_REASON_USER)
 		__connman_service_auto_connect();
 
 	return FALSE;
@@ -3921,11 +3942,10 @@ static DBusMessage *connect_service(DBusConnection *conn,
 
 	service->ignore = false;
 
-	service->userconnect = true;
-
 	service->pending = dbus_message_ref(msg);
 
-	err = __connman_service_connect(service);
+	err = __connman_service_connect(service,
+			CONNMAN_SERVICE_CONNECT_REASON_USER);
 	if (err < 0) {
 		if (!service->pending)
 			return NULL;
@@ -4488,7 +4508,7 @@ static void service_initialize(struct connman_service *service)
 
 	service->ignore = false;
 
-	service->userconnect = false;
+	service->connect_reason = CONNMAN_SERVICE_CONNECT_REASON_NONE;
 
 	service->order = 0;
 
@@ -4930,13 +4950,6 @@ void __connman_service_set_string(struct connman_service *service,
 	}
 }
 
-void __connman_service_set_userconnect(struct connman_service *service,
-						bool userconnect)
-{
-	if (service)
-		service->userconnect = userconnect;
-}
-
 void __connman_service_set_search_domains(struct connman_service *service,
 					char **domains)
 {
@@ -4972,7 +4985,7 @@ static void service_complete(struct connman_service *service)
 {
 	reply_pending(service, EIO);
 
-	if (!service->userconnect)
+	if (service->connect_reason != CONNMAN_SERVICE_CONNECT_REASON_USER)
 		__connman_service_auto_connect();
 
 	g_get_current_time(&service->modified);
@@ -4985,7 +4998,8 @@ static void report_error_cb(void *user_context, bool retry,
 	struct connman_service *service = user_context;
 
 	if (retry)
-		__connman_service_connect(service);
+		__connman_service_connect(service,
+					CONNMAN_SERVICE_CONNECT_REASON_USER);
 	else {
 		/* It is not relevant to stay on Failure state
 		 * when failing is due to wrong user input */
@@ -5121,7 +5135,8 @@ static void request_input_cb(struct connman_service *service,
 		/* We forget any previous error. */
 		set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 
-		__connman_service_connect(service);
+		__connman_service_connect(service,
+					CONNMAN_SERVICE_CONNECT_REASON_USER);
 
 	} else if (err == -ENOKEY) {
 		__connman_service_indicate_error(service,
@@ -5382,7 +5397,7 @@ static int service_indicate_state(struct connman_service *service)
 
 	if (new_state == CONNMAN_SERVICE_STATE_FAILURE) {
 
-		if (service->userconnect &&
+		if (service->connect_reason == CONNMAN_SERVICE_CONNECT_REASON_USER &&
 			connman_agent_report_error(service, service->path,
 					error2string(service->error),
 					report_error_cb,
@@ -5901,12 +5916,15 @@ static int service_connect(struct connman_service *service)
 	return err;
 }
 
-
-int __connman_service_connect(struct connman_service *service)
+int __connman_service_connect(struct connman_service *service,
+			enum connman_service_connect_reason reason)
 {
 	int err;
 
-	DBG("service %p state %s", service, state2string(service->state));
+	DBG("service %p state %s connect reason %s -> %s",
+		service, state2string(service->state),
+		reason2string(service->connect_reason),
+		reason2string(reason));
 
 	if (is_connected(service))
 		return -EISCONN;
@@ -5926,6 +5944,7 @@ int __connman_service_connect(struct connman_service *service)
 		err = service_connect(service);
 	}
 
+	service->connect_reason = reason;
 	if (err >= 0) {
 		set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 		return 0;
@@ -5945,7 +5964,7 @@ int __connman_service_connect(struct connman_service *service)
 				service->provider)
 			connman_provider_disconnect(service->provider);
 
-	if (service->userconnect) {
+	if (service->connect_reason == CONNMAN_SERVICE_CONNECT_REASON_USER) {
 		if (err == -ENOKEY || err == -EPERM) {
 			DBusMessage *pending = NULL;
 
@@ -5981,7 +6000,7 @@ int __connman_service_disconnect(struct connman_service *service)
 
 	DBG("service %p", service);
 
-	service->userconnect = false;
+	service->connect_reason = CONNMAN_SERVICE_CONNECT_REASON_NONE;
 	service->proxy = CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN;
 
 	connman_agent_cancel(service);
@@ -6828,7 +6847,6 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	service->type = CONNMAN_SERVICE_TYPE_VPN;
 	service->provider = connman_provider_ref(provider);
 	service->autoconnect = false;
-	service->userconnect = true;
 	service->favorite = true;
 
 	service->state_ipv4 = service->state_ipv6 = CONNMAN_SERVICE_STATE_IDLE;

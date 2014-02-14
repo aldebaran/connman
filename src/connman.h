@@ -672,8 +672,6 @@ int __connman_service_set_immutable(struct connman_service *service,
 						bool immutable);
 int __connman_service_set_ignore(struct connman_service *service,
 						bool ignore);
-void __connman_service_set_userconnect(struct connman_service *service,
-						bool userconnect);
 void __connman_service_set_search_domains(struct connman_service *service,
 					char **domains);
 void __connman_service_update_search_domains(struct connman_service *service,
@@ -695,7 +693,15 @@ int __connman_service_indicate_error(struct connman_service *service,
 int __connman_service_clear_error(struct connman_service *service);
 int __connman_service_indicate_default(struct connman_service *service);
 
-int __connman_service_connect(struct connman_service *service);
+enum connman_service_connect_reason {
+	CONNMAN_SERVICE_CONNECT_REASON_NONE	= 0,
+	CONNMAN_SERVICE_CONNECT_REASON_AUTO	= 1,
+	CONNMAN_SERVICE_CONNECT_REASON_USER	= 2,
+	CONNMAN_SERVICE_CONNECT_REASON_SESSION	= 3,
+};
+
+int __connman_service_connect(struct connman_service *service,
+			enum connman_service_connect_reason reason);
 int __connman_service_disconnect(struct connman_service *service);
 int __connman_service_disconnect_all(void);
 void __connman_service_set_active_session(bool enable, GSList *list);
