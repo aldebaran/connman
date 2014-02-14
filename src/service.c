@@ -3579,7 +3579,8 @@ static bool auto_connect_service(GList *services,
 	bool autoconnecting = false;
 	GList *list;
 
-	DBG("preferred %d sessions %d", preferred, active_count);
+	DBG("preferred %d sessions %d reason %s", preferred, active_count,
+		reason2string(reason));
 
 	ignore[CONNMAN_SERVICE_TYPE_VPN] = true;
 
@@ -3625,7 +3626,7 @@ static bool auto_connect_service(GList *services,
 		}
 
 		DBG("service %p %s %s", service, service->name,
-				(preferred) ? "preferred" : "auto");
+			(preferred) ? "preferred" : reason2string(reason));
 
 		__connman_service_connect(service, reason);
 
