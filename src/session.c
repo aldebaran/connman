@@ -39,12 +39,6 @@ static GSList *policy_list;
 static uint32_t session_mark = 256;
 static struct firewall_context *global_firewall = NULL;
 
-enum connman_session_reason {
-	CONNMAN_SESSION_REASON_UNKNOWN		= 0,
-	CONNMAN_SESSION_REASON_CONNECT		= 1,
-	CONNMAN_SESSION_REASON_FREE_RIDE	= 2,
-};
-
 enum connman_session_state {
 	CONNMAN_SESSION_STATE_DISCONNECTED   = 0,
 	CONNMAN_SESSION_STATE_CONNECTED      = 1,
@@ -54,7 +48,6 @@ enum connman_session_state {
 struct session_info {
 	struct connman_session_config config;
 	enum connman_session_state state;
-	enum connman_session_reason reason;
 };
 
 struct connman_session {
@@ -65,6 +58,7 @@ struct connman_session {
 
 	struct connman_session_policy *policy;
 
+	bool active;
 	bool append_all;
 	struct session_info *info;
 	struct session_info *info_last;
@@ -82,20 +76,6 @@ struct connman_session {
 	int index;
 	char *gateway;
 };
-
-static const char *reason2string(enum connman_session_reason reason)
-{
-	switch (reason) {
-	case CONNMAN_SESSION_REASON_UNKNOWN:
-		return "unknown";
-	case CONNMAN_SESSION_REASON_CONNECT:
-		return "connect";
-	case CONNMAN_SESSION_REASON_FREE_RIDE:
-		return "free-ride";
-	}
-
-	return NULL;
-}
 
 static const char *state2string(enum connman_session_state state)
 {
@@ -444,11 +424,9 @@ static void free_session(struct connman_session *session)
 
 static void cleanup_session_final(struct connman_session *session)
 {
-	struct session_info *info = session->info;
-
 	DBG("remove %s", session->session_path);
 
-	if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+	if (session->active)
 		__connman_service_set_active_session(false,
 				session->info->config.allowed_bearers);
 
@@ -955,36 +933,6 @@ static void ipconfig_ipv6_changed(struct connman_session *session)
 						session->service);
 }
 
-static void deselect_and_disconnect(struct connman_session *session)
-{
-	struct session_info *info = session->info;
-
-	if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
-		__connman_service_set_active_session(false,
-				info->config.allowed_bearers);
-
-	info->reason = CONNMAN_SESSION_REASON_FREE_RIDE;
-	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
-}
-
-static void select_and_connect(struct connman_session *session,
-				enum connman_session_reason reason)
-{
-	struct session_info *info = session->info;
-
-	DBG("session %p reason %s", session, reason2string(reason));
-
-	if (info->reason != reason &&
-			reason == CONNMAN_SESSION_REASON_CONNECT) {
-		__connman_service_set_active_session(true,
-				info->config.allowed_bearers);
-
-		__connman_service_auto_connect();
-	}
-
-	info->reason = reason;
-}
-
 int connman_session_config_update(struct connman_session *session)
 {
 	struct session_info *info = session->info;
@@ -1016,14 +964,14 @@ int connman_session_config_update(struct connman_session *session)
 	if (err < 0)
 		return err;
 
-	if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+	if (session->active)
 		__connman_service_set_active_session(false,
 				info->config.allowed_bearers);
 
 	g_slist_free(info->config.allowed_bearers);
 	info->config.allowed_bearers = allowed_bearers;
 
-	if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+	if (session->active)
 		__connman_service_set_active_session(true,
 				info->config.allowed_bearers);
 
@@ -1058,7 +1006,13 @@ static DBusMessage *connect_session(DBusConnection *conn,
 		session->ecall = true;
 	}
 
-	select_and_connect(session, CONNMAN_SESSION_REASON_CONNECT);
+	if (!session->active) {
+		session->active = true;
+		__connman_service_set_active_session(true,
+					session->info->config.allowed_bearers);
+	}
+
+	__connman_service_auto_connect();
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -1077,7 +1031,11 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 		session->ecall = false;
 	}
 
-	deselect_and_disconnect(session);
+	if (session->active) {
+		session->active = false;
+		__connman_service_set_active_session(false,
+					session->info->config.allowed_bearers);
+	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -1115,7 +1073,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 			if (err < 0)
 				return __connman_error_failed(msg, -err);
 
-			if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+			if (session->active)
 				__connman_service_set_active_session(false,
 						info->config.allowed_bearers);
 
@@ -1130,10 +1088,9 @@ static DBusMessage *change_session(DBusConnection *conn,
 			if (err < 0)
 				return __connman_error_failed(msg, -err);
 
-			if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+			if (session->active)
 				__connman_service_set_active_session(true,
 						info->config.allowed_bearers);
-
 		} else {
 			goto err;
 		}
@@ -1194,8 +1151,6 @@ static int session_disconnect(struct connman_session *session)
 
 	g_dbus_unregister_interface(connection, session->session_path,
 						CONNMAN_SESSION_INTERFACE);
-
-	deselect_and_disconnect(session);
 
 	g_hash_table_remove(session_hash, session->session_path);
 
@@ -1311,6 +1266,9 @@ static int session_create_final(struct creation_data *creation_data,
 
 	cleanup_creation_data(creation_data);
 
+	session->active = true;
+	__connman_service_set_active_session(true,
+				info->config.allowed_bearers);
 err:
 	return err;
 }
