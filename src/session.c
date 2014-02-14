@@ -1012,7 +1012,7 @@ static DBusMessage *connect_session(DBusConnection *conn,
 					session->info->config.allowed_bearers);
 	}
 
-	__connman_service_auto_connect();
+	__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_SESSION);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }

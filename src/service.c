@@ -3091,7 +3091,7 @@ int __connman_service_reset_ipconfig(struct connman_service *service,
 			*new_state = service->state_ipv4;
 		else
 			*new_state = service->state_ipv6;
-		__connman_service_auto_connect();
+		__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 	}
 
 	DBG("err %d ipconfig %p type %d method %d state %s", err,
@@ -3146,7 +3146,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		autoconnect_changed(service);
 
 		if (autoconnect)
-			__connman_service_auto_connect();
+			__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 
 		service_save(service);
 	} else if (g_str_equal(name, "Nameservers.Configuration")) {
@@ -3570,7 +3570,9 @@ static GList *preferred_tech_list_get(void)
 	return tech_data.preferred_list;
 }
 
-static bool auto_connect_service(GList *services, bool preferred)
+static bool auto_connect_service(GList *services,
+				enum connman_service_connect_reason reason,
+				bool preferred)
 {
 	struct connman_service *service = NULL;
 	bool ignore[MAX_CONNMAN_SERVICE_TYPES] = { };
@@ -3625,8 +3627,7 @@ static bool auto_connect_service(GList *services, bool preferred)
 		DBG("service %p %s %s", service, service->name,
 				(preferred) ? "preferred" : "auto");
 
-		__connman_service_connect(service,
-				CONNMAN_SERVICE_CONNECT_REASON_AUTO);
+		__connman_service_connect(service, reason);
 
 		if (!active_count)
 			return true;
@@ -3639,6 +3640,7 @@ static bool auto_connect_service(GList *services, bool preferred)
 
 static gboolean run_auto_connect(gpointer data)
 {
+	enum connman_service_connect_reason reason = GPOINTER_TO_UINT(data);
 	bool autoconnecting = false;
 	GList *preferred_tech;
 
@@ -3648,24 +3650,26 @@ static gboolean run_auto_connect(gpointer data)
 
 	preferred_tech = preferred_tech_list_get();
 	if (preferred_tech) {
-		autoconnecting = auto_connect_service(preferred_tech, true);
+		autoconnecting = auto_connect_service(preferred_tech, reason,
+							true);
 		g_list_free(preferred_tech);
 	}
 
 	if (!autoconnecting || active_count)
-		auto_connect_service(service_list, false);
+		auto_connect_service(service_list, reason, false);
 
 	return FALSE;
 }
 
-void __connman_service_auto_connect(void)
+void __connman_service_auto_connect(enum connman_service_connect_reason reason)
 {
 	DBG("");
 
 	if (autoconnect_timeout != 0)
 		return;
 
-	autoconnect_timeout = g_timeout_add_seconds(0, run_auto_connect, NULL);
+	autoconnect_timeout = g_timeout_add_seconds(0, run_auto_connect,
+						GUINT_TO_POINTER(reason));
 }
 
 static gboolean run_vpn_auto_connect(gpointer data) {
@@ -3878,7 +3882,7 @@ static gboolean connect_timeout(gpointer user_data)
 	if (autoconnect &&
 			service->connect_reason !=
 				CONNMAN_SERVICE_CONNECT_REASON_USER)
-		__connman_service_auto_connect();
+		__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 
 	return FALSE;
 }
@@ -4986,7 +4990,7 @@ static void service_complete(struct connman_service *service)
 	reply_pending(service, EIO);
 
 	if (service->connect_reason != CONNMAN_SERVICE_CONNECT_REASON_USER)
-		__connman_service_auto_connect();
+		__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 
 	g_get_current_time(&service->modified);
 	service_save(service);
@@ -5392,7 +5396,7 @@ static int service_indicate_state(struct connman_service *service)
 		 */
 		downgrade_connected_services();
 
-		__connman_service_auto_connect();
+		__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_FAILURE) {
@@ -6723,7 +6727,7 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	if (service->favorite) {
 		device = connman_network_get_device(service->network);
 		if (device && !connman_device_get_scanning(device))
-			__connman_service_auto_connect();
+			__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 	}
 
 	__connman_notifier_service_add(service, service->name);

@@ -1264,7 +1264,7 @@ static void provision_service(gpointer key, gpointer value,
 
 		g_timeout_add(0, remove_virtual_config, virtual);
 	} else
-		__connman_service_auto_connect();
+		__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 }
 
 int __connman_config_provision_service(struct connman_service *service)
