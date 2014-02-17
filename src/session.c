@@ -36,7 +36,6 @@ static DBusConnection *connection;
 static GHashTable *session_hash;
 static GHashTable *service_hash;
 static struct connman_session *ecall_session;
-static GSList *policy_list;
 static uint32_t session_mark = 256;
 static struct firewall_context *global_firewall = NULL;
 
@@ -56,8 +55,6 @@ struct connman_session {
 	char *session_path;
 	char *notify_path;
 	guint notify_watch;
-
-	struct connman_session_policy *policy;
 
 	bool active;
 	bool append_all;
@@ -83,6 +80,7 @@ struct connman_service_info {
 	GSList *sessions;
 };
 
+static struct connman_session_policy *policy;
 static void session_activate(struct connman_session *session);
 static void session_deactivate(struct connman_session *session);
 
@@ -411,12 +409,12 @@ static void update_routing_table(struct connman_session *session)
 
 static void destroy_policy_config(struct connman_session *session)
 {
-	if (!session->policy) {
+	if (!policy) {
 		g_free(session->policy_config);
 		return;
 	}
 
-	(*session->policy->destroy)(session);
+	policy->destroy(session);
 }
 
 static void free_session(struct connman_session *session)
@@ -478,19 +476,6 @@ static void cleanup_session(gpointer user_data)
 		cleanup_session_final(session);
 }
 
-static int assign_policy_plugin(struct connman_session *session)
-{
-	if (session->policy)
-		return -EALREADY;
-
-	if (!policy_list)
-		return 0;
-
-	session->policy = policy_list->data;
-
-	return 0;
-}
-
 struct creation_data {
 	DBusMessage *pending;
 	struct connman_session *session;
@@ -518,7 +503,7 @@ static int create_policy_config(struct connman_session *session,
 {
 	struct connman_session_config *config;
 
-	if (!session->policy) {
+	if (!policy) {
 		config = connman_session_create_default_config();
 		if (!config) {
 			free_session(session);
@@ -529,62 +514,32 @@ static int create_policy_config(struct connman_session *session,
 		return cb(session, config, creation_data, 0);
 	}
 
-	return (*session->policy->create)(session, cb, creation_data);
+	return policy->create(session, cb, creation_data);
 }
 
-static void remove_policy(struct connman_session_policy *policy)
+int connman_session_policy_register(struct connman_session_policy *plugin)
 {
-	GHashTableIter iter;
-	gpointer key, value;
-	struct connman_session *session;
-
-	if (!session_hash)
-		return;
-
-	DBG("policy %p name %s", policy, policy->name);
-
-	g_hash_table_iter_init(&iter, session_hash);
-
-	while (g_hash_table_iter_next(&iter, &key, &value)) {
-		session = value;
-
-		if (session->policy != policy)
-			continue;
-
-		session->policy = NULL;
-		assign_policy_plugin(session);
-	}
-}
-
-static gint compare_priority(gconstpointer a, gconstpointer b)
-{
-	const struct connman_session_policy *policy1 = a;
-	const struct connman_session_policy *policy2 = b;
-
-	return policy2->priority - policy1->priority;
-}
-
-
-int connman_session_policy_register(struct connman_session_policy *policy)
-{
-	DBG("name %s", policy->name);
-
-	if (!policy->create || !policy->destroy)
+	if (policy)
 		return -EINVAL;
 
-	policy_list = g_slist_insert_sorted(policy_list, policy,
-						compare_priority);
+	if (!plugin->create || !plugin->destroy)
+		return -EINVAL;
+
+	DBG("name %s", plugin->name);
+
+	policy = plugin;
 
 	return 0;
 }
 
-void connman_session_policy_unregister(struct connman_session_policy *policy)
+void connman_session_policy_unregister(struct connman_session_policy *plugin)
 {
+	if (plugin != policy)
+		return;
+
 	DBG("name %s", policy->name);
 
-	policy_list = g_slist_remove(policy_list, policy);
-
-	remove_policy(policy);
+	policy = NULL;
 }
 
 void connman_session_set_default_config(struct connman_session_config *config)
@@ -1529,10 +1484,6 @@ int __connman_session_create(DBusMessage *msg)
 	session->notify_watch =
 		g_dbus_add_disconnect_watch(connection, session->owner,
 					owner_disconnect, session, NULL);
-
-	err = assign_policy_plugin(session);
-	if (err < 0)
-		goto err;
 
 	err = create_policy_config(session, session_policy_config_cb,
 					creation_data);
