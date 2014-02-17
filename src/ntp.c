@@ -122,7 +122,7 @@ static gint poll_id = 0;
 static gint timeout_id = 0;
 static guint retries = 0;
 
-static void send_packet(int fd, const char *server);
+static void send_packet(int fd, const char *server, uint32_t timeout);
 
 static void next_server(void)
 {
@@ -136,17 +136,19 @@ static void next_server(void)
 
 static gboolean send_timeout(gpointer user_data)
 {
-	DBG("send timeout (retries %d)", retries);
+	uint32_t timeout = GPOINTER_TO_UINT(user_data);
+
+	DBG("send timeout %u (retries %d)", timeout, retries);
 
 	if (retries++ == NTP_SEND_RETRIES)
 		next_server();
 	else
-		send_packet(transmit_fd, timeserver);
+		send_packet(transmit_fd, timeserver, timeout << 1);
 
 	return FALSE;
 }
 
-static void send_packet(int fd, const char *server)
+static void send_packet(int fd, const char *server, uint32_t timeout)
 {
 	struct ntp_msg msg;
 	struct sockaddr_in addr;
@@ -195,12 +197,13 @@ static void send_packet(int fd, const char *server)
 	}
 
 	/*
-	 * Add a retry timeout of two seconds to retry the existing
+	 * Add an exponential retry timeout to retry the existing
 	 * request. After a set number of retries, we'll fallback to
 	 * trying another server.
 	 */
 
-	timeout_id = g_timeout_add_seconds(NTP_SEND_TIMEOUT, send_timeout, NULL);
+	timeout_id = g_timeout_add_seconds(timeout, send_timeout,
+					GUINT_TO_POINTER(timeout));
 }
 
 static gboolean next_poll(gpointer user_data)
@@ -208,7 +211,7 @@ static gboolean next_poll(gpointer user_data)
 	if (!timeserver || transmit_fd == 0)
 		return FALSE;
 
-	send_packet(transmit_fd, timeserver);
+	send_packet(transmit_fd, timeserver, NTP_SEND_TIMEOUT);
 
 	return FALSE;
 }
@@ -473,7 +476,7 @@ static void start_ntp(char *server)
 	g_io_channel_unref(channel);
 
 send:
-	send_packet(transmit_fd, server);
+	send_packet(transmit_fd, server, NTP_SEND_TIMEOUT);
 }
 
 int __connman_ntp_start(char *server)
