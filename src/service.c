@@ -3690,6 +3690,9 @@ void __connman_service_auto_connect(enum connman_service_connect_reason reason)
 	if (autoconnect_timeout != 0)
 		return;
 
+	if (!__connman_session_policy_autoconnect(reason))
+		return;
+
 	autoconnect_timeout = g_timeout_add_seconds(0, run_auto_connect,
 						GUINT_TO_POINTER(reason));
 }
