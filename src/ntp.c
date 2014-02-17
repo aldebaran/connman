@@ -251,6 +251,17 @@ static void decode_msg(void *base, size_t len, struct timeval *tv,
 			msg->rootdisp.seconds, msg->rootdisp.fraction);
 	DBG("reference  : 0x%04x", msg->refid);
 
+	if (!msg->stratum) {
+		/* RFC 4330 ch 8 Kiss-of-Death packet */
+		uint32_t code = ntohl(msg->refid);
+
+		connman_info("Skipping server %s KoD code %c%c%c%c",
+			timeserver, code >> 24, code >> 16 & 0xff,
+			code >> 8 & 0xff, code & 0xff);
+		next_server();
+		return;
+	}
+
 	transmit_delay = LOGTOD(msg->poll);
 
 	if (NTP_FLAGS_LI_DECODE(msg->flags) == NTP_FLAG_LI_NOTINSYNC) {
