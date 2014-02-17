@@ -74,10 +74,12 @@ typedef int (* connman_session_config_func_t) (struct connman_session *session,
 struct connman_session_policy {
 	const char *name;
 	int priority;
+	bool (*autoconnect)(enum connman_service_connect_reason reason);
 	int (*create)(struct connman_session *session,
 			connman_session_config_func_t cb,
 			void *user_data);
 	void (*destroy)(struct connman_session *session);
+
 };
 
 int connman_session_policy_register(struct connman_session_policy *config);

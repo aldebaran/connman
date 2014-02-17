@@ -693,13 +693,6 @@ int __connman_service_indicate_error(struct connman_service *service,
 int __connman_service_clear_error(struct connman_service *service);
 int __connman_service_indicate_default(struct connman_service *service);
 
-enum connman_service_connect_reason {
-	CONNMAN_SERVICE_CONNECT_REASON_NONE	= 0,
-	CONNMAN_SERVICE_CONNECT_REASON_AUTO	= 1,
-	CONNMAN_SERVICE_CONNECT_REASON_USER	= 2,
-	CONNMAN_SERVICE_CONNECT_REASON_SESSION	= 3,
-};
-
 int __connman_service_connect(struct connman_service *service,
 			enum connman_service_connect_reason reason);
 int __connman_service_disconnect(struct connman_service *service);
@@ -824,8 +817,7 @@ unsigned int __connman_rtnl_update_interval_remove(unsigned int interval);
 int __connman_rtnl_request_update(void);
 int __connman_rtnl_send(const void *buf, size_t len);
 
-bool __connman_session_mode();
-void __connman_session_set_mode(bool enable);
+bool __connman_session_policy_autoconnect(enum connman_service_connect_reason reason);
 
 int __connman_session_create(DBusMessage *msg);
 int __connman_session_destroy(DBusMessage *msg);

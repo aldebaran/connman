@@ -1501,6 +1501,14 @@ err:
 	return err;
 }
 
+bool __connman_session_policy_autoconnect(enum connman_service_connect_reason reason)
+{
+	if (!policy || !policy->autoconnect)
+		return true;
+
+	return policy->autoconnect(reason);
+}
+
 void connman_session_destroy(struct connman_session *session)
 {
 	DBG("session %p", session);

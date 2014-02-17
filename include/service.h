@@ -87,6 +87,13 @@ enum connman_service_proxy_method {
 	CONNMAN_SERVICE_PROXY_METHOD_AUTO        = 3,
 };
 
+enum connman_service_connect_reason {
+	CONNMAN_SERVICE_CONNECT_REASON_NONE	= 0,
+	CONNMAN_SERVICE_CONNECT_REASON_AUTO	= 1,
+	CONNMAN_SERVICE_CONNECT_REASON_USER	= 2,
+	CONNMAN_SERVICE_CONNECT_REASON_SESSION	= 3,
+};
+
 struct connman_service;
 struct connman_network;
 
