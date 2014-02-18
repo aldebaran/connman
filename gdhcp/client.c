@@ -101,6 +101,9 @@ struct _GDHCPClient {
 	uint8_t ack_retry_times;
 	uint8_t conflicts;
 	guint timeout;
+	guint t1_timeout;
+	guint t2_timeout;
+	guint lease_timeout;
 	guint listener_watch;
 	GIOChannel *listener_channel;
 	GList *require_list;
@@ -270,6 +273,25 @@ static int32_t get_time_diff(struct timeval *tv)
 	hsec += (now.tv_usec - tv->tv_usec) / 10000;
 
 	return hsec;
+}
+
+static void remove_timeouts(GDHCPClient *dhcp_client)
+{
+
+	if (dhcp_client->timeout > 0)
+		g_source_remove(dhcp_client->timeout);
+	if (dhcp_client->t1_timeout > 0)
+		g_source_remove(dhcp_client->t1_timeout);
+	if (dhcp_client->t2_timeout > 0)
+		g_source_remove(dhcp_client->t2_timeout);
+	if (dhcp_client->lease_timeout > 0)
+		g_source_remove(dhcp_client->lease_timeout);
+
+	dhcp_client->timeout = 0;
+	dhcp_client->t1_timeout = 0;
+	dhcp_client->t2_timeout = 0;
+	dhcp_client->lease_timeout = 0;
+
 }
 
 static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
@@ -549,9 +571,7 @@ static gboolean send_announce_packet(gpointer dhcp_data)
 				dhcp_client->requested_ip,
 				dhcp_client->ifindex);
 
-	if (dhcp_client->timeout > 0)
-		g_source_remove(dhcp_client->timeout);
-	dhcp_client->timeout = 0;
+	remove_timeouts(dhcp_client);
 
 	if (dhcp_client->state == IPV4LL_DEFEND) {
 		dhcp_client->timeout =
@@ -1327,10 +1347,7 @@ static void ipv4ll_start(GDHCPClient *dhcp_client)
 	guint timeout;
 	int seed;
 
-	if (dhcp_client->timeout > 0) {
-		g_source_remove(dhcp_client->timeout);
-		dhcp_client->timeout = 0;
-	}
+	remove_timeouts(dhcp_client);
 
 	switch_listening_mode(dhcp_client, L_NONE);
 	dhcp_client->retry_times = 0;
@@ -1356,8 +1373,7 @@ static void ipv4ll_stop(GDHCPClient *dhcp_client)
 
 	switch_listening_mode(dhcp_client, L_NONE);
 
-	if (dhcp_client->timeout > 0)
-		g_source_remove(dhcp_client->timeout);
+	remove_timeouts(dhcp_client);
 
 	if (dhcp_client->listener_watch > 0) {
 		g_source_remove(dhcp_client->listener_watch);
@@ -1608,10 +1624,7 @@ static void restart_dhcp(GDHCPClient *dhcp_client, int retry_times)
 {
 	debug(dhcp_client, "restart DHCP (retries %d)", retry_times);
 
-	if (dhcp_client->timeout > 0) {
-		g_source_remove(dhcp_client->timeout);
-		dhcp_client->timeout = 0;
-	}
+	remove_timeouts(dhcp_client);
 
 	dhcp_client->retry_times = retry_times;
 	dhcp_client->requested_ip = 0;
@@ -1621,91 +1634,103 @@ static void restart_dhcp(GDHCPClient *dhcp_client, int retry_times)
 	g_dhcp_client_start(dhcp_client, dhcp_client->last_address);
 }
 
-static gboolean start_rebound_timeout(gpointer user_data)
+static gboolean start_expire(gpointer user_data)
 {
 	GDHCPClient *dhcp_client = user_data;
 
-	debug(dhcp_client, "start rebound timeout");
+	debug(dhcp_client, "lease expired");
+
+	/*remove all timeouts if they are set*/
+	remove_timeouts(dhcp_client);
+
+	/* ip need to be cleared */
+	if (dhcp_client->lease_lost_cb)
+		dhcp_client->lease_lost_cb(dhcp_client,
+				dhcp_client->lease_lost_data);
+
+	restart_dhcp(dhcp_client, 0);
+
+	return false;
+}
+
+static gboolean continue_rebound(gpointer user_data)
+{
+	GDHCPClient *dhcp_client = user_data;
 
 	switch_listening_mode(dhcp_client, L2);
+	send_request(dhcp_client);
 
-	dhcp_client->lease_seconds >>= 1;
+	if (dhcp_client->t2_timeout> 0)
+		g_source_remove(dhcp_client->t2_timeout);
 
-	/* We need to have enough time to receive ACK package*/
-	if (dhcp_client->lease_seconds <= 6) {
-
-		/* ip need to be cleared */
-		if (dhcp_client->lease_lost_cb)
-			dhcp_client->lease_lost_cb(dhcp_client,
-					dhcp_client->lease_lost_data);
-
-		restart_dhcp(dhcp_client, 0);
-	} else {
-		send_request(dhcp_client);
-
-		dhcp_client->timeout =
-				g_timeout_add_seconds_full(G_PRIORITY_HIGH,
-						dhcp_client->lease_seconds >> 1,
-							start_rebound_timeout,
-								dhcp_client,
-								NULL);
+	/*recalculate remaining rebind time*/
+	dhcp_client->T2 >>= 1;
+	if (dhcp_client->T2 > 60) {
+		dhcp_client->t2_timeout =
+			g_timeout_add_full(G_PRIORITY_HIGH,
+					dhcp_client->T2 * 1000 + (rand() % 2000) - 1000,
+					continue_rebound,
+					dhcp_client,
+					NULL);
 	}
 
 	return FALSE;
 }
 
-static void start_rebound(GDHCPClient *dhcp_client)
+static gboolean start_rebound(gpointer user_data)
 {
-	debug(dhcp_client, "start rebound");
+	GDHCPClient *dhcp_client = user_data;
 
+	/*remove renew timer*/
+	if (dhcp_client->t1_timeout > 0)
+		g_source_remove(dhcp_client->t1_timeout);
+
+	debug(dhcp_client, "start rebound");
 	dhcp_client->state = REBINDING;
 
-	dhcp_client->timeout = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
-						dhcp_client->lease_seconds >> 1,
-							start_rebound_timeout,
-								dhcp_client,
-								NULL);
+	/*calculate total rebind time*/
+	dhcp_client->T2 = dhcp_client->expire - dhcp_client->T2;
+
+	/*send the first rebound and reschedule*/
+	continue_rebound(user_data);
+
+	return FALSE;
 }
 
-static gboolean start_renew_request_timeout(gpointer user_data)
+static gboolean continue_renew (gpointer user_data)
 {
 	GDHCPClient *dhcp_client = user_data;
-
-	debug(dhcp_client, "renew request timeout");
-
-	if (dhcp_client->no_lease_cb)
-			dhcp_client->no_lease_cb(dhcp_client,
-						dhcp_client->no_lease_data);
-
-	return false;
-}
-
-static gboolean start_renew_timeout(gpointer user_data)
-{
-	GDHCPClient *dhcp_client = user_data;
-
-	debug(dhcp_client, "start renew timeout");
-
-	dhcp_client->state = RENEWING;
-
-	dhcp_client->lease_seconds >>= 1;
 
 	switch_listening_mode(dhcp_client, L3);
-	if (dhcp_client->lease_seconds <= 60)
-		start_rebound(dhcp_client);
-	else {
-		send_request(dhcp_client);
+	send_request(dhcp_client);
 
-		if (dhcp_client->timeout > 0)
-			g_source_remove(dhcp_client->timeout);
+	if (dhcp_client->t1_timeout > 0)
+		g_source_remove(dhcp_client->t1_timeout);
 
-		dhcp_client->timeout =
-				g_timeout_add_seconds_full(G_PRIORITY_HIGH,
-						REQUEST_TIMEOUT,
-						start_renew_request_timeout,
-						dhcp_client,
-						NULL);
+	dhcp_client->T1 >>= 1;
+
+	if (dhcp_client->T1 > 60) {
+		dhcp_client->t1_timeout = g_timeout_add_full(G_PRIORITY_HIGH,
+				dhcp_client->T1 * 1000 + (rand() % 2000) - 1000,
+				continue_renew,
+				dhcp_client,
+				NULL);
 	}
+
+	return FALSE;
+}
+static gboolean start_renew(gpointer user_data)
+{
+	GDHCPClient *dhcp_client = user_data;
+
+	debug(dhcp_client, "start renew");
+	dhcp_client->state = RENEWING;
+
+	/*calculate total renew period*/
+	dhcp_client->T1 = dhcp_client->T2 - dhcp_client->T1;
+
+	/*send first renew and reschedule for half the remaining time.*/
+	continue_renew(user_data);
 
 	return FALSE;
 }
@@ -1716,12 +1741,30 @@ static void start_bound(GDHCPClient *dhcp_client)
 
 	dhcp_client->state = BOUND;
 
-	if (dhcp_client->timeout > 0)
-		g_source_remove(dhcp_client->timeout);
+	remove_timeouts(dhcp_client);
 
-	dhcp_client->timeout = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
-					dhcp_client->lease_seconds >> 1,
-					start_renew_timeout, dhcp_client,
+	/*
+	 *TODO: T1 and T2 should be set through options instead of
+	 * defaults as they are here.
+	 */
+
+	dhcp_client->T1 = dhcp_client->lease_seconds >> 1;
+	dhcp_client->T2 = dhcp_client->lease_seconds * 0.875;
+	dhcp_client->expire = dhcp_client->lease_seconds;
+
+	dhcp_client->t1_timeout = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
+					dhcp_client->T1,
+					start_renew, dhcp_client,
+							NULL);
+
+	dhcp_client->t2_timeout = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
+					dhcp_client->T2,
+					start_rebound, dhcp_client,
+							NULL);
+
+	dhcp_client->lease_timeout= g_timeout_add_seconds_full(G_PRIORITY_HIGH,
+					dhcp_client->expire,
+					start_expire, dhcp_client,
 							NULL);
 }
 
@@ -2296,7 +2339,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		if (*message_type != DHCPOFFER)
 			return TRUE;
 
-		g_source_remove(dhcp_client->timeout);
+		remove_timeouts(dhcp_client);
 		dhcp_client->timeout = 0;
 		dhcp_client->retry_times = 0;
 
@@ -2316,9 +2359,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		if (*message_type == DHCPACK) {
 			dhcp_client->retry_times = 0;
 
-			if (dhcp_client->timeout > 0)
-				g_source_remove(dhcp_client->timeout);
-			dhcp_client->timeout = 0;
+			remove_timeouts(dhcp_client);
 
 			dhcp_client->lease_seconds = get_lease(&packet);
 
@@ -2338,8 +2379,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		} else if (*message_type == DHCPNAK) {
 			dhcp_client->retry_times = 0;
 
-			if (dhcp_client->timeout > 0)
-				g_source_remove(dhcp_client->timeout);
+			remove_timeouts(dhcp_client);
 
 			dhcp_client->timeout = g_timeout_add_seconds_full(
 							G_PRIORITY_HIGH, 3,
@@ -2784,10 +2824,7 @@ void g_dhcp_client_stop(GDHCPClient *dhcp_client)
 		send_release(dhcp_client, dhcp_client->server_ip,
 					dhcp_client->requested_ip);
 
-	if (dhcp_client->timeout > 0) {
-		g_source_remove(dhcp_client->timeout);
-		dhcp_client->timeout = 0;
-	}
+	remove_timeouts(dhcp_client);
 
 	if (dhcp_client->listener_watch > 0) {
 		g_source_remove(dhcp_client->listener_watch);
