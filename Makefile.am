@@ -347,7 +347,7 @@ test_scripts = test/get-state test/list-services \
 		test/test-counter test/set-ipv4-method test/set-ipv6-method \
 		test/get-services test/get-proxy-autoconfig test/set-proxy \
 		test/enable-tethering test/disable-tethering test/backtrace \
-		test/test-session \
+		test/test-session test/p2p-on-supplicant \
 		test/test-new-supplicant test/service-move-before \
 		test/set-global-timeservers test/get-global-timeservers \
 		test/set-nameservers test/set-domains test/set-timeservers \
