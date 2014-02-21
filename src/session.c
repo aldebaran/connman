@@ -1220,8 +1220,6 @@ static int session_create_final(struct creation_data *creation_data,
 
 	session->append_all = true;
 
-	session_notify(session);
-
 	cleanup_creation_data(creation_data);
 
 	session_activate(session);
@@ -1644,6 +1642,8 @@ static void session_activate(struct connman_session *session)
 			return;
 		}
 	}
+
+	session_notify(session);
 }
 
 static void session_deactivate(struct connman_session *session)
