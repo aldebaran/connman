@@ -3046,7 +3046,7 @@ static void add_network_security_wep(DBusMessageIter *dict,
 					GSupplicantSSID *ssid)
 {
 	const char *auth_alg = "OPEN SHARED";
-	const char *key_index = "0";
+	dbus_uint32_t key_index = 0;
 
 	supplicant_dbus_dict_append_basic(dict, "auth_alg",
 					DBUS_TYPE_STRING, &auth_alg);
@@ -3094,7 +3094,7 @@ static void add_network_security_wep(DBusMessageIter *dict,
 							&ssid->passphrase);
 
 		supplicant_dbus_dict_append_basic(dict, "wep_tx_keyidx",
-					DBUS_TYPE_STRING, &key_index);
+					DBUS_TYPE_UINT32, &key_index);
 	}
 }
 
