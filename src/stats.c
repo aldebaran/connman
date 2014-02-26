@@ -479,9 +479,9 @@ static struct stats_record *process_file(struct stats_iter *iter,
 	while (next) {
 		GDate date_cur;
 		GDate date_next;
-		int append;
+		bool append;
 
-		append = FALSE;
+		append = false;
 
 		if (cur->roaming)
 			roaming = cur;
@@ -503,15 +503,15 @@ static struct stats_record *process_file(struct stats_iter *iter,
 			day_next = g_date_get_day(&date_next);
 
 			if (day_cur == day_next && month_cur != month_next) {
-				append = TRUE;
+				append = true;
 			} else if (day_cur < account_period_offset &&
 					day_next >= account_period_offset) {
-				append = TRUE;
+				append = true;
 			}
 		} else {
 			/* day period size */
 			if (g_date_days_between(&date_cur, &date_next) > 0)
-				append = TRUE;
+				append = true;
 		}
 
 		if (append) {
