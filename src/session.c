@@ -69,7 +69,6 @@ struct connman_session {
 
 	enum connman_session_id_type id_type;
 	struct firewall_context *fw;
-	struct nfacct_context *nfctx;
 	uint32_t mark;
 	int index;
 	char *gateway;
@@ -237,25 +236,6 @@ static void cleanup_firewall(void)
 	__connman_firewall_destroy(global_firewall);
 }
 
-static int enable_nfacct(struct firewall_context *fw, uint32_t mark)
-{
-	int err;
-
-	err = __connman_firewall_add_rule(fw, "filter", "INPUT",
-			"-m mark --mark %d -m nfacct "
-			"--nfacct-name session-input-%d",
-			mark, mark);
-	if (err < 0)
-		return err;
-
-	err = __connman_firewall_add_rule(fw, "filter", "OUTPUT",
-			"-m mark --mark %d -m nfacct "
-			"--nfacct-name session-output-%d",
-			mark, mark);
-
-	return err;
-}
-
 static int init_firewall_session(struct connman_session *session)
 {
 	struct firewall_context *fw;
@@ -296,10 +276,6 @@ static int init_firewall_session(struct connman_session *session)
 		goto err;
 
 	session->id_type = session->policy_config->id_type;
-
-	err = enable_nfacct(fw, session->mark);
-	if (err < 0)
-		connman_warn_once("Support for nfacct missing");
 
 	err = __connman_firewall_enable(fw);
 	if (err)
@@ -434,29 +410,6 @@ static void free_session(struct connman_session *session)
 	g_free(session);
 }
 
-static void cleanup_session_final(struct connman_session *session)
-{
-	DBG("remove %s", session->session_path);
-
-	session_deactivate(session);
-
-	g_slist_free(session->user_allowed_bearers);
-
-	free_session(session);
-}
-
-static void nfacct_cleanup_cb(unsigned int error, struct nfacct_context *ctx,
-				void *user_data)
-{
-	struct connman_session *session = user_data;
-
-	DBG("");
-
-	__connman_nfacct_destroy_context(session->nfctx);
-
-	cleanup_session_final(session);
-}
-
 static void cleanup_session(gpointer user_data)
 {
 	struct connman_session *session = user_data;
@@ -466,11 +419,11 @@ static void cleanup_session(gpointer user_data)
 	cleanup_routing_table(session);
 	cleanup_firewall_session(session);
 
-	if (session->nfctx)
-		__connman_nfacct_disable(session->nfctx, nfacct_cleanup_cb,
-						session);
-	else
-		cleanup_session_final(session);
+	session_deactivate(session);
+
+	g_slist_free(session->user_allowed_bearers);
+
+	free_session(session);
 }
 
 struct creation_data {
@@ -1152,25 +1105,31 @@ static const GDBusMethodTable session_methods[] = {
 	{ },
 };
 
-static void session_nfacct_stats_cb(struct nfacct_context *ctx,
-					uint64_t packets, uint64_t bytes,
-					void *user_data)
+static int session_policy_config_cb(struct connman_session *session,
+				struct connman_session_config *config,
+				void *user_data, int err)
 {
-	struct connman_session *session = user_data;
-
-	DBG("session %p", session);
-
-	/* XXX add accounting code here */
-}
-
-static int session_create_final(struct creation_data *creation_data,
-				struct connman_session *session)
-{
+	struct creation_data *creation_data = user_data;
 	struct session_info *info, *info_last;
 	DBusMessage *reply;
-	int err;
 
-	DBG("");
+	DBG("session %p config %p", session, config);
+
+	if (err < 0)
+		goto err;
+
+	session->policy_config = config;
+
+	session->mark = session_mark++;
+	session->index = -1;
+
+	err = init_firewall_session(session);
+	if (err < 0)
+		goto err;
+
+	err = init_routing_table(session);
+	if (err < 0)
+		goto err;
 
 	info = session->info;
 	info_last = session->info_last;
@@ -1223,96 +1182,8 @@ static int session_create_final(struct creation_data *creation_data,
 	cleanup_creation_data(creation_data);
 
 	session_activate(session);
-err:
-	return err;
-}
 
-static void session_nfacct_enable_cb(unsigned int error,
-					struct nfacct_context *ctx,
-					void *user_data)
-{
-	struct creation_data *creation_data = user_data;
-	struct connman_session *session = creation_data->session;
-	DBusMessage *reply;
-	int err;
-
-	DBG("");
-
-	if (error != 0) {
-		err = -error;
-		goto err;
-	}
-
-	err = init_firewall_session(session);
-	if (err < 0)
-		goto err;
-
-	err = init_routing_table(session);
-	if (err < 0)
-		goto err;
-
-	err = session_create_final(creation_data, session);
-	if (err < 0)
-		goto err;
-
-	return;
-
-err:
-	reply = __connman_error_failed(creation_data->pending, -err);
-	g_dbus_send_message(connection, reply);
-	creation_data->pending = NULL;
-
-	cleanup_session(creation_data->session);
-	cleanup_creation_data(creation_data);
-}
-
-static int session_policy_config_cb(struct connman_session *session,
-				struct connman_session_config *config,
-				void *user_data, int err)
-{
-	struct creation_data *creation_data = user_data;
-	char *input, *output;
-	DBusMessage *reply;
-
-	DBG("session %p config %p", session, config);
-
-	if (err < 0)
-		goto err;
-
-	session->policy_config = config;
-
-	session->mark = session_mark++;
-	session->index = -1;
-
-	session->nfctx = __connman_nfacct_create_context();
-	if (!session->nfctx) {
-		err = -ENOMEM;
-		goto err;
-	}
-
-	input = g_strdup_printf("session-input-%d", session->mark);
-	err = __connman_nfacct_add(session->nfctx, input,
-					session_nfacct_stats_cb,
-					session);
-	g_free(input);
-	if (err < 0)
-		goto err;
-
-	output = g_strdup_printf("session-output-%d", session->mark);
-	err = __connman_nfacct_add(session->nfctx, output,
-					session_nfacct_stats_cb,
-					session);
-	g_free(output);
-	if (err < 0)
-		goto err;
-
-	err = __connman_nfacct_enable(session->nfctx,
-					session_nfacct_enable_cb,
-					creation_data);
-	if (err < 0)
-		goto err;
-
-	return -EINPROGRESS;
+	return 0;
 
 err:
 	reply = __connman_error_failed(creation_data->pending, -err);
@@ -1800,16 +1671,6 @@ static struct connman_notifier session_notifier = {
 	.ipconfig_changed	= ipconfig_changed,
 };
 
-static int session_nfacct_flush_cb(unsigned int error, void *user_data)
-{
-	if (error == 0)
-		return 0;
-
-	connman_error("Could not flush nfacct table: %s", strerror(error));
-
-	return -error;
-}
-
 int __connman_session_init(void)
 {
 	int err;
@@ -1835,7 +1696,6 @@ int __connman_session_init(void)
 		err = init_firewall();
 		if (err < 0)
 			return err;
-		__connman_nfacct_flush(session_nfacct_flush_cb, NULL);
 	}
 
 	return 0;
