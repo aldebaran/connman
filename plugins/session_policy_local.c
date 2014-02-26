@@ -565,7 +565,9 @@ static void recheck_sessions(void)
 		if (policy->group)
 			continue;
 
-		group = g_hash_table_lookup(selinux_hash, policy->selinux);
+		if (policy->selinux)
+			group = g_hash_table_lookup(selinux_hash,
+							policy->selinux);
 		if (group) {
 			policy->config->id_type = CONNMAN_SESSION_ID_TYPE_LSM;
 			g_free(policy->config->id);
