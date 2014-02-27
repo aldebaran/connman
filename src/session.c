@@ -419,6 +419,10 @@ static void cleanup_session(gpointer user_data)
 	cleanup_routing_table(session);
 	cleanup_firewall_session(session);
 
+	if (session->active)
+		__connman_service_set_active_session(false,
+				session->info->config.allowed_bearers);
+
 	session_deactivate(session);
 
 	g_slist_free(session->user_allowed_bearers);
@@ -927,11 +931,13 @@ static DBusMessage *connect_session(DBusConnection *conn,
 		session->ecall = true;
 	}
 
-	if (!session->active) {
-		session->active = true;
-		session_activate(session);
-	}
+	if (session->active)
+		return __connman_error_failed(msg, -EALREADY);
 
+	session->active = true;
+
+	__connman_service_set_active_session(true,
+			session->info->config.allowed_bearers);
 	__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_SESSION);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
@@ -951,7 +957,13 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 		session->ecall = false;
 	}
 
-	session_deactivate(session);
+	if (!session->active)
+		return __connman_error_failed(msg, -ENOTCONN);
+
+	session->active = false;
+
+	__connman_service_set_active_session(false,
+			session->info->config.allowed_bearers);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -1488,12 +1500,6 @@ static void session_activate(struct connman_session *session)
 	if (!service_hash)
 		return;
 
-	if (!session->active) {
-		__connman_service_set_active_session(true,
-				session->info->config.allowed_bearers);
-		session->active = true;
-	}
-
 	g_hash_table_iter_init(&iter, service_hash);
 	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct connman_service_info *info = value;
@@ -1523,12 +1529,6 @@ static void session_deactivate(struct connman_session *session)
 
 	if (!service_hash)
 		return;
-
-	if (session->active) {
-		__connman_service_set_active_session(false,
-				session->info->config.allowed_bearers);
-		session->active = false;
-	}
 
 	if (!session->service)
 		return;
