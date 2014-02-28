@@ -869,7 +869,6 @@ int connman_session_config_update(struct connman_session *session)
 {
 	struct session_info *info = session->info;
 	GSList *allowed_bearers;
-	bool reactivate;
 	int err;
 
 	DBG("session %p", session);
@@ -895,15 +894,17 @@ int connman_session_config_update(struct connman_session *session)
 		session->user_allowed_bearers,
 		&allowed_bearers);
 
-	reactivate = session->active;
 	if (session->active)
-		session_deactivate(session);
+		__connman_service_set_active_session(false,
+				session->info->config.allowed_bearers);
+
+	session->active = false;
+	session_deactivate(session);
 
 	g_slist_free(info->config.allowed_bearers);
 	info->config.allowed_bearers = allowed_bearers;
 
-	if (reactivate)
-		session_activate(session);
+	session_activate(session);
 
 	info->config.type = apply_policy_on_type(
 				session->policy_config->type,
@@ -981,7 +982,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 	const char *name;
 	const char *val;
 	GSList *allowed_bearers;
-	bool reactivate;
 	int err;
 
 	DBG("session %p", session);
@@ -1006,9 +1006,12 @@ static DBusMessage *change_session(DBusConnection *conn,
 			if (err < 0)
 				return __connman_error_failed(msg, -err);
 
-			reactivate = session->active;
 			if (session->active)
-				session_deactivate(session);
+				__connman_service_set_active_session(false,
+					session->info->config.allowed_bearers);
+
+			session->active = false;
+			session_deactivate(session);
 
 			g_slist_free(info->config.allowed_bearers);
 			session->user_allowed_bearers = allowed_bearers;
@@ -1018,8 +1021,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 					session->user_allowed_bearers,
 					&info->config.allowed_bearers);
 
-			if (reactivate)
-				session_activate(session);
+			session_activate(session);
 		} else {
 			goto err;
 		}
