@@ -52,11 +52,19 @@ class InputLine:
 def error_print(ex):
     print 'Command Error: %s' % ex
 
-def checkarg(nb_args):
+def checkarg(nb_args = 0, min_args = False):
     def under(function):
         def wrapper(*args, **kwargs):
-            if len(args[1]) != nb_args:
-                raise Exception('Command %s takes %s arguments' % (function.__name__, nb_args))
+            resuls = True
+
+            if min_args:
+                result = len(args[1]) < nb_args
+            else:
+                result = len(args[1]) != nb_args
+
+            if result:
+                raise Exception('Command %s takes %s arguments' %
+                                    (function.__name__, nb_args))
             return function(*args, **kwargs)
         return wrapper
     return under
@@ -88,6 +96,11 @@ class Wpa_s:
         print 'p2p_peers'
         print 'p2p_peer <p2p device name>'
         print 'p2p_connect <p2p device name>'
+        print 'p2p_serv_disc_req'
+        print 'p2p_serv_disc_cancel_req <identifier>'
+        print 'p2p_service_add <service type> <version/query> <service/response>'
+        print 'p2p_service_del <service type> <version/query> [<service>]'
+        print 'p2p_service_flush'
 
     def __command(self, cmd_line):
         cmd = cmd_line.split(' ')
@@ -143,6 +156,12 @@ class Wpa_s:
                                         self.group['interface_object']),
                                        WPA_P2P_INTF)
 
+    def __ServiceDiscoveryResponse(self, response):
+        peer = response['peer_object']
+        if peer in self.peers:
+            print 'Peer %s has this TLVs:' % (self.peers[peer]['DeviceName'])
+            print response['tlvs']
+
     def __listen_if_signals(self):
         bus.add_signal_receiver(self.__if_property_changed,
                                 dbus_interface=WPA_IF_INTF,
@@ -164,6 +183,10 @@ class Wpa_s:
                                 dbus_interface=WPA_P2P_INTF,
                                 path=self.iface_path,
                                 signal_name='DeviceLost')
+        bus.add_signal_receiver(self.__ServiceDiscoveryResponse,
+                                dbus_interface=WPA_P2P_INTF,
+                                path=self.iface_path,
+                                signal_name='ServiceDiscoveryResponse')
 
     def __reset(self):
         self.iface_path = self.iface_name = self.iface = None
@@ -183,7 +206,7 @@ class Wpa_s:
     @checkarg(nb_args=1)
     def create_if(self, args):
         self.__reset()
-        self.iface_path = self.wpa.CreateInterface(({"Ifname" : args[0]}))
+        self.iface_path = self.wpa.CreateInterface(({ 'Ifname' : args[0]} ))
         self.__set_if(args[0])
 
     @checkarg(nb_args=1)
@@ -192,7 +215,7 @@ class Wpa_s:
         self.iface_path = self.wpa.GetInterface(args[0])
         self.__set_if(args[0])
 
-    @checkarg(nb_args=0)
+    @checkarg()
     def del_if(self, args = None):
         if not self.iface_path:
             return
@@ -201,34 +224,34 @@ class Wpa_s:
         print 'Interface %s removed' % self.iface_name
         self.__reset()
 
-    @checkarg(nb_args=0)
+    @checkarg()
     def scan(self, args = None):
         if not self.iface:
             return
 
-        self.iface.Scan(({ 'Type': 'passive'}))
+        self.iface.Scan(({ 'Type': 'passive' }))
         print 'Scan started'
 
-    @checkarg(nb_args=0)
+    @checkarg()
     def quit(self, args = None):
         self.del_if(args)
         exit(0)
 
-    @checkarg(nb_args=0)
+    @checkarg()
     def p2p_find(self, args = None):
-        if not self.iface:
+        if not self.p2p:
             return
 
         self.p2p.Find(({}))
 
-    @checkarg(nb_args=0)
+    @checkarg()
     def p2p_stop_find(self, args = None):
         if not self.p2p:
             return
 
         self.p2p.StopFind()
 
-    @checkarg(nb_args=0)
+    @checkarg()
     def p2p_peers(self, args = None):
         if not self.iface:
             return
@@ -255,14 +278,14 @@ class Wpa_s:
         else:
             return peer
 
-    @checkarg(nb_args=1)
+    @checkarg(nb_args = 1)
     def p2p_peer(self, args):
         peer = self.__find_peer(args[0])
         if peer:
             for k in peer:
                 print '%s = %s' % (k, peer[k])
 
-    @checkarg(nb_args=1)
+    @checkarg(nb_args = 1)
     def p2p_connect(self, args):
         if not self.p2p:
             return
@@ -274,26 +297,88 @@ class Wpa_s:
             if not pin:
                 print 'WPS PIN in use: %s' % pin
 
-    @checkarg(nb_args=0)
+    @checkarg()
     def p2p_group_add(self, args):
         if not self.p2p:
             return
 
         self.p2p.GroupAdd(({ 'persistent' : dbus.Boolean(1) }))
 
-    @checkarg(nb_args=0)
+    @checkarg()
     def p2p_group_remove(self, args):
         if not self.group_if:
             return
 
         self.group_if.Disconnect()
 
-    @checkarg(nb_args=0)
+    @checkarg()
     def p2p_flush(self, args):
         if not self.p2p:
             return
 
         self.p2p.Flush()
+
+    @checkarg()
+    def p2p_serv_disc_req(self, args = None):
+        if not self.p2p:
+            return
+
+        """ We request all kind of services """
+        sd_req = dbus.Array(signature='y', variant_level=1)
+        for a in [2,0,0,1]:
+            sd_req.append(dbus.Byte(a))
+
+        ref = self.p2p.ServiceDiscoveryRequest(({ 'tlv' : sd_req }))
+        print 'Service discovery reference: %s' % ref
+
+    @checkarg(nb_args = 1)
+    def p2p_serv_disc_cancel_req(self, args):
+        if not self.p2p:
+            return
+
+        self.p2p.ServiceDiscoveryCancelRequest(int(args[0]))
+
+    @checkarg(nb_args = 3)
+    def p2p_service_add(self, args):
+        if not self.p2p:
+            return
+
+        service = { 'service_type' : args[0] }
+        if args[0] == 'upnp':
+            service['version'] = args[1]
+            service['service'] = args[2]
+        elif args[0] == 'bonjour':
+            service['query'] = args[1]
+            service['response'] = args[2]
+        else:
+            print 'Unknown service: %s' % args[0]
+            return
+
+        self.p2p.AddService((service))
+
+    @checkarg(nb_args = 2, min_args = True)
+    def p2p_service_del(self, args):
+        if not self.p2p:
+            return
+
+        service = { 'service_type' : args[0] }
+        if args[0] == 'upnp':
+            service['version'] = args[1]
+            service['service'] = args[2]
+        elif args[0] == 'bonjour':
+            service['query'] = args[1]
+        else:
+            print 'Unknown service: %s' % args[0]
+            return
+
+        self.p2p.DeleteService((service))
+
+    @checkarg()
+    def p2p_service_flush(self, args = None)
+        if not self.p2p:
+            return
+
+        self.p2p.FlushService()
 
 if __name__ == '__main__':
     if version_info.major != 2:
