@@ -1542,7 +1542,7 @@ static void session_deactivate(struct connman_session *session)
 	if (!info)
 		return;
 
-	info->sessions = g_slist_remove(info->sessions, session->service);
+	info->sessions = g_slist_remove(info->sessions, session);
 	session->service = NULL;
 
 	update_session_state(session);
