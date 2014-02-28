@@ -1733,23 +1733,12 @@ static int cmd_session(char *args[], int num, struct connman_option *options)
 			if (!session_path)
 				return session_create(TRUE);
 
-			if (session_connected == true) {
-				fprintf(stdout, "Session already connected\n");
-				return 0;
-			}
-
 			return session_connect();
 
 		} else if (!strcmp(command, "disconnect")) {
 
 			if (!session_path) {
 				fprintf(stdout, "Session does not exist\n");
-				return 0;
-			}
-
-			if (session_connected == false) {
-				fprintf(stdout, "Session already "
-						"disconnected\n");
 				return 0;
 			}
 
