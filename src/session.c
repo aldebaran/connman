@@ -83,6 +83,7 @@ struct connman_service_info {
 static struct connman_session_policy *policy;
 static void session_activate(struct connman_session *session);
 static void session_deactivate(struct connman_session *session);
+static void update_session_state(struct connman_session *session);
 
 static void cleanup_service(gpointer data)
 {
@@ -429,6 +430,7 @@ static void cleanup_session(gpointer user_data)
 				session->info->config.allowed_bearers);
 
 	session_deactivate(session);
+	update_session_state(session);
 
 	g_slist_free(session->user_allowed_bearers);
 
@@ -969,6 +971,7 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 	}
 
 	session_deactivate(session);
+	update_session_state(session);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -1545,8 +1548,6 @@ static void session_deactivate(struct connman_session *session)
 
 	info->sessions = g_slist_remove(info->sessions, session);
 	session->service = NULL;
-
-	update_session_state(session);
 }
 
 static void handle_service_state_online(struct connman_service *service,
