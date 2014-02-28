@@ -39,6 +39,13 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		array{object,dict} GetPeers() [experimental]
+
+			Returns a sorted list of tuples with peer object path
+			and dictionary of peer properties
+
+			Possible Errors: [peer].Error.InvalidArguments
+
 		object ConnectProvider(dict provider)	[deprecated]
 
 			Connect to a VPN specified by the given provider
@@ -185,6 +192,28 @@ Signals		TechnologyAdded(object path, dict properties)
 			of the service object changes. For that it is
 			required to watch the PropertyChanged signal of
 			the service object.
+
+		PeersChanged(array{object, dict}) [experimental]
+
+			Signals a list of peers that have been changed via the
+			first array. And a list of peer that have been removed
+			via the second array.
+
+			The list of changed peers is sorted. The dictionary
+			with the properties might be empty in case none of the
+			properties have changed. Or only contains the
+			properties that have changed.
+
+			For newly added peers the whole set of properties will
+			be present.
+
+			The list of removed peers can be empty.
+
+			This signal will only be triggered when the sort order
+			of the peer list or the number of peers changes. It
+			will not be emitted if only a property of the peer
+			object changes. For that it is required to watch the
+			PropertyChanged signal of the peer object.
 
 		PropertyChanged(string name, variant value)
 

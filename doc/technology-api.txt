@@ -36,6 +36,10 @@ Methods		dict GetProperties()  [deprecated]
 			Results will be signaled via the ServicesChanged
 			signal from the manager interface.
 
+			In case of P2P technology, results will be signaled
+			via the PeersChanged signal from the manager
+			interface.
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
