@@ -936,13 +936,12 @@ static DBusMessage *connect_session(DBusConnection *conn,
 		session->ecall = true;
 	}
 
-	if (session->active)
-		return __connman_error_failed(msg, -EALREADY);
+	if (!session->active) {
+		session->active = true;
+		__connman_service_set_active_session(true,
+				session->info->config.allowed_bearers);
+	}
 
-	session->active = true;
-
-	__connman_service_set_active_session(true,
-			session->info->config.allowed_bearers);
 	__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_SESSION);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
@@ -962,13 +961,13 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 		session->ecall = false;
 	}
 
-	if (!session->active)
-		return __connman_error_failed(msg, -ENOTCONN);
+	if (session->active) {
+		session->active = false;
+		__connman_service_set_active_session(false,
+				session->info->config.allowed_bearers);
+	}
 
-	session->active = false;
-
-	__connman_service_set_active_session(false,
-			session->info->config.allowed_bearers);
+	session_deactivate(session);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
