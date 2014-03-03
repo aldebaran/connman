@@ -1605,6 +1605,8 @@ static void service_state_changed(struct connman_service *service,
 
 	DBG("service %p state %d", service, state);
 
+	info = g_hash_table_lookup(service_hash, service);
+
 	switch (state) {
 	case CONNMAN_SERVICE_STATE_UNKNOWN:
 	case CONNMAN_SERVICE_STATE_IDLE:
@@ -1612,7 +1614,6 @@ static void service_state_changed(struct connman_service *service,
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
 	case CONNMAN_SERVICE_STATE_FAILURE:
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
-		info = g_hash_table_lookup(service_hash, service);
 		if (!info)
 			return;
 
@@ -1623,12 +1624,13 @@ static void service_state_changed(struct connman_service *service,
 		return;
 	case CONNMAN_SERVICE_STATE_READY:
 	case CONNMAN_SERVICE_STATE_ONLINE:
-		info = g_new0(struct connman_service_info, 1);
+		if (!info) {
+			info = g_new0(struct connman_service_info, 1);
+			g_hash_table_replace(service_hash, service, info);
+		}
 
 		info->service = service;
 		handle_service_state_online(service, state, info);
-
-		g_hash_table_replace(service_hash, service, info);
 	}
 }
 
