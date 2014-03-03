@@ -72,6 +72,7 @@ struct connman_session {
 	uint32_t mark;
 	int index;
 	char *gateway;
+	bool policy_routing;
 };
 
 struct connman_service_info {
@@ -321,6 +322,7 @@ static int init_routing_table(struct connman_session *session)
 	if (err < 0)
 		__connman_inet_del_fwmark_rule(session->mark,
 						AF_INET, session->mark);
+	session->policy_routing = true;
 
 	return err;
 }
@@ -365,11 +367,14 @@ static void cleanup_routing_table(struct connman_session *session)
 {
 	DBG("");
 
-	__connman_inet_del_fwmark_rule(session->mark,
+	if (session->policy_routing) {
+		__connman_inet_del_fwmark_rule(session->mark,
 					AF_INET6, session->mark);
 
-	__connman_inet_del_fwmark_rule(session->mark,
+		__connman_inet_del_fwmark_rule(session->mark,
 					AF_INET, session->mark);
+		session->policy_routing = false;
+	}
 
 	del_default_route(session);
 }
