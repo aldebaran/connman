@@ -5015,7 +5015,7 @@ static void service_complete(struct connman_service *service)
 	reply_pending(service, EIO);
 
 	if (service->connect_reason != CONNMAN_SERVICE_CONNECT_REASON_USER)
-		__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
+		__connman_service_auto_connect(service->connect_reason);
 
 	g_get_current_time(&service->modified);
 	service_save(service);
