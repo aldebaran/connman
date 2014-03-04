@@ -2278,7 +2278,7 @@ static void signal_wps_event(const char *path, DBusMessageIter *iter)
 
 	if (g_strcmp0(name, "success") == 0)
 		interface->wps_state = G_SUPPLICANT_WPS_STATE_SUCCESS;
-	else if (g_strcmp0(name, "failed") == 0)
+	else if (g_strcmp0(name, "fail") == 0)
 		interface->wps_state = G_SUPPLICANT_WPS_STATE_FAIL;
 	else
 		interface->wps_state = G_SUPPLICANT_WPS_STATE_UNKNOWN;
