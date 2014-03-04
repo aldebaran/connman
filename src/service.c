@@ -2393,6 +2393,20 @@ __connman_service_is_split_routing(struct connman_service *service)
 	return service->do_split_routing;
 }
 
+bool __connman_service_index_is_split_routing(int index)
+{
+	struct connman_service *service;
+
+	if (index < 0)
+		return false;
+
+	service = __connman_service_lookup_from_index(index);
+	if (!service)
+		return false;
+
+	return __connman_service_is_split_routing(service);
+}
+
 int __connman_service_get_index(struct connman_service *service)
 {
 	if (!service)
