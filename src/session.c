@@ -1548,6 +1548,8 @@ static void session_deactivate(struct connman_session *session)
 
 	info->sessions = g_slist_remove(info->sessions, session);
 	session->service = NULL;
+
+	session->info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
 }
 
 static void handle_service_state_online(struct connman_service *service,
