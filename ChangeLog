@@ -1,3 +1,11 @@
+ver 1.22:
+	Fix issue with WPS state synchronization.
+	Fix issue with DNS servers and default service.
+	Fix issue with DHCP client and rebooting state.
+	Add support for NTP exponential backoff handling.
+	Add support for NTP kiss-of-death packet handling.
+	Add support for Ethernet gadget networking.
+
 ver 1.21:
 	Fix issue with WiFi networks and zero SSID length.
 	Fix issue with security details for hidden WiFi networks.
