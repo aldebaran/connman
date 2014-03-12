@@ -4934,6 +4934,11 @@ bool connman_service_get_favorite(struct connman_service *service)
 	return service->favorite;
 }
 
+bool connman_service_get_autoconnect(struct connman_service *service)
+{
+	return service->autoconnect;
+}
+
 int __connman_service_set_immutable(struct connman_service *service,
 						bool immutable)
 {
