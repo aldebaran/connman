@@ -81,6 +81,8 @@ struct connman_session_policy {
 	void (*destroy)(struct connman_session *session);
 	void (*session_changed)(struct connman_session *session, bool active,
 				GSList *bearers);
+	bool (*allowed)(struct connman_session *session,
+			struct connman_service *service);
 };
 
 int connman_session_policy_register(struct connman_session_policy *config);
