@@ -416,6 +416,12 @@ static void free_session(struct connman_session *session)
 	g_free(session);
 }
 
+static void set_active_session(struct connman_session *session, bool enable)
+{
+	__connman_service_set_active_session(enable,
+				session->info->config.allowed_bearers);
+}
+
 static void cleanup_session(gpointer user_data)
 {
 	struct connman_session *session = user_data;
@@ -426,8 +432,7 @@ static void cleanup_session(gpointer user_data)
 	cleanup_firewall_session(session);
 
 	if (session->active)
-		__connman_service_set_active_session(false,
-				session->info->config.allowed_bearers);
+		set_active_session(session, false);
 
 	session_deactivate(session);
 	update_session_state(session);
@@ -897,8 +902,7 @@ int connman_session_config_update(struct connman_session *session)
 		&allowed_bearers);
 
 	if (session->active)
-		__connman_service_set_active_session(false,
-				session->info->config.allowed_bearers);
+		set_active_session(session, false);
 
 	session->active = false;
 	session_deactivate(session);
@@ -941,8 +945,7 @@ static DBusMessage *connect_session(DBusConnection *conn,
 
 	if (!session->active) {
 		session->active = true;
-		__connman_service_set_active_session(true,
-				session->info->config.allowed_bearers);
+		set_active_session(session, true);
 	}
 
 	session_activate(session);
@@ -968,8 +971,7 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 
 	if (session->active) {
 		session->active = false;
-		__connman_service_set_active_session(false,
-				session->info->config.allowed_bearers);
+		set_active_session(session, false);
 	}
 
 	session_deactivate(session);
@@ -1012,8 +1014,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 				return __connman_error_failed(msg, -err);
 
 			if (session->active)
-				__connman_service_set_active_session(false,
-					session->info->config.allowed_bearers);
+				set_active_session(session, false);
 
 			session->active = false;
 			session_deactivate(session);
