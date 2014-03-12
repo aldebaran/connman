@@ -418,6 +418,11 @@ static void free_session(struct connman_session *session)
 
 static void set_active_session(struct connman_session *session, bool enable)
 {
+
+	if (policy && policy->session_changed)
+		policy->session_changed(session, enable,
+					session->info->config.allowed_bearers);
+
 	__connman_service_set_active_session(enable,
 				session->info->config.allowed_bearers);
 }

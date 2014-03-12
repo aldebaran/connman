@@ -79,7 +79,8 @@ struct connman_session_policy {
 			connman_session_config_func_t cb,
 			void *user_data);
 	void (*destroy)(struct connman_session *session);
-
+	void (*session_changed)(struct connman_session *session, bool active,
+				GSList *bearers);
 };
 
 int connman_session_policy_register(struct connman_session_policy *config);
