@@ -100,6 +100,9 @@ int connman_session_parse_bearers(const char *token, GSList **list);
 
 const char *connman_session_get_owner(struct connman_session *session);
 
+int connman_session_connect(struct connman_service *service);
+int connman_session_disconnect(struct connman_service *service);
+
 #ifdef __cplusplus
 }
 #endif

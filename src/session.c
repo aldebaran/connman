@@ -1431,6 +1431,21 @@ int __connman_session_destroy(DBusMessage *msg)
 	return 0;
 }
 
+int connman_session_connect(struct connman_service *service)
+{
+	DBG("service %p name %s", service, __connman_service_get_name(service));
+
+	return __connman_service_connect(service,
+				CONNMAN_SERVICE_CONNECT_REASON_SESSION);
+}
+
+int connman_session_disconnect(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	return __connman_service_disconnect(service);
+}
+
 static enum connman_session_state service_to_session_state(
 					enum connman_service_state state)
 {
