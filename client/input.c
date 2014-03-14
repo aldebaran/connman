@@ -214,16 +214,6 @@ void __connmanctl_command_mode(void)
 	rl_attempted_completion_function = complete_command;
 }
 
-static void no_handler(char *input)
-{
-}
-
-static void no_handler_mode(void)
-{
-	rl_callback_handler_install("", no_handler);
-	rl_attempted_completion_function = NULL;
-}
-
 int __connmanctl_input_init(int argc, char *argv[])
 {
 	char *help[] = {
@@ -244,22 +234,22 @@ int __connmanctl_input_init(int argc, char *argv[])
 		return 1;
 	}
 
-	channel = g_io_channel_unix_new(fileno(stdin));
-	source = g_io_add_watch(channel, G_IO_IN|G_IO_ERR|G_IO_HUP|G_IO_NVAL,
-			input_handler, NULL);
-	g_io_channel_unref(channel);
-
 	if (argc < 2) {
 		interactive = true;
+
+		channel = g_io_channel_unix_new(fileno(stdin));
+		source = g_io_add_watch(channel,
+				G_IO_IN|G_IO_ERR|G_IO_HUP|G_IO_NVAL,
+				input_handler, NULL);
+		g_io_channel_unref(channel);
 
 		__connmanctl_monitor_completions(connection);
 
 		__connmanctl_command_mode();
-		err = -EINPROGRESS;
 
+		err = -EINPROGRESS;
 	} else {
 		interactive = false;
-		no_handler_mode();
 
 		if (strcmp(argv[1], "--help") == 0 ||
 				strcmp(argv[1], "-h") == 0)
@@ -276,13 +266,13 @@ int __connmanctl_input_init(int argc, char *argv[])
 		err = 0;
 	}
 
-	g_source_remove(source);
-
-	if (interactive)
+	if (interactive) {
+		g_source_remove(source);
 		__connmanctl_monitor_completions(NULL);
 
-	rl_callback_handler_remove();
-	rl_message("");
+		rl_callback_handler_remove();
+		rl_message("");
+	}
 
 	dbus_connection_unref(connection);
 	if (main_loop)

@@ -1259,6 +1259,12 @@ static int cmd_monitor(char *args[], int num, struct connman_option *options)
 
 static int cmd_agent(char *args[], int num, struct connman_option *options)
 {
+	if (!__connmanctl_is_interactive()) {
+		fprintf(stderr, "Error: Not supported in non-interactive "
+				"mode\n");
+		return 0;
+	}
+
 	if (num > 2)
 		return -E2BIG;
 
@@ -1355,6 +1361,12 @@ static int cmd_vpnconnections(char *args[], int num,
 
 static int cmd_vpnagent(char *args[], int num, struct connman_option *options)
 {
+	if (!__connmanctl_is_interactive()) {
+		fprintf(stderr, "Error: Not supported in non-interactive "
+				"mode\n");
+		return 0;
+	}
+
 	if (num > 2)
 		return -E2BIG;
 
