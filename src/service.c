@@ -3973,13 +3973,9 @@ static DBusMessage *connect_service(DBusConnection *conn,
 				is_connecting(temp) &&
 				!is_interface_available(service, temp)) {
 
-			err = __connman_service_disconnect(temp);
-			if (err < 0 && err != -EINPROGRESS)
-				return __connman_error_in_progress(msg);
-			else {
-				set_idle(temp);
-				break;
-			}
+			__connman_service_disconnect(temp);
+			set_idle(temp);
+			break;
 		}
 	}
 
