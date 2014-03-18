@@ -1241,6 +1241,9 @@ static int tech_set_tethering(struct connman_technology *technology,
 
 	DBG("bridge %s", bridge);
 
+	if (!bluetooth_devices)
+		return -ENOTCONN;
+
 	if (enabled)
 		g_hash_table_foreach(bluetooth_devices, enable_nap, &info);
 	else
