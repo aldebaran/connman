@@ -374,7 +374,7 @@ class Wpa_s:
         self.p2p.DeleteService((service))
 
     @checkarg()
-    def p2p_service_flush(self, args = None)
+    def p2p_service_flush(self, args = None):
         if not self.p2p:
             return
 
