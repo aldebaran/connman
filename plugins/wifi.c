@@ -619,9 +619,6 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 	if (scanning == TRUE)
 		connman_device_set_scanning(device, FALSE);
 
-	if (result != -ENOLINK)
-		start_autoscan(device);
-
 	/*
 	 * If we are here then we were scanning; however, if we are
 	 * also mid-flight disabling the interface, then wifi_disable
