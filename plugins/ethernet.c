@@ -298,8 +298,6 @@ static void eth_tech_disable_tethering(struct connman_technology *technology,
 
 		connman_inet_remove_from_bridge(index, bridge);
 
-		connman_inet_ifdown(index);
-
 		connman_technology_tethering_notify(technology, false);
 
 		if (device)
