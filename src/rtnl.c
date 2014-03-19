@@ -520,6 +520,8 @@ static void process_dellink(unsigned short type, int index, unsigned flags,
 	switch (type) {
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
+	case ARPHDR_PHONET_PIPE:
+	case ARPHRD_PPP:
 	case ARPHRD_NONE:
 		__connman_ipconfig_dellink(index, &stats);
 		break;
