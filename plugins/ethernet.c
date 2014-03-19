@@ -263,14 +263,18 @@ static void eth_tech_enable_tethering(struct connman_technology *technology,
 						const char *bridge)
 {
 	GList *list;
+	struct ethernet_data *ethernet;
 
 	for (list = eth_interface_list; list; list = list->next) {
 		int index = GPOINTER_TO_INT(list->data);
 		struct connman_device *device =
 			connman_device_find_by_index(index);
 
-		if (device)
-			connman_device_disconnect_service(device);
+		if (device) {
+			ethernet = connman_device_get_data(device);
+			if (ethernet)
+				remove_network(device, ethernet);
+		}
 
 		connman_technology_tethering_notify(technology, true);
 
