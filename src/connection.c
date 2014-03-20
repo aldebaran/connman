@@ -980,12 +980,13 @@ void __connman_connection_gateway_remove(struct connman_service *service,
 
 	if (do_ipv4 && data->ipv4_gateway &&
 			data->ipv4_gateway->vpn && data->index >= 0)
-		connman_inet_del_host_route(data->index,
+		connman_inet_del_host_route(data->ipv4_gateway->vpn_phy_index,
 						data->ipv4_gateway->gateway);
 
 	if (do_ipv6 && data->ipv6_gateway &&
 			data->ipv6_gateway->vpn && data->index >= 0)
-		connman_inet_del_ipv6_host_route(data->index,
+		connman_inet_del_ipv6_host_route(
+					data->ipv6_gateway->vpn_phy_index,
 						data->ipv6_gateway->gateway);
 
 	err = disable_gateway(data, type);
