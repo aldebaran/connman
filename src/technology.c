@@ -1081,84 +1081,6 @@ static bool technology_dbus_register(struct connman_technology *technology)
 	return true;
 }
 
-static struct connman_technology *technology_get(enum connman_service_type type)
-{
-	GSList *tech_drivers = NULL;
-	struct connman_technology_driver *driver;
-	struct connman_technology *technology;
-	const char *str;
-	GSList *list;
-
-	DBG("type %d", type);
-
-	str = __connman_service_type2string(type);
-	if (!str)
-		return NULL;
-
-	technology = technology_find(type);
-	if (technology) {
-		__sync_fetch_and_add(&technology->refcount, 1);
-		return technology;
-	}
-
-	/* First check if we have a driver for this technology type */
-	for (list = driver_list; list; list = list->next) {
-		driver = list->data;
-
-		if (driver->type == type) {
-			DBG("technology %p driver %p", technology, driver);
-			tech_drivers = g_slist_append(tech_drivers, driver);
-		}
-	}
-
-	if (!tech_drivers) {
-		DBG("No matching drivers found for %s.",
-				__connman_service_type2string(type));
-		return NULL;
-	}
-
-	technology = g_try_new0(struct connman_technology, 1);
-	if (!technology)
-		return NULL;
-
-	technology->refcount = 1;
-
-	technology->rfkill_driven = false;
-	technology->softblocked = false;
-	technology->hardblocked = false;
-
-	technology->type = type;
-	technology->path = g_strdup_printf("%s/technology/%s",
-							CONNMAN_PATH, str);
-
-	technology->device_list = NULL;
-
-	technology->pending_reply = NULL;
-
-	technology_load(technology);
-
-	if (!technology_dbus_register(technology)) {
-		g_free(technology);
-		return NULL;
-	}
-
-	technology_list = g_slist_prepend(technology_list, technology);
-
-	technology->driver_list = tech_drivers;
-
-	for (list = tech_drivers; list; list = g_slist_next(list)) {
-		driver = list->data;
-
-		if (driver->probe && driver->probe(technology) < 0)
-			DBG("Driver probe failed for technology %p",
-					technology);
-	}
-
-	DBG("technology %p", technology);
-
-	return technology;
-}
-
 static void technology_dbus_unregister(struct connman_technology *technology)
 {
 	if (!technology->dbus_registered)
@@ -1204,6 +1126,72 @@ static void technology_put(struct connman_technology *technology)
 	g_free(technology->tethering_ident);
 	g_free(technology->tethering_passphrase);
 	g_free(technology);
+}
+
+static struct connman_technology *technology_get(enum connman_service_type type)
+{
+	GSList *tech_drivers = NULL;
+	struct connman_technology_driver *driver;
+	struct connman_technology *technology;
+	const char *str;
+	GSList *list;
+
+	DBG("type %d", type);
+
+	str = __connman_service_type2string(type);
+	if (!str)
+		return NULL;
+
+	technology = technology_find(type);
+	if (technology) {
+		__sync_fetch_and_add(&technology->refcount, 1);
+		return technology;
+	}
+
+	/* First check if we have a driver for this technology type */
+	for (list = driver_list; list; list = list->next) {
+		driver = list->data;
+
+		if (driver->type == type) {
+			DBG("technology %p driver %p", technology, driver);
+			tech_drivers = g_slist_append(tech_drivers, driver);
+		}
+	}
+
+	if (!tech_drivers) {
+		DBG("No matching drivers found for %s.",
+				__connman_service_type2string(type));
+		return NULL;
+	}
+
+	technology = g_try_new0(struct connman_technology, 1);
+	if (!technology)
+		return NULL;
+
+	technology->refcount = 1;
+	technology->type = type;
+	technology->path = g_strdup_printf("%s/technology/%s",
+							CONNMAN_PATH, str);
+	technology_load(technology);
+	technology_list = g_slist_prepend(technology_list, technology);
+	technology->driver_list = tech_drivers;
+
+	for (list = tech_drivers; list; list = list->next) {
+		driver = list->data;
+
+		if (driver->probe && driver->probe(technology) < 0)
+			DBG("Driver probe failed for technology %p",
+					technology);
+	}
+
+	if (!technology_dbus_register(technology)) {
+		technology_put(technology);
+		return NULL;
+	}
+
+	DBG("technology %p", technology);
+
+	return technology;
 }
 
 static void enable_tethering(struct connman_technology *technology)
