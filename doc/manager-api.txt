@@ -44,7 +44,7 @@ Methods		dict GetProperties()
 			Returns a sorted list of tuples with peer object path
 			and dictionary of peer properties
 
-			Possible Errors: [peer].Error.InvalidArguments
+			Possible Errors: [service].Error.InvalidArguments
 
 		object ConnectProvider(dict provider)	[deprecated]
 
