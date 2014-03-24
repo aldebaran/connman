@@ -3989,11 +3989,9 @@ static DBusMessage *connect_service(DBusConnection *conn,
 
 	err = __connman_service_connect(service,
 			CONNMAN_SERVICE_CONNECT_REASON_USER);
-	if (err < 0) {
-		if (!service->pending)
-			return NULL;
 
-		if (err != -EINPROGRESS) {
+	if (err < 0 && err != -EINPROGRESS) {
+		if (service->pending) {
 			dbus_message_unref(service->pending);
 			service->pending = NULL;
 
