@@ -590,10 +590,8 @@ static void remove_network(gpointer user_data)
 
 	DBG("dhcp %p", dhcp);
 
-	dhcp_invalidate(dhcp, false);
 	dhcp_release(dhcp);
-
-	g_free(dhcp);
+	dhcp_invalidate(dhcp, false);
 }
 
 int __connman_dhcp_start(struct connman_network *network, dhcp_cb callback)
