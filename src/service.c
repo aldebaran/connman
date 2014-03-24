@@ -3953,8 +3953,8 @@ static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_service *service = user_data;
+	int err = 0;
 	GList *list;
-	int err;
 
 	DBG("service %p", service);
 
@@ -3969,15 +3969,19 @@ static DBusMessage *connect_service(DBusConnection *conn,
 		 * interfaces for a given technology type (like having
 		 * more than one wifi card).
 		 */
-		if (service->type == temp->type &&
-				is_connecting(temp) &&
-				!is_interface_available(service, temp)) {
-
-			__connman_service_disconnect(temp);
-			set_idle(temp);
+		if (!is_connecting(temp) && !is_connected(temp))
 			break;
+
+		if (service->type != temp->type)
+			continue;
+
+		if(!is_interface_available(service, temp)) {
+			if (__connman_service_disconnect(temp) == -EINPROGRESS)
+				err = -EINPROGRESS;
 		}
 	}
+	if (err == -EINPROGRESS)
+		return __connman_error_in_progress(msg);
 
 	service->ignore = false;
 
