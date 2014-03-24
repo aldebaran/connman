@@ -3420,17 +3420,6 @@ static void set_error(struct connman_service *service,
 				DBUS_TYPE_STRING, &str);
 }
 
-static void set_idle(struct connman_service *service)
-{
-	if (service->state == CONNMAN_SERVICE_STATE_IDLE)
-		return;
-
-	service->state = service->state_ipv4 = service->state_ipv6 =
-						CONNMAN_SERVICE_STATE_IDLE;
-	set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
-	state_changed(service);
-}
-
 static DBusMessage *clear_property(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -3443,7 +3432,7 @@ static DBusMessage *clear_property(DBusConnection *conn,
 							DBUS_TYPE_INVALID);
 
 	if (g_str_equal(name, "Error")) {
-		set_idle(service);
+		set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 
 		g_get_current_time(&service->modified);
 		service_save(service);
@@ -4051,7 +4040,7 @@ bool __connman_service_remove(struct connman_service *service)
 	g_free(service->eap);
 	service->eap = NULL;
 
-	set_idle(service);
+	service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
 
 	__connman_service_set_favorite(service, false);
 
