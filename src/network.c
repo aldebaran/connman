@@ -1539,7 +1539,7 @@ int __connman_network_connect(struct connman_network *network)
  */
 int __connman_network_disconnect(struct connman_network *network)
 {
-	int err;
+	int err = 0;
 
 	DBG("network %p", network);
 
@@ -1550,13 +1550,12 @@ int __connman_network_disconnect(struct connman_network *network)
 	if (!network->driver)
 		return -EUNATCH;
 
-	if (!network->driver->disconnect)
-		return -ENOSYS;
-
 	network->connecting = false;
 
-	err = network->driver->disconnect(network);
-	if (err == 0)
+	if (network->driver->disconnect)
+		err = network->driver->disconnect(network);
+
+	if (err != -EINPROGRESS)
 		set_disconnected(network);
 
 	return err;
