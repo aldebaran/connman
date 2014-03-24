@@ -817,14 +817,17 @@ static void extract_ipv4_settings(DBusMessageIter *array,
 	if (index < 0)
 		goto out;
 
+	context->index = index;
+
 	if (context->ipv4_method != CONNMAN_IPCONFIG_METHOD_FIXED)
 		goto out;
 
 	context->ipv4_address = connman_ipaddress_alloc(CONNMAN_IPCONFIG_TYPE_IPV4);
-	if (!context->ipv4_address)
+	if (!context->ipv4_address) {
+		context->index = -1;
 		goto out;
+	}
 
-	context->index = index;
 	connman_ipaddress_set_ipv4(context->ipv4_address, address,
 				netmask, gateway);
 
