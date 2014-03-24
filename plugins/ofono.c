@@ -915,6 +915,7 @@ static void extract_ipv6_settings(DBusMessageIter *array,
 	connman_ipaddress_set_ipv6(context->ipv6_address, address,
 				prefix_length, gateway);
 
+	g_free(context->ipv6_nameservers);
 	context->ipv6_nameservers = nameservers;
 
 out:
