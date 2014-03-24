@@ -831,6 +831,7 @@ static void extract_ipv4_settings(DBusMessageIter *array,
 	connman_ipaddress_set_ipv4(context->ipv4_address, address,
 				netmask, gateway);
 
+	g_free(context->ipv4_nameservers);
 	context->ipv4_nameservers = nameservers;
 
 out:
