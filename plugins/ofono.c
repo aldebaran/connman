@@ -782,12 +782,11 @@ static void extract_ipv4_settings(DBusMessageIter *array,
 
 			DBG("Method %s", val);
 
-			if (g_strcmp0(val, "static") == 0) {
+			if (g_strcmp0(val, "static") == 0)
 				context->ipv4_method = CONNMAN_IPCONFIG_METHOD_FIXED;
-			} else if (g_strcmp0(val, "dhcp") == 0) {
+			else if (g_strcmp0(val, "dhcp") == 0)
 				context->ipv4_method = CONNMAN_IPCONFIG_METHOD_DHCP;
-				break;
-			}
+
 		} else if (g_str_equal(key, "Address")) {
 			dbus_message_iter_get_basic(&value, &val);
 
