@@ -290,8 +290,6 @@ static void tethering_changed(struct connman_technology *technology)
 void connman_technology_tethering_notify(struct connman_technology *technology,
 							bool enabled)
 {
-	GSList *list;
-
 	DBG("technology %p enabled %u", technology, enabled);
 
 	if (technology->tethering == enabled)
@@ -303,15 +301,8 @@ void connman_technology_tethering_notify(struct connman_technology *technology,
 
 	if (enabled)
 		__connman_tethering_set_enabled();
-	else {
-		for (list = technology_list; list; list = list->next) {
-			struct connman_technology *other_tech = list->data;
-			if (other_tech->tethering)
-				break;
-		}
-		if (!list)
-			__connman_tethering_set_disabled();
-	}
+	else
+		__connman_tethering_set_disabled();
 }
 
 static int set_tethering(struct connman_technology *technology,
