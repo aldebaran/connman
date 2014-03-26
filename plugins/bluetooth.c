@@ -461,27 +461,12 @@ static struct connman_network_driver network_driver = {
 	.disconnect     = bluetooth_pan_disconnect,
 };
 
-static void device_enable_cb(const DBusError *error, void *user_data)
+static void enable_device(struct connman_device *device, const char *path)
 {
-	char *path = user_data;
-	struct connman_device *device;
 	GHashTableIter iter;
 	gpointer key, value;
 
-	device = g_hash_table_lookup(devices, path);
-	if (!device) {
-		DBG("device already removed");
-		goto out;
-	}
-
-	if (dbus_error_is_set(error)) {
-		connman_warn("Bluetooth device %s not enabled %s",
-				path, error->message);
-		goto out;
-	}
-
 	DBG("device %p %s", device, path);
-
 	connman_device_set_powered(device, true);
 
 	g_hash_table_iter_init(&iter, networks);
@@ -495,7 +480,26 @@ static void device_enable_cb(const DBusError *error, void *user_data)
 			pan_create_nap(pan);
 		}
 	}
+}
 
+static void device_enable_cb(const DBusError *error, void *user_data)
+{
+	char *path = user_data;
+	struct connman_device *device;
+
+	device = g_hash_table_lookup(devices, path);
+	if (!device) {
+		DBG("device already removed");
+		goto out;
+	}
+
+	if (dbus_error_is_set(error)) {
+		connman_warn("Bluetooth device %s not enabled %s",
+				path, error->message);
+		goto out;
+	}
+
+	enable_device(device, path);
 out:
 	g_free(path);
 }
@@ -525,12 +529,30 @@ static int bluetooth_device_enable(struct connman_device *device)
 	return -EINPROGRESS;
 }
 
+static void disable_device(struct connman_device *device, const char *path)
+{
+	GHashTableIter iter;
+	gpointer key, value;
+
+	DBG("device %p %s", device, path);
+	connman_device_set_powered(device, false);
+
+	g_hash_table_iter_init(&iter, networks);
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
+		struct bluetooth_pan *pan = value;
+
+		if (pan->network && connman_network_get_device(pan->network)
+				== device) {
+			DBG("disable network %p", pan->network);
+			connman_device_remove_network(device, pan->network);
+		}
+	}
+}
+
 static void device_disable_cb(const DBusError *error, void *user_data)
 {
 	char *path = user_data;
 	struct connman_device *device;
-	GHashTableIter iter;
-	gpointer key, value;
 
 	device = g_hash_table_lookup(devices, path);
 	if (!device) {
@@ -544,18 +566,7 @@ static void device_disable_cb(const DBusError *error, void *user_data)
 		goto out;
 	}
 
-	DBG("device %p %s", device, path);
-	connman_device_set_powered(device, false);
-
-	g_hash_table_iter_init(&iter, networks);
-	while (g_hash_table_iter_next(&iter, &key, &value)) {
-		struct bluetooth_pan *pan = value;
-
-		if (pan->network && connman_network_get_device(pan->network) == device) {
-			DBG("disable network %p", pan->network);
-			connman_device_remove_network(device, pan->network);
-		}
-	}
+	disable_device(device, path);
 
 out:
 	g_free(path);
@@ -605,8 +616,12 @@ static void adapter_property_change(GDBusProxy *proxy, const char *name,
 	DBG("device %p %s device powered %d adapter powered %d", device, path,
 			device_powered, adapter_powered);
 
-	if (device_powered != adapter_powered)
-		connman_device_set_powered(device, adapter_powered);
+	if (device_powered != adapter_powered) {
+		if (adapter_powered)
+			enable_device(device, path);
+		else
+			disable_device(device, path);
+	}
 }
 
 static void device_free(gpointer data)
