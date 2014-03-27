@@ -141,6 +141,11 @@ int connman_technology_driver_register(struct connman_technology_driver *driver)
 	struct connman_device *device;
 	enum connman_service_type type;
 
+	for (list = driver_list; list; list = list->next) {
+		if (list->data == driver)
+			return 0;
+	}
+
 	DBG("Registering %s driver", driver->name);
 
 	driver_list = g_slist_insert_sorted(driver_list, driver,
