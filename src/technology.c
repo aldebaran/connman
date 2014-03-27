@@ -633,6 +633,60 @@ static int technology_affect_devices(struct connman_technology *technology,
 	return err;
 }
 
+static void powered_changed(struct connman_technology *technology)
+{
+	dbus_bool_t enabled;
+
+	if (!technology->dbus_registered)
+		return;
+
+	if (technology->pending_reply) {
+		g_dbus_send_reply(connection,
+				technology->pending_reply, DBUS_TYPE_INVALID);
+		dbus_message_unref(technology->pending_reply);
+		technology->pending_reply = NULL;
+
+		g_source_remove(technology->pending_timeout);
+		technology->pending_timeout = 0;
+	}
+
+	__sync_synchronize();
+	enabled = technology->enabled;
+	connman_dbus_property_changed_basic(technology->path,
+			CONNMAN_TECHNOLOGY_INTERFACE, "Powered",
+			DBUS_TYPE_BOOLEAN, &enabled);
+}
+
+static void enable_tethering(struct connman_technology *technology)
+{
+	int ret;
+
+	if (!connman_setting_get_bool("PersistentTetheringMode"))
+		return;
+
+	ret = set_tethering(technology, true);
+	if (ret < 0 && ret != -EALREADY)
+		DBG("Cannot enable tethering yet for %s (%d/%s)",
+			get_name(technology->type),
+			-ret, strerror(-ret));
+}
+
+static int technology_enabled(struct connman_technology *technology)
+{
+	__sync_synchronize();
+	if (technology->enabled)
+		return -EALREADY;
+
+	technology->enabled = true;
+
+	if (technology->tethering_persistent)
+		enable_tethering(technology);
+
+	powered_changed(technology);
+
+	return 0;
+}
+
 static int technology_enable(struct connman_technology *technology)
 {
 	int err = 0;
@@ -660,6 +714,19 @@ static int technology_enable(struct connman_technology *technology)
 		err = err_dev;
 
 	return err;
+}
+
+static int technology_disabled(struct connman_technology *technology)
+{
+	__sync_synchronize();
+	if (!technology->enabled)
+		return -EALREADY;
+
+	technology->enabled = false;
+
+	powered_changed(technology);
+
+	return 0;
 }
 
 static int technology_disable(struct connman_technology *technology)
@@ -1199,20 +1266,6 @@ void connman_technology_driver_unregister(struct connman_technology_driver *driv
 	}
 }
 
-static void enable_tethering(struct connman_technology *technology)
-{
-	int ret;
-
-	if (!connman_setting_get_bool("PersistentTetheringMode"))
-		return;
-
-	ret = set_tethering(technology, true);
-	if (ret < 0 && ret != -EALREADY)
-		DBG("Cannot enable tethering yet for %s (%d/%s)",
-			get_name(technology->type),
-			-ret, strerror(-ret));
-}
-
 void __connman_technology_add_interface(enum connman_service_type type,
 				int index, const char *ident)
 {
@@ -1387,46 +1440,6 @@ int __connman_technology_remove_device(struct connman_device *device)
 	return 0;
 }
 
-static void powered_changed(struct connman_technology *technology)
-{
-	dbus_bool_t enabled;
-
-	if (!technology->dbus_registered)
-		return;
-
-	if (technology->pending_reply) {
-		g_dbus_send_reply(connection,
-				technology->pending_reply, DBUS_TYPE_INVALID);
-		dbus_message_unref(technology->pending_reply);
-		technology->pending_reply = NULL;
-
-		g_source_remove(technology->pending_timeout);
-		technology->pending_timeout = 0;
-	}
-
-	__sync_synchronize();
-	enabled = technology->enabled;
-	connman_dbus_property_changed_basic(technology->path,
-			CONNMAN_TECHNOLOGY_INTERFACE, "Powered",
-			DBUS_TYPE_BOOLEAN, &enabled);
-}
-
-static int technology_enabled(struct connman_technology *technology)
-{
-	__sync_synchronize();
-	if (technology->enabled)
-		return -EALREADY;
-
-	technology->enabled = true;
-
-	if (technology->tethering_persistent)
-		enable_tethering(technology);
-
-	powered_changed(technology);
-
-	return 0;
-}
-
 int __connman_technology_enabled(enum connman_service_type type)
 {
 	struct connman_technology *technology;
@@ -1446,19 +1459,6 @@ int __connman_technology_enabled(enum connman_service_type type)
 	}
 
 	return technology_enabled(technology);
-}
-
-static int technology_disabled(struct connman_technology *technology)
-{
-	__sync_synchronize();
-	if (!technology->enabled)
-		return -EALREADY;
-
-	technology->enabled = false;
-
-	powered_changed(technology);
-
-	return 0;
 }
 
 int __connman_technology_disabled(enum connman_service_type type)
