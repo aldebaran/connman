@@ -127,92 +127,6 @@ connman_technology_is_tethering_allowed(enum connman_service_type type)
 	return false;
 }
 
-/**
- * connman_technology_driver_register:
- * @driver: Technology driver definition
- *
- * Register a new technology driver
- *
- * Returns: %0 on success
- */
-int connman_technology_driver_register(struct connman_technology_driver *driver)
-{
-	GSList *list;
-	struct connman_device *device;
-	enum connman_service_type type;
-
-	for (list = driver_list; list; list = list->next) {
-		if (list->data == driver)
-			return 0;
-	}
-
-	DBG("Registering %s driver", driver->name);
-
-	driver_list = g_slist_insert_sorted(driver_list, driver,
-							compare_priority);
-
-	/*
-	 * Check for technology less devices if this driver
-	 * can service any of them.
-	*/
-	for (list = techless_device_list; list; list = list->next) {
-		device = list->data;
-
-		type = __connman_device_get_service_type(device);
-		if (type != driver->type)
-			continue;
-
-		techless_device_list = g_slist_remove(techless_device_list,
-								device);
-
-		__connman_technology_add_device(device);
-	}
-
-	/* Check for orphaned rfkill switches. */
-	g_hash_table_foreach(rfkill_list, rfkill_check,
-					GINT_TO_POINTER(driver->type));
-
-	return 0;
-}
-
-/**
- * connman_technology_driver_unregister:
- * @driver: Technology driver definition
- *
- * Remove a previously registered technology driver
- */
-void connman_technology_driver_unregister(struct connman_technology_driver *driver)
-{
-	GSList *list, *tech_drivers;
-	struct connman_technology *technology;
-	struct connman_technology_driver *current;
-
-	DBG("Unregistering driver %p name %s", driver, driver->name);
-
-	for (list = technology_list; list; list = list->next) {
-		technology = list->data;
-
-		for (tech_drivers = technology->driver_list;
-		     tech_drivers;
-		     tech_drivers = g_slist_next(tech_drivers)) {
-
-			current = tech_drivers->data;
-			if (driver != current)
-				continue;
-
-			if (driver->remove)
-				driver->remove(technology);
-
-			technology->driver_list =
-				g_slist_remove(technology->driver_list, driver);
-
-			break;
-		}
-	}
-
-	driver_list = g_slist_remove(driver_list, driver);
-}
-
 static const char *get_name(enum connman_service_type type)
 {
 	switch (type) {
@@ -1190,6 +1104,78 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	DBG("technology %p", technology);
 
 	return technology;
+}
+
+int connman_technology_driver_register(struct connman_technology_driver *driver)
+{
+	GSList *list;
+	struct connman_device *device;
+	enum connman_service_type type;
+
+	for (list = driver_list; list; list = list->next) {
+		if (list->data == driver)
+			return 0;
+	}
+
+	DBG("Registering %s driver", driver->name);
+
+	driver_list = g_slist_insert_sorted(driver_list, driver,
+							compare_priority);
+
+	/*
+	 * Check for technology less devices if this driver
+	 * can service any of them.
+	*/
+	for (list = techless_device_list; list; list = list->next) {
+		device = list->data;
+
+		type = __connman_device_get_service_type(device);
+		if (type != driver->type)
+			continue;
+
+		techless_device_list = g_slist_remove(techless_device_list,
+								device);
+
+		__connman_technology_add_device(device);
+	}
+
+	/* Check for orphaned rfkill switches. */
+	g_hash_table_foreach(rfkill_list, rfkill_check,
+					GINT_TO_POINTER(driver->type));
+
+	return 0;
+}
+
+void connman_technology_driver_unregister(struct connman_technology_driver *driver)
+{
+	GSList *list, *tech_drivers;
+	struct connman_technology *technology;
+	struct connman_technology_driver *current;
+
+	DBG("Unregistering driver %p name %s", driver, driver->name);
+
+	for (list = technology_list; list; list = list->next) {
+		technology = list->data;
+
+		for (tech_drivers = technology->driver_list;
+		     tech_drivers;
+		     tech_drivers = g_slist_next(tech_drivers)) {
+
+			current = tech_drivers->data;
+			if (driver != current)
+				continue;
+
+			if (driver->remove)
+				driver->remove(technology);
+
+			technology->driver_list =
+				g_slist_remove(technology->driver_list, driver);
+
+			break;
+		}
+	}
+
+	driver_list = g_slist_remove(driver_list, driver);
 }
 
 static void enable_tethering(struct connman_technology *technology)
