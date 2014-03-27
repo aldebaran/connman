@@ -255,6 +255,15 @@ static void gadget_tech_enable_tethering(struct connman_technology *technology,
 
 	for (list = cdc_interface_list; list; list = list->next) {
 		int index = GPOINTER_TO_INT(list->data);
+		struct connman_device *device =
+			connman_device_find_by_index(index);
+		struct gadget_data *gadget;
+
+		if (device) {
+			gadget = connman_device_get_data(device);
+			if (gadget)
+				remove_network(device, gadget);
+		}
 
 		connman_technology_tethering_notify(technology, true);
 
