@@ -648,23 +648,6 @@ int __connman_device_disconnect(struct connman_device *device)
 	return 0;
 }
 
-int connman_device_disconnect_service(struct connman_device *device)
-{
-	DBG("device %p", device);
-
-	if (device->network) {
-		struct connman_service *service =
-			connman_service_lookup_from_network(device->network);
-
-		if (service)
-			__connman_service_disconnect(service);
-		else
-			connman_network_set_connected(device->network, false);
-	}
-
-	return 0;
-}
-
 int connman_device_reconnect_service(struct connman_device *device)
 {
 	DBG("device %p", device);
