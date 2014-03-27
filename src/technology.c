@@ -618,6 +618,9 @@ static int technology_affect_devices(struct connman_technology *technology,
 	GSList *list;
 	int err = -ENXIO;
 
+	if (technology->type == CONNMAN_SERVICE_TYPE_P2P)
+		return 0;
+
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
 
@@ -1084,6 +1087,14 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	technology->type = type;
 	technology->path = g_strdup_printf("%s/technology/%s",
 							CONNMAN_PATH, str);
+	if (type == CONNMAN_SERVICE_TYPE_P2P) {
+		struct connman_technology *wifi;
+
+		wifi = technology_find(CONNMAN_SERVICE_TYPE_WIFI);
+		if (wifi)
+			technology->enabled = wifi->enabled;
+	}
+
 	technology_load(technology);
 	technology_list = g_slist_prepend(technology_list, technology);
 	technology->driver_list = tech_drivers;
@@ -1114,7 +1125,7 @@ int connman_technology_driver_register(struct connman_technology_driver *driver)
 
 	for (list = driver_list; list; list = list->next) {
 		if (list->data == driver)
-			return 0;
+			goto exist;
 	}
 
 	DBG("Registering %s driver", driver->name);
@@ -1143,6 +1154,12 @@ int connman_technology_driver_register(struct connman_technology_driver *driver)
 	g_hash_table_foreach(rfkill_list, rfkill_check,
 					GINT_TO_POINTER(driver->type));
 
+exist:
+	if (driver->type == CONNMAN_SERVICE_TYPE_P2P) {
+		if (!technology_get(CONNMAN_SERVICE_TYPE_P2P))
+			return -ENOMEM;
+	}
+
 	return 0;
 }
 
@@ -1157,10 +1174,8 @@ void connman_technology_driver_unregister(struct connman_technology_driver *driv
 	for (list = technology_list; list; list = list->next) {
 		technology = list->data;
 
-		for (tech_drivers = technology->driver_list;
-		     tech_drivers;
-		     tech_drivers = g_slist_next(tech_drivers)) {
-
+		for (tech_drivers = technology->driver_list; tech_drivers;
+				tech_drivers = g_slist_next(tech_drivers)) {
 			current = tech_drivers->data;
 			if (driver != current)
 				continue;
@@ -1169,13 +1184,19 @@ void connman_technology_driver_unregister(struct connman_technology_driver *driv
 				driver->remove(technology);
 
 			technology->driver_list =
-				g_slist_remove(technology->driver_list, driver);
-
+				g_slist_remove(technology->driver_list,
+								driver);
 			break;
 		}
 	}
 
 	driver_list = g_slist_remove(driver_list, driver);
+
+	if (driver->type == CONNMAN_SERVICE_TYPE_P2P) {
+		technology = technology_find(CONNMAN_SERVICE_TYPE_P2P);
+		if (technology)
+			technology_put(technology);
+	}
 }
 
 static void enable_tethering(struct connman_technology *technology)
