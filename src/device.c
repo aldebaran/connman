@@ -1091,6 +1091,7 @@ int __connman_device_request_scan(enum connman_service_type type)
 	case CONNMAN_SERVICE_TYPE_GADGET:
 		return -EOPNOTSUPP;
 	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_P2P:
 		break;
 	}
 

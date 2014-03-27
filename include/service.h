@@ -44,8 +44,9 @@ enum connman_service_type {
 	CONNMAN_SERVICE_TYPE_GPS       = 6,
 	CONNMAN_SERVICE_TYPE_VPN       = 7,
 	CONNMAN_SERVICE_TYPE_GADGET    = 8,
+	CONNMAN_SERVICE_TYPE_P2P       = 9,
 };
-#define	MAX_CONNMAN_SERVICE_TYPES        9
+#define	MAX_CONNMAN_SERVICE_TYPES        10
 
 
 enum connman_service_security {

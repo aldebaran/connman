@@ -88,6 +88,7 @@ static enum rfkill_type convert_service_type(enum connman_service_type type)
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_VPN:
 	case CONNMAN_SERVICE_TYPE_GADGET:
+	case CONNMAN_SERVICE_TYPE_P2P:
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 		return NUM_RFKILL_TYPES;
 	}

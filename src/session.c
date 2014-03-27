@@ -188,6 +188,7 @@ static char *service2bearer(enum connman_service_type type)
 		return "vpn";
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_P2P:
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 		return "";
 	}

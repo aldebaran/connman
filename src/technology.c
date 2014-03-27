@@ -226,6 +226,8 @@ static const char *get_name(enum connman_service_type type)
 		return "Bluetooth";
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		return "Cellular";
+	case CONNMAN_SERVICE_TYPE_P2P:
+		return "P2P";
 	}
 
 	return NULL;
@@ -1218,6 +1220,7 @@ void __connman_technology_add_interface(enum connman_service_type type,
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 	case CONNMAN_SERVICE_TYPE_GADGET:
+	case CONNMAN_SERVICE_TYPE_P2P:
 		break;
 	}
 
@@ -1268,6 +1271,7 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 	case CONNMAN_SERVICE_TYPE_GADGET:
+	case CONNMAN_SERVICE_TYPE_P2P:
 		break;
 	}
 
