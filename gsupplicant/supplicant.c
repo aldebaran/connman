@@ -153,6 +153,8 @@ struct _GSupplicantInterface {
 	unsigned int scan_capa;
 	unsigned int mode_capa;
 	unsigned int max_scan_ssids;
+	bool p2p_checked;
+	bool p2p_support;
 	dbus_bool_t ready;
 	GSupplicantState state;
 	dbus_bool_t scanning;
@@ -374,6 +376,19 @@ static void callback_interface_removed(GSupplicantInterface *interface)
 		return;
 
 	callbacks_pointer->interface_removed(interface);
+}
+
+static void callback_p2p_support(GSupplicantInterface *interface)
+{
+	SUPPLICANT_DBG("");
+
+	if (interface->p2p_checked)
+		return;
+
+	interface->p2p_checked = true;
+
+	if (callbacks_pointer && callbacks_pointer->p2p_support)
+		callbacks_pointer->p2p_support(interface);
 }
 
 static void callback_scan_started(GSupplicantInterface *interface)
@@ -1828,6 +1843,17 @@ static GSupplicantInterface *interface_alloc(const char *path)
 	return interface;
 }
 
+static void interface_p2p_flush(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	GSupplicantInterface *interface = user_data;
+
+	if (!error)
+		interface->p2p_support = true;
+
+	callback_p2p_support(interface);
+}
+
 static void interface_added(DBusMessageIter *iter, void *user_data)
 {
 	GSupplicantInterface *interface;
@@ -1849,6 +1875,10 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
 	interface = interface_alloc(path);
 	if (!interface)
 		return;
+
+	supplicant_dbus_method_call(path,
+			SUPPLICANT_INTERFACE ".Interface.P2PDevice", "Flush",
+			NULL, interface_p2p_flush, interface, NULL, NULL);
 
 	dbus_message_iter_next(iter);
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
@@ -2428,6 +2458,11 @@ int g_supplicant_interface_set_country(GSupplicantInterface *interface,
 				"Country", DBUS_TYPE_STRING_AS_STRING,
 				country_params, country_result,
 					regdom);
+}
+
+bool g_supplicant_interface_has_p2p(GSupplicantInterface *interface)
+{
+	return interface->p2p_support;
 }
 
 struct interface_data {

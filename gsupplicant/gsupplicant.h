@@ -222,6 +222,7 @@ int g_supplicant_interface_set_country(GSupplicantInterface *interface,
 					GSupplicantCountryCallback callback,
 							const char *alpha2,
 							void *user_data);
+bool g_supplicant_interface_has_p2p(GSupplicantInterface *interface);
 
 /* Network API */
 struct _GSupplicantNetwork;
@@ -249,6 +250,7 @@ struct _GSupplicantCallbacks {
 	void (*interface_added) (GSupplicantInterface *interface);
 	void (*interface_state) (GSupplicantInterface *interface);
 	void (*interface_removed) (GSupplicantInterface *interface);
+	void (*p2p_support) (GSupplicantInterface *interface);
 	void (*scan_started) (GSupplicantInterface *interface);
 	void (*scan_finished) (GSupplicantInterface *interface);
 	void (*network_added) (GSupplicantNetwork *network);
