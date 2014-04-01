@@ -5,7 +5,17 @@ Service		net.connman
 Interface	net.connman.Peer
 Object path	[variable prefix]/{peer0,peer1,...}
 
-Methods		void Connect() [experimental]
+Methods		dict GetProperties() [deprecated]
+
+			Returns properties for the peer object. See the
+			properties sections for available properties.
+
+			Usage of this method is highly discouraged. Use
+			the Manager.GetPeers() method instead.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void Connect() [experimental]
 
 			Connect this peer.
 

@@ -60,6 +60,23 @@ static void append_properties(DBusMessageIter *iter, struct connman_peer *peer)
 	connman_dbus_dict_close(iter, &dict);
 }
 
+static DBusMessage *get_peer_properties(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct connman_peer *peer = data;
+	DBusMessageIter dict;
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &dict);
+	append_properties(&dict, peer);
+
+	return reply;
+}
+
 static void append_peer_struct(gpointer key, gpointer value,
 						gpointer user_data)
 {
@@ -213,6 +230,9 @@ void connman_peer_set_name(struct connman_peer *peer, const char *name)
 }
 
 static const GDBusMethodTable peer_methods[] = {
+	{ GDBUS_METHOD("GetProperties",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			get_peer_properties) },
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, NULL) },
 	{ GDBUS_METHOD("Disconnect", NULL, NULL, NULL) },
 	{ },
