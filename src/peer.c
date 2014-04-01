@@ -75,6 +75,109 @@ static void append_peer_struct(gpointer key, gpointer value,
 	dbus_message_iter_close_container(array, &entry);
 }
 
+struct _peers_notify {
+	int id;
+	GHashTable *add;
+	GHashTable *remove;
+} *peers_notify;
+
+static void append_existing_and_new_peers(gpointer key,
+					gpointer value, gpointer user_data)
+{
+	struct connman_peer *peer = value;
+	DBusMessageIter *iter = user_data;
+	DBusMessageIter entry;
+
+	if (g_hash_table_lookup(peers_notify->add, peer->path)) {
+		DBG("new %s", peer->path);
+
+		append_peer_struct(key, value, user_data);
+		g_hash_table_remove(peers_notify->add, peer->path);
+	} else {
+		DBG("existing %s", peer->path);
+
+		dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT,
+								NULL, &entry);
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH,
+								&peer->path);
+		dbus_message_iter_close_container(iter, &entry);
+	}
+}
+
+static void peer_append_all(DBusMessageIter *iter, void *user_data)
+{
+	g_hash_table_foreach(peers_table, append_existing_and_new_peers, iter);
+}
+
+static void append_removed(gpointer key, gpointer value, gpointer user_data)
+{
+	DBusMessageIter *iter = user_data;
+	char *objpath = key;
+
+	DBG("removed %s", objpath);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &objpath);
+}
+
+static void peer_append_removed(DBusMessageIter *iter, void *user_data)
+{
+	g_hash_table_foreach(peers_notify->remove, append_removed, iter);
+}
+
+static gboolean peer_send_changed(gpointer data)
+{
+	DBusMessage *signal;
+
+	DBG("");
+
+	peers_notify->id = 0;
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PeersChanged");
+	if (!signal)
+		return FALSE;
+
+	__connman_dbus_append_objpath_dict_array(signal,
+						peer_append_all, NULL);
+	__connman_dbus_append_objpath_array(signal,
+						peer_append_removed, NULL);
+
+	dbus_connection_send(connection, signal, NULL);
+	dbus_message_unref(signal);
+
+	g_hash_table_remove_all(peers_notify->remove);
+	g_hash_table_remove_all(peers_notify->add);
+
+	return FALSE;
+}
+
+static void peer_schedule_changed(void)
+{
+	if (peers_notify->id != 0)
+		return;
+
+	peers_notify->id = g_timeout_add(100, peer_send_changed, NULL);
+}
+
+static void peer_added(struct connman_peer *peer)
+{
+	DBG("peer %p", peer);
+
+	g_hash_table_remove(peers_notify->remove, peer->path);
+	g_hash_table_replace(peers_notify->add, peer->path, peer);
+
+	peer_schedule_changed();
+}
+
+static void peer_removed(struct connman_peer *peer)
+{
+	DBG("peer %p", peer);
+
+	g_hash_table_remove(peers_notify->add, peer->path);
+	g_hash_table_replace(peers_notify->remove, g_strdup(peer->path), NULL);
+
+	peer_schedule_changed();
+}
+
 struct connman_peer *connman_peer_create(const char *identifier)
 {
 	struct connman_peer *peer;
@@ -91,6 +194,7 @@ void connman_peer_destroy(struct connman_peer *peer)
 		return;
 
 	if (peer->path) {
+		peer_removed(peer);
 		g_dbus_unregister_interface(connection, peer->path,
 						CONNMAN_PEER_INTERFACE);
 		g_free(peer->path);
@@ -137,6 +241,8 @@ int connman_peer_register(struct connman_peer *peer)
 					CONNMAN_PEER_INTERFACE,
 					peer_methods, peer_signals,
 					NULL, peer, NULL);
+	peer_added(peer);
+
 	return 0;
 }
 
@@ -174,6 +280,11 @@ int __connman_peer_init(void)
 
 	peers_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, peer_free);
+
+	peers_notify = g_new0(struct _peers_notify, 1);
+	peers_notify->add = g_hash_table_new(g_str_hash, g_str_equal);
+	peers_notify->remove = g_hash_table_new_full(g_str_hash, g_str_equal,
+								g_free, NULL);
 	return 0;
 }
 
