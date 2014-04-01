@@ -195,6 +195,25 @@ static DBusMessage *get_services(DBusConnection *conn,
 	return reply;
 }
 
+static void append_peer_structs(DBusMessageIter *iter, void *user_data)
+{
+	__connman_peer_list_struct(iter);
+}
+
+static DBusMessage *get_peers(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	__connman_dbus_append_objpath_dict_array(reply,
+					append_peer_structs, NULL);
+	return reply;
+}
+
 static DBusMessage *connect_provider(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -377,6 +396,9 @@ static const GDBusMethodTable manager_methods[] = {
 	{ GDBUS_METHOD("GetServices",
 			NULL, GDBUS_ARGS({ "services", "a(oa{sv})" }),
 			get_services) },
+	{ GDBUS_METHOD("GetPeers",
+			NULL, GDBUS_ARGS({ "peers", "a(oa{sv})" }),
+			get_peers) },
 	{ GDBUS_DEPRECATED_ASYNC_METHOD("ConnectProvider",
 			      GDBUS_ARGS({ "provider", "a{sv}" }),
 			      GDBUS_ARGS({ "path", "o" }),
@@ -422,6 +444,9 @@ static const GDBusSignalTable manager_signals[] = {
 	{ GDBUS_SIGNAL("TechnologyRemoved",
 			GDBUS_ARGS({ "path", "o" })) },
 	{ GDBUS_SIGNAL("ServicesChanged",
+			GDBUS_ARGS({ "changed", "a(oa{sv})" },
+					{ "removed", "ao" })) },
+	{ GDBUS_SIGNAL("PeersChanged",
 			GDBUS_ARGS({ "changed", "a(oa{sv})" },
 					{ "removed", "ao" })) },
 	{ },
