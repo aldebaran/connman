@@ -48,6 +48,7 @@
 #include <connman/rtnl.h>
 #include <connman/technology.h>
 #include <connman/service.h>
+#include <connman/peer.h>
 #include <connman/log.h>
 #include <connman/option.h>
 #include <connman/storage.h>
@@ -2061,6 +2062,40 @@ static void network_changed(GSupplicantNetwork *network, const char *property)
 	}
 }
 
+static void peer_found(GSupplicantPeer *peer)
+{
+	struct connman_peer *connman_peer;
+	const char *identifier, *name;
+
+	identifier = g_supplicant_peer_get_identifier(peer);
+	name = g_supplicant_peer_get_name(peer);
+
+	DBG("ident: %s", identifier);
+
+	connman_peer = connman_peer_get(identifier);
+	if (connman_peer)
+		return;
+
+	connman_peer = connman_peer_create(identifier);
+	connman_peer_set_name(connman_peer, name);
+
+	connman_peer_register(connman_peer);
+}
+
+static void peer_lost(GSupplicantPeer *peer)
+{
+	struct connman_peer *connman_peer;
+	const char *identifier;
+
+	identifier = g_supplicant_peer_get_identifier(peer);
+
+	DBG("ident: %s", identifier);
+
+	connman_peer = connman_peer_get(identifier);
+	if (connman_peer)
+		connman_peer_unregister(connman_peer);
+}
+
 static void debug(const char *str)
 {
 	if (getenv("CONNMAN_SUPPLICANT_DEBUG"))
@@ -2079,6 +2114,8 @@ static const GSupplicantCallbacks callbacks = {
 	.network_added		= network_added,
 	.network_removed	= network_removed,
 	.network_changed	= network_changed,
+	.peer_found		= peer_found,
+	.peer_lost		= peer_lost,
 	.debug			= debug,
 };
 
