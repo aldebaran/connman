@@ -289,8 +289,8 @@ static int peers_list(DBusMessageIter *iter,
 	return 0;
 }
 
-static int services_properties(DBusMessageIter *iter, const char *error,
-		void *user_data)
+static int object_properties(DBusMessageIter *iter,
+					const char *error, void *user_data)
 {
 	char *path = user_data;
 	char *str;
@@ -357,18 +357,34 @@ static int cmd_services(char *args[], int num, struct connman_option *options)
 	path = g_strdup_printf("/net/connman/service/%s", service_name);
 	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE, path,
 			"net.connman.Service", "GetProperties",
-			services_properties, path, NULL, NULL);
+			object_properties, path, NULL, NULL);
 }
 
 static int cmd_peers(char *args[], int num, struct connman_option *options)
 {
-	if (num > 1)
+	char *peer_name = NULL;
+	char *path;
+
+	if (num > 2)
 		return -E2BIG;
 
-	return __connmanctl_dbus_method_call(connection,
-				CONNMAN_SERVICE, CONNMAN_PATH,
-				"net.connman.Manager", "GetPeers",
-				peers_list, NULL, NULL, NULL);
+	if (num == 2)
+		peer_name = args[1];
+
+	if (!peer_name) {
+		return __connmanctl_dbus_method_call(connection,
+					CONNMAN_SERVICE, CONNMAN_PATH,
+					"net.connman.Manager", "GetPeers",
+					peers_list, NULL, NULL, NULL);
+	}
+
+	if (check_dbus_name(peer_name) == false)
+		return -EINVAL;
+
+	path = g_strdup_printf("/net/connman/peer/%s", peer_name);
+	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE,
+				path, "net.connman.Peer", "GetProperties",
+				object_properties, path, NULL, NULL);
 }
 
 static int technology_print(DBusMessageIter *iter, const char *error,
@@ -1840,6 +1856,36 @@ static char *lookup_service_arg(const char *text, int state)
 	return lookup_service(text, state);
 }
 
+static char *lookup_peer(const char *text, int state)
+{
+	static GHashTableIter iter;
+	gpointer key, value;
+	static int len = 0;
+
+	if (state == 0) {
+		g_hash_table_iter_init(&iter, peer_hash);
+		len = strlen(text);
+	}
+
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
+		const char *peer = key;
+		if (strncmp(text, peer, len) == 0)
+			return strdup(peer);
+	}
+
+	return NULL;
+}
+
+static char *lookup_peer_arg(const char *text, int state)
+{
+	if (__connmanctl_input_calc_level() > 1) {
+		__connmanctl_input_lookup_end();
+		return NULL;
+	}
+
+	return lookup_peer(text, state);
+}
+
 static char *lookup_technology(const char *text, int state)
 {
 	static int len = 0;
@@ -2064,8 +2110,8 @@ static const struct {
 	  lookup_tether },
 	{ "services",     "[<service>]",  service_options, cmd_services,
 	  "Display services", lookup_service_arg },
-	{ "peers",        NULL,           NULL,            cmd_peers,
-	  "Display peers", NULL },
+	{ "peers",        "[peer]",       NULL,            cmd_peers,
+	  "Display peers", lookup_peer_arg },
 	{ "scan",         "<technology>", NULL,            cmd_scan,
 	  "Scans for new services for given technology",
 	  lookup_technology_arg },
