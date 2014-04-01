@@ -603,12 +603,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (mkdir(STATEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
-				S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) < 0) {
-		if (errno != EEXIST)
-			perror("Failed to create state directory");
-	}
-
 	if (mkdir(STORAGEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
 				S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) < 0) {
 		if (errno != EEXIST)

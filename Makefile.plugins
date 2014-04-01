@@ -75,7 +75,7 @@ vpn_plugins_openconnect_la_SOURCES = vpn/plugins/vpn.h vpn/plugins/vpn.c \
 						vpn/plugins/openconnect.c
 vpn_plugins_openconnect_la_CFLAGS = $(plugin_cflags) \
 					-DOPENCONNECT=\"@OPENCONNECT@\" \
-					-DSTATEDIR=\""$(statedir)"\" \
+					-DVPN_STATEDIR=\""$(vpn_statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
 vpn_plugins_openconnect_la_LDFLAGS = $(plugin_ldflags)
 endif
@@ -93,7 +93,7 @@ vpn_plugin_objects += $(plugins_openvpn_la_OBJECTS)
 vpn_plugins_openvpn_la_SOURCES = vpn/plugins/vpn.h vpn/plugins/vpn.c \
 						vpn/plugins/openvpn.c
 vpn_plugins_openvpn_la_CFLAGS = $(plugin_cflags) -DOPENVPN=\"@OPENVPN@\" \
-					-DSTATEDIR=\""$(statedir)"\" \
+					-DVPN_STATEDIR=\""$(vpn_statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
 vpn_plugins_openvpn_la_LDFLAGS = $(plugin_ldflags)
 endif
@@ -111,7 +111,7 @@ vpn_plugin_objects += $(plugins_vpnc_la_OBJECTS)
 vpn_plugins_vpnc_la_SOURCES = vpn/plugins/vpn.h vpn/plugins/vpn.c \
 						vpn/plugins/vpnc.c
 vpn_plugins_vpnc_la_CFLAGS = $(plugin_cflags) -DVPNC=\"@VPNC@\" \
-					-DSTATEDIR=\""$(statedir)"\" \
+					-DVPN_STATEDIR=\""$(vpn_statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
 vpn_plugins_vpnc_la_LDFLAGS = $(plugin_ldflags)
 endif
@@ -129,7 +129,7 @@ vpn_plugin_objects += $(plugins_l2tp_la_OBJECTS)
 vpn_plugins_l2tp_la_SOURCES = vpn/plugins/vpn.h vpn/plugins/vpn.c \
 						vpn/plugins/l2tp.c
 vpn_plugins_l2tp_la_CFLAGS = $(plugin_cflags) -DL2TP=\"@L2TP@\" \
-					-DSTATEDIR=\""$(statedir)"\" \
+					-DVPN_STATEDIR=\""$(vpn_statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
 vpn_plugins_l2tp_la_LDFLAGS = $(plugin_ldflags)
 endif
@@ -148,7 +148,7 @@ vpn_plugins_pptp_la_SOURCES = vpn/plugins/vpn.h vpn/plugins/vpn.c \
 						vpn/plugins/pptp.c
 vpn_plugins_pptp_la_CFLAGS = $(plugin_cflags) -DPPPD=\"@PPPD@\" \
 					-DPPTP=\"@PPTP@\" \
-					-DSTATEDIR=\""$(statedir)"\" \
+					-DVPN_STATEDIR=\""$(vpn_statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
 vpn_plugins_pptp_la_LDFLAGS = $(plugin_ldflags)
 endif

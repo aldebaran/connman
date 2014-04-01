@@ -153,6 +153,7 @@ endif
 CLEANFILES = src/connman.conf $(BUILT_SOURCES)
 
 statedir = $(localstatedir)/run/connman
+vpn_statedir = $(localstatedir)/run/connman-vpn
 
 if VPN
 vpn_plugindir = $(libdir)/connman/plugins-vpn
@@ -185,6 +186,7 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
 				@GNUTLS_CFLAGS@ $(builtin_cflags) \
 				-DCONNMAN_PLUGIN_BUILTIN \
 				-DSTATEDIR=\""$(statedir)"\" \
+				-DVPN_STATEDIR=\""$(vpn_statedir)"\" \
 				-DPLUGINDIR=\""$(build_plugindir)"\" \
 				-DSCRIPTDIR=\""$(build_scriptdir)"\" \
 				-DSTORAGEDIR=\""$(storagedir)\"" \
@@ -215,7 +217,7 @@ if VPN
 vpn_connman_vpnd_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ \
 				$(builtin_vpn_cflags) \
 				-DCONNMAN_PLUGIN_BUILTIN \
-				-DSTATEDIR=\""$(statedir)"\" \
+				-DVPN_STATEDIR=\""$(vpn_statedir)"\" \
 				-DPLUGINDIR=\""$(build_vpn_plugindir)"\" \
 				-DSCRIPTDIR=\""$(build_scriptdir)"\" \
 				-DSTORAGEDIR=\""$(storagedir)\"" \

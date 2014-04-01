@@ -472,11 +472,11 @@ static void l2tp_died(struct connman_task *task, int exit_code, void *user_data)
 
 	vpn_died(task, exit_code, user_data);
 
-	conf_file = g_strdup_printf("/var/run/connman/connman-xl2tpd.conf");
+	conf_file = g_strdup_printf(VPN_STATEDIR "/connman-xl2tpd.conf");
 	unlink(conf_file);
 	g_free(conf_file);
 
-	conf_file = g_strdup_printf("/var/run/connman/connman-ppp-option.conf");
+	conf_file = g_strdup_printf(VPN_STATEDIR "/connman-ppp-option.conf");
 	unlink(conf_file);
 	g_free(conf_file);
 }
@@ -640,7 +640,7 @@ static int run_connect(struct vpn_provider *provider,
 
 	DBG("username %s password %p", username, password);
 
-	l2tp_name = g_strdup_printf("/var/run/connman/connman-xl2tpd.conf");
+	l2tp_name = g_strdup_printf(VPN_STATEDIR "/connman-xl2tpd.conf");
 
 	l2tp_fd = open(l2tp_name, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	if (l2tp_fd < 0) {
@@ -650,7 +650,7 @@ static int run_connect(struct vpn_provider *provider,
 		goto done;
 	}
 
-	pppd_name = g_strdup_printf("/var/run/connman/connman-ppp-option.conf");
+	pppd_name = g_strdup_printf(VPN_STATEDIR "/connman-ppp-option.conf");
 
 	pppd_fd = open(pppd_name, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 	if (pppd_fd < 0) {
