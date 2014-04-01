@@ -245,6 +245,7 @@ client_connmanctl_SOURCES = client/dbus_helpers.h client/dbus_helpers.c \
 			client/commands.h client/commands.c \
 			client/input.h client/input.c \
 			client/agent.h client/agent.c \
+			client/peers.h client/peers.c \
 			client/vpnconnections.h client/vpnconnections.c \
 			client/main.c
 
