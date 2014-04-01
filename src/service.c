@@ -4315,10 +4315,14 @@ static void append_removed(gpointer key, gpointer value, gpointer user_data)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &objpath);
 }
 
+static void service_append_removed(DBusMessageIter *iter, void *user_data)
+{
+	g_hash_table_foreach(services_notify->remove, append_removed, iter);
+}
+
 static gboolean service_send_changed(gpointer data)
 {
 	DBusMessage *signal;
-	DBusMessageIter iter, array;
 
 	DBG("");
 
@@ -4330,15 +4334,9 @@ static gboolean service_send_changed(gpointer data)
 		return FALSE;
 
 	__connman_dbus_append_objpath_dict_array(signal,
-			service_append_ordered, NULL);
-
-	dbus_message_iter_init_append(signal, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_TYPE_OBJECT_PATH_AS_STRING, &array);
-
-	g_hash_table_foreach(services_notify->remove, append_removed, &array);
-
-	dbus_message_iter_close_container(&iter, &array);
+					service_append_ordered, NULL);
+	__connman_dbus_append_objpath_array(signal,
+					service_append_removed, NULL);
 
 	dbus_connection_send(connection, signal, NULL);
 	dbus_message_unref(signal);
