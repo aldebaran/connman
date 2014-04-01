@@ -776,6 +776,8 @@ void __connman_service_counter_unregister(const char *counter);
 int __connman_peer_init(void);
 void __connman_peer_cleanup(void);
 
+void __connman_peer_list_struct(DBusMessageIter *array);
+
 #include <connman/session.h>
 
 typedef void (* service_iterate_cb) (struct connman_service *service,

@@ -44,6 +44,37 @@ static void peer_free(gpointer data)
 	connman_peer_destroy(peer);
 }
 
+static void append_properties(DBusMessageIter *iter, struct connman_peer *peer)
+{
+	const char *state = "disconnected";
+	DBusMessageIter dict;
+
+	connman_dbus_dict_open(iter, &dict);
+
+	connman_dbus_dict_append_basic(&dict, "State",
+					DBUS_TYPE_STRING, &state);
+	connman_dbus_dict_append_basic(&dict, "Name",
+					DBUS_TYPE_STRING, &peer->name);
+	connman_dbus_dict_append_dict(&dict, "IPv4", NULL, NULL);
+
+	connman_dbus_dict_close(iter, &dict);
+}
+
+static void append_peer_struct(gpointer key, gpointer value,
+						gpointer user_data)
+{
+	DBusMessageIter *array = user_data;
+	struct connman_peer *peer = value;
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(array, DBUS_TYPE_STRUCT,
+							NULL, &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH,
+							&peer->path);
+	append_properties(&entry, peer);
+	dbus_message_iter_close_container(array, &entry);
+}
+
 struct connman_peer *connman_peer_create(const char *identifier)
 {
 	struct connman_peer *peer;
@@ -128,6 +159,11 @@ struct connman_peer *connman_peer_get(const char *identifier)
 	g_free(ident);
 
 	return peer;
+}
+
+void __connman_peer_list_struct(DBusMessageIter *array)
+{
+	g_hash_table_foreach(peers_table, append_peer_struct, array);
 }
 
 int __connman_peer_init(void)
