@@ -63,6 +63,8 @@
 #define BGSCAN_DEFAULT "simple:30:-45:300"
 #define AUTOSCAN_DEFAULT "exponential:3:300"
 
+#define P2P_FIND_TIMEOUT 30
+
 static struct connman_technology *wifi_technology = NULL;
 static struct connman_technology *p2p_technology = NULL;
 
@@ -113,6 +115,7 @@ struct wifi_data {
 	struct autoscan_params *autoscan;
 
 	GSupplicantScanParams *scan_params;
+	unsigned int p2p_find_timeout;
 };
 
 static GList *iface_list = NULL;
@@ -292,6 +295,11 @@ static void wifi_remove(struct connman_device *device)
 	iface_list = g_list_remove(iface_list, wifi);
 
 	check_p2p_technology();
+
+	if (wifi->p2p_find_timeout) {
+		g_source_remove(wifi->p2p_find_timeout);
+		connman_device_unref(wifi->device);
+	}
 
 	remove_networks(device, wifi);
 
@@ -929,6 +937,12 @@ static int wifi_disable(struct connman_device *device)
 
 	stop_autoscan(device);
 
+	if (wifi->p2p_find_timeout) {
+		g_source_remove(wifi->p2p_find_timeout);
+		wifi->p2p_find_timeout = 0;
+		connman_device_unref(wifi->device);
+	}
+
 	/* In case of a user scan, device is still referenced */
 	if (connman_device_get_scanning(device)) {
 		connman_device_set_scanning(device,
@@ -1084,6 +1098,77 @@ static int wifi_scan_simple(struct connman_device *device)
 	return throw_wifi_scan(device, scan_callback_hidden);
 }
 
+static gboolean p2p_find_stop(gpointer data)
+{
+	struct connman_device *device = data;
+	struct wifi_data *wifi = connman_device_get_data(device);
+
+	DBG("");
+
+	wifi->p2p_find_timeout = 0;
+
+	connman_device_set_scanning(device, CONNMAN_SERVICE_TYPE_P2P, false);
+
+	g_supplicant_interface_p2p_stop_find(wifi->interface);
+
+	connman_device_unref(device);
+	reset_autoscan(device);
+
+	return FALSE;
+}
+
+static void p2p_find_callback(int result, GSupplicantInterface *interface,
+							void *user_data)
+{
+	struct connman_device *device = user_data;
+	struct wifi_data *wifi = connman_device_get_data(device);
+
+	DBG("result %d wifi %p", result, wifi);
+
+	if (wifi->p2p_find_timeout) {
+		g_source_remove(wifi->p2p_find_timeout);
+		wifi->p2p_find_timeout = 0;
+	}
+
+	if (result)
+		goto error;
+
+	wifi->p2p_find_timeout = g_timeout_add_seconds(P2P_FIND_TIMEOUT,
+							p2p_find_stop, device);
+	if (!wifi->p2p_find_timeout)
+		goto error;
+
+	return;
+error:
+	p2p_find_stop(device);
+}
+
+static int p2p_find(struct connman_device *device)
+{
+	struct wifi_data *wifi = connman_device_get_data(device);
+	int ret;
+
+	DBG("");
+
+	if (!p2p_technology)
+		return -ENOTSUP;
+
+	reset_autoscan(device);
+	connman_device_ref(device);
+
+	ret = g_supplicant_interface_p2p_find(wifi->interface,
+						p2p_find_callback, device);
+	if (ret) {
+		connman_device_unref(device);
+		start_autoscan(device);
+	} else {
+		connman_device_set_scanning(device,
+				CONNMAN_SERVICE_TYPE_P2P, true);
+	}
+
+	return ret;
+}
+
 /*
  * Note that the hidden scan is only used when connecting to this specific
  * hidden AP first time. It is not used when system autoconnects to hidden AP.
@@ -1105,6 +1190,9 @@ static int wifi_scan(enum connman_service_type type,
 
 	if (!wifi)
 		return -ENODEV;
+
+	if (type == CONNMAN_SERVICE_TYPE_P2P)
+		return p2p_find(device);
 
 	DBG("device %p wifi %p hidden ssid %s", device, wifi->interface, ssid);
 
