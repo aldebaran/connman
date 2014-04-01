@@ -970,14 +970,13 @@ void __connman_technology_scan_started(struct connman_device *device)
 	DBG("device %p", device);
 }
 
-void __connman_technology_scan_stopped(struct connman_device *device)
+void __connman_technology_scan_stopped(struct connman_device *device,
+					enum connman_service_type type)
 {
 	int count = 0;
 	struct connman_technology *technology;
-	enum connman_service_type type;
 	GSList *list;
 
-	type = __connman_device_get_service_type(device);
 	technology = technology_find(type);
 
 	DBG("technology %p device %p", technology, device);

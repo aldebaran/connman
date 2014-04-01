@@ -240,7 +240,7 @@ static void stop_autoscan(struct connman_device *device)
 
 	reset_autoscan(device);
 
-	connman_device_set_scanning(device, false);
+	connman_device_set_scanning(device, CONNMAN_SERVICE_TYPE_WIFI, false);
 }
 
 static void wifi_remove(struct connman_device *device)
@@ -569,9 +569,10 @@ static int throw_wifi_scan(struct connman_device *device,
 
 	ret = g_supplicant_interface_scan(wifi->interface, NULL,
 						callback, device);
-	if (ret == 0)
-		connman_device_set_scanning(device, true);
-	else
+	if (ret == 0) {
+		connman_device_set_scanning(device,
+				CONNMAN_SERVICE_TYPE_WIFI, true);
+	} else
 		connman_device_unref(device);
 
 	return ret;
@@ -637,8 +638,10 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 
 	scanning = connman_device_get_scanning(device);
 
-	if (scanning)
-		connman_device_set_scanning(device, false);
+	if (scanning) {
+		connman_device_set_scanning(device,
+				CONNMAN_SERVICE_TYPE_WIFI, false);
+	}
 
 	if (result != -ENOLINK)
 		start_autoscan(device);
@@ -889,7 +892,8 @@ static int wifi_disable(struct connman_device *device)
 
 	/* In case of a user scan, device is still referenced */
 	if (connman_device_get_scanning(device)) {
-		connman_device_set_scanning(device, false);
+		connman_device_set_scanning(device,
+				CONNMAN_SERVICE_TYPE_WIFI, false);
 		connman_device_unref(wifi->device);
 	}
 
@@ -1145,9 +1149,10 @@ static int wifi_scan(struct connman_device *device,
 
 	ret = g_supplicant_interface_scan(wifi->interface, scan_params,
 						scan_callback, device);
-	if (ret == 0)
-		connman_device_set_scanning(device, true);
-	else {
+	if (ret == 0) {
+		connman_device_set_scanning(device,
+				CONNMAN_SERVICE_TYPE_WIFI, true);
+	} else {
 		g_supplicant_free_scan_params(scan_params);
 		connman_device_unref(device);
 

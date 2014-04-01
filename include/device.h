@@ -23,6 +23,7 @@
 #define __CONNMAN_DEVICE_H
 
 #include <connman/network.h>
+#include <connman/service.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,7 +81,7 @@ int connman_device_set_powered(struct connman_device *device,
 						bool powered);
 bool connman_device_get_powered(struct connman_device *device);
 int connman_device_set_scanning(struct connman_device *device,
-						bool scanning);
+				enum connman_service_type type, bool scanning);
 bool connman_device_get_scanning(struct connman_device *device);
 void connman_device_reset_scanning(struct connman_device *device);
 

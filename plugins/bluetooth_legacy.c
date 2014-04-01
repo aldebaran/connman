@@ -582,7 +582,8 @@ static gboolean adapter_changed(DBusConnection *conn,
 		dbus_bool_t val;
 
 		dbus_message_iter_get_basic(&value, &val);
-		connman_device_set_scanning(device, val);
+		connman_device_set_scanning(device,
+				CONNMAN_SERVICE_TYPE_BLUETOOTH, val);
 	} else if (g_str_equal(key, "Devices")) {
 		check_networks(&value);
 	}
@@ -763,7 +764,8 @@ update:
 	connman_device_set_string(device, "Path", path);
 
 	connman_device_set_powered(device, powered);
-	connman_device_set_scanning(device, scanning);
+	connman_device_set_scanning(device,
+			CONNMAN_SERVICE_TYPE_BLUETOOTH, scanning);
 
 	if (!powered) {
 		remove_device_networks(device);

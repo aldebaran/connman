@@ -716,7 +716,7 @@ void connman_device_reset_scanning(struct connman_device *device)
  * Change scanning state of device
  */
 int connman_device_set_scanning(struct connman_device *device,
-						bool scanning)
+				enum connman_service_type type, bool scanning)
 {
 	DBG("device %p scanning %d", device, scanning);
 
@@ -739,7 +739,7 @@ int connman_device_set_scanning(struct connman_device *device,
 
 	__connman_device_cleanup_networks(device);
 
-	__connman_technology_scan_stopped(device);
+	__connman_technology_scan_stopped(device, type);
 
 	__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 
