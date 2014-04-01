@@ -591,7 +591,8 @@ int connman_device_set_powered(struct connman_device *device,
 	device->scanning = false;
 
 	if (device->driver && device->driver->scan)
-		device->driver->scan(device, NULL, 0, NULL, NULL, NULL, NULL);
+		device->driver->scan(CONNMAN_SERVICE_TYPE_UNKNOWN, device,
+					NULL, 0, NULL, NULL, NULL, NULL);
 
 	return 0;
 }
@@ -601,7 +602,8 @@ bool connman_device_get_powered(struct connman_device *device)
 	return device->powered;
 }
 
-static int device_scan(struct connman_device *device)
+static int device_scan(enum connman_service_type type,
+				struct connman_device *device)
 {
 	if (!device->driver || !device->driver->scan)
 		return -EOPNOTSUPP;
@@ -609,7 +611,8 @@ static int device_scan(struct connman_device *device)
 	if (!device->powered)
 		return -ENOLINK;
 
-	return device->driver->scan(device, NULL, 0, NULL, NULL, NULL, NULL);
+	return device->driver->scan(type, device, NULL, 0,
+					NULL, NULL, NULL, NULL);
 }
 
 int __connman_device_disconnect(struct connman_device *device)
@@ -1100,12 +1103,15 @@ int __connman_device_request_scan(enum connman_service_type type)
 		enum connman_service_type service_type =
 			__connman_device_get_service_type(device);
 
-		if (service_type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
-				service_type != type) {
-			continue;
+		if (service_type != CONNMAN_SERVICE_TYPE_UNKNOWN) {
+			if (type == CONNMAN_SERVICE_TYPE_P2P) {
+				if (service_type != CONNMAN_SERVICE_TYPE_WIFI)
+					continue;
+			} else if (service_type != type)
+				continue;
 		}
 
-		err = device_scan(device);
+		err = device_scan(type, device);
 		if (err == 0 || err == -EALREADY || err == -EINPROGRESS) {
 			success = true;
 		} else {
@@ -1131,7 +1137,8 @@ int __connman_device_request_hidden_scan(struct connman_device *device,
 			!device->driver->scan)
 		return -EINVAL;
 
-	return device->driver->scan(device, ssid, ssid_len, identity,
+	return device->driver->scan(CONNMAN_SERVICE_TYPE_UNKNOWN,
+					device, ssid, ssid_len, identity,
 					passphrase, security, user_data);
 }
 

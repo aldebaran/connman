@@ -1088,10 +1088,11 @@ static int wifi_scan_simple(struct connman_device *device)
  * Note that the hidden scan is only used when connecting to this specific
  * hidden AP first time. It is not used when system autoconnects to hidden AP.
  */
-static int wifi_scan(struct connman_device *device,
-		const char *ssid, unsigned int ssid_len,
-		const char *identity, const char* passphrase,
-		const char *security, void *user_data)
+static int wifi_scan(enum connman_service_type type,
+			struct connman_device *device,
+			const char *ssid, unsigned int ssid_len,
+			const char *identity, const char* passphrase,
+			const char *security, void *user_data)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
 	GSupplicantScanParams *scan_params = NULL;

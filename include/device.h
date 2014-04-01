@@ -123,7 +123,8 @@ struct connman_device_driver {
 	void (*remove) (struct connman_device *device);
 	int (*enable) (struct connman_device *device);
 	int (*disable) (struct connman_device *device);
-	int (*scan)(struct connman_device *device,
+	int (*scan)(enum connman_service_type type,
+			struct connman_device *device,
 			const char *ssid, unsigned int ssid_len,
 			const char *identity, const char* passphrase,
 			const char *security, void *user_data);
