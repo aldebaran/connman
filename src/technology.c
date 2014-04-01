@@ -679,6 +679,14 @@ static int technology_enabled(struct connman_technology *technology)
 
 	technology->enabled = true;
 
+	if (technology->type == CONNMAN_SERVICE_TYPE_WIFI) {
+		struct connman_technology *p2p;
+
+		p2p = technology_find(CONNMAN_SERVICE_TYPE_P2P);
+		if (p2p && !p2p->enabled && p2p->enable_persistent)
+			technology_enabled(p2p);
+	}
+
 	if (technology->tethering_persistent)
 		enable_tethering(technology);
 
@@ -695,6 +703,16 @@ static int technology_enable(struct connman_technology *technology)
 	DBG("technology %p enable", technology);
 
 	__sync_synchronize();
+
+	if (technology->type == CONNMAN_SERVICE_TYPE_P2P) {
+		struct connman_technology *wifi;
+
+		wifi = technology_find(CONNMAN_SERVICE_TYPE_WIFI);
+		if (wifi->enabled)
+			return technology_enabled(technology);
+		return 0;
+	}
+
 	if (technology->enabled)
 		return -EALREADY;
 
@@ -736,6 +754,20 @@ static int technology_disable(struct connman_technology *technology)
 	DBG("technology %p disable", technology);
 
 	__sync_synchronize();
+
+	if (technology->type == CONNMAN_SERVICE_TYPE_P2P) {
+		technology->enable_persistent = false;
+		return technology_disabled(technology);
+	} else if (technology->type == CONNMAN_SERVICE_TYPE_WIFI) {
+		struct connman_technology *p2p;
+
+		p2p = technology_find(CONNMAN_SERVICE_TYPE_P2P);
+		if (p2p && p2p->enabled) {
+			p2p->enable_persistent = true;
+			technology_disabled(p2p);
+		}
+	}
+
 	if (!technology->enabled)
 		return -EALREADY;
 
