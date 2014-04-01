@@ -189,6 +189,12 @@ int g_supplicant_interface_autoscan(GSupplicantInterface *interface,
 					GSupplicantInterfaceCallback callback,
 							void *user_data);
 
+int g_supplicant_interface_p2p_find(GSupplicantInterface *interface,
+					GSupplicantInterfaceCallback callback,
+							void *user_data);
+
+int g_supplicant_interface_p2p_stop_find(GSupplicantInterface *interface);
+
 int g_supplicant_interface_connect(GSupplicantInterface *interface,
 					GSupplicantSSID *ssid,
 					GSupplicantInterfaceCallback callback,

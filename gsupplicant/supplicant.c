@@ -155,6 +155,7 @@ struct _GSupplicantInterface {
 	unsigned int max_scan_ssids;
 	bool p2p_checked;
 	bool p2p_support;
+	bool p2p_finding;
 	dbus_bool_t ready;
 	GSupplicantState state;
 	dbus_bool_t scanning;
@@ -2959,14 +2960,8 @@ static void interface_scan_params(DBusMessageIter *iter, void *user_data)
 	supplicant_dbus_dict_close(iter, &dict);
 }
 
-int g_supplicant_interface_scan(GSupplicantInterface *interface,
-				GSupplicantScanParams *scan_data,
-				GSupplicantInterfaceCallback callback,
-							void *user_data)
+static int interface_ready_to_scan(GSupplicantInterface *interface)
 {
-	struct interface_scan_data *data;
-	int ret;
-
 	if (!interface)
 		return -EINVAL;
 
@@ -2991,6 +2986,21 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 	case G_SUPPLICANT_STATE_COMPLETED:
 		break;
 	}
+
+	return 0;
+}
+
+int g_supplicant_interface_scan(GSupplicantInterface *interface,
+				GSupplicantScanParams *scan_data,
+				GSupplicantInterfaceCallback callback,
+							void *user_data)
+{
+	struct interface_scan_data *data;
+	int ret;
+
+	ret = interface_ready_to_scan(interface);
+	if (ret)
+		return ret;
 
 	data = dbus_malloc0(sizeof(*data));
 	if (!data)
@@ -3860,6 +3870,89 @@ int g_supplicant_interface_disconnect(GSupplicantInterface *interface,
 	return ret;
 }
 
+static void interface_p2p_find_result(const char *error,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct interface_scan_data *data = user_data;
+	int err = 0;
+
+	SUPPLICANT_DBG("error %s", error);
+
+	if (error)
+		err = -EIO;
+
+	if (interface_exists(data->interface, data->path)) {
+		if (!data->interface->ready)
+			err = -ENOLINK;
+		if (!err)
+			data->interface->p2p_finding = true;
+		data->interface->pending_call = NULL;
+	}
+
+	if (data->callback)
+		data->callback(err, data->interface, data->user_data);
+
+	g_free(data->path);
+	dbus_free(data);
+}
+
+static void interface_p2p_find_params(DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter dict;
+
+	supplicant_dbus_dict_open(iter, &dict);
+	supplicant_dbus_dict_close(iter, &dict);
+}
+
+int g_supplicant_interface_p2p_find(GSupplicantInterface *interface,
+					GSupplicantInterfaceCallback callback,
+							void *user_data)
+{
+	struct interface_scan_data *data;
+	int ret;
+
+	if (!interface->p2p_support)
+		return -ENOTSUP;
+
+	ret = interface_ready_to_scan(interface);
+	if (ret)
+		return ret;
+
+	data = dbus_malloc0(sizeof(*data));
+	if (!data)
+		return -ENOMEM;
+
+	data->interface = interface;
+	data->path = g_strdup(interface->path);
+	data->callback = callback;
+	data->user_data = user_data;
+
+	ret = supplicant_dbus_method_call(interface->path,
+			SUPPLICANT_INTERFACE ".Interface.P2PDevice", "Find",
+			interface_p2p_find_params, interface_p2p_find_result,
+			data, &interface->pending_call,
+			&interface->pending_slot);
+	if (ret < 0) {
+		g_free(data->path);
+		dbus_free(data);
+	}
+
+	return ret;
+}
+
+int g_supplicant_interface_p2p_stop_find(GSupplicantInterface *interface)
+{
+	if (!interface->p2p_finding)
+		return 0;
+
+	SUPPLICANT_DBG("");
+
+	interface->p2p_finding = false;
+
+	return supplicant_dbus_method_call(interface->path,
+		SUPPLICANT_INTERFACE ".Interface.P2PDevice", "StopFind",
+		NULL, NULL, NULL, NULL, NULL);
+}
 
 static const char *g_supplicant_rule0 = "type=signal,"
 					"path=" DBUS_PATH_DBUS ","
