@@ -408,6 +408,25 @@ dbus_bool_t __connman_dbus_append_objpath_dict_array(DBusMessage *msg,
 	return TRUE;
 }
 
+dbus_bool_t __connman_dbus_append_objpath_array(DBusMessage *msg,
+			connman_dbus_append_cb_t function, void *user_data)
+{
+	DBusMessageIter iter, array;
+
+	if (!msg || !function)
+		return FALSE;
+
+	dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &array);
+
+	function(&array, user_data);
+
+	dbus_message_iter_close_container(&iter, &array);
+
+	return TRUE;
+}
+
 struct callback_data {
 	void *cb;
 	void *user_data;
