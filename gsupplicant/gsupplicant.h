@@ -230,10 +230,12 @@ int g_supplicant_interface_set_country(GSupplicantInterface *interface,
 							void *user_data);
 bool g_supplicant_interface_has_p2p(GSupplicantInterface *interface);
 
-/* Network API */
+/* Network and Peer API */
 struct _GSupplicantNetwork;
+struct _GSupplicantPeer;
 
 typedef struct _GSupplicantNetwork GSupplicantNetwork;
+typedef struct _GSupplicantPeer GSupplicantPeer;
 
 GSupplicantInterface *g_supplicant_network_get_interface(GSupplicantNetwork *network);
 const char *g_supplicant_network_get_name(GSupplicantNetwork *network);
@@ -250,6 +252,11 @@ dbus_bool_t g_supplicant_network_is_wps_active(GSupplicantNetwork *network);
 dbus_bool_t g_supplicant_network_is_wps_pbc(GSupplicantNetwork *network);
 dbus_bool_t g_supplicant_network_is_wps_advertizing(GSupplicantNetwork *network);
 
+GSupplicantInterface *g_supplicant_peer_get_interface(GSupplicantPeer *peer);
+const char *g_supplicant_peer_get_identifier(GSupplicantPeer *peer);
+const void *g_supplicant_peer_get_device_address(GSupplicantPeer *peer);
+const char *g_supplicant_peer_get_name(GSupplicantPeer *peer);
+
 struct _GSupplicantCallbacks {
 	void (*system_ready) (void);
 	void (*system_killed) (void);
@@ -263,6 +270,8 @@ struct _GSupplicantCallbacks {
 	void (*network_removed) (GSupplicantNetwork *network);
 	void (*network_changed) (GSupplicantNetwork *network,
 					const char *property);
+	void (*peer_found) (GSupplicantPeer *peer);
+	void (*peer_lost) (GSupplicantPeer *peer);
 	void (*debug) (const char *str);
 };
 
