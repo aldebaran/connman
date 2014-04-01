@@ -64,6 +64,7 @@
 #define AUTOSCAN_DEFAULT "exponential:3:300"
 
 static struct connman_technology *wifi_technology = NULL;
+static struct connman_technology *p2p_technology = NULL;
 
 struct hidden_params {
 	char ssid[32];
@@ -117,6 +118,25 @@ struct wifi_data {
 static GList *iface_list = NULL;
 
 static void start_autoscan(struct connman_device *device);
+
+static int p2p_tech_probe(struct connman_technology *technology)
+{
+	p2p_technology = technology;
+
+	return 0;
+}
+
+static void p2p_tech_remove(struct connman_technology *technology)
+{
+	p2p_technology = NULL;
+}
+
+static struct connman_technology_driver p2p_tech_driver = {
+	.name		= "p2p",
+	.type		= CONNMAN_SERVICE_TYPE_P2P,
+	.probe		= p2p_tech_probe,
+	.remove		= p2p_tech_remove,
+};
 
 static void handle_tethering(struct wifi_data *wifi)
 {
@@ -243,6 +263,23 @@ static void stop_autoscan(struct connman_device *device)
 	connman_device_set_scanning(device, CONNMAN_SERVICE_TYPE_WIFI, false);
 }
 
+static void check_p2p_technology(void)
+{
+	bool p2p_exists = false;
+	GList *list;
+
+	for (list = iface_list; list; list = list->next) {
+		struct wifi_data *w = list->data;
+
+		if (w->interface &&
+				g_supplicant_interface_has_p2p(w->interface))
+			p2p_exists = true;
+	}
+
+	if (!p2p_exists)
+		connman_technology_driver_unregister(&p2p_tech_driver);
+}
+
 static void wifi_remove(struct connman_device *device)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
@@ -253,6 +290,8 @@ static void wifi_remove(struct connman_device *device)
 		return;
 
 	iface_list = g_list_remove(iface_list, wifi);
+
+	check_p2p_technology();
 
 	remove_networks(device, wifi);
 
@@ -1748,6 +1787,16 @@ static void interface_removed(GSupplicantInterface *interface)
 
 	wifi->interface = NULL;
 	connman_device_set_powered(wifi->device, false);
+
+	check_p2p_technology();
+}
+
+static void p2p_support(GSupplicantInterface *interface)
+{
+	DBG("");
+
+	if (g_supplicant_interface_has_p2p(interface))
+		connman_technology_driver_register(&p2p_tech_driver);
 }
 
 static void scan_started(GSupplicantInterface *interface)
@@ -1935,6 +1984,7 @@ static const GSupplicantCallbacks callbacks = {
 	.interface_added	= interface_added,
 	.interface_state	= interface_state,
 	.interface_removed	= interface_removed,
+	.p2p_support		= p2p_support,
 	.scan_started		= scan_started,
 	.scan_finished		= scan_finished,
 	.network_added		= network_added,
