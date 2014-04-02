@@ -62,6 +62,12 @@ static void print_service(char *path, DBusMessageIter *iter)
 					state = 'O';
 				else if (strcmp(str, "ready") == 0)
 					state = 'R';
+				else if (!strcmp(str, "association"))
+					state = 'a';
+				else if (!strcmp(str, "configuration"))
+					state = 'c';
+				else if (!strcmp(str, "disconnect"))
+					state = 'd';
 			}
 
 		} else if (strcmp(property, "AutoConnect") == 0) {
