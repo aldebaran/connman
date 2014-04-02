@@ -266,7 +266,9 @@ static void set_connected(struct modem_data *modem)
 
 	index = modem->context->index;
 
-	if (index < 0 || !modem->context->ipv4_address) {
+	method = modem->context->ipv4_method;
+	if (index < 0 || (!modem->context->ipv4_address &&
+				method == CONNMAN_IPCONFIG_METHOD_FIXED)) {
 		connman_error("Invalid index and/or address");
 		return;
 	}
@@ -275,7 +277,6 @@ static void set_connected(struct modem_data *modem)
 	if (!service)
 		return;
 
-	method = modem->context->ipv4_method;
 	if (method == CONNMAN_IPCONFIG_METHOD_FIXED ||
 			method == CONNMAN_IPCONFIG_METHOD_DHCP)	{
 		connman_service_create_ip4config(service, index);
