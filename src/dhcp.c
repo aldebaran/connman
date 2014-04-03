@@ -66,6 +66,8 @@ static void dhcp_free(struct connman_dhcp *dhcp)
 	dhcp->nameservers = NULL;
 	dhcp->timeservers = NULL;
 	dhcp->pac = NULL;
+
+	g_free(dhcp);
 }
 
 /**
