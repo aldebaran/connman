@@ -693,7 +693,6 @@ int main(int argc, char *argv[])
 	__connman_wispr_cleanup();
 	__connman_wpad_cleanup();
 	__connman_dhcpv6_cleanup();
-	__connman_dhcp_cleanup();
 	__connman_session_cleanup();
 	__connman_plugin_cleanup();
 	__connman_provider_cleanup();
@@ -717,6 +716,7 @@ int main(int argc, char *argv[])
 	__connman_ippool_cleanup();
 	__connman_device_cleanup();
 	__connman_network_cleanup();
+	__connman_dhcp_cleanup();
 	__connman_service_cleanup();
 	__connman_peer_cleanup();
 	__connman_agent_cleanup();
