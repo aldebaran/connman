@@ -1925,7 +1925,15 @@ static void interface_p2p_flush(const char *error,
 {
 	GSupplicantInterface *interface = user_data;
 
-	if (!error)
+	if (error) {
+		if (!g_strcmp0(error,
+				"org.freedesktop.DBus.Error.UnknownMethod")) {
+			SUPPLICANT_DBG("wpa_supplicant does not support P2P");
+		} else {
+			SUPPLICANT_DBG("interface %s does not support P2P",
+							interface->ifname);
+		}
+	} else
 		interface->p2p_support = true;
 
 	callback_p2p_support(interface);
