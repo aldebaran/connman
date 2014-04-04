@@ -1157,7 +1157,8 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 
 	technology = technology_find(type);
 	if (technology) {
-		__sync_fetch_and_add(&technology->refcount, 1);
+		if (type != CONNMAN_SERVICE_TYPE_P2P)
+			__sync_fetch_and_add(&technology->refcount, 1);
 		return technology;
 	}
 
