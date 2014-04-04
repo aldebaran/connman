@@ -1,3 +1,13 @@
+ver 1.23:
+	Fix issue with memory leak in technology handling.
+	Fix issue with not removing host route of OpenVPN.
+	Fix issue with double free in DHCP cleanup handling.
+	Fix issue with handling DHCP method from oFono.
+	Fix issue with IPv6-PD when disabling tethering.
+	Fix issue with DNS proxy when disabling tethering.
+	Fix issue with Bluetooth start and stop interaction.
+	Fix issue with Bluetooth PAN networks on adapter change.
+
 ver 1.22:
 	Fix issue with WPS state synchronization.
 	Fix issue with DNS servers and default service.
