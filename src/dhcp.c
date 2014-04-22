@@ -492,10 +492,9 @@ static void ipv4ll_available_cb(GDHCPClient *ipv4ll_client, gpointer user_data)
 	g_free(netmask);
 }
 
-static int dhcp_request(struct connman_dhcp *dhcp)
+static int dhcp_initialize(struct connman_dhcp *dhcp)
 {
 	struct connman_service *service;
-	struct connman_ipconfig *ipconfig;
 	GDHCPClient *dhcp_client;
 	GDHCPClientError error;
 	const char *hostname;
@@ -547,16 +546,7 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 
 	dhcp->dhcp_client = dhcp_client;
 
-	ipconfig = __connman_service_get_ip4config(service);
-
-	/*
-	 * Clear the addresses at startup so that lease callback will
-	 * take the lease and set ip address properly.
-	 */
-	__connman_ipconfig_clear_address(ipconfig);
-
-	return g_dhcp_client_start(dhcp_client,
-				__connman_ipconfig_get_dhcp_address(ipconfig));
+	return 0;
 }
 
 static int dhcp_release(struct connman_dhcp *dhcp)
@@ -583,22 +573,39 @@ static int dhcp_release(struct connman_dhcp *dhcp)
 
 int __connman_dhcp_start(struct connman_network *network, dhcp_cb callback)
 {
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig;
+	const char *last_addr = NULL;
 	struct connman_dhcp *dhcp;
 
 	DBG("");
 
-	dhcp = g_try_new0(struct connman_dhcp, 1);
-	if (!dhcp)
-		return -ENOMEM;
+	service = connman_service_lookup_from_network(network);
+	if (!service)
+		return -EINVAL;
 
-	dhcp->network = network;
+	ipconfig = __connman_service_get_ip4config(service);
+	if (ipconfig)
+		last_addr = __connman_ipconfig_get_dhcp_address(ipconfig);
+
+	dhcp = g_hash_table_lookup(network_table, network);
+	if (!dhcp) {
+
+		dhcp = g_try_new0(struct connman_dhcp, 1);
+		if (!dhcp)
+			return -ENOMEM;
+
+		dhcp->network = network;
+		connman_network_ref(network);
+
+		g_hash_table_insert(network_table, network, dhcp);
+
+		dhcp_initialize(dhcp);
+	}
+
 	dhcp->callback = callback;
 
-	connman_network_ref(network);
-
-	g_hash_table_replace(network_table, network, dhcp);
-
-	return dhcp_request(dhcp);
+	return g_dhcp_client_start(dhcp->dhcp_client, last_addr);
 }
 
 void __connman_dhcp_stop(struct connman_network *network)
