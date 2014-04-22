@@ -105,7 +105,6 @@ struct _GDHCPClient {
 	guint t2_timeout;
 	guint lease_timeout;
 	guint listener_watch;
-	GIOChannel *listener_channel;
 	GList *require_list;
 	GList *request_list;
 	GHashTable *code_value_hash;
@@ -1163,7 +1162,6 @@ GDHCPClient *g_dhcp_client_new(GDHCPType type,
 	get_interface_mac_address(ifindex, dhcp_client->mac_address);
 
 	dhcp_client->listener_sockfd = -1;
-	dhcp_client->listener_channel = NULL;
 	dhcp_client->listen_mode = L_NONE;
 	dhcp_client->ref_count = 1;
 	dhcp_client->type = type;
@@ -1526,7 +1524,6 @@ static int switch_listening_mode(GDHCPClient *dhcp_client,
 	if (dhcp_client->listen_mode != L_NONE) {
 		if (dhcp_client->listener_watch > 0)
 			g_source_remove(dhcp_client->listener_watch);
-		dhcp_client->listener_channel = NULL;
 		dhcp_client->listen_mode = L_NONE;
 		dhcp_client->listener_sockfd = -1;
 		dhcp_client->listener_watch = 0;
@@ -1563,7 +1560,6 @@ static int switch_listening_mode(GDHCPClient *dhcp_client,
 
 	dhcp_client->listen_mode = listen_mode;
 	dhcp_client->listener_sockfd = listener_sockfd;
-	dhcp_client->listener_channel = listener_channel;
 
 	g_io_channel_set_close_on_unref(listener_channel, TRUE);
 	dhcp_client->listener_watch =
@@ -1571,7 +1567,7 @@ static int switch_listening_mode(GDHCPClient *dhcp_client,
 				G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
 						listener_event, dhcp_client,
 								NULL);
-	g_io_channel_unref(dhcp_client->listener_channel);
+	g_io_channel_unref(listener_channel);
 
 	return 0;
 }
@@ -2830,8 +2826,6 @@ void g_dhcp_client_stop(GDHCPClient *dhcp_client)
 		g_source_remove(dhcp_client->listener_watch);
 		dhcp_client->listener_watch = 0;
 	}
-
-	dhcp_client->listener_channel = NULL;
 
 	dhcp_client->retry_times = 0;
 	dhcp_client->ack_retry_times = 0;
