@@ -86,7 +86,6 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, bool callback)
 {
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig;
-	bool network_removed = false;
 	int i;
 
 	DBG("dhcp %p callback %u", dhcp, callback);
@@ -96,11 +95,11 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, bool callback)
 
 	service = connman_service_lookup_from_network(dhcp->network);
 	if (!service)
-		goto out;
+		return;
 
 	ipconfig = __connman_service_get_ip4config(service);
 	if (!ipconfig)
-		goto out;
+		return;
 
 	__connman_6to4_remove(ipconfig);
 
@@ -132,18 +131,8 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, bool callback)
 	__connman_ipconfig_set_gateway(ipconfig, NULL);
 	__connman_ipconfig_set_prefixlen(ipconfig, 0);
 
-	if (dhcp->callback && callback) {
-		g_hash_table_remove(network_table, dhcp->network);
-		network_removed = true;
+	if (dhcp->callback && callback)
 		dhcp->callback(dhcp->network, false, NULL);
-	}
-
-out:
-	if (!network_removed)
-		g_hash_table_remove(network_table, dhcp->network);
-
-	connman_network_unref(dhcp->network);
-	dhcp_free(dhcp);
 }
 
 static void dhcp_valid(struct connman_dhcp *dhcp)
@@ -622,11 +611,12 @@ void __connman_dhcp_stop(struct connman_network *network)
 		return;
 
 	dhcp = g_hash_table_lookup(network_table, network);
-	g_hash_table_remove(network_table, network);
-
 	if (dhcp) {
+		g_hash_table_remove(network_table, network);
+		connman_network_unref(network);
 		dhcp_release(dhcp);
 		dhcp_invalidate(dhcp, false);
+		dhcp_free(dhcp);
 	}
 }
 
