@@ -902,18 +902,23 @@ static void interface_create_callback(int result,
 static int wifi_enable(struct connman_device *device)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
-	const char *interface = connman_device_get_string(device, "Interface");
+	int index;
+	char *interface;
 	const char *driver = connman_option_get_string("wifi");
 	int ret;
 
 	DBG("device %p %p", device, wifi);
 
-	if (!wifi)
+	index = connman_device_get_index(device);
+	if (!wifi || index < 0)
 		return -ENODEV;
 
+	interface = connman_inet_ifname(index);
 	ret = g_supplicant_interface_create(interface, driver, NULL,
 						interface_create_callback,
 							wifi);
+	g_free(interface);
+
 	if (ret < 0)
 		return ret;
 
