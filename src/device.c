@@ -60,7 +60,6 @@ struct connman_device {
 	char *interface;
 	char *ident;
 	char *path;
-	char *devname;
 	int index;
 	guint pending_timeout;
 
@@ -386,7 +385,6 @@ static void device_destruct(struct connman_device *device)
 	g_free(device->address);
 	g_free(device->interface);
 	g_free(device->path);
-	g_free(device->devname);
 
 	g_free(device->last_network);
 
@@ -522,9 +520,6 @@ int connman_device_get_index(struct connman_device *device)
 void connman_device_set_interface(struct connman_device *device,
 						const char *interface)
 {
-	g_free(device->devname);
-	device->devname = g_strdup(interface);
-
 	g_free(device->interface);
 	device->interface = g_strdup(interface);
 
