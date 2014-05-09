@@ -218,8 +218,10 @@ static gboolean next_poll(gpointer user_data)
 
 static void reset_timeout(void)
 {
-	if (timeout_id > 0)
+	if (timeout_id > 0) {
 		g_source_remove(timeout_id);
+		timeout_id = 0;
+	}
 
 	retries = 0;
 }
@@ -501,8 +503,10 @@ void __connman_ntp_stop()
 {
 	DBG("");
 
-	if (poll_id > 0)
+	if (poll_id > 0) {
 		g_source_remove(poll_id);
+		poll_id = 0;
+	}
 
 	reset_timeout();
 
