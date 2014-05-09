@@ -477,7 +477,7 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 						struct rtnl_link_stats *stats)
 {
 	struct connman_ipdevice *ipdevice;
-	GList *list;
+	GList *list, *ipconfig_copy;
 	GString *str;
 	bool up = false, down = false;
 	bool lower_up = false, lower_down = false;
@@ -556,7 +556,9 @@ update:
 
 	g_string_free(str, TRUE);
 
-	for (list = g_list_first(ipconfig_list); list;
+	ipconfig_copy = g_list_copy(ipconfig_list);
+
+	for (list = g_list_first(ipconfig_copy); list;
 						list = g_list_next(list)) {
 		struct connman_ipconfig *ipconfig = list->data;
 
@@ -576,6 +578,8 @@ update:
 		if (down && ipconfig->ops->down)
 			ipconfig->ops->down(ipconfig, ifname);
 	}
+
+	g_list_free(ipconfig_copy);
 
 	if (lower_up)
 		__connman_ipconfig_lower_up(ipdevice);
