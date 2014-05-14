@@ -708,7 +708,7 @@ static int technology_enable(struct connman_technology *technology)
 		struct connman_technology *wifi;
 
 		wifi = technology_find(CONNMAN_SERVICE_TYPE_WIFI);
-		if (wifi->enabled)
+		if (wifi && wifi->enabled)
 			return technology_enabled(technology);
 		return 0;
 	}
