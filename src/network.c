@@ -158,6 +158,12 @@ static void dhcp_success(struct connman_network *network)
 	network->connecting = false;
 
 	ipconfig_ipv4 = __connman_service_get_ip4config(service);
+
+	DBG("lease acquired for ipconfig %p", ipconfig_ipv4);
+
+	if (!ipconfig_ipv4)
+		return;
+
 	err = __connman_ipconfig_address_add(ipconfig_ipv4);
 	if (err < 0)
 		goto err;
@@ -175,14 +181,30 @@ err:
 
 static void dhcp_failure(struct connman_network *network)
 {
-	__connman_dhcp_stop(network);
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig_ipv4;
+
+	service = connman_service_lookup_from_network(network);
+	if (!service)
+		return;
+
+	connman_network_set_associating(network, false);
+	network->connecting = false;
+
+	ipconfig_ipv4 = __connman_service_get_ip4config(service);
+
+	DBG("lease lost for ipconfig %p", ipconfig_ipv4);
+
+	if (!ipconfig_ipv4)
+		return;
+
+	__connman_ipconfig_address_remove(ipconfig_ipv4);
+	__connman_ipconfig_gateway_remove(ipconfig_ipv4);
 }
 
 static void dhcp_callback(struct connman_network *network,
 			bool success, gpointer data)
 {
-	DBG("success %d", success);
-
 	if (success)
 		dhcp_success(network);
 	else
