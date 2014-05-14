@@ -2411,10 +2411,12 @@ static void signal_wps_event(const char *path, DBusMessageIter *iter)
 
 static void create_peer_identifier(GSupplicantPeer *peer)
 {
+	const unsigned char test[6] = {};
+
 	if (!peer)
 		return;
 
-	if (!peer->device_address) {
+	if (!memcmp(peer->device_address, test, 6)) {
 		peer->identifier = g_strdup(peer->name);
 		return;
 	}
