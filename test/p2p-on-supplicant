@@ -1,12 +1,13 @@
 #!/usr/bin/python
 
 from os import O_NONBLOCK
-from sys import stdin, stdout, exit, version_info
+from sys import stdin, stdout, exit, version_info, argv
 from fcntl import fcntl, F_GETFL, F_SETFL
 import glib
 import dbus
 import dbus.mainloop.glib
 import gobject
+import argparse
 
 WPA_NAME='fi.w1.wpa_supplicant1'
 WPA_INTF='fi.w1.wpa_supplicant1'
@@ -18,6 +19,10 @@ WPA_PEER_INTF = WPA_INTF + '.Peer'
 DBUS_PROPERTIES_INTF = 'org.freedesktop.DBus.Properties'
 
 P2P_GROUP_CAPAB_GROUP_OWNER = 1 << 0
+
+class ArgFields:
+    for i in ('help','metavar'):
+        exec('{}="{}"'.format(i,i))
 
 class InputLine:
     def __init__(self, handler):
@@ -91,7 +96,7 @@ def print_tuple(t):
             print 'Element: %s' % e
 
 class Wpa_s:
-    def __init__(self, iface_name = None):
+    def __init__(self, bus, iface_name, command):
         self.wpa = dbus.Interface(bus.get_object(WPA_NAME, WPA_PATH), WPA_INTF)
         bus.add_signal_receiver(self.__wpa_property_changed, path=WPA_PATH,
                                 member_keyword='signal')
@@ -100,37 +105,31 @@ class Wpa_s:
         bus.add_signal_receiver(self.__InterfaceRemoved, path=WPA_PATH,
                                 signal_name='InterfaceRemoved')
         self.__reset()
+
+        self.bus = bus
+
         self.debug = False
 
         self.line_in = InputLine(self.__command)
 
-        if self.iface_name != None:
-            self.create_if(self.iface_name)
+        if iface_name:
+            try:
+                self.create_if([iface_name])
+            except:
+                print "Error creating interface: %s" % iface_name
+
+        if len(command.strip(' ')):
+            self.__command(command)
 
     def help(self, args):
-        print 'Commands:'
-        print 'quit'
-        print 'enable_debug'
-        print 'disable_debug'
-        print 'create_if <iface_name>'
-        print 'get_if <iface_name>'
-        print 'del_if'
-        print 'scan'
-        print 'p2p_find'
-        print 'p2p_stop_find'
-        print 'p2p_flush'
-        print 'p2p_group_add'
-        print 'p2p_group_remove'
-        print 'p2p_group'
-        print 'p2p_peers'
-        print 'p2p_peer <p2p device name>'
-        print 'p2p_connect <p2p device name>'
-        print 'p2p_disconnect <p2p device name>'
-        print 'p2p_serv_disc_req'
-        print 'p2p_serv_disc_cancel_req <identifier>'
-        print 'p2p_service_add <service type> <version/query> <service/response>'
-        print 'p2p_service_del <service type> <version/query> [<service>]'
-        print 'p2p_service_flush'
+        list = self.command_list.keys()
+        list.sort()
+        for key in list:
+            help = ''
+            if (self.command_list[key].has_key(ArgFields.help)):
+                help = self.command_list[key][ArgFields.help]
+
+            print "%s\t%s" % (key.rjust(25), help.ljust(50))
 
     def __command(self, cmd_line):
         cmd = cmd_line.split(' ')
@@ -172,7 +171,7 @@ class Wpa_s:
     def __DeviceFound(self, object_path):
         self.peers[object_path] = None
 
-        peer = bus.get_object(WPA_INTF, object_path)
+        peer = self.bus.get_object(WPA_INTF, object_path)
         peer_if = dbus.Interface(peer, DBUS_PROPERTIES_INTF)
 
         self.peers[object_path] = peer_if.GetAll(WPA_PEER_INTF)
@@ -201,35 +200,36 @@ class Wpa_s:
 
     def __GroupStarted(self, properties):
         self.group_obj = properties['group_object']
-        bus.add_signal_receiver(self.__PeerJoined,
+        self.bus.add_signal_receiver(self.__PeerJoined,
                                 dbus_interface=WPA_GROUP_INTF,
                                 path=self.group_obj,
                                 signal_name='PeerJoined')
-        bus.add_signal_receiver(self.__PeerDisconnected,
+        self.bus.add_signal_receiver(self.__PeerDisconnected,
                                 dbus_interface=WPA_GROUP_INTF,
                                 path=self.group_obj,
                                 signal_name='PeerDisconnected')
 
         self.group_iface_path = properties['interface_object']
-        self.group_if = dbus.Interface(bus.get_object(WPA_INTF,
+        self.group_if = dbus.Interface(self.bus.get_object(WPA_INTF,
                                        self.group_iface_path),
                                        WPA_P2P_INTF)
-        bus.add_signal_receiver(self.__group_if_property_changed,
+        self.bus.add_signal_receiver(self.__group_if_property_changed,
                                 dbus_interface=WPA_IF_INTF,
                                 path=self.group_iface_path,
                                 member_keyword='signal')
-        bus.add_signal_receiver(self.__group_if_p2p_property_changed,
+        self.bus.add_signal_receiver(self.__group_if_p2p_property_changed,
                                 dbus_interface=WPA_P2P_INTF,
                                 path=self.group_iface_path,
                                 member_keyword='signal')
-        bus.add_signal_receiver(self.__GroupFinished,
+        self.bus.add_signal_receiver(self.__GroupFinished,
                                 dbus_interface=WPA_P2P_INTF,
                                 path=self.group_iface_path,
                                 member_keyword='signal')
 
         if self.debug:
-            group = dbus.Interface(bus.get_object(WPA_INTF, self.group_obj),
-                                   DBUS_PROPERTIES_INTF)
+            group = dbus.Interface(self.bus.get_object(WPA_INTF,
+                                                       self.group_obj),
+                                                       DBUS_PROPERTIES_INTF)
             print_dict(group.GetAll(WPA_GROUP_INTF))
 
     def __ServiceDiscoveryResponse(self, response):
@@ -242,7 +242,7 @@ class Wpa_s:
         print 'Interface %s Added (%s)' % (properties['Ifname'], path)
         if self.debug:
             print_dict(properties)
-            p2p = dbus.Interface(bus.get_object(WPA_INTF,
+            p2p = dbus.Interface(self.bus.get_object(WPA_INTF,
                                  path), DBUS_PROPERTIES_INTF)
             print_dict(p2p.GetAll(WPA_P2P_INTF))
 
@@ -250,27 +250,27 @@ class Wpa_s:
         print 'Interface Removed (%s)' % (path)
 
     def __listen_if_signals(self):
-        bus.add_signal_receiver(self.__if_property_changed,
+        self.bus.add_signal_receiver(self.__if_property_changed,
                                 dbus_interface=WPA_IF_INTF,
                                 path=self.iface_path,
                                 member_keyword='signal')
-        bus.add_signal_receiver(self.__p2p_property_changed,
+        self.bus.add_signal_receiver(self.__p2p_property_changed,
                                 dbus_interface=WPA_P2P_INTF,
                                 path=self.iface_path,
                                 member_keyword='signal')
-        bus.add_signal_receiver(self.__GroupStarted,
+        self.bus.add_signal_receiver(self.__GroupStarted,
                                 dbus_interface=WPA_P2P_INTF,
                                 path=self.iface_path,
                                 signal_name='GroupStarted')
-        bus.add_signal_receiver(self.__DeviceFound,
+        self.bus.add_signal_receiver(self.__DeviceFound,
                                 dbus_interface=WPA_P2P_INTF,
                                 path=self.iface_path,
                                 signal_name='DeviceFound')
-        bus.add_signal_receiver(self.__DeviceLost,
+        self.bus.add_signal_receiver(self.__DeviceLost,
                                 dbus_interface=WPA_P2P_INTF,
                                 path=self.iface_path,
                                 signal_name='DeviceLost')
-        bus.add_signal_receiver(self.__ServiceDiscoveryResponse,
+        self.bus.add_signal_receiver(self.__ServiceDiscoveryResponse,
                                 dbus_interface=WPA_P2P_INTF,
                                 path=self.iface_path,
                                 signal_name='ServiceDiscoveryResponse')
@@ -281,9 +281,9 @@ class Wpa_s:
         self.peers = {}
 
     def __set_if(self, iface_name):
-        self.iface = dbus.Interface(bus.get_object(WPA_INTF,
+        self.iface = dbus.Interface(self.bus.get_object(WPA_INTF,
                                     self.iface_path), WPA_IF_INTF)
-        self.p2p = dbus.Interface(bus.get_object(WPA_INTF,
+        self.p2p = dbus.Interface(self.bus.get_object(WPA_INTF,
                                     self.iface_path), WPA_P2P_INTF)
 
         p2p_if = dbus.Interface(self.p2p, DBUS_PROPERTIES_INTF)
@@ -335,6 +335,10 @@ class Wpa_s:
     def quit(self, args = None):
         self.del_if(args)
         exit(0)
+
+    @checkarg(nb_args=1)
+    def set_command_list(self, command_list):
+        self.command_list = command_list
 
     @checkarg()
     def p2p_find(self, args = None):
@@ -444,7 +448,7 @@ class Wpa_s:
         if not self.group_obj:
             return
 
-        group = dbus.Interface(bus.get_object(WPA_INTF,
+        group = dbus.Interface(self.bus.get_object(WPA_INTF,
                                self.group_obj), DBUS_PROPERTIES_INTF)
         print_dict(group.GetAll(WPA_GROUP_INTF))
 
@@ -517,17 +521,91 @@ class Wpa_s:
 
         self.p2p.FlushService()
 
-if __name__ == '__main__':
+def build_args(parser):
+
+    parser.add_argument('-d', default=False, action='store_true',
+                       dest='debug', help='enable debug')
+    parser.add_argument('-i', metavar='<interface>', dest='ifname',
+                        help='interface name')
+
+    command = {}
+    command['quit'] = {}
+    command['enable_debug'] = {}
+    command['disable_debug'] = {}
+    command['create_if'] = {ArgFields.help:'<iface_name> - create interface'}
+    command['get_if'] = {ArgFields.help:'<iface_name> - get interface'}
+    command['del_if'] = {ArgFields.help:'removes current interface'}
+    command['scan'] = {}
+    command['p2p_find'] = {}
+    command['p2p_stop_find'] = {}
+    command['p2p_flush'] = {}
+    command['p2p_group_add'] = {ArgFields.help:'adds an autonomous group'}
+    command['p2p_group_remove'] = {}
+    command['p2p_group'] = {}
+    command['p2p_peers'] = {}
+    command['p2p_peer'] = {ArgFields.help:'<p2p device name> - get info for a '
+                                'peer'}
+    command['p2p_connect'] = {ArgFields.help:'<p2p device name>'}
+    command['p2p_disconnect'] = {ArgFields.help:'<p2p device name>'}
+    command['p2p_serv_disc_req'] = {}
+    command['p2p_serv_disc_cancel_req'] = {ArgFields.help:'<identifier>'}
+    command['p2p_service_add'] = {ArgFields.help:'<service type> '
+                                  '<version/query> <service/response>'}
+    command['p2p_service_del'] = {ArgFields.help:'<service type> '
+                                  '<version/query> [<service>]'}
+    command['p2p_service_flush'] = {}
+
+    command_list = command.keys()
+    command_list.sort()
+    subparsers = parser.add_subparsers(help='commands', dest='command')
+    subparsers.add_parser('')
+    for key in command_list:
+        help=None
+        metavar=None
+        if command[key].has_key(ArgFields.help):
+            help = command[key][ArgFields.help]
+        if command[key].has_key(ArgFields.metavar):
+            metavar = command[key][ArgFields.metavar]
+        command_parser = subparsers.add_parser(key, help=help)
+        command_parser.add_argument(key, nargs='*', metavar=metavar, help=help)
+
+    return command
+
+def main():
     if version_info.major != 2:
         print 'You need to run this under Python 2.x'
         exit(1)
 
+    parser = argparse.ArgumentParser(description='Connman P2P Test')
+
+    command_list = build_args(parser)
+
+    argv[1:] += ['']
+
+    args = parser.parse_args(argv[1:])
+
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+    opts = []
+    if args.command:
+        opts = getattr(args, args.command)
+
+    params = ''
+    if opts and len(opts[0]):
+        params = ' ' + ''.join(opts)
 
     bus = dbus.SystemBus()
 
     mainloop = gobject.MainLoop()
 
-    wpa_s = Wpa_s()
+    wpa_s = Wpa_s(bus, args.ifname, args.command + params)
+
+    if (args.debug):
+            wpa_s.enable_debug([])
+
+    wpa_s.set_command_list([command_list])
 
     mainloop.run()
+
+if __name__ == '__main__':
+    main()
