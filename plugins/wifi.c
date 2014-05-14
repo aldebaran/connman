@@ -1885,8 +1885,11 @@ static void p2p_support(GSupplicantInterface *interface)
 {
 	DBG("");
 
-	if (g_supplicant_interface_has_p2p(interface))
-		connman_technology_driver_register(&p2p_tech_driver);
+	if (!g_supplicant_interface_has_p2p(interface))
+		return;
+
+	if (connman_technology_driver_register(&p2p_tech_driver) == 0)
+		DBG("Could not register P2P technology driver");
 }
 
 static void scan_started(GSupplicantInterface *interface)
