@@ -185,7 +185,7 @@ class Wpa_s:
         print 'Peer %s joined' % object_path
 
     def __PeerDisconnected(self, object_path):
-        print 'Peer %s dictonnected' % object_path
+        print 'Peer %s disconnected' % object_path
 
     def __group_if_property_changed(*args, **kwargs):
         print 'Group - ',
@@ -299,7 +299,7 @@ class Wpa_s:
         self.debug = True
 
     @checkarg()
-    def disable_debug(serf, args):
+    def disable_debug(self, args):
         self.debug = False
 
     @checkarg(nb_args=1)
