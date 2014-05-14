@@ -112,6 +112,17 @@ static void agent_request_free(struct connman_agent_request *request)
 	g_free(request);
 }
 
+static void agent_finalize_pending(struct connman_agent *agent,
+				DBusMessage *reply)
+{
+	struct connman_agent_request *pending = agent->pending;
+	if (pending) {
+		agent->pending = NULL;
+		pending->callback(reply, pending->user_data);
+		agent_request_free(pending);
+	}
+}
+
 static void agent_receive_message(DBusPendingCall *call, void *user_data);
 
 static int agent_send_next_request(struct connman_agent *agent)
@@ -146,9 +157,7 @@ static int agent_send_next_request(struct connman_agent *agent)
 	return 0;
 
 fail:
-	agent->pending->callback(NULL, agent->pending->user_data);
-	agent_request_free(agent->pending);
-	agent->pending = NULL;
+	agent_finalize_pending(agent, NULL);
 	return -ESRCH;
 }
 
@@ -191,11 +200,8 @@ static void agent_receive_message(DBusPendingCall *call, void *user_data)
 		send_cancel_request(agent, agent->pending);
 	}
 
-	agent->pending->callback(reply, agent->pending->user_data);
+	agent_finalize_pending(agent, reply);
 	dbus_message_unref(reply);
-
-	agent_request_free(agent->pending);
-	agent->pending = NULL;
 
 	err = agent_send_next_request(agent);
 	if (err < 0 && err != -EBUSY)
@@ -456,9 +462,7 @@ static void cancel_all_requests(struct connman_agent *agent)
 		if (agent->pending->call)
 			send_cancel_request(agent, agent->pending);
 
-		agent->pending->callback(NULL, agent->pending->user_data);
-		agent_request_free(agent->pending);
-		agent->pending = NULL;
+		agent_finalize_pending(agent, NULL);
 	}
 
 	for (list = agent->queue; list; list = list->next) {
@@ -521,12 +525,7 @@ void connman_agent_cancel(void *user_context)
 			if (agent->pending->call)
 				send_cancel_request(agent, agent->pending);
 
-			agent->pending->callback(NULL,
-						agent->pending->user_data);
-
-			agent_request_free(agent->pending);
-
-			agent->pending = NULL;
+			agent_finalize_pending(agent, NULL);
 
 			err = agent_send_next_request(agent);
 			if (err < 0 && err != -EBUSY)
