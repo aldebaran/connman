@@ -368,34 +368,6 @@ void dhcpv6_init_header(struct dhcpv6_packet *packet, uint8_t type)
 	packet->transaction_id[2] = id & 0xff;
 }
 
-static bool check_vendor(uint8_t  *option_vendor, const char *vendor)
-{
-	uint8_t vendor_length = sizeof(vendor) - 1;
-
-	if (option_vendor[OPT_LEN - OPT_DATA] != vendor_length)
-		return false;
-
-	if (memcmp(option_vendor, vendor, vendor_length) != 0)
-		return false;
-
-	return true;
-}
-
-static void check_broken_vendor(struct dhcp_packet *packet)
-{
-	uint8_t *vendor;
-
-	if (packet->op != BOOTREQUEST)
-		return;
-
-	vendor = dhcp_get_option(packet, DHCP_VENDOR);
-	if (!vendor)
-		return;
-
-	if (check_vendor(vendor, "MSFT 98"))
-		packet->flags |= htons(BROADCAST_FLAG);
-}
-
 int dhcp_recv_l3_packet(struct dhcp_packet *packet, int fd)
 {
 	int n;
@@ -408,8 +380,6 @@ int dhcp_recv_l3_packet(struct dhcp_packet *packet, int fd)
 
 	if (packet->cookie != htonl(DHCP_MAGIC))
 		return -EPROTO;
-
-	check_broken_vendor(packet);
 
 	return n;
 }
@@ -558,6 +528,8 @@ int dhcp_send_raw_packet(struct dhcp_packet *dhcp_pkt,
 	fd = socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_IP));
 	if (fd < 0)
 		return -errno;
+
+	dhcp_pkt->flags |= htons(BROADCAST_FLAG);
 
 	memset(&dest, 0, sizeof(dest));
 	memset(&packet, 0, sizeof(packet));
