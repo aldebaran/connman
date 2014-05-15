@@ -198,6 +198,15 @@ class Wpa_s:
         print 'Group running on %s is being removed' % ifname
         self.group_obj = self.group_if = self.group_iface_path = None
 
+    def __InvitationResult(self, response):
+        print 'Invitation result status: %d ' % response['status']
+
+        if response.has_key('bssid'):
+            print 'bssid: %s' % response['bssid']
+
+        if self.debug:
+            print_dict(response)
+
     def __GroupStarted(self, properties):
         self.group_obj = properties['group_object']
         self.bus.add_signal_receiver(self.__PeerJoined,
@@ -225,6 +234,10 @@ class Wpa_s:
                                 dbus_interface=WPA_P2P_INTF,
                                 path=self.group_iface_path,
                                 member_keyword='signal')
+        self.bus.add_signal_receiver(self.__InvitationResult,
+                                dbus_interface=WPA_P2P_INTF,
+                                path=self.iface_path,
+                                signal_name='InvitationResult')
 
         if self.debug:
             group = dbus.Interface(self.bus.get_object(WPA_INTF,
@@ -521,6 +534,18 @@ class Wpa_s:
 
         self.p2p.FlushService()
 
+    @checkarg(nb_args = 1)
+    def p2p_invite(self, args):
+        if not self.p2p or not self.group_if:
+            return
+
+        peer_path = self.__find_peer(args[0], True)
+
+        if not peer_path:
+            return
+
+        self.group_if.Invite({ 'peer' : peer_path})
+
 def build_args(parser):
     parser.add_argument('-d', default=False, action='store_true',
                        dest='debug', help='enable debug')
@@ -553,6 +578,7 @@ def build_args(parser):
     command['p2p_service_del'] = {ArgFields.help:'<service type> '
                                   '<version/query> [<service>]'}
     command['p2p_service_flush'] = {}
+    command['p2p_invite'] = {ArgFields.help:'<p2p device name>'}
 
     command_list = command.keys()
     command_list.sort()
