@@ -21,8 +21,8 @@ DBUS_PROPERTIES_INTF = 'org.freedesktop.DBus.Properties'
 P2P_GROUP_CAPAB_GROUP_OWNER = 1 << 0
 
 class ArgFields:
-    for i in ('help','metavar'):
-        exec('{}="{}"'.format(i,i))
+    for field in ('help', 'metavar'):
+        exec('{}="{}"'.format(field, field))
 
 class InputLine:
     def __init__(self, handler):
@@ -522,7 +522,6 @@ class Wpa_s:
         self.p2p.FlushService()
 
 def build_args(parser):
-
     parser.add_argument('-d', default=False, action='store_true',
                        dest='debug', help='enable debug')
     parser.add_argument('-i', metavar='<interface>', dest='ifname',
