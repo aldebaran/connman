@@ -35,9 +35,34 @@
 
 static DBusConnection *connection;
 
+static GSList *method_calls;
+
+struct method_call_data {
+	gpointer caller;
+	DBusPendingCall *pending_call;
+	supplicant_dbus_result_function function;
+	void *user_data;
+};
+
+static void method_call_free(void *pointer)
+{
+	struct method_call_data *method_call = pointer;
+	method_calls = g_slist_remove(method_calls, method_call);
+	g_free(method_call);
+}
+
+static int find_method_call_by_caller(gconstpointer a, gconstpointer b)
+{
+	const struct method_call_data *method_call = a;
+	gconstpointer caller = b;
+
+	return method_call->caller != caller;
+}
+
 void supplicant_dbus_setup(DBusConnection *conn)
 {
 	connection = conn;
+	method_calls = NULL;
 }
 
 void supplicant_dbus_array_foreach(DBusMessageIter *iter,
@@ -362,27 +387,31 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 	return 0;
 }
 
-struct method_call_data {
-	supplicant_dbus_result_function function;
-	void *user_data;
-};
-
-void supplicant_dbus_call_callback(DBusPendingCall *call, dbus_int32_t slot)
+void supplicant_dbus_method_call_cancel_all(gpointer caller)
 {
-	struct method_call_data *data;
+	while (method_calls) {
+		struct method_call_data *method_call;
+		GSList *elem = g_slist_find_custom(method_calls, caller,
+						find_method_call_by_caller);
+		if (!elem)
+			break;
 
-	data = dbus_pending_call_get_data(call, slot);
-	if (data && data->function)
-		data->function("net.connman.Error.OperationAborted",
-			NULL, data->user_data);
+		method_call = elem->data;
+		method_calls = g_slist_delete_link(method_calls, elem);
 
-	dbus_pending_call_free_data_slot(&slot);
-	dbus_pending_call_unref(call);
+		dbus_pending_call_cancel(method_call->pending_call);
+
+		if (method_call->function)
+			method_call->function("net.connman.Error.OperationAborted",
+					NULL, method_call->user_data);
+
+		dbus_pending_call_unref(method_call->pending_call);
+	}
 }
 
 static void method_call_reply(DBusPendingCall *call, void *user_data)
 {
-	struct method_call_data *data;
+	struct method_call_data *method_call = user_data;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	const char *error;
@@ -396,9 +425,8 @@ static void method_call_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_iter_init(reply, &iter);
 
-	data = dbus_pending_call_get_data(call, GPOINTER_TO_INT(user_data));
-	if (data && data->function)
-		data->function(error, &iter, data->user_data);
+	if (method_call && method_call->function)
+		method_call->function(error, &iter, method_call->user_data);
 
 	dbus_message_unref(reply);
 
@@ -410,14 +438,12 @@ int supplicant_dbus_method_call(const char *path,
 				supplicant_dbus_setup_function setup,
 				supplicant_dbus_result_function function,
 				void *user_data,
-				DBusPendingCall **pending_call,
-				dbus_int32_t *data_slot)
+				gpointer caller)
 {
-	struct method_call_data *data;
+	struct method_call_data *method_call = NULL;
 	DBusMessage *message;
 	DBusMessageIter iter;
 	DBusPendingCall *call;
-	dbus_int32_t slot = -1;
 
 	if (!connection)
 		return -EINVAL;
@@ -425,14 +451,14 @@ int supplicant_dbus_method_call(const char *path,
 	if (!path || !interface || !method)
 		return -EINVAL;
 
-	data = dbus_malloc0(sizeof(*data));
-	if (!data)
+	method_call = g_try_new0(struct method_call_data, 1);
+	if (!method_call)
 		return -ENOMEM;
 
 	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
 							interface, method);
 	if (!message) {
-		dbus_free(data);
+		g_free(method_call);
 		return -ENOMEM;
 	}
 
@@ -445,32 +471,26 @@ int supplicant_dbus_method_call(const char *path,
 	if (!dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT)) {
 		dbus_message_unref(message);
-		dbus_free(data);
+		g_free(method_call);
 		return -EIO;
 	}
 
 	if (!call) {
 		dbus_message_unref(message);
-		dbus_free(data);
+		g_free(method_call);
 		return -EIO;
 	}
 
-	data->function = function;
-	data->user_data = user_data;
+	method_call->caller = caller;
+	method_call->pending_call = call;
+	method_call->function = function;
+	method_call->user_data = user_data;
+	method_calls = g_slist_prepend(method_calls, method_call);
 
-	if (dbus_pending_call_allocate_data_slot(&slot)) {
-		dbus_pending_call_set_data(call, slot, data, dbus_free);
-		dbus_pending_call_set_notify(call, method_call_reply,
-					GINT_TO_POINTER(slot), NULL);
-	}
+	dbus_pending_call_set_notify(call, method_call_reply, method_call,
+				method_call_free);
 
 	dbus_message_unref(message);
-
-	if (pending_call)
-		*pending_call = call;
-
-	if (data_slot)
-		*data_slot = slot;
 
 	return 0;
 }
