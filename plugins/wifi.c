@@ -293,6 +293,8 @@ static void wifi_remove(struct connman_device *device)
 	if (!wifi)
 		return;
 
+	stop_autoscan(device);
+
 	iface_list = g_list_remove(iface_list, wifi);
 
 	check_p2p_technology();
