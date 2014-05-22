@@ -125,6 +125,8 @@ struct connman_service {
 	bool hidden_service;
 	char *config_file;
 	char *config_entry;
+	guint online_timeout;
+	gpointer online_data;
 };
 
 static bool allow_property_changed(struct connman_service *service);
@@ -5678,18 +5680,30 @@ static void service_rp_filter(struct connman_service *service,
 		connected_networks_count, original_rp_filter);
 }
 
+struct redo_wispr_data {
+	struct connman_service *service;
+	enum connman_ipconfig_type type;
+};
+
 static gboolean redo_wispr(gpointer user_data)
 {
-	struct connman_service *service = user_data;
+	struct redo_wispr_data *wispr_data = user_data;
+	struct connman_service *service = wispr_data->service;
 	int refcount = service->refcount - 1;
 
 	connman_service_unref(service);
 	if (refcount == 0) {
 		DBG("Service %p already removed", service);
+		g_free(wispr_data);
+		service->online_data = 0;
 		return FALSE;
 	}
 
-	__connman_wispr_start(service, CONNMAN_IPCONFIG_TYPE_IPV6);
+	service->online_timeout = 0;
+
+	__connman_wispr_start(service, wispr_data->type);
+	service->online_data = 0;
+	g_free(wispr_data);
 
 	return FALSE;
 }
@@ -5697,25 +5711,26 @@ static gboolean redo_wispr(gpointer user_data)
 int __connman_service_online_check_failed(struct connman_service *service,
 					enum connman_ipconfig_type type)
 {
+	struct redo_wispr_data *data;
+
 	DBG("service %p type %d count %d", service, type,
 						service->online_check_count);
 
-	/* currently we only retry IPv6 stuff */
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 ||
-			service->online_check_count != 1) {
-		connman_warn("Online check failed for %p %s", service,
+	data = g_new0(struct redo_wispr_data, 1);
+	if (data == NULL)
+		return ENOMEM;
+	data->type = type;
+	data->service = service;
+
+	if (service->online_check_count != 1)
+		connman_warn("Online check failed for %p %s retrying", service,
 			service->name);
-		return 0;
-	}
-
 	service->online_check_count = 0;
+	service->online_data = data;
+	connman_service_ref(service);
 
-	/*
-	 * We set the timeout to 1 sec so that we have a chance to get
-	 * necessary IPv6 router advertisement messages that might have
-	 * DNS data etc.
-	 */
-	g_timeout_add_seconds(1, redo_wispr, connman_service_ref(service));
+	service->online_timeout =
+		g_timeout_add_seconds(30, redo_wispr, data);
 
 	return EAGAIN;
 }
@@ -6119,6 +6134,14 @@ int __connman_service_disconnect(struct connman_service *service)
 	connman_agent_cancel(service);
 
 	reply_pending(service, ECONNABORTED);
+
+	if (service->online_timeout > 0) {
+		connman_service_unref(service);
+		g_source_remove(service->online_timeout);
+		service->online_timeout = 0;
+		g_free(service->online_data);
+		service->online_data = 0;
+	}
 
 	if (service->network) {
 		err = __connman_network_disconnect(service->network);
