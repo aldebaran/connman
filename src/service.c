@@ -124,6 +124,8 @@ struct connman_service {
 	connman_bool_t hidden_service;
 	char *config_file;
 	char *config_entry;
+	guint online_timeout;
+	gpointer online_data;
 };
 
 static connman_bool_t allow_property_changed(struct connman_service *service);
@@ -5408,13 +5410,22 @@ static void service_rp_filter(struct connman_service *service,
 		connected_networks_count, original_rp_filter);
 }
 
+struct redo_wispr_data {
+	struct connman_service *service;
+	enum connman_ipconfig_type type;
+};
+
 static gboolean redo_wispr(gpointer user_data)
 {
-	struct connman_service *service = user_data;
-
+	struct redo_wispr_data *wispr_data = user_data;
+	struct connman_service *service = wispr_data->service;
 	DBG("");
 
-	__connman_wispr_start(service, CONNMAN_IPCONFIG_TYPE_IPV6);
+	service->online_timeout = 0;
+
+	__connman_wispr_start(service, wispr_data->type);
+	service->online_data = 0;
+	g_free(wispr_data);
 
 	return FALSE;
 }
@@ -5424,24 +5435,21 @@ int __connman_service_online_check_failed(struct connman_service *service,
 {
 	DBG("service %p type %d count %d", service, type,
 						service->online_check_count);
+	struct redo_wispr_data *data = g_new0(struct redo_wispr_data, 1);
+	if (data == NULL)
+		return ENOMEM;
+	data->type = type;
+	data->service = service;
 
 	/* currently we only retry IPv6 stuff */
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 ||
-			service->online_check_count != 1) {
-		connman_warn("Online check failed for %p %s", service,
+	if (service->online_check_count != 1)
+		connman_warn("Online check failed for %p %s retrying", service,
 			service->name);
-		return 0;
-	}
-
 	service->online_check_count = 0;
 
-	/*
-	 * We set the timeout to 1 sec so that we have a chance to get
-	 * necessary IPv6 router advertisement messages that might have
-	 * DNS data etc.
-	 */
-	g_timeout_add_seconds(1, redo_wispr, service);
-
+	service->online_data = data;
+	service->online_timeout =
+		g_timeout_add_seconds(30, redo_wispr, data);
 	return EAGAIN;
 }
 
@@ -5806,6 +5814,13 @@ int __connman_service_disconnect(struct connman_service *service)
 	service->userconnect = FALSE;
 
 	connman_agent_cancel(service);
+
+	if (service->online_timeout > 0) {
+		g_source_remove(service->online_timeout);
+		service->online_timeout = 0;
+		g_free(service->online_data);
+		service->online_data = 0;
+	}
 
 	if (service->network != NULL) {
 		err = __connman_network_disconnect(service->network);
