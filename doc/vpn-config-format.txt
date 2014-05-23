@@ -101,6 +101,9 @@ OpenVPN VPN supports following options (see openvpn(8) for details):
  OpenVPN.RemoteCertTls  --remote-cert-tls Require that peer certificate was
                                           signed based on RFC3280 TLS rules.
                                           Value is "client" or "server" (O)
+ OpenVPN.ConfigFile     --config         OpenVPN config file that can contain
+                                         extra options not supported by OpenVPN
+                                         plugin (O)
 
 VPNC VPN supports following options (see vpnc(8) for details):
  Option name         VPNC config value     Description
