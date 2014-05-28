@@ -351,7 +351,7 @@ class Wpa_s:
 
     @checkarg(nb_args=1)
     def set_command_list(self, command_list):
-        self.command_list = command_list
+        self.command_list = command_list[0]
 
     @checkarg()
     def p2p_find(self, args = None):
