@@ -1230,15 +1230,12 @@ static void nameserver_del_routes(int index, char **nameservers,
 void __connman_service_nameserver_add_routes(struct connman_service *service,
 						const char *gw)
 {
-	int index = -1;
+	int index;
 
 	if (!service)
 		return;
 
-	if (service->network)
-		index = connman_network_get_index(service->network);
-	else if (service->provider)
-		index = connman_provider_get_index(service->provider);
+	index = __connman_service_get_index(service);
 
 	if (service->nameservers_config) {
 		/*
@@ -1261,15 +1258,12 @@ void __connman_service_nameserver_add_routes(struct connman_service *service,
 void __connman_service_nameserver_del_routes(struct connman_service *service,
 					enum connman_ipconfig_type type)
 {
-	int index = -1;
+	int index;
 
 	if (!service)
 		return;
 
-	if (service->network)
-		index = connman_network_get_index(service->network);
-	else if (service->provider)
-		index = connman_provider_get_index(service->provider);
+	index = __connman_service_get_index(service);
 
 	if (service->nameservers_config)
 		nameserver_del_routes(index, service->nameservers_config,
@@ -3180,10 +3174,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (!str)
 			return __connman_error_invalid_arguments(msg);
 
-		if (service->type == CONNMAN_SERVICE_TYPE_VPN)
-			index = connman_provider_get_index(service->provider);
-		else
-			index = connman_network_get_index(service->network);
+		index = __connman_service_get_index(service);
 		gw = __connman_ipconfig_get_gateway_from_index(index,
 			CONNMAN_IPCONFIG_TYPE_ALL);
 
@@ -4757,23 +4748,7 @@ char *connman_service_get_interface(struct connman_service *service)
 	if (!service)
 		return NULL;
 
-	if (service->type == CONNMAN_SERVICE_TYPE_VPN) {
-		if (service->ipconfig_ipv4)
-			index = __connman_ipconfig_get_index(
-						service->ipconfig_ipv4);
-		else if (service->ipconfig_ipv6)
-			index = __connman_ipconfig_get_index(
-						service->ipconfig_ipv6);
-		else
-			return NULL;
-
-		return connman_inet_ifname(index);
-	}
-
-	if (!service->network)
-		return NULL;
-
-	index = connman_network_get_index(service->network);
+	index = __connman_service_get_index(service);
 
 	return connman_inet_ifname(index);
 }
