@@ -1714,6 +1714,176 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 	return 0;
 }
 
+static char *convert_label(char *start, char *end, char *ptr, char *uptr,
+			int remaining_len, int *used_comp, int *used_uncomp)
+{
+	int pos, comp_pos;
+	char name[NS_MAXLABEL];
+
+	pos = dn_expand((u_char *)start, (u_char *)end, (u_char *)ptr,
+			name, NS_MAXLABEL);
+	if (pos < 0) {
+		DBG("uncompress error [%d/%s]", errno, strerror(errno));
+		goto out;
+	}
+
+	/*
+	 * We need to compress back the name so that we get back to internal
+	 * label presentation.
+	 */
+	comp_pos = dn_comp(name, (u_char *)uptr, remaining_len, NULL, NULL);
+	if (comp_pos < 0) {
+		DBG("compress error [%d/%s]", errno, strerror(errno));
+		goto out;
+	}
+
+	*used_comp = pos;
+	*used_uncomp = comp_pos;
+
+	return ptr;
+
+out:
+	return NULL;
+}
+
+static char *uncompress(int16_t field_count, char *start, char *end,
+			char *ptr, char *uncompressed, int uncomp_len,
+			char **uncompressed_ptr)
+{
+	char *uptr = *uncompressed_ptr; /* position in result buffer */
+
+	DBG("count %d ptr %p end %p uptr %p", field_count, ptr, end, uptr);
+
+	while (field_count-- > 0 && ptr < end) {
+		int dlen;		/* data field length */
+		int ulen;		/* uncompress length */
+		int pos;		/* position in compressed string */
+		char name[NS_MAXLABEL]; /* tmp label */
+		uint16_t dns_type, dns_class;
+
+		pos = dn_expand((const u_char *)start, (u_char *)end,
+				(u_char *)ptr, name, NS_MAXLABEL);
+		if (pos < 0) {
+			DBG("uncompress error [%d/%s]", errno,
+				strerror(errno));
+			goto out;
+		}
+
+		/*
+		 * Copy the uncompressed resource record, type, class and \0 to
+		 * tmp buffer.
+		 */
+
+		ulen = strlen(name);
+		*uptr++ = ulen;
+		strncpy(uptr, name, uncomp_len - (uptr - uncompressed));
+
+		DBG("pos %d ulen %d left %d name %s", pos, ulen,
+			(int)(uncomp_len - (uptr - uncompressed)), uptr);
+
+		uptr += ulen;
+		*uptr++ = '\0';
+
+		ptr += pos;
+
+		/*
+		 * We copy also the fixed portion of the result (type, class,
+		 * ttl, address length and the address)
+		 */
+		memcpy(uptr, ptr, NS_RRFIXEDSZ);
+
+		dns_type = uptr[0] << 8 | uptr[1];
+		dns_class = uptr[2] << 8 | uptr[3];
+
+		if (dns_class != ns_c_in)
+			goto out;
+
+		ptr += NS_RRFIXEDSZ;
+		uptr += NS_RRFIXEDSZ;
+
+		/*
+		 * Then the variable portion of the result (data length).
+		 * Typically this portion is also compressed
+		 * so we need to uncompress it also when necessary.
+		 */
+		if (dns_type == ns_t_cname) {
+			int comp_pos;
+
+			if (!convert_label(start, end, ptr, uptr,
+					uncomp_len - (uptr - uncompressed),
+						&pos, &comp_pos))
+				goto out;
+
+			uptr[-2] = comp_pos << 8;
+			uptr[-1] = comp_pos & 0xff;
+
+			uptr += comp_pos;
+			ptr += pos;
+
+		} else if (dns_type == ns_t_a || dns_type == ns_t_aaaa) {
+			dlen = uptr[-2] << 8 | uptr[-1];
+
+			if (ptr + dlen > end) {
+				DBG("data len %d too long", dlen);
+				goto out;
+			}
+
+			memcpy(uptr, ptr, dlen);
+			uptr += dlen;
+			ptr += dlen;
+
+		} else if (dns_type == ns_t_soa) {
+			int comp_pos;
+			int total_len = 0;
+			char *len_ptr;
+
+			/* Primary name server expansion */
+			if (!convert_label(start, end, ptr, uptr,
+					uncomp_len - (uptr - uncompressed),
+						&pos, &comp_pos))
+				goto out;
+
+			total_len += comp_pos;
+			len_ptr = &uptr[-2];
+			ptr += pos;
+			uptr += comp_pos;
+
+			/* Responsible authority's mailbox */
+			if (!convert_label(start, end, ptr, uptr,
+					uncomp_len - (uptr - uncompressed),
+						&pos, &comp_pos))
+				goto out;
+
+			total_len += comp_pos;
+			ptr += pos;
+			uptr += comp_pos;
+
+			/*
+			 * Copy rest of the soa fields (serial number,
+			 * refresh interval, retry interval, expiration
+			 * limit and minimum ttl). They are 20 bytes long.
+			 */
+			memcpy(uptr, ptr, 20);
+			uptr += 20;
+			ptr += 20;
+			total_len += 20;
+
+			/*
+			 * Finally fix the length of the data part
+			 */
+			len_ptr[0] = total_len << 8;
+			len_ptr[1] = total_len & 0xff;
+		}
+
+		*uncompressed_ptr = uptr;
+	}
+
+	return ptr;
+
+out:
+	return NULL;
+}
+
 static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 				struct server_data *data)
 {
@@ -1742,56 +1912,146 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 	req->numresp++;
 
 	if (hdr->rcode == 0 || !req->resp) {
+		unsigned char *new_reply = NULL;
 
 		/*
 		 * If the domain name was append
 		 * remove it before forwarding the reply.
+		 * If there were more than one question, then this
+		 * domain name ripping can be hairy so avoid that
+		 * and bail out in that that case.
+		 *
+		 * The reason we are doing this magic is that if the
+		 * user's DNS client tries to resolv hostname without
+		 * domain part, it also expects to get the result without
+		 * a domain name part.
 		 */
-		if (req->append_domain) {
-			unsigned int domain_len = 0;
-			unsigned char *ptr;
-			uint8_t host_len;
-			unsigned int header_len;
+		if (req->append_domain && ntohs(hdr->qdcount) == 1) {
+			uint16_t domain_len = 0;
+			uint16_t header_len;
+			uint16_t dns_type, dns_class;
+			uint8_t host_len, dns_type_pos;
+			char uncompressed[NS_MAXDNAME], *uptr;
+			char *ptr, *eom = (char *)reply + reply_len;
 
 			/*
 			 * ptr points to the first char of the hostname.
 			 * ->hostname.domain.net
 			 */
 			header_len = offset + sizeof(struct domain_hdr);
-			ptr = reply + header_len;
+			ptr = (char *)reply + header_len;
+
 			host_len = *ptr;
 			if (host_len > 0)
-				domain_len = strnlen((const char *)ptr + 1 +
-						host_len,
+				domain_len = strnlen(ptr + 1 + host_len,
 						reply_len - header_len);
 
+			/*
+			 * If the query type is anything other than A or AAAA,
+			 * then bail out and pass the message as is.
+			 * We only want to deal with IPv4 or IPv6 addresses.
+			 */
+			dns_type_pos = host_len + 1 + domain_len + 1;
 
-			DBG("host len %d domain len %d", host_len, domain_len);
+			dns_type = ptr[dns_type_pos] << 8 |
+							ptr[dns_type_pos + 1];
+			dns_class = ptr[dns_type_pos + 2] << 8 |
+							ptr[dns_type_pos + 3];
+			if (dns_type != ns_t_a && dns_type != ns_t_aaaa &&
+					dns_class != ns_c_in) {
+				DBG("Pass msg dns type %d class %d",
+					dns_type, dns_class);
+				goto pass;
+			}
 
 			/*
 			 * Remove the domain name and replace it by the end
 			 * of reply. Check if the domain is really there
-			 * before trying to copy the data. The domain_len can
-			 * be 0 because if the original query did not contain
-			 * a domain name, then we are sending two packets,
-			 * first without the domain name and the second packet
-			 * with domain name. The append_domain is set to true
-			 * even if we sent the first packet without domain
-			 * name. In this case we end up in this branch.
+			 * before trying to copy the data. We also need to
+			 * uncompress the answers if necessary.
+			 * The domain_len can be 0 because if the original
+			 * query did not contain a domain name, then we are
+			 * sending two packets, first without the domain name
+			 * and the second packet with domain name.
+			 * The append_domain is set to true even if we sent
+			 * the first packet without domain name. In this
+			 * case we end up in this branch.
 			 */
 			if (domain_len > 0) {
-				/*
-				 * Note that we must use memmove() here,
-				 * because the memory areas can overlap.
-				 */
-				memmove(ptr + host_len + 1,
-					ptr + host_len + domain_len + 1,
-					reply_len - header_len - domain_len);
+				int len = host_len + 1;
 
-				reply_len = reply_len - domain_len;
+				/*
+				 * First copy host (without domain name) into
+				 * tmp buffer.
+				 */
+				uptr = &uncompressed[0];
+				memcpy(uptr, ptr, len);
+
+				uptr[len] = '\0'; /* host termination */
+				uptr += len + 1;
+
+				/*
+				 * Copy type and class fields of the question.
+				 */
+				ptr += len + domain_len + 1;
+				memcpy(uptr, ptr, NS_QFIXEDSZ);
+
+				/*
+				 * ptr points to answers after this
+				 */
+				ptr += NS_QFIXEDSZ;
+				uptr += NS_QFIXEDSZ;
+
+				/*
+				 * We then uncompress the result to buffer
+				 * so that we can rip off the domain name
+				 * part from the question. First answers,
+				 * then name server (authority) information,
+				 * and finally additional record info.
+				 */
+
+				ptr = uncompress(ntohs(hdr->ancount),
+						(char *)reply + offset, eom,
+						ptr, uncompressed, NS_MAXDNAME,
+						&uptr);
+				if (ptr == NULL)
+					goto out;
+
+				ptr = uncompress(ntohs(hdr->nscount),
+						(char *)reply + offset, eom,
+						ptr, uncompressed, NS_MAXDNAME,
+						&uptr);
+				if (ptr == NULL)
+					goto out;
+
+				ptr = uncompress(ntohs(hdr->arcount),
+						(char *)reply + offset, eom,
+						ptr, uncompressed, NS_MAXDNAME,
+						&uptr);
+				if (ptr == NULL)
+					goto out;
+
+				/*
+				 * Because we have now uncompressed the answers
+				 * we must create a bigger buffer to hold all
+				 * that data.
+				 */
+
+				new_reply = g_try_malloc(header_len +
+							uptr - uncompressed);
+				if (!new_reply)
+					return -ENOMEM;
+
+				memcpy(new_reply, reply, header_len);
+				memcpy(new_reply + header_len, uncompressed,
+					uptr - uncompressed);
+
+				reply = new_reply;
+				reply_len = header_len + uptr - uncompressed;
 			}
 		}
 
+	pass:
 		g_free(req->resp);
 		req->resplen = 0;
 
@@ -1803,8 +2063,11 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 		req->resplen = reply_len;
 
 		cache_update(data, reply, reply_len);
+
+		g_free(new_reply);
 	}
 
+out:
 	if (hdr->rcode > 0 && req->numresp < req->numserv)
 		return -EINVAL;
 
