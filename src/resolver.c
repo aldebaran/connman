@@ -429,8 +429,13 @@ int connman_resolver_append(int index, const char *domain,
 
 		if (entry->index == index &&
 				g_strcmp0(entry->domain, domain) == 0 &&
-				g_strcmp0(entry->server, server) == 0)
+				g_strcmp0(entry->server, server) == 0) {
+			if (dnsproxy_enabled)
+				__connman_dnsproxy_append(entry->index, domain,
+						server);
+
 			return -EEXIST;
+		}
 	}
 
 	return append_resolver(index, domain, server, 0, 0);
