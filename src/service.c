@@ -898,13 +898,6 @@ static bool is_connected(struct connman_service *service)
 
 static int nameserver_get_index(struct connman_service *service)
 {
-	int index;
-
-	index = __connman_service_get_index(service);
-
-	if (index < 0)
-		return -1;
-
 	switch (combine_state(service->state_ipv4, service->state_ipv6)) {
 	case CONNMAN_SERVICE_STATE_UNKNOWN:
 	case CONNMAN_SERVICE_STATE_IDLE:
@@ -918,7 +911,7 @@ static int nameserver_get_index(struct connman_service *service)
 		break;
 	}
 
-	return index;
+	return __connman_service_get_index(service);
 }
 
 static void remove_nameservers(struct connman_service *service,
