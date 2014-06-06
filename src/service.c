@@ -6239,9 +6239,8 @@ static int service_register(struct connman_service *service)
 
 	DBG("path %s", service->path);
 
-	__connman_config_provision_service(service);
-
-	service_load(service);
+	if (__connman_config_provision_service(service) < 0)
+		service_load(service);
 
 	g_dbus_register_interface(connection, service->path,
 					CONNMAN_SERVICE_INTERFACE,
