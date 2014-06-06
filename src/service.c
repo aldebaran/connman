@@ -342,6 +342,54 @@ static enum connman_service_proxy_method string2proxymethod(const char *method)
 		return CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN;
 }
 
+int __connman_service_load_modifiable(struct connman_service *service)
+{
+	GKeyFile *keyfile;
+	GError *error = NULL;
+	gchar *str;
+	bool autoconnect;
+
+	DBG("service %p", service);
+
+	keyfile = connman_storage_load_service(service->identifier);
+	if (!keyfile)
+		return -EIO;
+
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_P2P:
+		break;
+	case CONNMAN_SERVICE_TYPE_VPN:
+		service->do_split_routing = g_key_file_get_boolean(keyfile,
+				service->identifier, "SplitRouting", NULL);
+		/* fall through */
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		autoconnect = g_key_file_get_boolean(keyfile,
+				service->identifier, "AutoConnect", &error);
+		if (!error)
+			service->autoconnect = autoconnect;
+		g_clear_error(&error);
+		break;
+	}
+
+	str = g_key_file_get_string(keyfile,
+				service->identifier, "Modified", NULL);
+	if (str) {
+		g_time_val_from_iso8601(str, &service->modified);
+		g_free(str);
+	}
+
+	g_key_file_free(keyfile);
+
+	return 0;
+}
+
 static int service_load(struct connman_service *service)
 {
 	GKeyFile *keyfile;

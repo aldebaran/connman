@@ -634,6 +634,7 @@ int __connman_provider_init(void);
 
 int __connman_service_init(void);
 void __connman_service_cleanup(void);
+int __connman_service_load_modifiable(struct connman_service *service);
 
 void __connman_service_list_struct(DBusMessageIter *iter);
 
