@@ -1,3 +1,11 @@
+ver 1.24:
+	Fix issue with handling slave interfaces.
+	Fix issue with handling DHCPv4 broadcast flag.
+	Fix issue with handling DHCPv4 lease expiration.
+	Fix issue with handling WiFi auto-scanning timeout.
+	Fix issue with handling domain and DNS server changes.
+	Fix issue with double free and agent messages.
+
 ver 1.23:
 	Fix issue with memory leak in technology handling.
 	Fix issue with not removing host route of OpenVPN.
