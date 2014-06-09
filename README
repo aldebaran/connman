@@ -353,6 +353,46 @@ network. While the same setup works well for a WiFi or ethernet
 uplink.
 
 
+Online check
+============
+
+ConnMan tries to detect if it has Internet connection or not when
+a service is connected. If the online check succeeds the service
+enters Online state, if not it stays in Ready state. The online
+check is also used to detect whether ConnMan is behind a captive
+portal like when you are in hotel and need to pay for connectivity.
+
+The online check is done by trying to fetch status.html document
+from ipv4.connman.net (for IPv4 connectivity) and ipv6.connman.net
+(for IPv6 connectivity). The used URL looks like this
+http://ipv{4|6}.connman.net/online/status.html
+
+During the online check procedure, ConnMan will temporarily install
+a host route to both the ipv4.connman.net and ipv6.connman.net so that
+the online check query can be directed via the correct network
+interface which the connected service is using. This host route is
+automatically removed when the online check is done.
+
+ConnMan sends this very minimal information in http header when doing
+the online check request (example):
+	Host: ipv4.connman.net
+	User-Agent: ConnMan/1.23 wispr
+	Connection: close
+
+Currently following information is returned from connman.net if
+the connection is successfull (200 OK http response code is returned):
+	Server: nginx
+	Date: Mon, 09 Jun 2014 09:25:42 GMT
+	Content-Type: text/html
+	Connection: close
+	X-ConnMan-Status: online
+
+The X-ConnMan-Status field is used in portal detection, if it is missing
+ConnMan will call RequestBrowser method in net.connman.Agent dbus
+interface to handle the portal login if the portal does not support WISPr.
+See doc/agent-api.txt for more details.
+
+
 Information
 ===========
 
