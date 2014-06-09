@@ -44,7 +44,7 @@ In order to compile Connection Manager you need following software packages:
 	- GCC compiler
 	- GLib library
 	- D-Bus library
-	- IP-Tables library
+	- IP-Tables library (for tethering support)
 	- GnuTLS library (optional)
 	- PolicyKit (optional)
 	- readline (command line client)
