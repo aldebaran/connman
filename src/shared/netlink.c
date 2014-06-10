@@ -3,7 +3,7 @@
  *  Connection Manager
  *
  *  Copyright (C) 2011-2012  Intel Corporation. All rights reserved.
- *  Copyright (C) 2013  BWM CarIT GmbH.
+ *  Copyright (C) 2013-2014  BMW Car IT GmbH.
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
