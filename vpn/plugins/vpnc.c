@@ -2,7 +2,7 @@
  *
  *  ConnMan VPN daemon
  *
- *  Copyright (C) 2010,2013  BMW Car IT GmbH. All rights reserved.
+ *  Copyright (C) 2010,2013  BMW Car IT GmbH.
  *  Copyright (C) 2010,2012-2013  Intel Corporation. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
