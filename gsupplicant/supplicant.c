@@ -1964,7 +1964,7 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
 
 	supplicant_dbus_method_call(path,
 			SUPPLICANT_INTERFACE ".Interface.P2PDevice", "Flush",
-			NULL, interface_p2p_flush, interface, NULL);
+			NULL, interface_p2p_flush, interface, interface);
 
 	dbus_message_iter_next(iter);
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
