@@ -1990,9 +1990,7 @@ static void interface_removed(DBusMessageIter *iter, void *user_data)
 		return;
 
 	interface = g_hash_table_lookup(interface_table, path);
-	SUPPLICANT_DBG("Cancelling any pending DBus calls");
-	supplicant_dbus_method_call_cancel_all(interface);
-	supplicant_dbus_property_call_cancel_all(interface);
+	g_supplicant_interface_cancel(interface);
 
 	g_hash_table_remove(interface_table, path);
 }
@@ -2582,6 +2580,13 @@ static DBusHandlerResult g_supplicant_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+void g_supplicant_interface_cancel(GSupplicantInterface *interface)
+{
+	SUPPLICANT_DBG("Cancelling any pending DBus calls");
+	supplicant_dbus_method_call_cancel_all(interface);
+	supplicant_dbus_property_call_cancel_all(interface);
+}
+
 struct supplicant_regdom {
 	GSupplicantCountryCallback callback;
 	const char *alpha2;
@@ -2980,9 +2985,7 @@ int g_supplicant_interface_remove(GSupplicantInterface *interface,
 	if (!system_available)
 		return -EFAULT;
 
-	SUPPLICANT_DBG("Cancelling any pending DBus calls");
-	supplicant_dbus_method_call_cancel_all(interface);
-	supplicant_dbus_property_call_cancel_all(interface);
+	g_supplicant_interface_cancel(interface);
 
 	data = dbus_malloc0(sizeof(*data));
 	if (!data)

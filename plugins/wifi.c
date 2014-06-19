@@ -313,6 +313,8 @@ static void wifi_remove(struct connman_device *device)
 
 	g_supplicant_interface_set_data(wifi->interface, NULL);
 
+	g_supplicant_interface_cancel(wifi->interface);
+
 	if (wifi->scan_params)
 		g_supplicant_free_scan_params(wifi->scan_params);
 
