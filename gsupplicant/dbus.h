@@ -54,27 +54,29 @@ void supplicant_dbus_property_foreach(DBusMessageIter *iter,
 
 int supplicant_dbus_property_get_all(const char *path, const char *interface,
 				supplicant_dbus_property_function function,
-							void *user_data);
+				void *user_data, gpointer caller);
 
 int supplicant_dbus_property_get(const char *path, const char *interface,
 				const char *method,
 				supplicant_dbus_property_function function,
-							void *user_data);
+				void *user_data, gpointer caller);
 
 int supplicant_dbus_property_set(const char *path, const char *interface,
 				const char *key, const char *signature,
 				supplicant_dbus_setup_function setup,
 				supplicant_dbus_result_function function,
-							void *user_data);
+				void *user_data, gpointer caller);
+
+void supplicant_dbus_property_call_cancel_all(gpointer caller);
 
 int supplicant_dbus_method_call(const char *path,
 				const char *interface, const char *method,
 				supplicant_dbus_setup_function setup,
 				supplicant_dbus_result_function function,
 				void *user_data,
-				void *caller);
+				gpointer caller);
 
-void supplicant_dbus_method_call_cancel_all(void *caller);
+void supplicant_dbus_method_call_cancel_all(gpointer caller);
 
 void supplicant_dbus_property_append_basic(DBusMessageIter *iter,
 					const char *key, int type, void *val);

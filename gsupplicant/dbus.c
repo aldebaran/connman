@@ -59,10 +59,35 @@ static int find_method_call_by_caller(gconstpointer a, gconstpointer b)
 	return method_call->caller != caller;
 }
 
+static GSList *property_calls;
+
+struct property_call_data {
+	gpointer caller;
+	DBusPendingCall *pending_call;
+	supplicant_dbus_property_function function;
+	void *user_data;
+};
+
+static void property_call_free(void *pointer)
+{
+	struct property_call_data *property_call = pointer;
+	property_calls = g_slist_remove(property_calls, property_call);
+	g_free(property_call);
+}
+
+static int find_property_call_by_caller(gconstpointer a, gconstpointer b)
+{
+	const struct property_call_data *property_call = a;
+	gconstpointer caller = b;
+
+	return property_call->caller != caller;
+}
+
 void supplicant_dbus_setup(DBusConnection *conn)
 {
 	connection = conn;
 	method_calls = NULL;
+	property_calls = NULL;
 }
 
 void supplicant_dbus_array_foreach(DBusMessageIter *iter,
@@ -124,14 +149,27 @@ void supplicant_dbus_property_foreach(DBusMessageIter *iter,
 	}
 }
 
-struct property_get_data {
-	supplicant_dbus_property_function function;
-	void *user_data;
-};
+void supplicant_dbus_property_call_cancel_all(gpointer caller)
+{
+	while (property_calls) {
+		struct property_call_data *property_call;
+		GSList *elem = g_slist_find_custom(property_calls, caller,
+						find_property_call_by_caller);
+		if (!elem)
+			break;
+
+		property_call = elem->data;
+		property_calls = g_slist_delete_link(property_calls, elem);
+
+		dbus_pending_call_cancel(property_call->pending_call);
+
+		dbus_pending_call_unref(property_call->pending_call);
+	}
+}
 
 static void property_get_all_reply(DBusPendingCall *call, void *user_data)
 {
-	struct property_get_data *data = user_data;
+	struct property_call_data *property_call = user_data;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 
@@ -143,11 +181,11 @@ static void property_get_all_reply(DBusPendingCall *call, void *user_data)
 	if (!dbus_message_iter_init(reply, &iter))
 		goto done;
 
-	supplicant_dbus_property_foreach(&iter, data->function,
-							data->user_data);
+	supplicant_dbus_property_foreach(&iter, property_call->function,
+						property_call->user_data);
 
-	if (data->function)
-		data->function(NULL, NULL, data->user_data);
+	if (property_call->function)
+		property_call->function(NULL, NULL, property_call->user_data);
 
 done:
 	dbus_message_unref(reply);
@@ -157,9 +195,9 @@ done:
 
 int supplicant_dbus_property_get_all(const char *path, const char *interface,
 				supplicant_dbus_property_function function,
-							void *user_data)
+				void *user_data, gpointer caller)
 {
-	struct property_get_data *data;
+	struct property_call_data *property_call = NULL;
 	DBusMessage *message;
 	DBusPendingCall *call;
 
@@ -169,14 +207,14 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 	if (!path || !interface)
 		return -EINVAL;
 
-	data = dbus_malloc0(sizeof(*data));
-	if (!data)
+	property_call = g_try_new0(struct property_call_data, 1);
+	if (!property_call)
 		return -ENOMEM;
 
 	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
 					DBUS_INTERFACE_PROPERTIES, "GetAll");
 	if (!message) {
-		dbus_free(data);
+		g_free(property_call);
 		return -ENOMEM;
 	}
 
@@ -187,21 +225,23 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 	if (!dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT)) {
 		dbus_message_unref(message);
-		dbus_free(data);
+		g_free(property_call);
 		return -EIO;
 	}
 
 	if (!call) {
 		dbus_message_unref(message);
-		dbus_free(data);
+		g_free(property_call);
 		return -EIO;
 	}
 
-	data->function = function;
-	data->user_data = user_data;
+	property_call->caller = caller;
+	property_call->pending_call = call;
+	property_call->function = function;
+	property_call->user_data = user_data;
 
 	dbus_pending_call_set_notify(call, property_get_all_reply,
-							data, dbus_free);
+				property_call, property_call_free);
 
 	dbus_message_unref(message);
 
@@ -210,7 +250,7 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 
 static void property_get_reply(DBusPendingCall *call, void *user_data)
 {
-	struct property_get_data *data = user_data;
+	struct property_call_data *property_call = user_data;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 
@@ -227,8 +267,9 @@ static void property_get_reply(DBusPendingCall *call, void *user_data)
 
 		dbus_message_iter_recurse(&iter, &variant);
 
-		if (data->function)
-			data->function(NULL, &variant, data->user_data);
+		if (property_call->function)
+			property_call->function(NULL, &variant,
+						property_call->user_data);
 	}
 done:
 	dbus_message_unref(reply);
@@ -239,9 +280,9 @@ done:
 int supplicant_dbus_property_get(const char *path, const char *interface,
 				const char *method,
 				supplicant_dbus_property_function function,
-							void *user_data)
+				void *user_data, gpointer caller)
 {
-	struct property_get_data *data;
+	struct property_call_data *property_call = NULL;
 	DBusMessage *message;
 	DBusPendingCall *call;
 
@@ -251,15 +292,15 @@ int supplicant_dbus_property_get(const char *path, const char *interface,
 	if (!path || !interface || !method)
 		return -EINVAL;
 
-	data = dbus_malloc0(sizeof(*data));
-	if (!data)
+	property_call = g_try_new0(struct property_call_data, 1);
+	if (!property_call)
 		return -ENOMEM;
 
 	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
 					DBUS_INTERFACE_PROPERTIES, "Get");
 
 	if (!message) {
-		dbus_free(data);
+		g_free(property_call);
 		return -ENOMEM;
 	}
 
@@ -271,35 +312,32 @@ int supplicant_dbus_property_get(const char *path, const char *interface,
 	if (!dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT)) {
 		dbus_message_unref(message);
-		dbus_free(data);
+		g_free(property_call);
 		return -EIO;
 	}
 
 	if (!call) {
 		dbus_message_unref(message);
-		dbus_free(data);
+		g_free(property_call);
 		return -EIO;
 	}
 
-	data->function = function;
-	data->user_data = user_data;
+	property_call->caller = caller;
+	property_call->pending_call = call;
+	property_call->function = function;
+	property_call->user_data = user_data;
 
 	dbus_pending_call_set_notify(call, property_get_reply,
-							data, dbus_free);
+					property_call, property_call_free);
 
 	dbus_message_unref(message);
 
 	return 0;
 }
 
-struct property_set_data {
-	supplicant_dbus_result_function function;
-	void *user_data;
-};
-
 static void property_set_reply(DBusPendingCall *call, void *user_data)
 {
-	struct property_set_data *data = user_data;
+	struct property_call_data *property_call = user_data;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	const char *error;
@@ -313,8 +351,8 @@ static void property_set_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_iter_init(reply, &iter);
 
-	if (data->function)
-		data->function(error, &iter, data->user_data);
+	if (property_call->function)
+		property_call->function(error, &iter, property_call->user_data);
 
 	dbus_message_unref(reply);
 
@@ -325,9 +363,9 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 				const char *key, const char *signature,
 				supplicant_dbus_setup_function setup,
 				supplicant_dbus_result_function function,
-							void *user_data)
+				void *user_data, gpointer caller)
 {
-	struct property_set_data *data;
+	struct property_call_data *property_call = NULL;
 	DBusMessage *message;
 	DBusMessageIter iter, value;
 	DBusPendingCall *call;
@@ -341,14 +379,14 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 	if (!key || !signature || !setup)
 		return -EINVAL;
 
-	data = dbus_malloc0(sizeof(*data));
-	if (!data)
+	property_call = g_try_new0(struct property_call_data, 1);
+	if (!property_call)
 		return -ENOMEM;
 
 	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
 					DBUS_INTERFACE_PROPERTIES, "Set");
 	if (!message) {
-		dbus_free(data);
+		g_free(property_call);
 		return -ENOMEM;
 	}
 
@@ -366,21 +404,23 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 	if (!dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT)) {
 		dbus_message_unref(message);
-		dbus_free(data);
+		g_free(property_call);
 		return -EIO;
 	}
 
 	if (!call) {
 		dbus_message_unref(message);
-		dbus_free(data);
+		g_free(property_call);
 		return -EIO;
 	}
 
-	data->function = function;
-	data->user_data = user_data;
+	property_call->caller = caller;
+	property_call->pending_call = call;
+	property_call->function = function;
+	property_call->user_data = user_data;
 
 	dbus_pending_call_set_notify(call, property_set_reply,
-							data, dbus_free);
+					property_call, property_call_free);
 
 	dbus_message_unref(message);
 

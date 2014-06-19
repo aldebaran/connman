@@ -733,7 +733,7 @@ int g_supplicant_interface_set_apscan(GSupplicantInterface *interface,
 	return supplicant_dbus_property_set(interface->path,
 			SUPPLICANT_INTERFACE ".Interface",
 				"ApScan", DBUS_TYPE_UINT32_AS_STRING,
-					set_apscan, NULL, &ap_scan);
+					set_apscan, NULL, &ap_scan, NULL);
 }
 
 void g_supplicant_interface_set_data(GSupplicantInterface *interface,
@@ -850,7 +850,7 @@ int g_supplicant_interface_enable_selected_network(GSupplicantInterface *interfa
 	return supplicant_dbus_property_set(interface->network_path,
 				SUPPLICANT_INTERFACE ".Network",
 				"Enabled", DBUS_TYPE_BOOLEAN_AS_STRING,
-				set_network_enabled, NULL, &enable);
+				set_network_enabled, NULL, &enable, NULL);
 }
 
 dbus_bool_t g_supplicant_interface_get_ready(GSupplicantInterface *interface)
@@ -1125,7 +1125,7 @@ static void interface_network_added(DBusMessageIter *iter, void *user_data)
 
 	supplicant_dbus_property_get_all(path,
 				SUPPLICANT_INTERFACE ".Network",
-						network_property, network);
+					network_property, network, NULL);
 }
 
 static void interface_network_removed(DBusMessageIter *iter, void *user_data)
@@ -1695,7 +1695,7 @@ static void interface_bss_added_without_keys(DBusMessageIter *iter,
 
 	supplicant_dbus_property_get_all(bss->path,
 					SUPPLICANT_INTERFACE ".BSS",
-							bss_property, bss);
+					bss_property, bss, NULL);
 
 	bss_compute_security(bss);
 	add_or_replace_bss_to_network(bss);
@@ -1976,7 +1976,8 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
 
 	supplicant_dbus_property_get_all(path,
 					SUPPLICANT_INTERFACE ".Interface",
-						interface_property, interface);
+					interface_property, interface,
+					interface);
 }
 
 static void interface_removed(DBusMessageIter *iter, void *user_data)
@@ -1991,6 +1992,7 @@ static void interface_removed(DBusMessageIter *iter, void *user_data)
 	interface = g_hash_table_lookup(interface_table, path);
 	SUPPLICANT_DBG("Cancelling any pending DBus calls");
 	supplicant_dbus_method_call_cancel_all(interface);
+	supplicant_dbus_property_call_cancel_all(interface);
 
 	g_hash_table_remove(interface_table, path);
 }
@@ -2085,8 +2087,8 @@ static void signal_name_owner_changed(const char *path, DBusMessageIter *iter)
 	if (strlen(new) > 0 && strlen(old) == 0) {
 		system_available = TRUE;
 		supplicant_dbus_property_get_all(SUPPLICANT_PATH,
-							SUPPLICANT_INTERFACE,
-							service_property, NULL);
+						SUPPLICANT_INTERFACE,
+						service_property, NULL, NULL);
 	}
 }
 
@@ -2163,7 +2165,7 @@ static void signal_scan_done(const char *path, DBusMessageIter *iter)
 	}
 
 	supplicant_dbus_property_get(path, SUPPLICANT_INTERFACE ".Interface",
-					"BSSs", scan_bss_data, interface);
+				"BSSs", scan_bss_data, interface, interface);
 }
 
 static void signal_bss_added(const char *path, DBusMessageIter *iter)
@@ -2494,7 +2496,8 @@ static void signal_peer_found(const char *path, DBusMessageIter *iter)
 	}
 
 	supplicant_dbus_property_get_all(obj_path,
-			SUPPLICANT_INTERFACE ".Peer", peer_property, peer);
+					SUPPLICANT_INTERFACE ".Peer",
+					peer_property, peer, NULL);
 }
 
 static void signal_peer_lost(const char *path, DBusMessageIter *iter)
@@ -2638,7 +2641,7 @@ int g_supplicant_set_country(const char *alpha2,
 	return supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
 					"Country", DBUS_TYPE_STRING_AS_STRING,
 					country_params, country_result,
-						regdom);
+					regdom, NULL);
 }
 
 int g_supplicant_interface_set_country(GSupplicantInterface *interface,
@@ -2660,7 +2663,7 @@ int g_supplicant_interface_set_country(GSupplicantInterface *interface,
 				SUPPLICANT_INTERFACE ".Interface",
 				"Country", DBUS_TYPE_STRING_AS_STRING,
 				country_params, country_result,
-					regdom);
+					regdom, NULL);
 }
 
 bool g_supplicant_interface_has_p2p(GSupplicantInterface *interface)
@@ -2783,7 +2786,8 @@ static void interface_create_result(const char *error,
 
 	err = supplicant_dbus_property_get_all(path,
 					SUPPLICANT_INTERFACE ".Interface",
-					interface_create_property, data);
+					interface_create_property, data,
+					data->interface);
 	if (err == 0)
 		return;
 
@@ -2978,6 +2982,7 @@ int g_supplicant_interface_remove(GSupplicantInterface *interface,
 
 	SUPPLICANT_DBG("Cancelling any pending DBus calls");
 	supplicant_dbus_method_call_cancel_all(interface);
+	supplicant_dbus_property_call_cancel_all(interface);
 
 	data = dbus_malloc0(sizeof(*data));
 	if (!data)
@@ -3908,7 +3913,7 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 		ret = supplicant_dbus_property_set(interface->path,
 			SUPPLICANT_INTERFACE ".Interface.WPS",
 			"ProcessCredentials", DBUS_TYPE_BOOLEAN_AS_STRING,
-			wps_process_credentials, wps_start, data);
+			wps_process_credentials, wps_start, data, interface);
 	} else
 		ret = supplicant_dbus_method_call(interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "AddNetwork",
@@ -4203,7 +4208,7 @@ int g_supplicant_register(const GSupplicantCallbacks *callbacks)
 		system_available = TRUE;
 		supplicant_dbus_property_get_all(SUPPLICANT_PATH,
 						SUPPLICANT_INTERFACE,
-						service_property, NULL);
+						service_property, NULL, NULL);
 	} else
 		invoke_introspect_method();
 
