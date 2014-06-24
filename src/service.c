@@ -4022,8 +4022,10 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	if (err == -EINPROGRESS)
 		return NULL;
 
-	dbus_message_unref(service->pending);
-	service->pending = NULL;
+	if (service->pending) {
+		dbus_message_unref(service->pending);
+		service->pending = NULL;
+	}
 
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
