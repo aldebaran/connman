@@ -104,7 +104,7 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, bool callback)
 	__connman_6to4_remove(ipconfig);
 
 	__connman_service_set_domainname(service, NULL);
-	__connman_service_set_pac(service, NULL);
+	__connman_ipconfig_set_proxy_autoconfig(ipconfig, NULL);
 
 	if (dhcp->timeservers) {
 		for (i = 0; dhcp->timeservers[i]; i++) {
@@ -445,7 +445,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		g_free(dhcp->pac);
 		dhcp->pac = pac;
 
-		__connman_service_set_pac(service, dhcp->pac);
+		__connman_ipconfig_set_proxy_autoconfig(ipconfig, dhcp->pac);
 	}
 
 	if (ip_change)
