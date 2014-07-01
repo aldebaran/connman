@@ -128,6 +128,19 @@ int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
 	return 0;
 }
 
+int connman_ipaddress_get_ip(struct connman_ipaddress *ipaddress,
+			const char **address,
+			unsigned char *netmask_prefix_length)
+{
+	if (!ipaddress)
+		return -EINVAL;
+
+	*netmask_prefix_length = ipaddress->prefixlen;
+	*address = ipaddress->local;
+
+	return 0;
+}
+
 int connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 		const char *address, const char *netmask, const char *gateway)
 {
