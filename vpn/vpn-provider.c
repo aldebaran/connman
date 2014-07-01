@@ -2544,6 +2544,22 @@ const char *vpn_provider_get_path(struct vpn_provider *provider)
 	return provider->path;
 }
 
+void vpn_provider_change_address(struct vpn_provider *provider)
+{
+	switch (provider->family) {
+	case AF_INET:
+		connman_inet_set_address(provider->index,
+			__vpn_ipconfig_get_address(provider->ipconfig_ipv4));
+		break;
+	case AF_INET6:
+		connman_inet_set_ipv6_address(provider->index,
+			__vpn_ipconfig_get_address(provider->ipconfig_ipv6));
+		break;
+	default:
+		break;
+	}
+}
+
 static int agent_probe(struct connman_agent *agent)
 {
 	DBG("agent %p", agent);
