@@ -222,7 +222,7 @@ void __connman_tethering_set_enabled(void)
 	end_ip = __connman_ippool_get_end_ip(dhcp_ippool);
 
 	err = __connman_bridge_enable(BRIDGE_NAME, gateway,
-			__connman_ipaddress_netmask_prefix_len(subnet_mask),
+			connman_ipaddress_calc_netmask_len(subnet_mask),
 			broadcast);
 	if (err < 0 && err != -EALREADY) {
 		__connman_ippool_unref(dhcp_ippool);
@@ -267,7 +267,7 @@ void __connman_tethering_set_enabled(void)
 		return;
 	}
 
-	prefixlen = __connman_ipaddress_netmask_prefix_len(subnet_mask);
+	prefixlen = connman_ipaddress_calc_netmask_len(subnet_mask);
 	err = __connman_nat_enable(BRIDGE_NAME, start_ip, prefixlen);
 	if (err < 0) {
 		connman_error("Cannot enable NAT %d/%s", err, strerror(-err));
@@ -340,8 +340,7 @@ static void setup_tun_interface(unsigned int flags, unsigned change,
 	subnet_mask = __connman_ippool_get_subnet_mask(pn->pool);
 	server_ip = __connman_ippool_get_start_ip(pn->pool);
 	peer_ip = __connman_ippool_get_end_ip(pn->pool);
-	prefixlen =
-		__connman_ipaddress_netmask_prefix_len(subnet_mask);
+	prefixlen = connman_ipaddress_calc_netmask_len(subnet_mask);
 
 	if ((__connman_inet_modify_address(RTM_NEWADDR,
 				NLM_F_REPLACE | NLM_F_ACK, pn->index, AF_INET,

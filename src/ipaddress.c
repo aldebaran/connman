@@ -33,6 +33,29 @@
 
 #include "connman.h"
 
+unsigned char connman_ipaddress_calc_netmask_len(const char *netmask)
+{
+	unsigned char bits;
+	in_addr_t mask;
+	in_addr_t host;
+
+	if (!netmask)
+		return 32;
+
+	mask = inet_network(netmask);
+	host = ~mask;
+
+	/* a valid netmask must be 2^n - 1 */
+	if ((host & (host + 1)) != 0)
+		return -1;
+
+	bits = 0;
+	for (; mask; mask <<= 1)
+		++bits;
+
+	return bits;
+}
+
 struct connman_ipaddress *connman_ipaddress_alloc(int family)
 {
 	struct connman_ipaddress *ipaddress;
@@ -61,29 +84,6 @@ void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
 	g_free(ipaddress->local);
 	g_free(ipaddress->gateway);
 	g_free(ipaddress);
-}
-
-unsigned char __connman_ipaddress_netmask_prefix_len(const char *netmask)
-{
-	unsigned char bits;
-	in_addr_t mask;
-	in_addr_t host;
-
-	if (!netmask)
-		return 32;
-
-	mask = inet_network(netmask);
-	host = ~mask;
-
-	/* a valid netmask must be 2^n - 1 */
-	if ((host & (host + 1)) != 0)
-		return -1;
-
-	bits = 0;
-	for (; mask; mask <<= 1)
-		++bits;
-
-	return bits;
 }
 
 static bool check_ipv6_address(const char *address)
@@ -136,7 +136,7 @@ int connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 
 	ipaddress->family = AF_INET;
 
-	ipaddress->prefixlen = __connman_ipaddress_netmask_prefix_len(netmask);
+	ipaddress->prefixlen = connman_ipaddress_calc_netmask_len(netmask);
 
 	g_free(ipaddress->local);
 	ipaddress->local = g_strdup(address);
