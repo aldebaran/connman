@@ -480,7 +480,8 @@ int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress)
 	broadcast = ipaddress->broadcast;
 	peer = ipaddress->peer;
 
-	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
+	DBG("index %d address %s prefix_len %d peer %s broadcast %s", index,
+		address, prefix_len, peer, broadcast);
 
 	if (!address)
 		return -EINVAL;
