@@ -138,9 +138,9 @@ void vpn_died(struct connman_task *task, int exit_code, void *user_data)
 	vpn_provider_set_data(provider, NULL);
 
 	if (data->watch != 0) {
-		vpn_provider_unref(provider);
 		vpn_rtnl_remove_watch(data->watch);
 		data->watch = 0;
+		vpn_provider_unref(provider);
 	}
 
 vpn_exit:
