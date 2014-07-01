@@ -83,7 +83,9 @@ int main(int argc, char *argv[])
 	reason = getenv("script_type");
 
 	if (!busname || !interface || !path || !reason) {
-		print("Required environment variables not set");
+		print("Required environment variables not set; "
+			"bus=%s iface=%s path=%s reason=%s",
+			busname, interface, path, reason);
 		ret = 1;
 		goto out;
 	}
