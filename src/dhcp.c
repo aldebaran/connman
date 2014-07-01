@@ -222,6 +222,9 @@ static gboolean dhcp_retry_cb(gpointer user_data)
 	dhcp->timeout = 0;
 
 	service = connman_service_lookup_from_network(dhcp->network);
+	if (!service)
+		return FALSE;
+
 	ipconfig = __connman_service_get_ip4config(service);
 
 	g_dhcp_client_start(dhcp->dhcp_client,
