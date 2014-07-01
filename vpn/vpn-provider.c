@@ -84,6 +84,8 @@ struct vpn_provider {
 	char *config_file;
 	char *config_entry;
 	bool immutable;
+	struct connman_ipaddress *prev_ipv4_addr;
+	struct connman_ipaddress *prev_ipv6_addr;
 };
 
 static void append_properties(DBusMessageIter *iter,
@@ -1000,6 +1002,8 @@ static void provider_destruct(struct vpn_provider *provider)
 	g_strfreev(provider->host_ip);
 	g_free(provider->config_file);
 	g_free(provider->config_entry);
+	connman_ipaddress_free(provider->prev_ipv4_addr);
+	connman_ipaddress_free(provider->prev_ipv6_addr);
 	g_free(provider);
 }
 
@@ -2554,6 +2558,47 @@ void vpn_provider_change_address(struct vpn_provider *provider)
 	case AF_INET6:
 		connman_inet_set_ipv6_address(provider->index,
 			__vpn_ipconfig_get_address(provider->ipconfig_ipv6));
+		break;
+	default:
+		break;
+	}
+}
+
+void vpn_provider_clear_address(struct vpn_provider *provider, int family)
+{
+	const char *address;
+	unsigned char len;
+
+	DBG("provider %p family %d ipv4 %p ipv6 %p", provider, family,
+		provider->prev_ipv4_addr, provider->prev_ipv6_addr);
+
+	switch (family) {
+	case AF_INET:
+		if (provider->prev_ipv4_addr) {
+			connman_ipaddress_get_ip(provider->prev_ipv4_addr,
+						&address, &len);
+
+			DBG("ipv4 %s/%d", address, len);
+
+			connman_inet_clear_address(provider->index,
+					provider->prev_ipv4_addr);
+			connman_ipaddress_free(provider->prev_ipv4_addr);
+			provider->prev_ipv4_addr = NULL;
+		}
+		break;
+	case AF_INET6:
+		if (provider->prev_ipv6_addr) {
+			connman_ipaddress_get_ip(provider->prev_ipv6_addr,
+						&address, &len);
+
+			DBG("ipv6 %s/%d", address, len);
+
+			connman_inet_clear_ipv6_address(provider->index,
+							address, len);
+
+			connman_ipaddress_free(provider->prev_ipv6_addr);
+			provider->prev_ipv6_addr = NULL;
+		}
 		break;
 	default:
 		break;

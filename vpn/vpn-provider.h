@@ -108,6 +108,7 @@ const char *vpn_provider_get_name(struct vpn_provider *provider);
 const char *vpn_provider_get_host(struct vpn_provider *provider);
 const char *vpn_provider_get_path(struct vpn_provider *provider);
 void vpn_provider_change_address(struct vpn_provider *provider);
+void vpn_provider_clear_address(struct vpn_provider *provider, int family);
 
 typedef void (* vpn_provider_connect_cb_t) (struct vpn_provider *provider,
 					void *user_data, int error);
