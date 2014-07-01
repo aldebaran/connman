@@ -69,29 +69,6 @@ struct vpn_ipdevice {
 
 static GHashTable *ipdevice_hash = NULL;
 
-unsigned char __vpn_ipconfig_netmask_prefix_len(const char *netmask)
-{
-	unsigned char bits;
-	in_addr_t mask;
-	in_addr_t host;
-
-	if (!netmask)
-		return 32;
-
-	mask = inet_network(netmask);
-	host = ~mask;
-
-	/* a valid netmask must be 2^n - 1 */
-	if ((host & (host + 1)) != 0)
-		return -1;
-
-	bits = 0;
-	for (; mask; mask <<= 1)
-		++bits;
-
-	return bits;
-}
-
 const char *__vpn_ipconfig_get_peer(struct vpn_ipconfig *ipconfig)
 {
 	if (!ipconfig->address)

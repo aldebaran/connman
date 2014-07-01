@@ -32,7 +32,6 @@ void __vpn_manager_cleanup(void);
 
 struct vpn_ipconfig;
 
-unsigned char __vpn_ipconfig_netmask_prefix_len(const char *netmask);
 unsigned short __vpn_ipconfig_get_type_from_index(int index);
 unsigned int __vpn_ipconfig_get_flags_from_index(int index);
 void __vpn_ipconfig_foreach(void (*function) (int index,
