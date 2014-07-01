@@ -69,6 +69,15 @@ struct vpn_ipdevice {
 
 static GHashTable *ipdevice_hash = NULL;
 
+struct connman_ipaddress *
+__vpn_ipconfig_get_address(struct vpn_ipconfig *ipconfig)
+{
+	if (!ipconfig)
+		return NULL;
+
+	return ipconfig->address;
+}
+
 const char *__vpn_ipconfig_get_peer(struct vpn_ipconfig *ipconfig)
 {
 	if (!ipconfig->address)
