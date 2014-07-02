@@ -711,6 +711,11 @@ static bool wispr_portal_web_result(GWebResult *result, gpointer user_data)
 	DBG("status: %03u", status);
 
 	switch (status) {
+	case 000:
+		__connman_agent_request_browser(wp_context->service,
+				wispr_portal_browser_reply_cb,
+				wp_context->status_url, wp_context);
+		break;
 	case 200:
 		if (wp_context->wispr_msg.message_type >= 0)
 			break;
@@ -754,6 +759,11 @@ static bool wispr_portal_web_result(GWebResult *result, gpointer user_data)
 			return false;
 		}
 
+		break;
+	case 505:
+		__connman_agent_request_browser(wp_context->service,
+				wispr_portal_browser_reply_cb,
+				wp_context->status_url, wp_context);
 		break;
 	default:
 		break;
