@@ -2308,19 +2308,41 @@ int vpn_provider_set_ipaddress(struct vpn_provider *provider,
 		break;
 	}
 
-	DBG("provider %p ipconfig %p family %d", provider, ipconfig,
-							ipaddress->family);
+	DBG("provider %p state %d ipconfig %p family %d", provider,
+		provider->state, ipconfig, ipaddress->family);
 
 	if (!ipconfig)
 		return -EINVAL;
 
 	provider->family = ipaddress->family;
 
-	__vpn_ipconfig_set_local(ipconfig, ipaddress->local);
-	__vpn_ipconfig_set_peer(ipconfig, ipaddress->peer);
-	__vpn_ipconfig_set_broadcast(ipconfig, ipaddress->broadcast);
-	__vpn_ipconfig_set_gateway(ipconfig, ipaddress->gateway);
-	__vpn_ipconfig_set_prefixlen(ipconfig, ipaddress->prefixlen);
+	if (provider->state == VPN_PROVIDER_STATE_CONNECT ||
+			provider->state == VPN_PROVIDER_STATE_READY) {
+		struct connman_ipaddress *addr =
+					__vpn_ipconfig_get_address(ipconfig);
+
+		/*
+		 * Remember the old address so that we can remove it in notify
+		 * function in plugins/vpn.c if we ever restart
+		 */
+		if (ipaddress->family == AF_INET6) {
+			connman_ipaddress_free(provider->prev_ipv6_addr);
+			provider->prev_ipv6_addr =
+						connman_ipaddress_copy(addr);
+		} else {
+			connman_ipaddress_free(provider->prev_ipv4_addr);
+			provider->prev_ipv4_addr =
+						connman_ipaddress_copy(addr);
+		}
+	}
+
+	if (ipaddress->local) {
+		__vpn_ipconfig_set_local(ipconfig, ipaddress->local);
+		__vpn_ipconfig_set_peer(ipconfig, ipaddress->peer);
+		__vpn_ipconfig_set_broadcast(ipconfig, ipaddress->broadcast);
+		__vpn_ipconfig_set_gateway(ipconfig, ipaddress->gateway);
+		__vpn_ipconfig_set_prefixlen(ipconfig, ipaddress->prefixlen);
+	}
 
 	return 0;
 }
