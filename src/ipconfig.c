@@ -1090,8 +1090,6 @@ int __connman_ipconfig_gateway_add(struct connman_ipconfig *ipconfig)
 	if (!service)
 		return -EINVAL;
 
-	__connman_connection_gateway_remove(service, ipconfig->type);
-
 	DBG("type %d gw %s peer %s", ipconfig->type,
 		ipconfig->address->gateway, ipconfig->address->peer);
 
