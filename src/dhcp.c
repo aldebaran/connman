@@ -70,6 +70,20 @@ static void dhcp_free(struct connman_dhcp *dhcp)
 	g_free(dhcp);
 }
 
+static void ipv4ll_stop_client(struct connman_dhcp *dhcp)
+{
+	if (!dhcp->ipv4ll_client)
+		return;
+
+	g_dhcp_client_stop(dhcp->ipv4ll_client);
+	g_dhcp_client_unref(dhcp->ipv4ll_client);
+	dhcp->ipv4ll_client = NULL;
+	ipv4ll_running = false;
+
+	g_free(dhcp->ipv4ll_debug_prefix);
+	dhcp->ipv4ll_debug_prefix = NULL;
+}
+
 /**
  * dhcp_invalidate: Invalidate an existing DHCP lease
  * @dhcp: pointer to the DHCP lease to invalidate.
@@ -131,6 +145,14 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, bool callback)
 	__connman_ipconfig_set_gateway(ipconfig, NULL);
 	__connman_ipconfig_set_prefixlen(ipconfig, 0);
 
+	if (dhcp->timeout > 0) {
+		g_source_remove(dhcp->timeout);
+		dhcp->timeout = 0;
+	}
+
+	if (ipv4ll_running)
+		ipv4ll_stop_client(dhcp);
+
 	if (dhcp->callback && callback)
 		dhcp->callback(dhcp->network, false, NULL);
 }
@@ -144,20 +166,6 @@ static void dhcp_valid(struct connman_dhcp *dhcp)
 static void dhcp_debug(const char *str, void *data)
 {
 	connman_info("%s: %s", (const char *) data, str);
-}
-
-static void ipv4ll_stop_client(struct connman_dhcp *dhcp)
-{
-	if (!dhcp->ipv4ll_client)
-		return;
-
-	g_dhcp_client_stop(dhcp->ipv4ll_client);
-	g_dhcp_client_unref(dhcp->ipv4ll_client);
-	dhcp->ipv4ll_client = NULL;
-	ipv4ll_running = false;
-
-	g_free(dhcp->ipv4ll_debug_prefix);
-	dhcp->ipv4ll_debug_prefix = NULL;
 }
 
 static void ipv4ll_lost_cb(GDHCPClient *dhcp_client, gpointer user_data);
@@ -556,8 +564,10 @@ static int dhcp_release(struct connman_dhcp *dhcp)
 {
 	DBG("dhcp %p", dhcp);
 
-	if (dhcp->timeout > 0)
+	if (dhcp->timeout > 0) {
 		g_source_remove(dhcp->timeout);
+		dhcp->timeout = 0;
+	}
 
 	if (dhcp->dhcp_client) {
 		g_dhcp_client_stop(dhcp->dhcp_client);
