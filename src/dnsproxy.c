@@ -435,7 +435,7 @@ static void send_cached_response(int sk, unsigned char *buf, int len,
 
 	hdr->id = id;
 	hdr->qr = 1;
-	hdr->rcode = 0;
+	hdr->rcode = ns_r_noerror;
 	hdr->ancount = htons(answers);
 	hdr->nscount = 0;
 	hdr->arcount = 0;
@@ -482,7 +482,7 @@ static void send_response(int sk, unsigned char *buf, int len,
 	DBG("id 0x%04x qr %d opcode %d", hdr->id, hdr->qr, hdr->opcode);
 
 	hdr->qr = 1;
-	hdr->rcode = 2;
+	hdr->rcode = ns_r_servfail;
 
 	hdr->ancount = 0;
 	hdr->nscount = 0;
@@ -1401,7 +1401,7 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 	DBG("offset %d hdr %p msg %p rcode %d", offset, hdr, msg, hdr->rcode);
 
 	/* Continue only if response code is 0 (=ok) */
-	if (hdr->rcode != 0)
+	if (hdr->rcode != ns_r_noerror)
 		return 0;
 
 	if (!cache)
@@ -1943,7 +1943,7 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 
 	req->numresp++;
 
-	if (hdr->rcode == 0 || !req->resp) {
+	if (hdr->rcode == ns_r_noerror || !req->resp) {
 		unsigned char *new_reply = NULL;
 
 		/*
