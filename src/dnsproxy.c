@@ -1877,6 +1877,45 @@ out:
 	return NULL;
 }
 
+static int strip_domains(char *name, char *answers, int maxlen)
+{
+	uint16_t data_len;
+	int name_len = strlen(name);
+	char *ptr, *start = answers, *end = answers + maxlen;
+
+	while (maxlen > 0) {
+		ptr = strstr(answers, name);
+		if (ptr) {
+			char *domain = ptr + name_len;
+
+			if (*domain) {
+				int domain_len = strlen(domain);
+
+				memmove(answers + name_len,
+					domain + domain_len,
+					end - (domain + domain_len));
+
+				end -= domain_len;
+				maxlen -= domain_len;
+			}
+		}
+
+		answers += strlen(answers) + 1;
+		answers += 2 + 2 + 4;  /* skip type, class and ttl fields */
+
+		data_len = answers[0] << 8 | answers[1];
+		answers += 2; /* skip the length field */
+
+		if (answers + data_len > end)
+			return -EINVAL;
+
+		answers += data_len;
+		maxlen -= answers - ptr;
+	}
+
+	return end - start;
+}
+
 static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 				struct server_data *data)
 {
@@ -1972,6 +2011,8 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 			 */
 			if (domain_len > 0) {
 				int len = host_len + 1;
+				int new_len, fixed_len;
+				char *answers;
 
 				/*
 				 * First copy host (without domain name) into
@@ -1994,6 +2035,8 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 				 */
 				ptr += NS_QFIXEDSZ;
 				uptr += NS_QFIXEDSZ;
+				answers = uptr;
+				fixed_len = answers - uncompressed;
 
 				/*
 				 * We then uncompress the result to buffer
@@ -2025,22 +2068,39 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 					goto out;
 
 				/*
+				 * The uncompressed buffer now contains almost
+				 * valid response. Final step is to get rid of
+				 * the domain name because at least glibc
+				 * gethostbyname() implementation does extra
+				 * checks and expects to find an answer without
+				 * domain name if we asked a query without
+				 * domain part. Note that glibc getaddrinfo()
+				 * works differently and accepts FQDN in answer
+				 */
+				new_len = strip_domains(uncompressed, answers,
+							uptr - answers);
+				if (new_len < 0) {
+					DBG("Corrupted packet");
+					return -EINVAL;
+				}
+
+				/*
 				 * Because we have now uncompressed the answers
-				 * we must create a bigger buffer to hold all
-				 * that data.
+				 * we might have to create a bigger buffer to
+				 * hold all that data.
 				 */
 
-				new_reply = g_try_malloc(header_len +
-							uptr - uncompressed);
+				reply_len = header_len + new_len + fixed_len;
+
+				new_reply = g_try_malloc(reply_len);
 				if (!new_reply)
 					return -ENOMEM;
 
 				memcpy(new_reply, reply, header_len);
 				memcpy(new_reply + header_len, uncompressed,
-					uptr - uncompressed);
+					new_len + fixed_len);
 
 				reply = new_reply;
-				reply_len = header_len + uptr - uncompressed;
 			}
 		}
 
