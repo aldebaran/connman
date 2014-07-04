@@ -1760,14 +1760,11 @@ static char *uncompress(int16_t field_count, char *start, char *end,
 		int pos;		/* position in compressed string */
 		char name[NS_MAXLABEL]; /* tmp label */
 		uint16_t dns_type, dns_class;
+		int comp_pos;
 
-		pos = dn_expand((const u_char *)start, (u_char *)end,
-				(u_char *)ptr, name, NS_MAXLABEL);
-		if (pos < 0) {
-			DBG("uncompress error [%d/%s]", errno,
-				strerror(errno));
+		if (!convert_label(start, end, ptr, name, NS_MAXLABEL,
+					&pos, &comp_pos))
 			goto out;
-		}
 
 		/*
 		 * Copy the uncompressed resource record, type, class and \0 to
@@ -1775,7 +1772,6 @@ static char *uncompress(int16_t field_count, char *start, char *end,
 		 */
 
 		ulen = strlen(name);
-		*uptr++ = ulen;
 		strncpy(uptr, name, uncomp_len - (uptr - uncompressed));
 
 		DBG("pos %d ulen %d left %d name %s", pos, ulen,
@@ -1807,8 +1803,6 @@ static char *uncompress(int16_t field_count, char *start, char *end,
 		 * so we need to uncompress it also when necessary.
 		 */
 		if (dns_type == ns_t_cname) {
-			int comp_pos;
-
 			if (!convert_label(start, end, ptr, uptr,
 					uncomp_len - (uptr - uncompressed),
 						&pos, &comp_pos))
@@ -1833,7 +1827,6 @@ static char *uncompress(int16_t field_count, char *start, char *end,
 			ptr += dlen;
 
 		} else if (dns_type == ns_t_soa) {
-			int comp_pos;
 			int total_len = 0;
 			char *len_ptr;
 
