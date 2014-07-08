@@ -145,14 +145,6 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, bool callback)
 	__connman_ipconfig_set_gateway(ipconfig, NULL);
 	__connman_ipconfig_set_prefixlen(ipconfig, 0);
 
-	if (dhcp->timeout > 0) {
-		g_source_remove(dhcp->timeout);
-		dhcp->timeout = 0;
-	}
-
-	if (ipv4ll_running)
-		ipv4ll_stop_client(dhcp);
-
 	if (dhcp->callback && callback)
 		dhcp->callback(dhcp->network, false, NULL);
 }
