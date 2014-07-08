@@ -156,6 +156,37 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		void RegisterPeerService(array{byte} specification,  boolean master) [experimental]
+
+			Registers a local P2P Peer service
+
+			If p2p technology is not available, this will raise a
+			'not supported' error. This behavior does not apply if
+			such technology is just disabled.
+
+			A Peer service belongs to the process that registers
+			it, thus if that process dies, its Peer services will
+			be destroyed as well.
+
+			"specification" is the TLV formated byte array
+			describing the WiFi P2P service.
+
+			ConnMan will be able to determine in most cases
+			whether to be the P2P Group Owner or not. If the
+			service must belong to a group that this device
+			manages, the "master" property can be set. Do not set
+			the "master" property unless you are absolutely sure
+			you know what you are doing.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotSupported
+
+		void UnregisterPeerService(array{byte} specification) [experimental]
+
+			Unregisters an existing local P2P Peer service
+
+			Possible Errors: [service].Error.InvalidArguments
+
 Signals		TechnologyAdded(object path, dict properties)
 
 			Signal that is sent when a new technology is added.

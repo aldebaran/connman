@@ -57,3 +57,8 @@ Properties	string State [readonly] [experimental]
 			string Netmask [readonly]
 
 				The current configured IPv4 netmask.
+
+		array{array{byte}} Services [readonly] [experimental]
+
+			Array of P2P service specifications, which are
+			themselves a TLV formated byte array.
