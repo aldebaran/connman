@@ -48,12 +48,24 @@ struct connman_peer {
 	char *path;
 	enum connman_peer_state state;
 	struct connman_ipconfig *ipconfig;
+	DBusMessage *pending;
 	bool registered;
 };
+
+static void reply_pending(struct connman_peer *peer, int error)
+{
+	if (!peer->pending)
+		return;
+
+	connman_dbus_reply_pending(peer->pending, error, NULL);
+	peer->pending = NULL;
+}
 
 static void peer_free(gpointer data)
 {
 	struct connman_peer *peer = data;
+
+	reply_pending(peer, ENOENT);
 
 	connman_peer_unregister(peer);
 
@@ -100,6 +112,24 @@ static const char *state2string(enum connman_peer_state state)
 	}
 
 	return NULL;
+}
+
+static bool is_connecting(struct connman_peer *peer)
+{
+	if (peer->state == CONNMAN_PEER_STATE_ASSOCIATION ||
+			peer->state == CONNMAN_PEER_STATE_CONFIGURATION ||
+			peer->pending)
+		return true;
+
+	return false;
+}
+
+static bool is_connected(struct connman_peer *peer)
+{
+	if (peer->state == CONNMAN_PEER_STATE_READY)
+		return true;
+
+	return false;
 }
 
 static bool allow_property_changed(struct connman_peer *peer)
@@ -293,6 +323,86 @@ static void peer_removed(struct connman_peer *peer)
 	peer_schedule_changed();
 }
 
+static int peer_connect(struct connman_peer *peer)
+{
+	int err = -ENOTSUP;
+
+	if (peer_driver->connect)
+		err = peer_driver->connect(peer);
+
+	return err;
+}
+
+static int peer_disconnect(struct connman_peer *peer)
+{
+	int err = -ENOTSUP;
+
+	reply_pending(peer, ECONNABORTED);
+
+	if (peer_driver->disconnect)
+		err = peer_driver->disconnect(peer);
+
+	__connman_dhcp_stop(peer->ipconfig);
+
+	return err;
+}
+
+static DBusMessage *connect_peer(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct connman_peer *peer = user_data;
+	GList *list;
+	int err;
+
+	DBG("peer %p", peer);
+
+	if (peer->pending)
+		return __connman_error_in_progress(msg);
+
+	list = g_hash_table_get_values(peers_table);
+	for (; list; list = list->next) {
+		struct connman_peer *temp = list->data;
+
+		if (temp == peer || temp->device != peer->device)
+			continue;
+
+		if (is_connecting(temp) || is_connected(temp)) {
+			if (peer_disconnect(temp) == -EINPROGRESS)
+				return __connman_error_in_progress(msg);
+		}
+	}
+
+	peer->pending = dbus_message_ref(msg);
+
+	err = peer_connect(peer);
+	if (err == -EINPROGRESS)
+		return NULL;
+
+	if (err < 0) {
+		dbus_message_unref(peer->pending);
+		peer->pending = NULL;
+
+		return __connman_error_failed(msg, -err);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *disconnect_peer(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct connman_peer *peer = user_data;
+	int err;
+
+	DBG("peer %p", peer);
+
+	err = peer_disconnect(peer);
+	if (err < 0 && err != -EINPROGRESS)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 struct connman_peer *connman_peer_create(const char *identifier)
 {
 	struct connman_peer *peer;
@@ -412,10 +522,12 @@ int connman_peer_set_state(struct connman_peer *peer,
 						CONNMAN_PEER_STATE_FAILURE);
 		break;
 	case CONNMAN_PEER_STATE_READY:
+		reply_pending(peer, 0);
 		break;
 	case CONNMAN_PEER_STATE_DISCONNECT:
 		break;
 	case CONNMAN_PEER_STATE_FAILURE:
+		reply_pending(peer, ENOTCONN);
 		__connman_dhcp_stop(peer->ipconfig);
 		__connman_ipconfig_disable(peer->ipconfig);
 
@@ -507,8 +619,8 @@ static const GDBusMethodTable peer_methods[] = {
 	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 			get_peer_properties) },
-	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, NULL) },
-	{ GDBUS_METHOD("Disconnect", NULL, NULL, NULL) },
+	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, connect_peer) },
+	{ GDBUS_METHOD("Disconnect", NULL, NULL, disconnect_peer) },
 	{ },
 };
 
@@ -560,6 +672,8 @@ void connman_peer_unregister(struct connman_peer *peer)
 
 	if (!peer->path || !peer->registered)
 		return;
+
+	reply_pending(peer, EIO);
 
 	g_dbus_unregister_interface(connection, peer->path,
 					CONNMAN_PEER_INTERFACE);
