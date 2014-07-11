@@ -2361,6 +2361,21 @@ static void peer_changed(GSupplicantPeer *peer,
 	if (p_state == CONNMAN_PEER_STATE_UNKNOWN)
 		return;
 
+	if (p_state == CONNMAN_PEER_STATE_CONFIGURATION) {
+		GSupplicantInterface *g_iface;
+		struct wifi_data *g_wifi;
+
+		g_iface = g_supplicant_peer_get_group_interface(peer);
+		if (!g_iface)
+			return;
+
+		g_wifi = g_supplicant_interface_get_data(g_iface);
+		if (!g_wifi)
+			return;
+
+		connman_peer_set_sub_device(connman_peer, g_wifi->device);
+	}
+
 	connman_peer_set_state(connman_peer, p_state);
 }
 
