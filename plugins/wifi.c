@@ -120,6 +120,7 @@ struct wifi_data {
 	GSupplicantScanParams *scan_params;
 	unsigned int p2p_find_timeout;
 	unsigned int p2p_connection_timeout;
+	struct connman_peer *pending_peer;
 	bool p2p_connecting;
 	bool p2p_device;
 };
@@ -190,12 +191,24 @@ static struct wifi_data *get_pending_wifi_data(const char *ifname)
 	return NULL;
 }
 
+static void peer_cancel_timeout(struct wifi_data *wifi)
+{
+	if (wifi->p2p_connection_timeout > 0)
+		g_source_remove(wifi->p2p_connection_timeout);
+	wifi->p2p_connection_timeout = 0;
+	wifi->p2p_connecting = false;
+	connman_peer_unref(wifi->pending_peer);
+	wifi->pending_peer = NULL;
+}
+
 static gboolean peer_connect_timeout(gpointer data)
 {
 	struct wifi_data *wifi = data;
 
-	wifi->p2p_connection_timeout = 0;
-	wifi->p2p_connecting = false;
+	if (wifi->p2p_connecting)
+		connman_peer_set_state(wifi->pending_peer,
+					CONNMAN_PEER_STATE_FAILURE);
+	peer_cancel_timeout(wifi);
 
 	return FALSE;
 }
@@ -203,13 +216,20 @@ static gboolean peer_connect_timeout(gpointer data)
 static void peer_connect_callback(int result, GSupplicantInterface *interface,
 							void *user_data)
 {
-	struct wifi_data *wifi = g_supplicant_interface_get_data(interface);
-	struct connman_peer *peer = user_data;
+	struct wifi_data *wifi = user_data;
+	struct connman_peer *peer = wifi->pending_peer;
 
 	DBG("peer %p - %d", peer, result);
 
-	if (result < 0)
+	if (!peer)
 		return;
+
+	if (result < 0) {
+		connman_peer_set_state(peer, CONNMAN_PEER_STATE_FAILURE);
+		return;
+	}
+
+	connman_peer_set_state(peer, CONNMAN_PEER_STATE_ASSOCIATION);
 
 	wifi->p2p_connection_timeout = g_timeout_add_seconds(
 						P2P_CONNECTION_TIMEOUT,
@@ -220,7 +240,6 @@ static int peer_connect(struct connman_peer *peer)
 {
 	struct connman_device *device = connman_peer_get_device(peer);
 	GSupplicantPeerParams *peer_params;
-	GSupplicantInterface *interface;
 	struct wifi_data *wifi;
 	int ret;
 
@@ -240,21 +259,38 @@ static int peer_connect(struct connman_peer *peer)
 	if (!peer_params)
 		return -ENOMEM;
 
-	interface = wifi->interface;
-
 	peer_params->identifier = connman_peer_get_identifier(peer);
 
-	ret = g_supplicant_interface_p2p_connect(interface, peer_params,
+	ret = g_supplicant_interface_p2p_connect(wifi->interface, peer_params,
 						peer_connect_callback, wifi);
-	if (ret == -EINPROGRESS)
+	if (ret == -EINPROGRESS) {
+		wifi->pending_peer = connman_peer_ref(peer);
 		wifi->p2p_connecting = true;
+	} else if (ret < 0)
+		g_free(peer_params);
 
 	return ret;
 }
 
 static int peer_disconnect(struct connman_peer *peer)
 {
-	return 0;
+	struct connman_device *device = connman_peer_get_device(peer);
+	GSupplicantPeerParams peer_params = {};
+	struct wifi_data *wifi;
+
+	DBG("peer %p", peer);
+
+	if (!device)
+		return -ENODEV;
+
+	wifi = connman_device_get_data(device);
+	if (!wifi)
+		return -ENODEV;
+
+	peer_params.identifier = connman_peer_get_identifier(peer);
+
+	return g_supplicant_interface_p2p_disconnect(wifi->interface,
+							&peer_params);
 }
 
 static struct connman_peer_driver peer_driver = {
@@ -2261,9 +2297,71 @@ static void peer_lost(GSupplicantPeer *peer)
 
 	connman_peer = connman_peer_get(wifi->device, identifier);
 	if (connman_peer) {
+		if (wifi->p2p_connecting &&
+				wifi->pending_peer == connman_peer) {
+			connman_peer_set_state(connman_peer,
+						CONNMAN_PEER_STATE_FAILURE);
+			peer_cancel_timeout(wifi);
+		}
 		connman_peer_unregister(connman_peer);
 		connman_peer_unref(connman_peer);
 	}
+}
+
+static void peer_changed(GSupplicantPeer *peer,
+					GSupplicantPeerGroupState state)
+{
+	GSupplicantInterface *iface = g_supplicant_peer_get_interface(peer);
+	struct wifi_data *wifi = g_supplicant_interface_get_data(iface);
+	enum connman_peer_state p_state = CONNMAN_PEER_STATE_UNKNOWN;
+	struct connman_peer *connman_peer;
+	const char *identifier;
+
+	identifier = g_supplicant_peer_get_identifier(peer);
+
+	DBG("ident: %s", identifier);
+
+	connman_peer = connman_peer_get(wifi->device, identifier);
+	if (!connman_peer)
+		return;
+
+	switch (state) {
+	case G_SUPPLICANT_PEER_GROUP_CHANGED:
+		if (!g_supplicant_peer_is_in_a_group(peer))
+			p_state = CONNMAN_PEER_STATE_IDLE;
+		break;
+	case G_SUPPLICANT_PEER_GROUP_STARTED:
+		p_state = CONNMAN_PEER_STATE_CONFIGURATION;
+		break;
+	case G_SUPPLICANT_PEER_GROUP_FINISHED:
+		p_state = CONNMAN_PEER_STATE_IDLE;
+		break;
+	case G_SUPPLICANT_PEER_GROUP_JOINED:
+		if (!g_supplicant_peer_is_in_a_group(peer))
+			break;
+		p_state = CONNMAN_PEER_STATE_READY;
+		break;
+	case G_SUPPLICANT_PEER_GROUP_DISCONNECTED:
+		p_state = CONNMAN_PEER_STATE_IDLE;
+		break;
+	case G_SUPPLICANT_PEER_GROUP_FAILED:
+		p_state = CONNMAN_PEER_STATE_FAILURE;
+		break;
+	}
+
+	if (p_state == CONNMAN_PEER_STATE_CONFIGURATION ||
+					p_state == CONNMAN_PEER_STATE_FAILURE) {
+		if (wifi->p2p_connecting
+				&& connman_peer == wifi->pending_peer)
+			peer_cancel_timeout(wifi);
+		else
+			p_state = CONNMAN_PEER_STATE_UNKNOWN;
+	}
+
+	if (p_state == CONNMAN_PEER_STATE_UNKNOWN)
+		return;
+
+	connman_peer_set_state(connman_peer, p_state);
 }
 
 static void debug(const char *str)
@@ -2286,6 +2384,7 @@ static const GSupplicantCallbacks callbacks = {
 	.network_changed	= network_changed,
 	.peer_found		= peer_found,
 	.peer_lost		= peer_lost,
+	.peer_changed		= peer_changed,
 	.debug			= debug,
 };
 
