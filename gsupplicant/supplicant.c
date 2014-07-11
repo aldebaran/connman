@@ -492,6 +492,18 @@ static void callback_peer_lost(GSupplicantPeer *peer)
 	callbacks_pointer->peer_lost(peer);
 }
 
+static void callback_peer_changed(GSupplicantPeer *peer,
+					GSupplicantPeerGroupState state)
+{
+	if (!callbacks_pointer)
+		return;
+
+	if (!callbacks_pointer->peer_changed)
+		return;
+
+	callbacks_pointer->peer_changed(peer, state);
+}
+
 static void remove_group(gpointer data)
 {
 	GSupplicantGroup *group = data;
@@ -1065,6 +1077,14 @@ bool g_supplicant_peer_is_wps_pin(GSupplicantPeer *peer)
 		return true;
 
 	return false;
+}
+
+bool g_supplicant_peer_is_in_a_group(GSupplicantPeer *peer)
+{
+	if (!peer || !peer->groups)
+		return false;
+
+	return true;
 }
 
 static void merge_network(GSupplicantNetwork *network)
@@ -2656,6 +2676,8 @@ static void signal_peer_changed(const char *path, DBusMessageIter *iter)
 	if (!peer->groups_changed)
 		return;
 
+	callback_peer_changed(peer, G_SUPPLICANT_PEER_GROUP_CHANGED);
+
 	peer->groups_changed = false;
 }
 
@@ -2728,7 +2750,25 @@ static void signal_group_success(const char *path, DBusMessageIter *iter)
 
 static void signal_group_failure(const char *path, DBusMessageIter *iter)
 {
+	GSupplicantInterface *interface;
+	struct group_sig_data data = {};
+	GSupplicantPeer *peer;
+
 	SUPPLICANT_DBG("");
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (!interface)
+		return;
+
+	supplicant_dbus_property_foreach(iter, group_sig_property, &data);
+	if (!data.peer_obj_path)
+		return;
+
+	peer = g_hash_table_lookup(interface->peer_table, data.peer_obj_path);
+	if (!peer)
+		return;
+
+	callback_peer_changed(peer, G_SUPPLICANT_PEER_GROUP_FAILED);
 }
 
 static void signal_group_started(const char *path, DBusMessageIter *iter)
@@ -2813,12 +2853,16 @@ static void signal_group_peer_joined(const char *path, DBusMessageIter *iter)
 		return;
 
 	group->members = g_slist_prepend(group->members, g_strdup(peer_path));
+
+	callback_peer_changed(peer, G_SUPPLICANT_PEER_GROUP_JOINED);
 }
 
 static void signal_group_peer_disconnected(const char *path, DBusMessageIter *iter)
 {
 	const char *peer_path = NULL;
+	GSupplicantInterface *interface;
 	GSupplicantGroup *group;
+	GSupplicantPeer *peer;
 	GSList *elem;
 
 	SUPPLICANT_DBG("");
@@ -2837,6 +2881,16 @@ static void signal_group_peer_disconnected(const char *path, DBusMessageIter *it
 
 	g_free(elem->data);
 	group->members = g_slist_delete_link(group->members, elem);
+
+	interface = g_hash_table_lookup(peer_mapping, peer_path);
+	if (!interface)
+		return;
+
+	peer = g_hash_table_lookup(interface->peer_table, peer_path);
+	if (!peer)
+		return;
+
+	callback_peer_changed(peer, G_SUPPLICANT_PEER_GROUP_DISCONNECTED);
 }
 
 static struct {

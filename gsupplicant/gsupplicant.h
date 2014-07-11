@@ -118,6 +118,15 @@ typedef enum {
 	G_SUPPLICANT_WPS_STATE_FAIL,
 } GSupplicantWpsState;
 
+typedef enum {
+	G_SUPPLICANT_PEER_GROUP_CHANGED,
+	G_SUPPLICANT_PEER_GROUP_STARTED,
+	G_SUPPLICANT_PEER_GROUP_FINISHED,
+	G_SUPPLICANT_PEER_GROUP_JOINED,
+	G_SUPPLICANT_PEER_GROUP_DISCONNECTED,
+	G_SUPPLICANT_PEER_GROUP_FAILED,
+} GSupplicantPeerGroupState;
+
 struct _GSupplicantSSID {
 	const void *ssid;
 	unsigned int ssid_len;
@@ -269,6 +278,7 @@ const void *g_supplicant_peer_get_device_address(GSupplicantPeer *peer);
 const char *g_supplicant_peer_get_name(GSupplicantPeer *peer);
 bool g_supplicant_peer_is_wps_pbc(GSupplicantPeer *peer);
 bool g_supplicant_peer_is_wps_pin(GSupplicantPeer *peer);
+bool g_supplicant_peer_is_in_a_group(GSupplicantPeer *peer);
 
 struct _GSupplicantCallbacks {
 	void (*system_ready) (void);
@@ -285,6 +295,8 @@ struct _GSupplicantCallbacks {
 					const char *property);
 	void (*peer_found) (GSupplicantPeer *peer);
 	void (*peer_lost) (GSupplicantPeer *peer);
+	void (*peer_changed) (GSupplicantPeer *peer,
+					GSupplicantPeerGroupState state);
 	void (*debug) (const char *str);
 };
 
