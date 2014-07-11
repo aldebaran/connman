@@ -297,7 +297,8 @@ static int set_connected_dhcp(struct connman_network *network)
 	service = connman_service_lookup_from_network(network);
 	ipconfig_ipv4 = __connman_service_get_ip4config(service);
 
-	err = __connman_dhcp_start(ipconfig_ipv4, network, dhcp_callback);
+	err = __connman_dhcp_start(ipconfig_ipv4, network,
+							dhcp_callback, NULL);
 	if (err < 0) {
 		connman_error("Can not request DHCP lease");
 		return err;
@@ -1700,7 +1701,7 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 			return manual_ipv4_set(network, ipconfig_ipv4);
 		case CONNMAN_IPCONFIG_METHOD_DHCP:
 			return __connman_dhcp_start(ipconfig_ipv4,
-						network, dhcp_callback);
+						network, dhcp_callback, NULL);
 		}
 	}
 

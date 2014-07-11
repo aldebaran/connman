@@ -437,7 +437,8 @@ typedef void (* dhcp_cb) (struct connman_ipconfig *ipconfig,
 			struct connman_network *opt_network,
 			bool success, gpointer data);
 int __connman_dhcp_start(struct connman_ipconfig *ipconfig,
-			struct connman_network *network, dhcp_cb callback);
+			struct connman_network *network, dhcp_cb callback,
+			gpointer user_data);
 void __connman_dhcp_stop(struct connman_ipconfig *ipconfig);
 int __connman_dhcp_init(void);
 void __connman_dhcp_cleanup(void);
