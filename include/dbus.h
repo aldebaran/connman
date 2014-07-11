@@ -188,6 +188,9 @@ int connman_dbus_get_selinux_context(DBusConnection *connection,
                                connman_dbus_get_context_cb_t func,
                                void *user_data);
 
+void connman_dbus_reply_pending(DBusMessage *pending,
+					int error, const char *path);
+
 #ifdef __cplusplus
 }
 #endif

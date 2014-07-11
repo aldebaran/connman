@@ -653,6 +653,38 @@ err:
 	return err;
 }
 
+void connman_dbus_reply_pending(DBusMessage *pending,
+					int error, const char *path)
+{
+	if (pending) {
+		if (error > 0) {
+			DBusMessage *reply;
+
+			reply = __connman_error_failed(pending,	error);
+			if (reply)
+				g_dbus_send_message(connection, reply);
+		} else {
+			const char *sender;
+
+			sender = dbus_message_get_interface(pending);
+			if (!path)
+				path = dbus_message_get_path(pending);
+
+			DBG("sender %s path %s", sender, path);
+
+			if (g_strcmp0(sender, CONNMAN_MANAGER_INTERFACE) == 0)
+				g_dbus_send_reply(connection, pending,
+					DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+			else
+				g_dbus_send_reply(connection, pending,
+							DBUS_TYPE_INVALID);
+		}
+
+		dbus_message_unref(pending);
+	}
+}
+
 DBusConnection *connman_dbus_get_connection(void)
 {
 	if (!connection)

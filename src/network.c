@@ -1469,7 +1469,7 @@ void connman_network_clear_hidden(void *user_data)
 	 * error to the caller telling that we could not find
 	 * any network that we could connect to.
 	 */
-	__connman_service_reply_dbus_pending(user_data, EIO, NULL);
+	connman_dbus_reply_pending(user_data, EIO, NULL);
 }
 
 int connman_network_connect_hidden(struct connman_network *network,
