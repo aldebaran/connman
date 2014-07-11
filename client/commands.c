@@ -2326,6 +2326,11 @@ static void update_services(DBusMessageIter *iter)
 static int populate_service_hash(DBusMessageIter *iter, const char *error,
 				void *user_data)
 {
+	if (error) {
+		fprintf(stderr, "Error getting services: %s", error);
+		return 0;
+	}
+
 	update_services(iter);
 	return 0;
 }
@@ -2387,6 +2392,11 @@ static void update_peers(DBusMessageIter *iter)
 static int populate_peer_hash(DBusMessageIter *iter,
 					const char *error, void *user_data)
 {
+	if (error) {
+		fprintf(stderr, "Error getting peers: %s", error);
+		return 0;
+	}
+
 	update_peers(iter);
 	return 0;
 }
@@ -2447,6 +2457,11 @@ static void update_technologies(DBusMessageIter *iter)
 static int populate_technology_hash(DBusMessageIter *iter, const char *error,
 				void *user_data)
 {
+	if (error) {
+		fprintf(stderr, "Error getting technologies: %s", error);
+		return 0;
+	}
+
 	update_technologies(iter);
 
 	return 0;
