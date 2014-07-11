@@ -168,6 +168,14 @@ struct _GSupplicantScanParams {
 
 typedef struct _GSupplicantScanParams GSupplicantScanParams;
 
+struct _GSupplicantPeerParams {
+	const char *identifier;
+	const char *wps_pin;
+	const char *path;
+};
+
+typedef struct _GSupplicantPeerParams GSupplicantPeerParams;
+
 /* global API */
 typedef void (*GSupplicantCountryCallback) (int result,
 						const char *alpha2,
@@ -179,8 +187,10 @@ int g_supplicant_set_country(const char *alpha2,
 
 /* Interface API */
 struct _GSupplicantInterface;
+struct _GSupplicantPeer;
 
 typedef struct _GSupplicantInterface GSupplicantInterface;
+typedef struct _GSupplicantPeer GSupplicantPeer;
 
 typedef void (*GSupplicantInterfaceCallback) (int result,
 					GSupplicantInterface *interface,
@@ -210,6 +220,14 @@ int g_supplicant_interface_p2p_find(GSupplicantInterface *interface,
 							void *user_data);
 
 int g_supplicant_interface_p2p_stop_find(GSupplicantInterface *interface);
+
+int g_supplicant_interface_p2p_connect(GSupplicantInterface *interface,
+					GSupplicantPeerParams *peer_params,
+					GSupplicantInterfaceCallback callback,
+					void *user_data);
+
+int g_supplicant_interface_p2p_disconnect(GSupplicantInterface *interface,
+					GSupplicantPeerParams *peer_params);
 
 int g_supplicant_interface_connect(GSupplicantInterface *interface,
 					GSupplicantSSID *ssid,
@@ -250,11 +268,9 @@ int g_supplicant_interface_set_p2p_device_config(GSupplicantInterface *interface
 
 /* Network and Peer API */
 struct _GSupplicantNetwork;
-struct _GSupplicantPeer;
 struct _GSupplicantGroup;
 
 typedef struct _GSupplicantNetwork GSupplicantNetwork;
-typedef struct _GSupplicantPeer GSupplicantPeer;
 typedef struct _GSupplicantGroup GSupplicantGroup;
 
 GSupplicantInterface *g_supplicant_network_get_interface(GSupplicantNetwork *network);

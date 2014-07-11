@@ -3165,7 +3165,10 @@ struct interface_connect_data {
 	GSupplicantInterface *interface;
 	char *path;
 	GSupplicantInterfaceCallback callback;
-	GSupplicantSSID *ssid;
+	union {
+		GSupplicantSSID *ssid;
+		GSupplicantPeerParams *peer;
+	};
 	void *user_data;
 };
 
@@ -4602,6 +4605,156 @@ int g_supplicant_interface_p2p_stop_find(GSupplicantInterface *interface)
 	return supplicant_dbus_method_call(interface->path,
 		SUPPLICANT_INTERFACE ".Interface.P2PDevice", "StopFind",
 		NULL, NULL, NULL, NULL);
+}
+
+static void interface_p2p_connect_result(const char *error,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct interface_connect_data *data = user_data;
+	int err = 0;
+
+	SUPPLICANT_DBG("");
+
+	if (error)
+		err = parse_supplicant_error(iter);
+
+	if (data->callback)
+		data->callback(err, data->interface, data->user_data);
+
+	g_free(data->path);
+	g_free(data->peer);
+	g_free(data);
+}
+
+static void interface_p2p_connect_params(DBusMessageIter *iter, void *user_data)
+{
+	struct interface_connect_data *data = user_data;
+	const char *wps = "pbc";
+	DBusMessageIter dict;
+	int go_intent = 7;
+
+	SUPPLICANT_DBG("");
+
+	supplicant_dbus_dict_open(iter, &dict);
+
+	if (data->peer->wps_pin)
+		wps = "pin";
+
+	supplicant_dbus_dict_append_basic(&dict, "peer",
+				DBUS_TYPE_OBJECT_PATH, &data->peer->path);
+	supplicant_dbus_dict_append_basic(&dict, "wps_method",
+				DBUS_TYPE_STRING, &wps);
+	if (data->peer->wps_pin) {
+		supplicant_dbus_dict_append_basic(&dict, "pin",
+				DBUS_TYPE_STRING, &data->peer->wps_pin);
+	}
+
+	supplicant_dbus_dict_append_basic(&dict, "go_intent",
+					DBUS_TYPE_INT32, &go_intent);
+
+	supplicant_dbus_dict_close(iter, &dict);
+}
+
+static gboolean peer_lookup_by_identifier(gpointer key, gpointer value,
+							gpointer user_data)
+{
+	const GSupplicantPeer *peer = value;
+	const char *identifier = user_data;
+
+	if (!g_strcmp0(identifier, peer->identifier))
+		return TRUE;
+
+	return FALSE;
+}
+
+int g_supplicant_interface_p2p_connect(GSupplicantInterface *interface,
+					GSupplicantPeerParams *peer_params,
+					GSupplicantInterfaceCallback callback,
+					void *user_data)
+{
+	struct interface_connect_data *data;
+	int ret;
+
+	SUPPLICANT_DBG("");
+
+	if (!interface->p2p_support)
+		return -ENOTSUP;
+
+	if (!peer_params->path) {
+		GSupplicantPeer *peer;
+
+		peer = g_hash_table_find(interface->peer_table,
+					peer_lookup_by_identifier,
+					(void *) peer_params->identifier);
+		if (!peer)
+			return -ENODEV;
+
+		peer_params->path = peer->path;
+	}
+
+	data = dbus_malloc0(sizeof(*data));
+	data->interface = interface;
+	data->path = g_strdup(interface->path);
+	data->peer = peer_params;
+	data->callback = callback;
+	data->user_data = user_data;
+
+	ret = supplicant_dbus_method_call(interface->path,
+		SUPPLICANT_INTERFACE ".Interface.P2PDevice", "Connect",
+		interface_p2p_connect_params, interface_p2p_connect_result,
+		data, interface);
+	if (ret < 0) {
+		g_free(data->path);
+		dbus_free(data);
+		return ret;
+	}
+
+	return -EINPROGRESS;
+}
+
+int g_supplicant_interface_p2p_disconnect(GSupplicantInterface *interface,
+					GSupplicantPeerParams *peer_params)
+{
+	GSupplicantPeer *peer;
+	int count = 0;
+	GSList *list;
+
+	SUPPLICANT_DBG("");
+
+	if (!interface->p2p_support)
+		return -ENOTSUP;
+
+	peer = g_hash_table_find(interface->peer_table,
+					peer_lookup_by_identifier,
+					(void *) peer_params->identifier);
+	if (!peer)
+		return -ENODEV;
+
+	for (list = peer->groups; list; list = list->next, count++) {
+		const char *group_obj_path = list->data;
+		GSupplicantInterface *g_interface;
+		GSupplicantGroup *group;
+
+		group = g_hash_table_lookup(group_mapping, group_obj_path);
+		if (!group || !group->interface)
+			continue;
+
+		g_interface = group->interface;
+		supplicant_dbus_method_call(g_interface->path,
+				SUPPLICANT_INTERFACE ".Interface.P2PDevice",
+				"Disconnect", NULL, NULL, NULL, g_interface);
+	}
+
+	if (count == 0 && peer->current_group_iface) {
+		supplicant_dbus_method_call(peer->current_group_iface->path,
+				SUPPLICANT_INTERFACE ".Interface.P2PDevice",
+				"Disconnect", NULL, NULL, NULL,
+				peer->current_group_iface->path);
+	}
+
+	peer->current_group_iface = NULL;
+
+	return -EINPROGRESS;
 }
 
 static const char *g_supplicant_rule0 = "type=signal,"
