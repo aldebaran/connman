@@ -34,12 +34,19 @@ static GHashTable *peers_table = NULL;
 
 static struct connman_peer_driver *peer_driver;
 
+struct _peers_notify {
+	int id;
+	GHashTable *add;
+	GHashTable *remove;
+} *peers_notify;
+
 struct connman_peer {
 	int refcount;
 	struct connman_device *device;
 	char *identifier;
 	char *name;
 	char *path;
+	enum connman_peer_state state;
 	bool registered;
 };
 
@@ -65,9 +72,40 @@ static void peer_free(gpointer data)
 	g_free(peer);
 }
 
+static const char *state2string(enum connman_peer_state state)
+{
+	switch (state) {
+	case CONNMAN_PEER_STATE_UNKNOWN:
+		break;
+	case CONNMAN_PEER_STATE_IDLE:
+		return "idle";
+	case CONNMAN_PEER_STATE_ASSOCIATION:
+		return "association";
+	case CONNMAN_PEER_STATE_CONFIGURATION:
+		return "configuration";
+	case CONNMAN_PEER_STATE_READY:
+		return "ready";
+	case CONNMAN_PEER_STATE_DISCONNECT:
+		return "disconnect";
+	case CONNMAN_PEER_STATE_FAILURE:
+		return "failure";
+	}
+
+	return NULL;
+}
+
+static bool allow_property_changed(struct connman_peer *peer)
+{
+	if (g_hash_table_lookup_extended(peers_notify->add, peer->path,
+								NULL, NULL))
+		return false;
+
+	return true;
+}
+
 static void append_properties(DBusMessageIter *iter, struct connman_peer *peer)
 {
-	const char *state = "disconnected";
+	const char *state = state2string(peer->state);
 	DBusMessageIter dict;
 
 	connman_dbus_dict_open(iter, &dict);
@@ -113,11 +151,18 @@ static void append_peer_struct(gpointer key, gpointer value,
 	dbus_message_iter_close_container(array, &entry);
 }
 
-struct _peers_notify {
-	int id;
-	GHashTable *add;
-	GHashTable *remove;
-} *peers_notify;
+static void state_changed(struct connman_peer *peer)
+{
+	const char *state;
+
+	state = state2string(peer->state);
+	if (!state || !allow_property_changed(peer))
+		return;
+
+	connman_dbus_property_changed_basic(peer->path,
+					 CONNMAN_PEER_INTERFACE, "State",
+					 DBUS_TYPE_STRING, &state);
+}
 
 static void append_existing_and_new_peers(gpointer key,
 					gpointer value, gpointer user_data)
@@ -225,6 +270,7 @@ struct connman_peer *connman_peer_create(const char *identifier)
 
 	peer = g_malloc0(sizeof(struct connman_peer));
 	peer->identifier = g_strdup(identifier);
+	peer->state = CONNMAN_PEER_STATE_IDLE;
 
 	peer->refcount = 1;
 
@@ -287,6 +333,35 @@ struct connman_device *connman_peer_get_device(struct connman_peer *peer)
 		return NULL;
 
 	return peer->device;
+}
+
+int connman_peer_set_state(struct connman_peer *peer,
+					enum connman_peer_state new_state)
+{
+	enum connman_peer_state old_state = peer->state;
+
+	if (old_state == new_state)
+		return -EALREADY;
+
+	switch (new_state) {
+	case CONNMAN_PEER_STATE_UNKNOWN:
+		return -EINVAL;
+	case CONNMAN_PEER_STATE_IDLE:
+	case CONNMAN_PEER_STATE_ASSOCIATION:
+	case CONNMAN_PEER_STATE_CONFIGURATION:
+		break;
+	case CONNMAN_PEER_STATE_READY:
+		break;
+	case CONNMAN_PEER_STATE_DISCONNECT:
+		break;
+	case CONNMAN_PEER_STATE_FAILURE:
+		break;
+	};
+
+	peer->state = new_state;
+	state_changed(peer);
+
+	return 0;
 }
 
 static const GDBusMethodTable peer_methods[] = {

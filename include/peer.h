@@ -26,6 +26,16 @@
 extern "C" {
 #endif
 
+enum connman_peer_state {
+	CONNMAN_PEER_STATE_UNKNOWN       = 0,
+	CONNMAN_PEER_STATE_IDLE          = 1,
+	CONNMAN_PEER_STATE_ASSOCIATION   = 2,
+	CONNMAN_PEER_STATE_CONFIGURATION = 3,
+	CONNMAN_PEER_STATE_READY         = 4,
+	CONNMAN_PEER_STATE_DISCONNECT    = 5,
+	CONNMAN_PEER_STATE_FAILURE       = 6,
+};
+
 struct connman_peer;
 
 struct connman_peer *connman_peer_create(const char *identifier);
@@ -46,6 +56,8 @@ void connman_peer_set_name(struct connman_peer *peer, const char *name);
 void connman_peer_set_device(struct connman_peer *peer,
 				struct connman_device *device);
 struct connman_device *connman_peer_get_device(struct connman_peer *peer);
+int connman_peer_set_state(struct connman_peer *peer,
+					enum connman_peer_state new_state);
 
 int connman_peer_register(struct connman_peer *peer);
 void connman_peer_unregister(struct connman_peer *peer);
