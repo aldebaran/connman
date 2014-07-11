@@ -433,10 +433,12 @@ enum __connman_dhcpv6_status {
 typedef void (* dhcpv6_cb) (struct connman_network *network,
 			enum __connman_dhcpv6_status status, gpointer data);
 
-typedef void (* dhcp_cb) (struct connman_network *network,
+typedef void (* dhcp_cb) (struct connman_ipconfig *ipconfig,
+			struct connman_network *opt_network,
 			bool success, gpointer data);
-int __connman_dhcp_start(struct connman_network *network, dhcp_cb callback);
-void __connman_dhcp_stop(struct connman_network *network);
+int __connman_dhcp_start(struct connman_ipconfig *ipconfig,
+			struct connman_network *network, dhcp_cb callback);
+void __connman_dhcp_stop(struct connman_ipconfig *ipconfig);
 int __connman_dhcp_init(void);
 void __connman_dhcp_cleanup(void);
 int __connman_dhcpv6_init(void);

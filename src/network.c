@@ -202,7 +202,8 @@ static void dhcp_failure(struct connman_network *network)
 	__connman_ipconfig_gateway_remove(ipconfig_ipv4);
 }
 
-static void dhcp_callback(struct connman_network *network,
+static void dhcp_callback(struct connman_ipconfig *ipconfig,
+			struct connman_network *network,
 			bool success, gpointer data)
 {
 	if (success)
@@ -285,13 +286,18 @@ err:
 
 static int set_connected_dhcp(struct connman_network *network)
 {
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig_ipv4;
 	int err;
 
 	DBG("network %p", network);
 
 	set_configuration(network, CONNMAN_IPCONFIG_TYPE_IPV4);
 
-	err = __connman_dhcp_start(network, dhcp_callback);
+	service = connman_service_lookup_from_network(network);
+	ipconfig_ipv4 = __connman_service_get_ip4config(service);
+
+	err = __connman_dhcp_start(ipconfig_ipv4, network, dhcp_callback);
 	if (err < 0) {
 		connman_error("Can not request DHCP lease");
 		return err;
@@ -717,7 +723,7 @@ static void set_disconnected(struct connman_network *network)
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
 			break;
 		case CONNMAN_IPCONFIG_METHOD_DHCP:
-			__connman_dhcp_stop(network);
+			__connman_dhcp_stop(ipconfig_ipv4);
 			break;
 		}
 	}
@@ -1607,6 +1613,7 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 					struct connman_ipconfig *ipconfig)
 {
 	struct connman_service *service;
+	struct connman_ipconfig *ipconfig_ipv4;
 	enum connman_ipconfig_method method;
 	enum connman_ipconfig_type type;
 
@@ -1614,6 +1621,7 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 	if (!service)
 		return -EINVAL;
 
+	ipconfig_ipv4 = __connman_service_get_ip4config(service);
 	method = __connman_ipconfig_get_method(ipconfig);
 	type = __connman_ipconfig_get_config_type(ipconfig);
 
@@ -1629,7 +1637,7 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 		__connman_ipconfig_address_remove(ipconfig);
 		break;
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		__connman_dhcp_stop(network);
+		__connman_dhcp_stop(ipconfig_ipv4);
 		break;
 	}
 
@@ -1691,7 +1699,8 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
 			return manual_ipv4_set(network, ipconfig_ipv4);
 		case CONNMAN_IPCONFIG_METHOD_DHCP:
-			return __connman_dhcp_start(network, dhcp_callback);
+			return __connman_dhcp_start(ipconfig_ipv4,
+						network, dhcp_callback);
 		}
 	}
 
