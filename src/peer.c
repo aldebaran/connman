@@ -35,16 +35,34 @@ static GHashTable *peers_table = NULL;
 static struct connman_peer_driver *peer_driver;
 
 struct connman_peer {
+	int refcount;
 	struct connman_device *device;
 	char *identifier;
 	char *name;
 	char *path;
+	bool registered;
 };
 
 static void peer_free(gpointer data)
 {
 	struct connman_peer *peer = data;
-	connman_peer_destroy(peer);
+
+	connman_peer_unregister(peer);
+
+	if (peer->path) {
+		g_free(peer->path);
+		peer->path = NULL;
+	}
+
+	if (peer->device) {
+		connman_device_unref(peer->device);
+		peer->device = NULL;
+	}
+
+	g_free(peer->identifier);
+	g_free(peer->name);
+
+	g_free(peer);
 }
 
 static void append_properties(DBusMessageIter *iter, struct connman_peer *peer)
@@ -205,28 +223,35 @@ struct connman_peer *connman_peer_create(const char *identifier)
 	peer = g_malloc0(sizeof(struct connman_peer));
 	peer->identifier = g_strdup(identifier);
 
+	peer->refcount = 1;
+
 	return peer;
 }
 
-void connman_peer_destroy(struct connman_peer *peer)
+struct connman_peer *connman_peer_ref_debug(struct connman_peer *peer,
+				const char *file, int line, const char *caller)
 {
-	if (!peer)
+	DBG("%p ref %d by %s:%d:%s()", peer, peer->refcount + 1,
+						file, line, caller);
+
+	__sync_fetch_and_add(&peer->refcount, 1);
+
+	return peer;
+}
+
+void connman_peer_unref_debug(struct connman_peer *peer,
+				const char *file, int line, const char *caller)
+{
+	DBG("%p ref %d by %s:%d:%s()", peer, peer->refcount - 1,
+						file, line, caller);
+
+	if (__sync_fetch_and_sub(&peer->refcount, 1) != 1)
 		return;
 
-	if (peer->path) {
-		peer_removed(peer);
-		g_dbus_unregister_interface(connection, peer->path,
-						CONNMAN_PEER_INTERFACE);
-		g_free(peer->path);
-	}
+	if (!peer->registered && !peer->path)
+		return peer_free(peer);
 
-	if (peer->device)
-		connman_device_unref(peer->device);
-
-	g_free(peer->identifier);
-	g_free(peer->name);
-
-	g_free(peer);
+	g_hash_table_remove(peers_table, peer->path);
 }
 
 const char *connman_peer_get_identifier(struct connman_peer *peer)
@@ -287,7 +312,7 @@ int connman_peer_register(struct connman_peer *peer)
 {
 	DBG("peer %p", peer);
 
-	if (peer->path)
+	if (peer->path && peer->registered)
 		return -EALREADY;
 
 	peer->path = get_peer_path(peer->device, peer->identifier);
@@ -299,6 +324,7 @@ int connman_peer_register(struct connman_peer *peer)
 					CONNMAN_PEER_INTERFACE,
 					peer_methods, peer_signals,
 					NULL, peer, NULL);
+	peer->registered = true;
 	peer_added(peer);
 
 	return 0;
@@ -308,10 +334,13 @@ void connman_peer_unregister(struct connman_peer *peer)
 {
 	DBG("peer %p", peer);
 
-	if (peer->path)
-		g_hash_table_remove(peers_table, peer->path);
-	else
-		connman_peer_destroy(peer);
+	if (!peer->path || !peer->registered)
+		return;
+
+	g_dbus_unregister_interface(connection, peer->path,
+					CONNMAN_PEER_INTERFACE);
+	peer->registered = false;
+	peer_removed(peer);
 }
 
 struct connman_peer *connman_peer_get(struct connman_device *device,
@@ -370,5 +399,7 @@ void __connman_peer_cleanup(void)
 	DBG("");
 
 	g_hash_table_destroy(peers_table);
+	peers_table = NULL;
 	dbus_connection_unref(connection);
+	connection = NULL;
 }

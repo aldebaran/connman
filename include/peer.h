@@ -29,7 +29,17 @@ extern "C" {
 struct connman_peer;
 
 struct connman_peer *connman_peer_create(const char *identifier);
-void connman_peer_destroy(struct connman_peer *peer);
+
+#define connman_peer_ref(peer) \
+	connman_peer_ref_debug(peer, __FILE__, __LINE__, __func__)
+
+#define connman_peer_unref(peer) \
+	connman_peer_unref_debug(peer, __FILE__, __LINE__, __func__)
+
+struct connman_peer *connman_peer_ref_debug(struct connman_peer *peer,
+			const char *file, int line, const char *caller);
+void connman_peer_unref_debug(struct connman_peer *peer,
+			const char *file, int line, const char *caller);
 
 const char *connman_peer_get_identifier(struct connman_peer *peer);
 void connman_peer_set_name(struct connman_peer *peer, const char *name);

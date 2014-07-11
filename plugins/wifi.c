@@ -2109,8 +2109,10 @@ static void peer_lost(GSupplicantPeer *peer)
 	DBG("ident: %s", identifier);
 
 	connman_peer = connman_peer_get(wifi->device, identifier);
-	if (connman_peer)
+	if (connman_peer) {
 		connman_peer_unregister(connman_peer);
+		connman_peer_unref(connman_peer);
+	}
 }
 
 static void debug(const char *str)
