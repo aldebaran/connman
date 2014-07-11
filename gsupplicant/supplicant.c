@@ -31,6 +31,7 @@
 #include <syslog.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <netinet/if_ether.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -169,6 +170,7 @@ struct _GSupplicantInterface {
 	GSupplicantWpsState wps_state;
 	GHashTable *network_table;
 	GHashTable *peer_table;
+	GHashTable *group_table;
 	GHashTable *net_mapping;
 	GHashTable *bss_mapping;
 	void *data;
@@ -220,10 +222,17 @@ struct _GSupplicantNetwork {
 struct _GSupplicantPeer {
 	GSupplicantInterface *interface;
 	char *path;
-	unsigned char device_address[6];
+	unsigned char device_address[ETH_ALEN];
+	unsigned char iface_address[ETH_ALEN];
 	char *name;
 	char *identifier;
 	unsigned int wps_capabilities;
+};
+
+struct _GSupplicantGroup {
+	GSupplicantInterface *interface;
+	char *path;
+	int role;
 };
 
 static inline void debug(const char *format, ...)
@@ -478,6 +487,14 @@ static void callback_peer_lost(GSupplicantPeer *peer)
 	callbacks_pointer->peer_lost(peer);
 }
 
+static void remove_group(gpointer data)
+{
+	GSupplicantGroup *group = data;
+
+	g_free(group->path);
+	g_free(group);
+}
+
 static void remove_interface(gpointer data)
 {
 	GSupplicantInterface *interface = data;
@@ -486,6 +503,7 @@ static void remove_interface(gpointer data)
 	g_hash_table_destroy(interface->net_mapping);
 	g_hash_table_destroy(interface->network_table);
 	g_hash_table_destroy(interface->peer_table);
+	g_hash_table_destroy(interface->group_table);
 
 	if (interface->scan_callback) {
 		SUPPLICANT_DBG("call interface %p callback %p scanning %d",
@@ -1936,6 +1954,8 @@ static GSupplicantInterface *interface_alloc(const char *path)
 					g_str_equal, NULL, remove_network);
 	interface->peer_table = g_hash_table_new_full(g_str_hash,
 					g_str_equal, NULL, remove_peer);
+	interface->group_table = g_hash_table_new_full(g_str_hash,
+					g_str_equal, NULL, remove_group);
 	interface->net_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
 								NULL, NULL);
 	interface->bss_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
@@ -2425,12 +2445,12 @@ static void signal_wps_event(const char *path, DBusMessageIter *iter)
 
 static void create_peer_identifier(GSupplicantPeer *peer)
 {
-	const unsigned char test[6] = {};
+	const unsigned char test[ETH_ALEN] = {};
 
 	if (!peer)
 		return;
 
-	if (!memcmp(peer->device_address, test, 6)) {
+	if (!memcmp(peer->device_address, test, ETH_ALEN)) {
 		peer->identifier = g_strdup(peer->name);
 		return;
 	}
@@ -2472,7 +2492,7 @@ static void peer_property(const char *key, DBusMessageIter *iter,
 		dbus_message_iter_recurse(iter, &array);
 		dbus_message_iter_get_fixed_array(&array, &dev_addr, &len);
 
-		if (len == 6)
+		if (len == ETH_ALEN)
 			memcpy(peer->device_address, dev_addr, len);
 	} else if (g_strcmp0(key, "DeviceName") == 0) {
 		const char *str = NULL;
@@ -2555,6 +2575,133 @@ static void signal_peer_lost(const char *path, DBusMessageIter *iter)
 	g_hash_table_remove(interface->peer_table, obj_path);
 }
 
+struct group_sig_data {
+	const char *peer_obj_path;
+	unsigned char iface_address[ETH_ALEN];
+	const char *interface_obj_path;
+	const char *group_obj_path;
+	int role;
+};
+
+static void group_sig_property(const char *key, DBusMessageIter *iter,
+							void *user_data)
+{
+	struct group_sig_data *data = user_data;
+
+	if (!key)
+		return;
+
+	if (g_strcmp0(key, "peer_interface_addr") == 0) {
+		unsigned char *dev_addr;
+		DBusMessageIter array;
+		int len;
+
+		dbus_message_iter_recurse(iter, &array);
+		dbus_message_iter_get_fixed_array(&array, &dev_addr, &len);
+
+		if (len == ETH_ALEN)
+			memcpy(data->iface_address, dev_addr, len);
+
+	} else if (g_strcmp0(key, "role") == 0) {
+		const char *str = NULL;
+
+		dbus_message_iter_get_basic(iter, &str);
+		if (g_strcmp0(str, "GO") == 0)
+			data->role = G_SUPPLICANT_GROUP_ROLE_GO;
+		else
+			data->role = G_SUPPLICANT_GROUP_ROLE_CLIENT;
+	} else if (g_strcmp0(key, "peer_object") == 0)
+		dbus_message_iter_get_basic(iter, &data->peer_obj_path);
+	else if (g_strcmp0(key, "interface_object") == 0)
+		dbus_message_iter_get_basic(iter, &data->interface_obj_path);
+	else if (g_strcmp0(key, "group_object") == 0)
+		dbus_message_iter_get_basic(iter, &data->group_obj_path);
+
+}
+
+static void signal_group_success(const char *path, DBusMessageIter *iter)
+{
+	GSupplicantInterface *interface;
+	struct group_sig_data data = {};
+	GSupplicantPeer *peer;
+
+	SUPPLICANT_DBG("");
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (!interface)
+		return;
+
+	supplicant_dbus_property_foreach(iter, group_sig_property, &data);
+	if (!data.peer_obj_path)
+		return;
+
+	peer = g_hash_table_lookup(interface->peer_table, data.peer_obj_path);
+	if (!peer)
+		return;
+
+	memcpy(peer->iface_address, data.iface_address, ETH_ALEN);
+}
+
+static void signal_group_failure(const char *path, DBusMessageIter *iter)
+{
+	SUPPLICANT_DBG("");
+}
+
+static void signal_group_started(const char *path, DBusMessageIter *iter)
+{
+	GSupplicantInterface *interface;
+	struct group_sig_data data = {};
+	GSupplicantGroup *group;
+
+	SUPPLICANT_DBG("");
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (!interface)
+		return;
+
+	supplicant_dbus_property_foreach(iter, group_sig_property, &data);
+	if (!data.interface_obj_path || !data.group_obj_path)
+		return;
+
+	interface = g_hash_table_lookup(interface_table,
+						data.interface_obj_path);
+	if (!interface)
+		return;
+
+	group = g_hash_table_lookup(interface->group_table,
+						data.group_obj_path);
+	if (group)
+		return;
+
+	group = g_try_new0(GSupplicantGroup, 1);
+	if (!group)
+		return;
+
+	group->interface = interface;
+	group->path = g_strdup(data.group_obj_path);
+	group->role = data.role;
+
+	g_hash_table_insert(interface->group_table, group->path, group);
+}
+
+static void signal_group_finished(const char *path, DBusMessageIter *iter)
+{
+	GSupplicantInterface *interface;
+	struct group_sig_data data = {};
+
+	SUPPLICANT_DBG("");
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (!interface)
+		return;
+
+	supplicant_dbus_property_foreach(iter, group_sig_property, &data);
+	if (!data.interface_obj_path || !data.group_obj_path)
+		return;
+
+	g_hash_table_remove(interface->group_table, data.group_obj_path);
+}
+
 static struct {
 	const char *interface;
 	const char *member;
@@ -2581,6 +2728,11 @@ static struct {
 
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "DeviceFound", signal_peer_found },
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "DeviceLost",  signal_peer_lost  },
+
+	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GONegotiationSuccess", signal_group_success },
+	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GONegotiationFailure", signal_group_failure },
+	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GroupStarted", signal_group_started },
+	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GroupFinished", signal_group_finished },
 
 	{ }
 };

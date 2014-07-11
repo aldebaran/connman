@@ -80,6 +80,9 @@ extern "C" {
 
 #define G_SUPPLICANT_WPS_CONFIG_PBC	0x0080
 
+#define G_SUPPLICANT_GROUP_ROLE_CLIENT	(1 << 0)
+#define G_SUPPLICANT_GROUP_ROLE_GO      (1 << 1)
+
 typedef enum {
 	G_SUPPLICANT_MODE_UNKNOWN,
 	G_SUPPLICANT_MODE_INFRA,
@@ -239,9 +242,11 @@ int g_supplicant_interface_set_p2p_device_config(GSupplicantInterface *interface
 /* Network and Peer API */
 struct _GSupplicantNetwork;
 struct _GSupplicantPeer;
+struct _GSupplicantGroup;
 
 typedef struct _GSupplicantNetwork GSupplicantNetwork;
 typedef struct _GSupplicantPeer GSupplicantPeer;
+typedef struct _GSupplicantGroup GSupplicantGroup;
 
 GSupplicantInterface *g_supplicant_network_get_interface(GSupplicantNetwork *network);
 const char *g_supplicant_network_get_name(GSupplicantNetwork *network);
