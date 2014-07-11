@@ -32,6 +32,8 @@ static DBusConnection *connection = NULL;
 
 static GHashTable *peers_table = NULL;
 
+static struct connman_peer_driver *peer_driver;
+
 struct connman_peer {
 	struct connman_device *device;
 	char *identifier;
@@ -322,6 +324,24 @@ struct connman_peer *connman_peer_get(struct connman_device *device,
 	g_free(ident);
 
 	return peer;
+}
+
+int connman_peer_driver_register(struct connman_peer_driver *driver)
+{
+	if (peer_driver && peer_driver != driver)
+		return -EINVAL;
+
+	peer_driver = driver;
+
+	return 0;
+}
+
+void connman_peer_driver_unregister(struct connman_peer_driver *driver)
+{
+	if (peer_driver != driver)
+		return;
+
+	peer_driver = NULL;
 }
 
 void __connman_peer_list_struct(DBusMessageIter *array)

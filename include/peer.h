@@ -43,6 +43,14 @@ void connman_peer_unregister(struct connman_peer *peer);
 struct connman_peer *connman_peer_get(struct connman_device *device,
 						const char *identifier);
 
+struct connman_peer_driver {
+	int (*connect) (struct connman_peer *peer);
+	int (*disconnect) (struct connman_peer *peer);
+};
+
+int connman_peer_driver_register(struct connman_peer_driver *driver);
+void connman_peer_driver_unregister(struct connman_peer_driver *driver);
+
 #ifdef __cplusplus
 }
 #endif
