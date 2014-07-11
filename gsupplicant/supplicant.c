@@ -237,6 +237,7 @@ struct _GSupplicantGroup {
 	GSupplicantInterface *interface;
 	char *path;
 	int role;
+	GSList *members;
 };
 
 static inline void debug(const char *format, ...)
@@ -494,6 +495,9 @@ static void callback_peer_lost(GSupplicantPeer *peer)
 static void remove_group(gpointer data)
 {
 	GSupplicantGroup *group = data;
+
+	if (group->members)
+		g_slist_free_full(group->members, g_free);
 
 	g_free(group->path);
 	g_free(group);
@@ -2783,6 +2787,58 @@ static void signal_group_finished(const char *path, DBusMessageIter *iter)
 	g_hash_table_remove(interface->group_table, data.group_obj_path);
 }
 
+static void signal_group_peer_joined(const char *path, DBusMessageIter *iter)
+{
+	const char *peer_path = NULL;
+	GSupplicantInterface *interface;
+	GSupplicantGroup *group;
+	GSupplicantPeer *peer;
+
+	SUPPLICANT_DBG("");
+
+	group = g_hash_table_lookup(group_mapping, path);
+	if (!group)
+		return;
+
+	dbus_message_iter_get_basic(iter, &peer_path);
+	if (!peer_path)
+		return;
+
+	interface = g_hash_table_lookup(peer_mapping, peer_path);
+	if (!interface)
+		return;
+
+	peer = g_hash_table_lookup(interface->peer_table, peer_path);
+	if (!peer)
+		return;
+
+	group->members = g_slist_prepend(group->members, g_strdup(peer_path));
+}
+
+static void signal_group_peer_disconnected(const char *path, DBusMessageIter *iter)
+{
+	const char *peer_path = NULL;
+	GSupplicantGroup *group;
+	GSList *elem;
+
+	SUPPLICANT_DBG("");
+
+	group = g_hash_table_lookup(group_mapping, path);
+	if (!group)
+		return;
+
+	dbus_message_iter_get_basic(iter, &peer_path);
+	if (!peer_path)
+		return;
+
+	elem = g_slist_find_custom(group->members, peer_path, g_str_equal);
+	if (!elem)
+		return;
+
+	g_free(elem->data);
+	group->members = g_slist_delete_link(group->members, elem);
+}
+
 static struct {
 	const char *interface;
 	const char *member;
@@ -2816,6 +2872,9 @@ static struct {
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GONegotiationFailure", signal_group_failure },
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GroupStarted", signal_group_started },
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GroupFinished", signal_group_finished },
+
+	{ SUPPLICANT_INTERFACE ".Group", "PeerJoined", signal_group_peer_joined },
+	{ SUPPLICANT_INTERFACE ".Group", "PeerDisconnected", signal_group_peer_disconnected },
 
 	{ }
 };
