@@ -660,6 +660,7 @@ static int connect_return(DBusMessageIter *iter, const char *error,
 
 static int cmd_connect(char *args[], int num, struct connman_option *options)
 {
+	const char *iface = "net.connman.Service";
 	char *path;
 
 	if (num > 2)
@@ -671,10 +672,14 @@ static int cmd_connect(char *args[], int num, struct connman_option *options)
 	if (check_dbus_name(args[1]) == false)
 		return -EINVAL;
 
-	path = g_strdup_printf("/net/connman/service/%s", args[1]);
+	if (g_strstr_len(args[1], 5, "peer_") == args[1]) {
+		iface = "net.connman.Peer";
+		path = g_strdup_printf("/net/connman/peer/%s", args[1]);
+	} else
+		path = g_strdup_printf("/net/connman/service/%s", args[1]);
+
 	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE, path,
-			"net.connman.Service", "Connect",
-			connect_return, path, NULL, NULL);
+			iface, "Connect", connect_return, path, NULL, NULL);
 }
 
 static int disconnect_return(DBusMessageIter *iter, const char *error,
@@ -696,6 +701,7 @@ static int disconnect_return(DBusMessageIter *iter, const char *error,
 
 static int cmd_disconnect(char *args[], int num, struct connman_option *options)
 {
+	const char *iface = "net.connman.Service";
 	char *path;
 
 	if (num > 2)
@@ -707,10 +713,15 @@ static int cmd_disconnect(char *args[], int num, struct connman_option *options)
 	if (check_dbus_name(args[1]) == false)
 		return -EINVAL;
 
-	path = g_strdup_printf("/net/connman/service/%s", args[1]);
-	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE, path,
-			"net.connman.Service", "Disconnect",
-			disconnect_return, path, NULL, NULL);
+	if (g_strstr_len(args[1], 5, "peer_") == args[1]) {
+		iface = "net.connman.Peer";
+		path = g_strdup_printf("/net/connman/peer/%s", args[1]);
+	} else
+		path = g_strdup_printf("/net/connman/service/%s", args[1]);
+
+	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE,
+					path, iface, "Disconnect",
+					disconnect_return, path, NULL, NULL);
 }
 
 static int config_return(DBusMessageIter *iter, const char *error,
@@ -2115,10 +2126,10 @@ static const struct {
 	{ "scan",         "<technology>", NULL,            cmd_scan,
 	  "Scans for new services for given technology",
 	  lookup_technology_arg },
-	{ "connect",      "<service>",    NULL,            cmd_connect,
-	  "Connect a given service", lookup_service_arg },
-	{ "disconnect",   "<service>",    NULL,            cmd_disconnect,
-	  "Disconnect a given service", lookup_service_arg },
+	{ "connect",      "<service/peer>", NULL,          cmd_connect,
+	  "Connect a given service or peer", lookup_service_arg },
+	{ "disconnect",   "<service/peer>", NULL,          cmd_disconnect,
+	  "Disconnect a given service or peer", lookup_service_arg },
 	{ "config",       "<service>",    config_options,  cmd_config,
 	  "Set service configuration options", lookup_config },
 	{ "monitor",      "[off]",        monitor_options, cmd_monitor,

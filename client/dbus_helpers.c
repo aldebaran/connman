@@ -27,7 +27,7 @@
 #include "input.h"
 #include "dbus_helpers.h"
 
-#define TIMEOUT         60000
+#define TIMEOUT         120000
 
 void __connmanctl_dbus_print(DBusMessageIter *iter, const char *pre,
 		const char *dict, const char *sep)
