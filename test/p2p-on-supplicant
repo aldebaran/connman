@@ -163,18 +163,24 @@ class Wpa_s:
         if args[0].debug:
             print_tuple(args[1:])
 
-    """
-        It should be: __DeviceFound(self, object_path, properties)
-        wpa_supplicant's DBus API is buggy here:
-            - no properties are given
-    """
+    def __peer_if_p2p_property_changed(*args, **kwargs):
+        print 'Peer - ',
+        args[0].__p2p_property_changed(*args, **kwargs)
+
     def __DeviceFound(self, object_path):
         self.peers[object_path] = None
 
         peer = self.bus.get_object(WPA_INTF, object_path)
         peer_if = dbus.Interface(peer, DBUS_PROPERTIES_INTF)
 
+        self.bus.add_signal_receiver(self.__peer_if_p2p_property_changed,
+                                     dbus_interface=WPA_PEER_INTF,
+                                     path=object_path, member_keyword='signal')
+
         self.peers[object_path] = peer_if.GetAll(WPA_PEER_INTF)
+
+        if self.debug:
+            print_dict(self.peers[object_path])
 
     def __DeviceLost(self, object_path):
         if object_path in self.peers:
@@ -194,9 +200,12 @@ class Wpa_s:
         print 'Group - ',
         args[0].__p2p_property_changed(*args, **kwargs)
 
-    def __GroupFinished(self, ifname, role):
+    def __GroupFinished(self, properties):
         print 'Group running on %s is being removed' % ifname
         self.group_obj = self.group_if = self.group_iface_path = None
+
+        if self.debug:
+            print_dict(properties)
 
     def __InvitationResult(self, response):
         print 'Invitation result status: %d ' % response['status']
@@ -233,7 +242,7 @@ class Wpa_s:
         self.bus.add_signal_receiver(self.__GroupFinished,
                                 dbus_interface=WPA_P2P_INTF,
                                 path=self.group_iface_path,
-                                member_keyword='signal')
+                                signal_name='GroupFinished')
         self.bus.add_signal_receiver(self.__InvitationResult,
                                 dbus_interface=WPA_P2P_INTF,
                                 path=self.iface_path,
@@ -396,9 +405,13 @@ class Wpa_s:
 
     @checkarg(nb_args = 1)
     def p2p_peer(self, args):
-        peer = self.__find_peer(args[0])
-        if peer:
-            print_dict(peer)
+        peer_path = self.__find_peer(args[0], True)
+        if peer_path:
+            peer = self.bus.get_object(WPA_INTF, peer_path)
+            peer_if = dbus.Interface(peer, DBUS_PROPERTIES_INTF)
+            self.peers[peer_path] = peer_if.GetAll(WPA_PEER_INTF)
+
+            print_dict(self.peers[peer_path])
 
     @checkarg(nb_args = 1)
     def p2p_connect(self, args):
