@@ -223,6 +223,7 @@ struct _GSupplicantPeer {
 	unsigned char device_address[6];
 	char *name;
 	char *identifier;
+	unsigned int wps_capabilities;
 };
 
 static inline void debug(const char *format, ...)
@@ -1009,6 +1010,28 @@ const char *g_supplicant_peer_get_name(GSupplicantPeer *peer)
 		return NULL;
 
 	return peer->name;
+}
+
+bool g_supplicant_peer_is_wps_pbc(GSupplicantPeer *peer)
+{
+	if (!peer)
+		return false;
+
+	if (peer->wps_capabilities & G_SUPPLICANT_WPS_PBC)
+		return true;
+
+	return false;
+}
+
+bool g_supplicant_peer_is_wps_pin(GSupplicantPeer *peer)
+{
+	if (!peer)
+		return false;
+
+	if (peer->wps_capabilities & G_SUPPLICANT_WPS_PIN)
+		return true;
+
+	return false;
 }
 
 static void merge_network(GSupplicantNetwork *network)
@@ -2455,6 +2478,15 @@ static void peer_property(const char *key, DBusMessageIter *iter,
 		dbus_message_iter_get_basic(iter, &str);
 		if (str)
 			peer->name = g_strdup(str);
+	} else if (g_strcmp0(key, "config_method") == 0) {
+		uint16_t wps_config;
+
+		dbus_message_iter_get_basic(iter, &wps_config);
+
+		if (wps_config & G_SUPPLICANT_WPS_CONFIG_PBC)
+			peer->wps_capabilities |= G_SUPPLICANT_WPS_PBC;
+		if (wps_config & ~G_SUPPLICANT_WPS_CONFIG_PBC)
+			peer->wps_capabilities |= G_SUPPLICANT_WPS_PIN;
 	}
 }
 

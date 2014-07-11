@@ -78,6 +78,8 @@ extern "C" {
 #define G_SUPPLICANT_WPS_PIN            (1 << 2)
 #define G_SUPPLICANT_WPS_REGISTRAR      (1 << 3)
 
+#define G_SUPPLICANT_WPS_CONFIG_PBC	0x0080
+
 typedef enum {
 	G_SUPPLICANT_MODE_UNKNOWN,
 	G_SUPPLICANT_MODE_INFRA,
@@ -258,6 +260,8 @@ GSupplicantInterface *g_supplicant_peer_get_interface(GSupplicantPeer *peer);
 const char *g_supplicant_peer_get_identifier(GSupplicantPeer *peer);
 const void *g_supplicant_peer_get_device_address(GSupplicantPeer *peer);
 const char *g_supplicant_peer_get_name(GSupplicantPeer *peer);
+bool g_supplicant_peer_is_wps_pbc(GSupplicantPeer *peer);
+bool g_supplicant_peer_is_wps_pin(GSupplicantPeer *peer);
 
 struct _GSupplicantCallbacks {
 	void (*system_ready) (void);
