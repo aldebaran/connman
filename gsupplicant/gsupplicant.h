@@ -279,6 +279,7 @@ const char *g_supplicant_peer_get_name(GSupplicantPeer *peer);
 bool g_supplicant_peer_is_wps_pbc(GSupplicantPeer *peer);
 bool g_supplicant_peer_is_wps_pin(GSupplicantPeer *peer);
 bool g_supplicant_peer_is_in_a_group(GSupplicantPeer *peer);
+GSupplicantInterface *g_supplicant_peer_get_group_interface(GSupplicantPeer *peer);
 
 struct _GSupplicantCallbacks {
 	void (*system_ready) (void);

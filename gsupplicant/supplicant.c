@@ -1090,6 +1090,14 @@ bool g_supplicant_peer_is_in_a_group(GSupplicantPeer *peer)
 	return true;
 }
 
+GSupplicantInterface *g_supplicant_peer_get_group_interface(GSupplicantPeer *peer)
+{
+	if (!peer)
+		return NULL;
+
+	return (GSupplicantInterface *) peer->current_group_iface;
+}
+
 static void merge_network(GSupplicantNetwork *network)
 {
 	GString *str;
