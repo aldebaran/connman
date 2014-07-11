@@ -47,6 +47,7 @@ struct connman_peer {
 	char *name;
 	char *path;
 	enum connman_peer_state state;
+	struct connman_ipconfig *ipconfig;
 	bool registered;
 };
 
@@ -59,6 +60,13 @@ static void peer_free(gpointer data)
 	if (peer->path) {
 		g_free(peer->path);
 		peer->path = NULL;
+	}
+
+	if (peer->ipconfig) {
+		__connman_ipconfig_set_ops(peer->ipconfig, NULL);
+		__connman_ipconfig_set_data(peer->ipconfig, NULL);
+		__connman_ipconfig_unref(peer->ipconfig);
+		peer->ipconfig = NULL;
 	}
 
 	if (peer->device) {
@@ -335,10 +343,34 @@ struct connman_device *connman_peer_get_device(struct connman_peer *peer)
 	return peer->device;
 }
 
+static void dhcp_callback(struct connman_ipconfig *ipconfig,
+			struct connman_network *network,
+			bool success, gpointer data)
+{
+	struct connman_peer *peer = data;
+	int err;
+
+	if (!success)
+		goto error;
+
+	DBG("lease acquired for ipconfig %p", ipconfig);
+
+	err = __connman_ipconfig_address_add(ipconfig);
+	if (err < 0)
+		goto error;
+
+	return;
+
+error:
+	__connman_ipconfig_address_remove(ipconfig);
+	connman_peer_set_state(peer, CONNMAN_PEER_STATE_FAILURE);
+}
+
 int connman_peer_set_state(struct connman_peer *peer,
 					enum connman_peer_state new_state)
 {
 	enum connman_peer_state old_state = peer->state;
+	int err;
 
 	if (old_state == new_state)
 		return -EALREADY;
@@ -348,13 +380,24 @@ int connman_peer_set_state(struct connman_peer *peer,
 		return -EINVAL;
 	case CONNMAN_PEER_STATE_IDLE:
 	case CONNMAN_PEER_STATE_ASSOCIATION:
+		break;
 	case CONNMAN_PEER_STATE_CONFIGURATION:
+		__connman_ipconfig_enable(peer->ipconfig);
+
+		err = __connman_dhcp_start(peer->ipconfig,
+						NULL, dhcp_callback, peer);
+		if (err < 0)
+			return connman_peer_set_state(peer,
+						CONNMAN_PEER_STATE_FAILURE);
 		break;
 	case CONNMAN_PEER_STATE_READY:
 		break;
 	case CONNMAN_PEER_STATE_DISCONNECT:
 		break;
 	case CONNMAN_PEER_STATE_FAILURE:
+		__connman_dhcp_stop(peer->ipconfig);
+		__connman_ipconfig_disable(peer->ipconfig);
+
 		break;
 	};
 
@@ -362,6 +405,76 @@ int connman_peer_set_state(struct connman_peer *peer,
 	state_changed(peer);
 
 	return 0;
+}
+
+static void peer_up(struct connman_ipconfig *ipconfig, const char *ifname)
+{
+	DBG("%s up", ifname);
+}
+
+static void peer_down(struct connman_ipconfig *ipconfig, const char *ifname)
+{
+	DBG("%s down", ifname);
+}
+
+static void peer_lower_up(struct connman_ipconfig *ipconfig,
+							const char *ifname)
+{
+	DBG("%s lower up", ifname);
+}
+
+static void peer_lower_down(struct connman_ipconfig *ipconfig,
+							const char *ifname)
+{
+	struct connman_peer *peer = __connman_ipconfig_get_data(ipconfig);
+
+	DBG("%s lower down", ifname);
+
+	__connman_ipconfig_disable(ipconfig);
+	connman_peer_set_state(peer, CONNMAN_PEER_STATE_DISCONNECT);
+}
+
+static void peer_ip_bound(struct connman_ipconfig *ipconfig,
+							const char *ifname)
+{
+	struct connman_peer *peer = __connman_ipconfig_get_data(ipconfig);
+
+	DBG("%s ip bound", ifname);
+
+	connman_peer_set_state(peer, CONNMAN_PEER_STATE_READY);
+}
+
+static void peer_ip_release(struct connman_ipconfig *ipconfig,
+							const char *ifname)
+{
+	DBG("%s ip release", ifname);
+}
+
+static const struct connman_ipconfig_ops peer_ip_ops = {
+	.up		= peer_up,
+	.down		= peer_down,
+	.lower_up	= peer_lower_up,
+	.lower_down	= peer_lower_down,
+	.ip_bound	= peer_ip_bound,
+	.ip_release	= peer_ip_release,
+	.route_set	= NULL,
+	.route_unset	= NULL,
+};
+
+static struct connman_ipconfig *create_ipconfig(int index, void *user_data)
+{
+	struct connman_ipconfig *ipconfig;
+
+	ipconfig = __connman_ipconfig_create(index,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
+	if (!ipconfig)
+		return NULL;
+
+	__connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_DHCP);
+	__connman_ipconfig_set_data(ipconfig, user_data);
+	__connman_ipconfig_set_ops(ipconfig, &peer_ip_ops);
+
+	return ipconfig;
 }
 
 static const GDBusMethodTable peer_methods[] = {
@@ -388,10 +501,17 @@ static char *get_peer_path(struct connman_device *device,
 
 int connman_peer_register(struct connman_peer *peer)
 {
+	int index;
+
 	DBG("peer %p", peer);
 
 	if (peer->path && peer->registered)
 		return -EALREADY;
+
+	index = connman_device_get_index(peer->device);
+	peer->ipconfig = create_ipconfig(index, peer);
+	if (!peer->ipconfig)
+		return -ENOMEM;
 
 	peer->path = get_peer_path(peer->device, peer->identifier);
 	DBG("path %s", peer->path);

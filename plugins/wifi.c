@@ -2080,6 +2080,7 @@ static void peer_found(GSupplicantPeer *peer)
 	struct wifi_data *wifi = g_supplicant_interface_get_data(iface);
 	struct connman_peer *connman_peer;
 	const char *identifier, *name;
+	int ret;
 
 	identifier = g_supplicant_peer_get_identifier(peer);
 	name = g_supplicant_peer_get_name(peer);
@@ -2094,7 +2095,9 @@ static void peer_found(GSupplicantPeer *peer)
 	connman_peer_set_name(connman_peer, name);
 	connman_peer_set_device(connman_peer, wifi->device);
 
-	connman_peer_register(connman_peer);
+	ret = connman_peer_register(connman_peer);
+	if (ret < 0 && ret != -EALREADY)
+		connman_peer_unref(connman_peer);
 }
 
 static void peer_lost(GSupplicantPeer *peer)
