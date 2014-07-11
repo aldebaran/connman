@@ -2708,6 +2708,68 @@ bool g_supplicant_interface_has_p2p(GSupplicantInterface *interface)
 	return interface->p2p_support;
 }
 
+struct supplicant_p2p_dev_config {
+	char *device_name;
+};
+
+static void p2p_device_config_result(const char *error,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_p2p_dev_config *config = user_data;
+
+	if (error)
+		SUPPLICANT_DBG("Unable to set P2P Device configuration");
+
+	g_free(config->device_name);
+	dbus_free(config);
+}
+
+static void p2p_device_config_params(DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_p2p_dev_config *config = user_data;
+	DBusMessageIter dict;
+
+	supplicant_dbus_dict_open(iter, &dict);
+
+	supplicant_dbus_dict_append_basic(&dict, "DeviceName",
+				DBUS_TYPE_STRING, &config->device_name);
+
+	supplicant_dbus_dict_close(iter, &dict);
+}
+
+int g_supplicant_interface_set_p2p_device_config(GSupplicantInterface *interface,
+						const char *device_name)
+{
+	struct supplicant_p2p_dev_config *config;
+	int ret;
+
+	SUPPLICANT_DBG("P2P Device Name setting %s", device_name);
+
+	config = dbus_malloc0(sizeof(*config));
+	if (!config)
+		return -ENOMEM;
+
+	config->device_name = g_strdup(device_name);
+
+	ret = supplicant_dbus_property_set(interface->path,
+				SUPPLICANT_INTERFACE ".Interface.P2PDevice",
+				"P2PDeviceConfig",
+				DBUS_TYPE_ARRAY_AS_STRING
+				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+				DBUS_TYPE_STRING_AS_STRING
+				DBUS_TYPE_VARIANT_AS_STRING
+				DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+				p2p_device_config_params,
+				p2p_device_config_result, config, NULL);
+	if (ret < 0) {
+		g_free(config->device_name);
+		dbus_free(config);
+		SUPPLICANT_DBG("Unable to set P2P Device configuration");
+	}
+
+	return ret;
+}
+
 struct interface_data {
 	GSupplicantInterface *interface;
 	char *path; /* Interface path cannot be taken from interface (above) as
