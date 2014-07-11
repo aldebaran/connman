@@ -56,6 +56,8 @@ void connman_peer_set_name(struct connman_peer *peer, const char *name);
 void connman_peer_set_device(struct connman_peer *peer,
 				struct connman_device *device);
 struct connman_device *connman_peer_get_device(struct connman_peer *peer);
+void connman_peer_set_sub_device(struct connman_peer *peer,
+					struct connman_device *device);
 int connman_peer_set_state(struct connman_peer *peer,
 					enum connman_peer_state new_state);
 

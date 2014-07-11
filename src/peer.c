@@ -43,6 +43,7 @@ struct _peers_notify {
 struct connman_peer {
 	int refcount;
 	struct connman_device *device;
+	struct connman_device *sub_device;
 	char *identifier;
 	char *name;
 	char *path;
@@ -474,6 +475,15 @@ struct connman_device *connman_peer_get_device(struct connman_peer *peer)
 	return peer->device;
 }
 
+void connman_peer_set_sub_device(struct connman_peer *peer,
+					struct connman_device *device)
+{
+	if (!peer || !device || peer->sub_device)
+		return;
+
+	peer->sub_device = device;
+}
+
 static void dhcp_callback(struct connman_ipconfig *ipconfig,
 			struct connman_network *network,
 			bool success, gpointer data)
@@ -510,9 +520,14 @@ int connman_peer_set_state(struct connman_peer *peer,
 	case CONNMAN_PEER_STATE_UNKNOWN:
 		return -EINVAL;
 	case CONNMAN_PEER_STATE_IDLE:
+		peer->sub_device = NULL;
+		break;
 	case CONNMAN_PEER_STATE_ASSOCIATION:
 		break;
 	case CONNMAN_PEER_STATE_CONFIGURATION:
+		if (peer->sub_device)
+			__connman_ipconfig_set_index(peer->ipconfig,
+				connman_device_get_index(peer->sub_device));
 		__connman_ipconfig_enable(peer->ipconfig);
 
 		err = __connman_dhcp_start(peer->ipconfig,
@@ -525,11 +540,13 @@ int connman_peer_set_state(struct connman_peer *peer,
 		reply_pending(peer, 0);
 		break;
 	case CONNMAN_PEER_STATE_DISCONNECT:
+		peer->sub_device = NULL;
 		break;
 	case CONNMAN_PEER_STATE_FAILURE:
 		reply_pending(peer, ENOTCONN);
 		__connman_dhcp_stop(peer->ipconfig);
 		__connman_ipconfig_disable(peer->ipconfig);
+		peer->sub_device = NULL;
 
 		break;
 	};
