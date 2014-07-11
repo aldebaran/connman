@@ -66,6 +66,7 @@
 #define AUTOSCAN_DEFAULT "exponential:3:300"
 
 #define P2P_FIND_TIMEOUT 30
+#define P2P_CONNECTION_TIMEOUT 100
 
 static struct connman_technology *wifi_technology = NULL;
 static struct connman_technology *p2p_technology = NULL;
@@ -118,6 +119,8 @@ struct wifi_data {
 
 	GSupplicantScanParams *scan_params;
 	unsigned int p2p_find_timeout;
+	unsigned int p2p_connection_timeout;
+	bool p2p_connecting;
 };
 
 static GList *iface_list = NULL;
@@ -141,6 +144,78 @@ static struct connman_technology_driver p2p_tech_driver = {
 	.type		= CONNMAN_SERVICE_TYPE_P2P,
 	.probe		= p2p_tech_probe,
 	.remove		= p2p_tech_remove,
+};
+
+static gboolean peer_connect_timeout(gpointer data)
+{
+	struct wifi_data *wifi = data;
+
+	wifi->p2p_connection_timeout = 0;
+	wifi->p2p_connecting = false;
+
+	return FALSE;
+}
+
+static void peer_connect_callback(int result, GSupplicantInterface *interface,
+							void *user_data)
+{
+	struct wifi_data *wifi = g_supplicant_interface_get_data(interface);
+	struct connman_peer *peer = user_data;
+
+	DBG("peer %p - %d", peer, result);
+
+	if (result < 0)
+		return;
+
+	wifi->p2p_connection_timeout = g_timeout_add_seconds(
+						P2P_CONNECTION_TIMEOUT,
+						peer_connect_timeout, wifi);
+}
+
+static int peer_connect(struct connman_peer *peer)
+{
+	struct connman_device *device = connman_peer_get_device(peer);
+	GSupplicantPeerParams *peer_params;
+	GSupplicantInterface *interface;
+	struct wifi_data *wifi;
+	int ret;
+
+	DBG("peer %p", peer);
+
+	if (!device)
+		return -ENODEV;
+
+	wifi = connman_device_get_data(device);
+	if (!wifi)
+		return -ENODEV;
+
+	if (wifi->p2p_connecting)
+		return -EBUSY;
+
+	peer_params = g_try_malloc0(sizeof(GSupplicantPeerParams));
+	if (!peer_params)
+		return -ENOMEM;
+
+	interface = wifi->interface;
+
+	peer_params->identifier = connman_peer_get_identifier(peer);
+
+	ret = g_supplicant_interface_p2p_connect(interface, peer_params,
+						peer_connect_callback, wifi);
+	if (ret == -EINPROGRESS)
+		wifi->p2p_connecting = true;
+
+	return ret;
+}
+
+static int peer_disconnect(struct connman_peer *peer)
+{
+	return 0;
+}
+
+static struct connman_peer_driver peer_driver = {
+	.connect    = peer_connect,
+	.disconnect = peer_disconnect,
 };
 
 static void handle_tethering(struct wifi_data *wifi)
@@ -281,8 +356,10 @@ static void check_p2p_technology(void)
 			p2p_exists = true;
 	}
 
-	if (!p2p_exists)
+	if (!p2p_exists) {
 		connman_technology_driver_unregister(&p2p_tech_driver);
+		connman_peer_driver_unregister(&peer_driver);
+	}
 }
 
 static void wifi_remove(struct connman_device *device)
@@ -304,6 +381,9 @@ static void wifi_remove(struct connman_device *device)
 		g_source_remove(wifi->p2p_find_timeout);
 		connman_device_unref(wifi->device);
 	}
+
+	if (wifi->p2p_connection_timeout)
+		g_source_remove(wifi->p2p_connection_timeout);
 
 	remove_networks(device, wifi);
 
@@ -1910,6 +1990,7 @@ static void p2p_support(GSupplicantInterface *interface)
 		hostname = "ConnMan";
 
 	g_supplicant_interface_set_p2p_device_config(interface, hostname);
+	connman_peer_driver_register(&peer_driver);
 }
 
 static void scan_started(GSupplicantInterface *interface)
