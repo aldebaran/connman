@@ -136,6 +136,8 @@ static struct strvalmap mode_capa_map[] = {
 
 static GHashTable *interface_table;
 static GHashTable *bss_mapping;
+static GHashTable *peer_mapping;
+static GHashTable *group_mapping;
 
 struct _GSupplicantWpsCredentials {
 	unsigned char ssid[32];
@@ -227,6 +229,8 @@ struct _GSupplicantPeer {
 	char *name;
 	char *identifier;
 	unsigned int wps_capabilities;
+	GSList *groups;
+	bool groups_changed;
 };
 
 struct _GSupplicantGroup {
@@ -560,6 +564,11 @@ static void remove_peer(gpointer data)
 	GSupplicantPeer *peer = data;
 
 	callback_peer_lost(peer);
+
+	if (peer->groups)
+		g_slist_free_full(peer->groups, g_free);
+
+	g_hash_table_remove(peer_mapping, peer->path);
 
 	g_free(peer->path);
 	g_free(peer->name);
@@ -2123,6 +2132,8 @@ static void signal_name_owner_changed(const char *path, DBusMessageIter *iter)
 	if (strlen(old) > 0 && strlen(new) == 0) {
 		system_available = FALSE;
 		g_hash_table_remove_all(bss_mapping);
+		g_hash_table_remove_all(peer_mapping);
+		g_hash_table_remove_all(group_mapping);
 		g_hash_table_remove_all(interface_table);
 		callback_system_killed();
 	}
@@ -2465,6 +2476,37 @@ static void create_peer_identifier(GSupplicantPeer *peer)
 						peer->device_address[5]);
 }
 
+struct peer_group_data {
+	GSupplicantPeer *peer;
+	GSList *old_groups;
+};
+
+static void peer_groups_relation(DBusMessageIter *iter, void *user_data)
+{
+	struct peer_group_data *data = user_data;
+	GSupplicantPeer *peer = data->peer;
+	GSupplicantGroup *group;
+	const char *str = NULL;
+	GSList *elem;
+
+	dbus_message_iter_get_basic(iter, &str);
+	if (!str)
+		return;
+
+	group = g_hash_table_lookup(group_mapping, str);
+	if (!group)
+		return;
+
+	elem = g_slist_find_custom(data->old_groups, str, g_str_equal);
+	if (elem) {
+		data->old_groups = g_slist_remove_link(data->old_groups, elem);
+		peer->groups = g_slist_concat(elem, peer->groups);
+	} else {
+		peer->groups = g_slist_prepend(peer->groups, g_strdup(str));
+		peer->groups_changed = true;
+	}
+}
+
 static void peer_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
@@ -2509,6 +2551,19 @@ static void peer_property(const char *key, DBusMessageIter *iter,
 			peer->wps_capabilities |= G_SUPPLICANT_WPS_PBC;
 		if (wps_config & ~G_SUPPLICANT_WPS_CONFIG_PBC)
 			peer->wps_capabilities |= G_SUPPLICANT_WPS_PIN;
+	} else if (g_strcmp0(key, "Groups") == 0) {
+		struct peer_group_data data = {
+			.peer = peer,
+			.old_groups = peer->groups,
+		};
+		peer->groups = NULL;
+
+		supplicant_dbus_array_foreach(iter,
+						peer_groups_relation, &data);
+		if (g_slist_length(data.old_groups) > 0) {
+			g_slist_free_full(data.old_groups, g_free);
+			peer->groups_changed = true;
+		}
 	}
 }
 
@@ -2539,6 +2594,7 @@ static void signal_peer_found(const char *path, DBusMessageIter *iter)
 	peer->interface = interface;
 	peer->path = g_strdup(obj_path);
 	g_hash_table_insert(interface->peer_table, peer->path, peer);
+	g_hash_table_replace(peer_mapping, peer->path, interface);
 
 	dbus_message_iter_next(iter);
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
@@ -2573,6 +2629,30 @@ static void signal_peer_lost(const char *path, DBusMessageIter *iter)
 		return;
 
 	g_hash_table_remove(interface->peer_table, obj_path);
+}
+
+static void signal_peer_changed(const char *path, DBusMessageIter *iter)
+{
+	GSupplicantInterface *interface;
+	GSupplicantPeer *peer;
+
+	SUPPLICANT_DBG("");
+
+	interface = g_hash_table_lookup(peer_mapping, path);
+	if (!interface)
+		return;
+
+	peer = g_hash_table_lookup(interface->peer_table, path);
+	if (!peer) {
+		g_hash_table_remove(peer_mapping, path);
+		return;
+	}
+
+	supplicant_dbus_property_foreach(iter, peer_property, peer);
+	if (!peer->groups_changed)
+		return;
+
+	peer->groups_changed = false;
 }
 
 struct group_sig_data {
@@ -2682,6 +2762,7 @@ static void signal_group_started(const char *path, DBusMessageIter *iter)
 	group->role = data.role;
 
 	g_hash_table_insert(interface->group_table, group->path, group);
+	g_hash_table_replace(group_mapping, group->path, group);
 }
 
 static void signal_group_finished(const char *path, DBusMessageIter *iter)
@@ -2728,6 +2809,8 @@ static struct {
 
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "DeviceFound", signal_peer_found },
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "DeviceLost",  signal_peer_lost  },
+
+	{ SUPPLICANT_INTERFACE ".Peer", "PropertiesChanged", signal_peer_changed },
 
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GONegotiationSuccess", signal_group_success },
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GONegotiationFailure", signal_group_failure },
@@ -4441,6 +4524,10 @@ int g_supplicant_register(const GSupplicantCallbacks *callbacks)
 
 	bss_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
 								NULL, NULL);
+	peer_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
+								NULL, NULL);
+	group_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
+								NULL, NULL);
 
 	supplicant_dbus_setup(connection);
 
@@ -4507,6 +4594,16 @@ void g_supplicant_unregister(const GSupplicantCallbacks *callbacks)
 	if (bss_mapping) {
 		g_hash_table_destroy(bss_mapping);
 		bss_mapping = NULL;
+	}
+
+	if (peer_mapping) {
+		g_hash_table_destroy(peer_mapping);
+		peer_mapping = NULL;
+	}
+
+	if (group_mapping) {
+		g_hash_table_destroy(group_mapping);
+		group_mapping = NULL;
 	}
 
 	if (system_available)
