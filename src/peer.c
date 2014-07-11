@@ -111,6 +111,17 @@ static bool allow_property_changed(struct connman_peer *peer)
 	return true;
 }
 
+static void append_ipv4(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_peer *peer = user_data;
+
+	if (peer->state != CONNMAN_PEER_STATE_READY)
+		return;
+
+	if (peer->ipconfig)
+		__connman_ipconfig_append_ipv4(peer->ipconfig, iter);
+}
+
 static void append_properties(DBusMessageIter *iter, struct connman_peer *peer)
 {
 	const char *state = state2string(peer->state);
@@ -122,9 +133,19 @@ static void append_properties(DBusMessageIter *iter, struct connman_peer *peer)
 					DBUS_TYPE_STRING, &state);
 	connman_dbus_dict_append_basic(&dict, "Name",
 					DBUS_TYPE_STRING, &peer->name);
-	connman_dbus_dict_append_dict(&dict, "IPv4", NULL, NULL);
+	connman_dbus_dict_append_dict(&dict, "IPv4", append_ipv4, peer);
 
 	connman_dbus_dict_close(iter, &dict);
+}
+
+static void settings_changed(struct connman_peer *peer)
+{
+	if (!allow_property_changed(peer))
+		return;
+
+	connman_dbus_property_changed_dict(peer->path,
+					CONNMAN_PEER_INTERFACE, "IPv4",
+					append_ipv4, peer);
 }
 
 static DBusMessage *get_peer_properties(DBusConnection *conn,
@@ -441,13 +462,18 @@ static void peer_ip_bound(struct connman_ipconfig *ipconfig,
 
 	DBG("%s ip bound", ifname);
 
+	settings_changed(peer);
 	connman_peer_set_state(peer, CONNMAN_PEER_STATE_READY);
 }
 
 static void peer_ip_release(struct connman_ipconfig *ipconfig,
 							const char *ifname)
 {
+	struct connman_peer *peer = __connman_ipconfig_get_data(ipconfig);
+
 	DBG("%s ip release", ifname);
+
+	settings_changed(peer);
 }
 
 static const struct connman_ipconfig_ops peer_ip_ops = {
