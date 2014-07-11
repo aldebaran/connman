@@ -126,12 +126,15 @@ static void append_existing_and_new_peers(gpointer key,
 	DBusMessageIter *iter = user_data;
 	DBusMessageIter entry;
 
+	if (!peer || !peer->registered)
+		return;
+
 	if (g_hash_table_lookup(peers_notify->add, peer->path)) {
 		DBG("new %s", peer->path);
 
 		append_peer_struct(key, value, user_data);
 		g_hash_table_remove(peers_notify->add, peer->path);
-	} else {
+	} else if (!g_hash_table_lookup(peers_notify->remove, peer->path)) {
 		DBG("existing %s", peer->path);
 
 		dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT,
