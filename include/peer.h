@@ -31,6 +31,7 @@ struct connman_peer;
 struct connman_peer *connman_peer_create(const char *identifier);
 void connman_peer_destroy(struct connman_peer *peer);
 
+const char *connman_peer_get_identifier(struct connman_peer *peer);
 void connman_peer_set_name(struct connman_peer *peer, const char *name);
 void connman_peer_set_device(struct connman_peer *peer,
 				struct connman_device *device);

@@ -227,6 +227,14 @@ void connman_peer_destroy(struct connman_peer *peer)
 	g_free(peer);
 }
 
+const char *connman_peer_get_identifier(struct connman_peer *peer)
+{
+	if (!peer)
+		return NULL;
+
+	return peer->identifier;
+}
+
 void connman_peer_set_name(struct connman_peer *peer, const char *name)
 {
 	g_free(peer->name);
