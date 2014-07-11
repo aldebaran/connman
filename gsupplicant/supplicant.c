@@ -541,6 +541,8 @@ static void remove_peer(gpointer data)
 {
 	GSupplicantPeer *peer = data;
 
+	callback_peer_lost(peer);
+
 	g_free(peer->path);
 	g_free(peer->name);
 	g_free(peer->identifier);
@@ -2550,7 +2552,6 @@ static void signal_peer_lost(const char *path, DBusMessageIter *iter)
 	if (!peer)
 		return;
 
-	callback_peer_lost(peer);
 	g_hash_table_remove(interface->peer_table, obj_path);
 }
 
