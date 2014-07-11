@@ -1921,8 +1921,8 @@ static GSupplicantInterface *interface_alloc(const char *path)
 	return interface;
 }
 
-static void interface_p2p_flush(const char *error,
-				DBusMessageIter *iter, void *user_data)
+static void interface_p2p_stop_find(const char *error,
+					DBusMessageIter *iter, void *user_data)
 {
 	GSupplicantInterface *interface = user_data;
 
@@ -1963,8 +1963,8 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
 		return;
 
 	supplicant_dbus_method_call(path,
-			SUPPLICANT_INTERFACE ".Interface.P2PDevice", "Flush",
-			NULL, interface_p2p_flush, interface, interface);
+		SUPPLICANT_INTERFACE ".Interface.P2PDevice", "StopFind",
+		NULL, interface_p2p_stop_find, interface, interface);
 
 	dbus_message_iter_next(iter);
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
