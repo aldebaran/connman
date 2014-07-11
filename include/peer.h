@@ -32,11 +32,15 @@ struct connman_peer *connman_peer_create(const char *identifier);
 void connman_peer_destroy(struct connman_peer *peer);
 
 void connman_peer_set_name(struct connman_peer *peer, const char *name);
+void connman_peer_set_device(struct connman_peer *peer,
+				struct connman_device *device);
+struct connman_device *connman_peer_get_device(struct connman_peer *peer);
 
 int connman_peer_register(struct connman_peer *peer);
 void connman_peer_unregister(struct connman_peer *peer);
 
-struct connman_peer *connman_peer_get(const char *identifier);
+struct connman_peer *connman_peer_get(struct connman_device *device,
+						const char *identifier);
 
 #ifdef __cplusplus
 }

@@ -33,6 +33,7 @@ static DBusConnection *connection = NULL;
 static GHashTable *peers_table = NULL;
 
 struct connman_peer {
+	struct connman_device *device;
 	char *identifier;
 	char *name;
 	char *path;
@@ -200,7 +201,7 @@ struct connman_peer *connman_peer_create(const char *identifier)
 	struct connman_peer *peer;
 
 	peer = g_malloc0(sizeof(struct connman_peer));
-	peer->identifier = g_strdup_printf("peer_%s", identifier);
+	peer->identifier = g_strdup(identifier);
 
 	return peer;
 }
@@ -217,6 +218,9 @@ void connman_peer_destroy(struct connman_peer *peer)
 		g_free(peer->path);
 	}
 
+	if (peer->device)
+		connman_device_unref(peer->device);
+
 	g_free(peer->identifier);
 	g_free(peer->name);
 
@@ -227,6 +231,24 @@ void connman_peer_set_name(struct connman_peer *peer, const char *name)
 {
 	g_free(peer->name);
 	peer->name = g_strdup(name);
+}
+
+void connman_peer_set_device(struct connman_peer *peer,
+				struct connman_device *device)
+{
+	if (!peer || !device)
+		return;
+
+	peer->device = device;
+	connman_device_ref(device);
+}
+
+struct connman_device *connman_peer_get_device(struct connman_peer *peer)
+{
+	if (!peer)
+		return NULL;
+
+	return peer->device;
 }
 
 static const GDBusMethodTable peer_methods[] = {
@@ -244,6 +266,13 @@ static const GDBusSignalTable peer_signals[] = {
 	{ },
 };
 
+static char *get_peer_path(struct connman_device *device,
+					const char *identifier)
+{
+	return g_strdup_printf("%s/peer/peer_%s_%s", CONNMAN_PATH,
+				connman_device_get_ident(device), identifier);
+}
+
 int connman_peer_register(struct connman_peer *peer)
 {
 	DBG("peer %p", peer);
@@ -251,11 +280,10 @@ int connman_peer_register(struct connman_peer *peer)
 	if (peer->path)
 		return -EALREADY;
 
-	peer->path = g_strdup_printf("%s/peer/%s", CONNMAN_PATH,
-						peer->identifier);
+	peer->path = get_peer_path(peer->device, peer->identifier);
 	DBG("path %s", peer->path);
 
-	g_hash_table_insert(peers_table, peer->identifier, peer);
+	g_hash_table_insert(peers_table, peer->path, peer);
 
 	g_dbus_register_interface(connection, peer->path,
 					CONNMAN_PEER_INTERFACE,
@@ -271,14 +299,15 @@ void connman_peer_unregister(struct connman_peer *peer)
 	DBG("peer %p", peer);
 
 	if (peer->path)
-		g_hash_table_remove(peers_table, peer->identifier);
+		g_hash_table_remove(peers_table, peer->path);
 	else
 		connman_peer_destroy(peer);
 }
 
-struct connman_peer *connman_peer_get(const char *identifier)
+struct connman_peer *connman_peer_get(struct connman_device *device,
+						const char *identifier)
 {
-	char *ident = g_strdup_printf("peer_%s", identifier);
+	char *ident = get_peer_path(device, identifier);
 	struct connman_peer *peer;
 
 	peer = g_hash_table_lookup(peers_table, ident);
