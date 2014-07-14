@@ -2366,6 +2366,12 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			g_free(dhcp_client->assigned_ip);
 			dhcp_client->assigned_ip = get_ip(packet.yiaddr);
 
+			if (dhcp_client->state == REBOOTING) {
+				option = dhcp_get_option(&packet,
+							DHCP_SERVER_ID);
+				dhcp_client->server_ip = get_be32(option);
+			}
+
 			/* Address should be set up here */
 			if (dhcp_client->lease_available_cb)
 				dhcp_client->lease_available_cb(dhcp_client,
