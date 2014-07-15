@@ -804,7 +804,8 @@ static void dad_reply(struct nd_neighbor_advert *reply,
 			service = __connman_service_lookup_from_index(
 								data->ifindex);
 			network = __connman_service_get_network(service);
-			data->callback(network, status, NULL);
+			if (network)
+				data->callback(network, status, NULL);
 		}
 	}
 
