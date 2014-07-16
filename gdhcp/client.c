@@ -484,13 +484,13 @@ static int send_request(GDHCPClient *dhcp_client)
 
 	add_send_options(dhcp_client, &packet);
 
-	if (dhcp_client->state == RENEWING) {
+	if (dhcp_client->state == RENEWING || dhcp_client->state == REBINDING)
 		packet.ciaddr = htonl(dhcp_client->requested_ip);
 
+	if (dhcp_client->state == RENEWING)
 		return dhcp_send_kernel_packet(&packet,
 				dhcp_client->requested_ip, CLIENT_PORT,
 				dhcp_client->server_ip, SERVER_PORT);
-	}
 
 	return dhcp_send_raw_packet(&packet, INADDR_ANY, CLIENT_PORT,
 					INADDR_BROADCAST, SERVER_PORT,
