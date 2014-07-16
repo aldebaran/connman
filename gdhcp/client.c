@@ -47,11 +47,11 @@
 #include "common.h"
 #include "ipv4ll.h"
 
-#define DISCOVER_TIMEOUT 3
-#define DISCOVER_RETRIES 10
+#define DISCOVER_TIMEOUT 5
+#define DISCOVER_RETRIES 6
 
-#define REQUEST_TIMEOUT 3
-#define REQUEST_RETRIES 5
+#define REQUEST_TIMEOUT 5
+#define REQUEST_RETRIES 3
 
 typedef enum _listen_mode {
 	L_NONE,
