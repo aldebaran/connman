@@ -51,6 +51,7 @@ struct connman_peer {
 	struct connman_ipconfig *ipconfig;
 	DBusMessage *pending;
 	bool registered;
+	bool connection_master;
 };
 
 static void reply_pending(struct connman_peer *peer, int error)
@@ -482,6 +483,14 @@ void connman_peer_set_sub_device(struct connman_peer *peer,
 		return;
 
 	peer->sub_device = device;
+}
+
+void connman_peer_set_as_master(struct connman_peer *peer, bool master)
+{
+	if (!peer || !is_connecting(peer))
+		return;
+
+	peer->connection_master = master;
 }
 
 static void dhcp_callback(struct connman_ipconfig *ipconfig,
