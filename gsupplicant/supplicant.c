@@ -1098,6 +1098,28 @@ GSupplicantInterface *g_supplicant_peer_get_group_interface(GSupplicantPeer *pee
 	return (GSupplicantInterface *) peer->current_group_iface;
 }
 
+bool g_supplicant_peer_is_client(GSupplicantPeer *peer)
+{
+	GSupplicantGroup *group;
+	GSList *list;
+
+	if (!peer)
+		return false;
+
+	for (list = peer->groups; list; list = list->next) {
+		group = list->data;
+
+		if (group->role != G_SUPPLICANT_GROUP_ROLE_CLIENT ||
+				group->orig_interface != peer->interface)
+			continue;
+
+		if (group->interface == peer->current_group_iface)
+			return true;
+	}
+
+	return false;
+}
+
 static void merge_network(GSupplicantNetwork *network)
 {
 	GString *str;
