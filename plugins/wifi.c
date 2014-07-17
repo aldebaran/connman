@@ -2373,6 +2373,8 @@ static void peer_changed(GSupplicantPeer *peer,
 		if (!g_wifi)
 			return;
 
+		connman_peer_set_as_master(connman_peer,
+					!g_supplicant_peer_is_client(peer));
 		connman_peer_set_sub_device(connman_peer, g_wifi->device);
 	}
 
