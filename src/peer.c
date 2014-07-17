@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <gdbus.h>
+#include <gdhcp/gdhcp.h>
 
 #include "connman.h"
 
@@ -52,7 +53,102 @@ struct connman_peer {
 	DBusMessage *pending;
 	bool registered;
 	bool connection_master;
+	struct connman_ippool *ip_pool;
+	GDHCPServer *dhcp_server;
 };
+
+static void stop_dhcp_server(struct connman_peer *peer)
+{
+	DBG("");
+
+	if (peer->dhcp_server) {
+		g_dhcp_server_stop(peer->dhcp_server);
+		g_dhcp_server_unref(peer->dhcp_server);
+	}
+	peer->dhcp_server = NULL;
+
+	if (peer->ip_pool)
+		__connman_ippool_unref(peer->ip_pool);
+	peer->ip_pool = NULL;
+}
+
+static void dhcp_server_debug(const char *str, void *data)
+{
+	connman_info("%s: %s\n", (const char *) data, str);
+}
+
+static gboolean dhcp_server_started(gpointer data)
+{
+	struct connman_peer *peer = data;
+
+	connman_peer_set_state(peer, CONNMAN_PEER_STATE_READY);
+	connman_peer_unref(peer);
+
+	return FALSE;
+}
+
+static int start_dhcp_server(struct connman_peer *peer)
+{
+	const char *start_ip, *end_ip;
+	GDHCPServerError dhcp_error;
+	const char *broadcast;
+	const char *gateway;
+	const char *subnet;
+	int prefixlen;
+	int index;
+	int err;
+
+	DBG("");
+
+	err = -ENOMEM;
+
+	if (peer->sub_device)
+		index = connman_device_get_index(peer->sub_device);
+	else
+		index = connman_device_get_index(peer->device);
+
+	peer->ip_pool = __connman_ippool_create(index, 2, 1, NULL, NULL);
+	if (!peer->ip_pool)
+		goto error;
+
+	gateway = __connman_ippool_get_gateway(peer->ip_pool);
+	subnet = __connman_ippool_get_subnet_mask(peer->ip_pool);
+	broadcast = __connman_ippool_get_broadcast(peer->ip_pool);
+	start_ip = __connman_ippool_get_start_ip(peer->ip_pool);
+	end_ip = __connman_ippool_get_end_ip(peer->ip_pool);
+
+	prefixlen = connman_ipaddress_calc_netmask_len(subnet);
+
+	err = __connman_inet_modify_address(RTM_NEWADDR,
+				NLM_F_REPLACE | NLM_F_ACK, index, AF_INET,
+				gateway, NULL, prefixlen, broadcast);
+	if (err < 0)
+		goto error;
+
+	peer->dhcp_server = g_dhcp_server_new(G_DHCP_IPV4, index, &dhcp_error);
+	if (!peer->dhcp_server)
+		goto error;
+
+	g_dhcp_server_set_debug(peer->dhcp_server,
+					dhcp_server_debug, "Peer DHCP server");
+	g_dhcp_server_set_lease_time(peer->dhcp_server, 3600);
+	g_dhcp_server_set_option(peer->dhcp_server, G_DHCP_SUBNET, subnet);
+	g_dhcp_server_set_option(peer->dhcp_server, G_DHCP_ROUTER, gateway);
+	g_dhcp_server_set_option(peer->dhcp_server, G_DHCP_DNS_SERVER, NULL);
+	g_dhcp_server_set_ip_range(peer->dhcp_server, start_ip, end_ip);
+
+	err = g_dhcp_server_start(peer->dhcp_server);
+	if (err < 0)
+		goto error;
+
+	g_timeout_add_seconds(0, dhcp_server_started, connman_peer_ref(peer));
+
+	return 0;
+
+error:
+	stop_dhcp_server(peer);
+	return err;
+}
 
 static void reply_pending(struct connman_peer *peer, int error)
 {
@@ -82,6 +178,8 @@ static void peer_free(gpointer data)
 		__connman_ipconfig_unref(peer->ipconfig);
 		peer->ipconfig = NULL;
 	}
+
+	stop_dhcp_server(peer);
 
 	if (peer->device) {
 		connman_device_unref(peer->device);
@@ -341,10 +439,13 @@ static int peer_disconnect(struct connman_peer *peer)
 
 	reply_pending(peer, ECONNABORTED);
 
+	if (peer->connection_master)
+		stop_dhcp_server(peer);
+	else
+		__connman_dhcp_stop(peer->ipconfig);
+
 	if (peer_driver->disconnect)
 		err = peer_driver->disconnect(peer);
-
-	__connman_dhcp_stop(peer->ipconfig);
 
 	return err;
 }
@@ -516,6 +617,17 @@ error:
 	connman_peer_set_state(peer, CONNMAN_PEER_STATE_FAILURE);
 }
 
+static int start_dhcp_client(struct connman_peer *peer)
+{
+	if (peer->sub_device)
+		__connman_ipconfig_set_index(peer->ipconfig,
+				connman_device_get_index(peer->sub_device));
+
+	__connman_ipconfig_enable(peer->ipconfig);
+
+	return __connman_dhcp_start(peer->ipconfig, NULL, dhcp_callback, peer);
+}
+
 int connman_peer_set_state(struct connman_peer *peer,
 					enum connman_peer_state new_state)
 {
@@ -534,13 +646,10 @@ int connman_peer_set_state(struct connman_peer *peer,
 	case CONNMAN_PEER_STATE_ASSOCIATION:
 		break;
 	case CONNMAN_PEER_STATE_CONFIGURATION:
-		if (peer->sub_device)
-			__connman_ipconfig_set_index(peer->ipconfig,
-				connman_device_get_index(peer->sub_device));
-		__connman_ipconfig_enable(peer->ipconfig);
-
-		err = __connman_dhcp_start(peer->ipconfig,
-						NULL, dhcp_callback, peer);
+		if (peer->connection_master)
+			err = start_dhcp_server(peer);
+		else
+			err = start_dhcp_client(peer);
 		if (err < 0)
 			return connman_peer_set_state(peer,
 						CONNMAN_PEER_STATE_FAILURE);
@@ -549,12 +658,24 @@ int connman_peer_set_state(struct connman_peer *peer,
 		reply_pending(peer, 0);
 		break;
 	case CONNMAN_PEER_STATE_DISCONNECT:
+		if (peer->connection_master)
+			stop_dhcp_server(peer);
+		peer->connection_master = false;
 		peer->sub_device = NULL;
+
 		break;
 	case CONNMAN_PEER_STATE_FAILURE:
 		reply_pending(peer, ENOTCONN);
-		__connman_dhcp_stop(peer->ipconfig);
-		__connman_ipconfig_disable(peer->ipconfig);
+
+		peer_disconnect(peer);
+
+		if (!peer->connection_master) {
+			__connman_dhcp_stop(peer->ipconfig);
+			__connman_ipconfig_disable(peer->ipconfig);
+		} else
+			stop_dhcp_server(peer);
+
+		peer->connection_master = false;
 		peer->sub_device = NULL;
 
 		break;
