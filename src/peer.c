@@ -241,14 +241,38 @@ static bool allow_property_changed(struct connman_peer *peer)
 	return true;
 }
 
+static void append_dhcp_server_ipv4(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_peer *peer = user_data;
+	const char *str = "dhcp";
+	const char *gateway;
+	const char *subnet;
+
+	if (!peer->ip_pool)
+		return;
+
+	gateway = __connman_ippool_get_gateway(peer->ip_pool);
+	subnet = __connman_ippool_get_subnet_mask(peer->ip_pool);
+
+	connman_dbus_dict_append_basic(iter, "Method", DBUS_TYPE_STRING, &str);
+	connman_dbus_dict_append_basic(iter, "Address",
+						DBUS_TYPE_STRING, &gateway);
+	connman_dbus_dict_append_basic(iter, "Netmask",
+						DBUS_TYPE_STRING, &subnet);
+	connman_dbus_dict_append_basic(iter, "Gateway",
+						DBUS_TYPE_STRING, &gateway);
+}
+
 static void append_ipv4(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_peer *peer = user_data;
 
-	if (peer->state != CONNMAN_PEER_STATE_READY)
+	if (!is_connected(peer))
 		return;
 
-	if (peer->ipconfig)
+	if (peer->connection_master)
+		append_dhcp_server_ipv4(iter, peer);
+	else if (peer->ipconfig)
 		__connman_ipconfig_append_ipv4(peer->ipconfig, iter);
 }
 
