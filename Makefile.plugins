@@ -3,9 +3,6 @@ plugin_cflags = -fvisibility=hidden -I$(srcdir)/gdbus \
 					@DBUS_CFLAGS@ @GLIB_CFLAGS@
 plugin_ldflags = -no-undefined -module -avoid-version
 
-script_cflags = -fvisibility=hidden -I$(srcdir)/gdbus \
-					@DBUS_CFLAGS@
-
 if LOOPBACK
 builtin_modules += loopback
 builtin_sources += plugins/loopback.c
@@ -156,12 +153,12 @@ endif
 
 if PPTP
 script_LTLIBRARIES += scripts/libppp-plugin.la
-scripts_libppp_plugin_la_LDFLAGS = $(script_cflags) @DBUS_CFLAGS@
+scripts_libppp_plugin_la_LDFLAGS = $(plugin_ldflags)
 scripts_libppp_plugin_la_LIBADD = @DBUS_LIBS@
 else
 if L2TP
 script_LTLIBRARIES += scripts/libppp-plugin.la
-scripts_libppp_plugin_la_LDFLAGS = $(script_cflags) @DBUS_CFLAGS@
+scripts_libppp_plugin_la_LDFLAGS = $(plugin_ldflags)
 scripts_libppp_plugin_la_LIBADD = @DBUS_LIBS@
 endif
 endif
