@@ -61,10 +61,9 @@ static void stop_dhcp_server(struct connman_peer *peer)
 {
 	DBG("");
 
-	if (peer->dhcp_server) {
-		g_dhcp_server_stop(peer->dhcp_server);
+	if (peer->dhcp_server)
 		g_dhcp_server_unref(peer->dhcp_server);
-	}
+
 	peer->dhcp_server = NULL;
 
 	if (peer->ip_pool)
