@@ -56,7 +56,12 @@ static bool check_reply_has_dict(DBusMessage *reply)
 
 struct request_input_reply {
 	struct connman_service *service;
-	authentication_cb_t callback;
+	struct connman_peer *peer;
+	union {
+		authentication_cb_t service_callback;
+		peer_wps_cb_t peer_callback;
+	};
+	bool wps_requested;
 	void *user_data;
 };
 
@@ -151,12 +156,10 @@ static void request_input_passphrase_reply(DBusMessage *reply, void *user_data)
 	}
 
 done:
-	passphrase_reply->callback(passphrase_reply->service, values_received,
-				name, name_len,
-				identity, passphrase,
-				wps, wpspin, error,
-				passphrase_reply->user_data);
-
+	passphrase_reply->service_callback(passphrase_reply->service,
+					values_received, name, name_len,
+					identity, passphrase, wps, wpspin,
+					error, passphrase_reply->user_data);
 out:
 	g_free(passphrase_reply);
 }
@@ -236,13 +239,21 @@ static void request_input_append_passphrase(DBusMessageIter *iter,
 	}
 }
 
+struct request_wps_data {
+	bool peer;
+};
+
 static void request_input_append_wps(DBusMessageIter *iter, void *user_data)
 {
+	struct request_wps_data *wps = user_data;
 	const char *str = "wpspin";
 
 	connman_dbus_dict_append_basic(iter, "Type",
 				DBUS_TYPE_STRING, &str);
-	str = "alternate";
+	if (wps && wps->peer)
+		str = "mandatory";
+	else
+		str = "alternate";
 	connman_dbus_dict_append_basic(iter, "Requirement",
 				DBUS_TYPE_STRING, &str);
 }
@@ -399,12 +410,10 @@ static void request_input_login_reply(DBusMessage *reply, void *user_data)
 	}
 
 done:
-	username_password_reply->callback(username_password_reply->service,
-					values_received, NULL, 0,
-					username, password,
-					FALSE, NULL, error,
-					username_password_reply->user_data);
-
+	username_password_reply->service_callback(
+			username_password_reply->service, values_received,
+			NULL, 0, username, password, FALSE, NULL, error,
+			username_password_reply->user_data);
 out:
 	g_free(username_password_reply);
 }
@@ -477,7 +486,7 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 	}
 
 	passphrase_reply->service = service;
-	passphrase_reply->callback = callback;
+	passphrase_reply->service_callback = callback;
 	passphrase_reply->user_data = user_data;
 
 	err = connman_agent_queue_message(service, message,
@@ -542,7 +551,7 @@ int __connman_agent_request_login_input(struct connman_service *service,
 	}
 
 	username_password_reply->service = service;
-	username_password_reply->callback = callback;
+	username_password_reply->service_callback = callback;
 	username_password_reply->user_data = user_data;
 
 	err = connman_agent_queue_message(service, message,
@@ -653,4 +662,126 @@ int __connman_agent_report_peer_error(struct connman_peer *peer,
 {
 	return connman_agent_report_error_full(peer, path, "ReportPeerError",
 				error, callback, dbus_sender, user_data);
+}
+
+static void request_peer_authorization_reply(DBusMessage *reply,
+							void *user_data)
+{
+	struct request_input_reply *auth_reply = user_data;
+	DBusMessageIter iter, dict;
+	const char *error = NULL;
+	bool choice_done = false;
+	char *wpspin = NULL;
+	char *key;
+
+	if (!reply)
+		goto out;
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		error = dbus_message_get_error_name(reply);
+		goto done;
+	}
+
+	if (!check_reply_has_dict(reply))
+		goto done;
+
+	dbus_message_iter_init(reply, &iter);
+	dbus_message_iter_recurse(&iter, &dict);
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			break;
+
+		dbus_message_iter_get_basic(&entry, &key);
+
+		if (g_str_equal(key, "WPS")) {
+			choice_done = true;
+
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			dbus_message_iter_get_basic(&value, &wpspin);
+			break;
+		}
+		dbus_message_iter_next(&dict);
+	}
+
+	if (auth_reply->wps_requested)
+		choice_done = true;
+
+done:
+	auth_reply->peer_callback(auth_reply->peer, choice_done, wpspin,
+						error, auth_reply->user_data);
+out:
+	g_free(auth_reply);
+}
+
+int __connman_agent_request_peer_authorization(struct connman_peer *peer,
+						peer_wps_cb_t callback,
+						bool wps_requested,
+						const char *dbus_sender,
+						void *user_data)
+{
+	struct request_wps_data wps = { .peer = true };
+	const char *path, *agent_sender, *agent_path;
+	struct request_input_reply *auth_reply;
+	DBusMessageIter dict, iter;
+	DBusMessage *message;
+	void *agent;
+	int err;
+
+	agent = connman_agent_get_info(dbus_sender, &agent_sender,
+							&agent_path);
+	DBG("agent %p peer %p path %s", agent, peer, agent_path);
+
+	if (!peer || !agent || !agent_path || !callback)
+		return -ESRCH;
+
+	message = dbus_message_new_method_call(agent_sender, agent_path,
+			CONNMAN_AGENT_INTERFACE, "RequestPeerAuthorization");
+	if (!message)
+		return -ENOMEM;
+
+	dbus_message_iter_init_append(message, &iter);
+
+	path = __connman_peer_get_path(peer);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH, &path);
+
+	connman_dbus_dict_open(&iter, &dict);
+
+	if (wps_requested)
+		connman_dbus_dict_append_dict(&dict, "WPS",
+					request_input_append_wps, &wps);
+
+	connman_dbus_dict_close(&iter, &dict);
+
+	auth_reply = g_try_new0(struct request_input_reply, 1);
+	if (!auth_reply) {
+		dbus_message_unref(message);
+		return -ENOMEM;
+	}
+
+	auth_reply->peer = peer;
+	auth_reply->peer_callback = callback;
+	auth_reply->wps_requested = wps_requested;
+	auth_reply->user_data = user_data;
+
+	err = connman_agent_queue_message(peer, message,
+					connman_timeout_input_request(),
+					request_peer_authorization_reply,
+					auth_reply, agent);
+	if (err < 0 && err != -EBUSY) {
+		DBG("error %d sending agent message", err);
+		dbus_message_unref(message);
+		g_free(auth_reply);
+		return err;
+	}
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
 }

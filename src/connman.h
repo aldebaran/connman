@@ -106,6 +106,9 @@ typedef void (* authentication_cb_t) (struct connman_service *service,
 typedef void (* browser_authentication_cb_t) (struct connman_service *service,
 				bool authentication_done,
 				const char *error, void *user_data);
+typedef void (* peer_wps_cb_t) (struct connman_peer *peer, bool choice_done,
+				const char *wpspin, const char *error,
+				void *user_data);
 int __connman_agent_request_passphrase_input(struct connman_service *service,
 				authentication_cb_t callback,
 				const char *dbus_sender, void *user_data);
@@ -119,6 +122,11 @@ int __connman_agent_report_peer_error(struct connman_peer *peer,
 					report_error_cb_t callback,
 					const char *dbus_sender,
 					void *user_data);
+int __connman_agent_request_peer_authorization(struct connman_peer *peer,
+						peer_wps_cb_t callback,
+						bool wps_requested,
+						const char *dbus_sender,
+						void *user_data);
 
 #include <connman/log.h>
 
