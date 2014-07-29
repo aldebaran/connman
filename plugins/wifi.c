@@ -1125,6 +1125,7 @@ static int wifi_disable(struct connman_device *device)
 	if (wifi->p2p_find_timeout) {
 		g_source_remove(wifi->p2p_find_timeout);
 		wifi->p2p_find_timeout = 0;
+		connman_device_set_scanning(device, CONNMAN_SERVICE_TYPE_P2P, false);
 		connman_device_unref(wifi->device);
 	}
 
