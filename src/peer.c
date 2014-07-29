@@ -351,7 +351,7 @@ static void append_existing_and_new_peers(gpointer key,
 {
 	struct connman_peer *peer = value;
 	DBusMessageIter *iter = user_data;
-	DBusMessageIter entry;
+	DBusMessageIter entry, dict;
 
 	if (!peer || !peer->registered)
 		return;
@@ -359,7 +359,7 @@ static void append_existing_and_new_peers(gpointer key,
 	if (g_hash_table_lookup(peers_notify->add, peer->path)) {
 		DBG("new %s", peer->path);
 
-		append_peer_struct(key, value, user_data);
+		append_peer_struct(key, peer, iter);
 		g_hash_table_remove(peers_notify->add, peer->path);
 	} else if (!g_hash_table_lookup(peers_notify->remove, peer->path)) {
 		DBG("existing %s", peer->path);
@@ -368,6 +368,9 @@ static void append_existing_and_new_peers(gpointer key,
 								NULL, &entry);
 		dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH,
 								&peer->path);
+		connman_dbus_dict_open(&entry, &dict);
+		connman_dbus_dict_close(&entry, &dict);
+
 		dbus_message_iter_close_container(iter, &entry);
 	}
 }
