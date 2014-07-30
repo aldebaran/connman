@@ -1,5 +1,5 @@
 [D-BUS Service]
 Name=net.connman
-Exec=@prefix@/sbin/connman -n
+Exec=@prefix@/sbin/connmand -n
 User=root
 SystemdService=connman.service
