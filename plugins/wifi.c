@@ -955,6 +955,9 @@ static void start_autoscan(struct connman_device *device)
 	if (!wifi)
 		return;
 
+	if (wifi->p2p_device)
+		return;
+
 	autoscan = wifi->autoscan;
 	if (!autoscan)
 		return;
@@ -1037,6 +1040,9 @@ static void finalize_interface_creation(struct wifi_data *wifi)
 	connman_device_set_powered(wifi->device, true);
 
 	if (!connman_setting_get_bool("BackgroundScanning"))
+		return;
+
+	if (wifi->p2p_device)
 		return;
 
 	/* Setting up automatic scanning */
