@@ -480,7 +480,7 @@ static DBusMessage *connect_peer(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_peer *peer = user_data;
-	GList *list;
+	GList *list, *start;
 	int err;
 
 	DBG("peer %p", peer);
@@ -489,6 +489,7 @@ static DBusMessage *connect_peer(DBusConnection *conn,
 		return __connman_error_in_progress(msg);
 
 	list = g_hash_table_get_values(peers_table);
+	start = list;
 	for (; list; list = list->next) {
 		struct connman_peer *temp = list->data;
 
@@ -496,10 +497,14 @@ static DBusMessage *connect_peer(DBusConnection *conn,
 			continue;
 
 		if (is_connecting(temp) || is_connected(temp)) {
-			if (peer_disconnect(temp) == -EINPROGRESS)
+			if (peer_disconnect(temp) == -EINPROGRESS) {
+				g_list_free(start);
 				return __connman_error_in_progress(msg);
+			}
 		}
 	}
+
+	g_list_free(start);
 
 	peer->pending = dbus_message_ref(msg);
 
