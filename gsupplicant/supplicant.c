@@ -4898,6 +4898,7 @@ void g_supplicant_unregister(const GSupplicantCallbacks *callbacks)
 	SUPPLICANT_DBG("");
 
 	if (connection) {
+		dbus_bus_remove_match(connection, g_supplicant_rule6, NULL);
 		dbus_bus_remove_match(connection, g_supplicant_rule5, NULL);
 		dbus_bus_remove_match(connection, g_supplicant_rule4, NULL);
 		dbus_bus_remove_match(connection, g_supplicant_rule3, NULL);
