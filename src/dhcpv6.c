@@ -1422,11 +1422,13 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 		/* RFC 3315, 22.4 */
 		return 0;
 
-	if (T1 == 0)
+	if (T1 == 0) {
 		/* RFC 3315, 22.4
 		 * Client can choose the timeout.
 		 */
-		T1 = 1800;
+		T1 = (expired - started) / 2;
+		T2 = (expired - started) / 10 * 8;
+	}
 
 	dhcp->callback = callback;
 
