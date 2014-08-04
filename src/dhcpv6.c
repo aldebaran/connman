@@ -1399,7 +1399,7 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 							dhcpv6_cb callback)
 {
 	struct connman_dhcpv6 *dhcp;
-	uint32_t T1, T2;
+	uint32_t T1, T2, delta;
 	time_t started, current, expired;
 
 	dhcp = g_hash_table_lookup(network_table, network);
@@ -1437,22 +1437,23 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 	if (T2 != 0xffffffff && T2 > 0) {
 		if ((unsigned)current >= (unsigned)started + T2) {
 			/* RFC 3315, chapter 18.1.3, start rebind */
-			DBG("rebind after %d secs", T2);
+			DBG("start rebind immediately");
 
-			dhcp->timeout = g_timeout_add_seconds(T2, start_rebind,
+			dhcp->timeout = g_timeout_add_seconds(0, start_rebind,
 							dhcp);
 
 		} else if ((unsigned)current < (unsigned)started + T1) {
-			DBG("renew after %d secs", T1);
+			delta = started + T1 - current;
+			DBG("renew after %d secs", delta);
 
-			dhcp->timeout = g_timeout_add_seconds(T1, start_renew,
-							dhcp);
+			dhcp->timeout = g_timeout_add_seconds(delta,
+					start_renew, dhcp);
 		} else {
-			DBG("rebind after %d secs", T2 - T1);
+			delta = started + T2 - current;
+			DBG("rebind after %d secs", delta);
 
-			dhcp->timeout = g_timeout_add_seconds(T2 - T1,
-							start_rebind,
-							dhcp);
+			dhcp->timeout = g_timeout_add_seconds(delta,
+					start_rebind, dhcp);
 		}
 	}
 
