@@ -3922,34 +3922,11 @@ static gboolean connect_timeout(gpointer user_data)
 	return FALSE;
 }
 
-static bool is_interface_available(struct connman_service *service,
-					struct connman_service *other_service)
-{
-	unsigned int index = 0, other_index = 0;
-
-	if (service->ipconfig_ipv4)
-		index =	__connman_ipconfig_get_index(service->ipconfig_ipv4);
-	else if (service->ipconfig_ipv6)
-		index =	__connman_ipconfig_get_index(service->ipconfig_ipv6);
-
-	if (other_service->ipconfig_ipv4)
-		other_index = __connman_ipconfig_get_index(
-						other_service->ipconfig_ipv4);
-	else if (other_service->ipconfig_ipv6)
-		other_index = __connman_ipconfig_get_index(
-						other_service->ipconfig_ipv6);
-
-	if (index > 0 && other_index != index)
-		return true;
-
-	return false;
-}
-
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_service *service = user_data;
-	int err = 0;
+	int index, err = 0;
 	GList *list;
 
 	DBG("service %p", service);
@@ -3957,27 +3934,27 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	if (service->pending)
 		return __connman_error_in_progress(msg);
 
+	index = __connman_service_get_index(service);
+
 	for (list = service_list; list; list = list->next) {
 		struct connman_service *temp = list->data;
 
-		/*
-		 * We should allow connection if there are available
-		 * interfaces for a given technology type (like having
-		 * more than one wifi card).
-		 */
 		if (!is_connecting(temp) && !is_connected(temp))
 			break;
+
+		if (service == temp)
+			continue;
 
 		if (service->type != temp->type)
 			continue;
 
-		if(!is_interface_available(service, temp)) {
-			if (__connman_service_disconnect(temp) == -EINPROGRESS)
-				err = -EINPROGRESS;
-		}
+		if (__connman_service_get_index(temp) == index &&
+				__connman_service_disconnect(temp) == -EINPROGRESS)
+			err = -EINPROGRESS;
+
 	}
 	if (err == -EINPROGRESS)
-		return __connman_error_in_progress(msg);
+		return __connman_error_operation_timeout(msg);
 
 	service->ignore = false;
 
