@@ -131,6 +131,7 @@ static struct strvalmap mode_capa_map[] = {
 	{ "infrastructure",	G_SUPPLICANT_CAPABILITY_MODE_INFRA	},
 	{ "ad-hoc",		G_SUPPLICANT_CAPABILITY_MODE_IBSS	},
 	{ "ap",			G_SUPPLICANT_CAPABILITY_MODE_AP		},
+	{ "p2p", 		G_SUPPLICANT_CAPABILITY_MODE_P2P	},
 	{ }
 };
 
@@ -2039,25 +2040,6 @@ static GSupplicantInterface *interface_alloc(const char *path)
 	return interface;
 }
 
-static void interface_p2p_stop_find(const char *error,
-					DBusMessageIter *iter, void *user_data)
-{
-	GSupplicantInterface *interface = user_data;
-
-	if (error) {
-		if (!g_strcmp0(error,
-				"org.freedesktop.DBus.Error.UnknownMethod")) {
-			SUPPLICANT_DBG("wpa_supplicant does not support P2P");
-		} else {
-			SUPPLICANT_DBG("interface %s does not support P2P",
-							interface->ifname);
-		}
-	} else
-		interface->p2p_support = true;
-
-	callback_p2p_support(interface);
-}
-
 static void interface_added(DBusMessageIter *iter, void *user_data)
 {
 	GSupplicantInterface *interface;
@@ -2080,22 +2062,27 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
 	if (!interface)
 		return;
 
-	supplicant_dbus_method_call(path,
-		SUPPLICANT_INTERFACE ".Interface.P2PDevice", "StopFind",
-		NULL, interface_p2p_stop_find, interface, interface);
-
 	dbus_message_iter_next(iter);
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
 		supplicant_dbus_property_foreach(iter, interface_property,
 								interface);
 		interface_property(NULL, NULL, interface);
-		return;
+		goto p2p_detection;
 	}
 
 	supplicant_dbus_property_get_all(path,
 					SUPPLICANT_INTERFACE ".Interface",
 					interface_property, interface,
 					interface);
+
+p2p_detection:
+
+	if (interface->mode_capa & G_SUPPLICANT_CAPABILITY_MODE_P2P) {
+		interface->p2p_support = true;
+		callback_p2p_support(interface);
+	}
+
+	return;
 }
 
 static void interface_removed(DBusMessageIter *iter, void *user_data)
