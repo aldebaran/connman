@@ -52,6 +52,10 @@ void connman_agent_driver_unregister(struct connman_agent_driver *driver);
 typedef void (* report_error_cb_t) (void *user_context,
 				bool retry, void *user_data);
 
+int connman_agent_report_error_full(void *user_context, const char *path,
+				const char *method, const char *error,
+				report_error_cb_t callback,
+				const char *dbus_sender, void *user_data);
 int connman_agent_report_error(void *user_context, const char *path,
 				const char *error,
 				report_error_cb_t callback,
