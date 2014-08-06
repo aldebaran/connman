@@ -23,6 +23,16 @@ Methods		void Release()
 
 			Possible Errors: net.connman.Agent.Error.Retry
 
+		void ReportPeerError(object peer, string error)
+
+			This method gets called when an error has to be
+			reported to the user about a peer connection.
+
+			A special return value can be used to trigger a
+			retry of the failed transaction.
+
+			Possible Errors: net.connman.Agent.Error.Retry
+
 		void RequestBrowser(object service, string url)
 
 			This method gets called when it is required
@@ -57,6 +67,25 @@ Methods		void Release()
 
 			Possible Errors: net.connman.Agent.Error.Canceled
 					 net.connman.Agent.Error.LaunchBrowser
+
+		dict RequestPeerAuthorization(object peer, dict fields) [experimental]
+
+			This method gets called when trying to connect to a
+			peer or when an incoming peer connection is requested,
+			for which some extra input is required. In this case,
+			it will only deal with WPS input as well as accepting
+			or rejecting an incoming connection.
+
+			The return value should be a dictionary where the
+			keys are the field names and the values are the
+			actual fields. Alternatively an error indicating that
+			the request got canceled or rejected can be returned.
+
+			The dictionary arguments contains field names with
+			their input parameters.
+
+			Possible Errors: net.connman.Agent.Error.Canceled
+			                 net.connman.Agent.Error.Rejected
 
 		void Cancel()
 
@@ -106,6 +135,9 @@ Fields		string Name
 			either empty pin, if user wants to use push-button
 			method, or a pin code if user wants to use the pin
 			method.
+
+			In case of a RequestPeerAuthorization, this field will
+			be set as mandatory.
 
 		string Username
 
@@ -254,3 +286,20 @@ Examples	Requesting a passphrase for WPA2 network
 				}
 
 			==> { "Username" : "foo", "Password": "secret" }
+
+		Requesting a answer about an inconming peer connection:
+
+			RequestPeerAuthorization("/peer3", {})
+
+			==> { }
+
+		Requesting the WPS details when connecting to a peer:
+
+			RequestPeerAuthorization("/peer4",
+				{ "WPS":
+					{ "Type"        : "wpspin",
+					  "Requirement" : "mandatory"
+					}
+				}
+
+			==> { "WPS" : "" }
