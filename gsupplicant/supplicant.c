@@ -1037,6 +1037,14 @@ GSupplicantInterface *g_supplicant_peer_get_interface(GSupplicantPeer *peer)
 	return peer->interface;
 }
 
+const char *g_supplicant_peer_get_path(GSupplicantPeer *peer)
+{
+	if (!peer)
+		return NULL;
+
+	return peer->path;
+}
+
 const char *g_supplicant_peer_get_identifier(GSupplicantPeer *peer)
 {
 	if (!peer)
