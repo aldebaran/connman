@@ -242,7 +242,9 @@ static int peer_connect(struct connman_peer *peer,
 {
 	struct connman_device *device = connman_peer_get_device(peer);
 	GSupplicantPeerParams *peer_params;
+	GSupplicantPeer *gs_peer;
 	struct wifi_data *wifi;
+	bool pbc, pin;
 	int ret;
 
 	DBG("peer %p", peer);
@@ -257,11 +259,37 @@ static int peer_connect(struct connman_peer *peer,
 	if (wifi->p2p_connecting)
 		return -EBUSY;
 
+	gs_peer = g_supplicant_interface_peer_lookup(wifi->interface,
+					connman_peer_get_identifier(peer));
+	if (!gs_peer)
+		return -EINVAL;
+
+	pbc = g_supplicant_peer_is_wps_pbc(gs_peer);
+	pin = g_supplicant_peer_is_wps_pin(gs_peer);
+
+	switch (wps_method) {
+	case CONNMAN_PEER_WPS_UNKNOWN:
+		if ((pbc && pin) || pin)
+			return -ENOKEY;
+		break;
+	case CONNMAN_PEER_WPS_PBC:
+		if (!pbc)
+			return -EINVAL;
+		wps_pin = NULL;
+		break;
+	case CONNMAN_PEER_WPS_PIN:
+		if (!pin || !wps_pin)
+			return -EINVAL;
+		break;
+	}
+
 	peer_params = g_try_malloc0(sizeof(GSupplicantPeerParams));
 	if (!peer_params)
 		return -ENOMEM;
 
-	peer_params->identifier = connman_peer_get_identifier(peer);
+	peer_params->path = g_strdup(g_supplicant_peer_get_path(gs_peer));
+	if (wps_pin)
+		peer_params->wps_pin = g_strdup(wps_pin);
 
 	ret = g_supplicant_interface_p2p_connect(wifi->interface, peer_params,
 						peer_connect_callback, wifi);
