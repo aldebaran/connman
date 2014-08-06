@@ -24,6 +24,7 @@
 #endif
 
 #include <errno.h>
+#include <ctype.h>
 #include <gdbus.h>
 #include <gdhcp/gdhcp.h>
 
@@ -451,6 +452,69 @@ static void peer_removed(struct connman_peer *peer)
 	peer_schedule_changed();
 }
 
+static const char *get_dbus_sender(struct connman_peer *peer)
+{
+	if (!peer->pending)
+		return NULL;
+
+	return dbus_message_get_sender(peer->pending);
+}
+
+static enum connman_peer_wps_method check_wpspin(struct connman_peer *peer,
+							const char *wpspin)
+{
+	int len, i;
+
+	if (!wpspin)
+		return CONNMAN_PEER_WPS_PBC;
+
+	len = strlen(wpspin);
+	if (len == 0)
+		return CONNMAN_PEER_WPS_PBC;
+
+	if (len != 8)
+		return CONNMAN_PEER_WPS_UNKNOWN;
+	for (i = 0; i < 8; i++) {
+		if (!isdigit((unsigned char) wpspin[i]))
+			return CONNMAN_PEER_WPS_UNKNOWN;
+	}
+
+	return CONNMAN_PEER_WPS_PIN;
+}
+
+static void request_authorization_cb(struct connman_peer *peer,
+					bool choice_done, const char *wpspin,
+					const char *error, void *user_data)
+{
+	enum connman_peer_wps_method wps_method;
+	int err;
+
+	DBG("RequestInput return, %p", peer);
+
+	if (error) {
+		if (g_strcmp0(error,
+				"net.connman.Agent.Error.Canceled") == 0) {
+			err = -EINVAL;
+			goto out;
+		}
+	}
+
+	if (!choice_done || !peer_driver->connect) {
+		err = -EINVAL;
+		goto out;
+	}
+
+	wps_method = check_wpspin(peer, wpspin);
+
+	err = peer_driver->connect(peer, wps_method, wpspin);
+	if (err == -EINPROGRESS)
+		return;
+
+out:
+	reply_pending(peer, EIO);
+	connman_peer_set_state(peer, CONNMAN_PEER_STATE_IDLE);
+}
+
 static int peer_connect(struct connman_peer *peer)
 {
 	int err = -ENOTSUP;
@@ -458,6 +522,12 @@ static int peer_connect(struct connman_peer *peer)
 	if (peer_driver->connect)
 		err = peer_driver->connect(peer,
 					CONNMAN_PEER_WPS_UNKNOWN, NULL);
+
+	if (err == -ENOKEY) {
+		err = __connman_agent_request_peer_authorization(peer,
+						request_authorization_cb, true,
+						get_dbus_sender(peer), NULL);
+	}
 
 	return err;
 }
@@ -687,14 +757,6 @@ static void report_error_cb(void *user_context, bool retry, void *user_data)
 
 	peer->connection_master = false;
 	peer->sub_device = NULL;
-}
-
-static const char *get_dbus_sender(struct connman_peer *peer)
-{
-	if (!peer->pending)
-		return NULL;
-
-	return dbus_message_get_sender(peer->pending);
 }
 
 static int manage_peer_error(struct connman_peer *peer)
