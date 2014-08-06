@@ -539,6 +539,8 @@ static int peer_disconnect(struct connman_peer *peer)
 	connman_agent_cancel(peer);
 	reply_pending(peer, ECONNABORTED);
 
+	connman_peer_set_state(peer, CONNMAN_PEER_STATE_DISCONNECT);
+
 	if (peer->connection_master)
 		stop_dhcp_server(peer);
 	else
@@ -546,6 +548,8 @@ static int peer_disconnect(struct connman_peer *peer)
 
 	if (peer_driver->disconnect)
 		err = peer_driver->disconnect(peer);
+
+	connman_peer_set_state(peer, CONNMAN_PEER_STATE_IDLE);
 
 	return err;
 }
