@@ -492,37 +492,16 @@ static void request_input_string_return(char *input, void *user_data)
 	request_input_next(request);
 }
 
-static DBusMessage *agent_request_input(DBusConnection *connection,
-		DBusMessage *message, void *user_data)
+static void parse_agent_request(struct agent_data *request,
+						DBusMessageIter *iter)
 {
-	struct agent_data *request = user_data;
-	DBusMessageIter iter, dict, entry, variant;
-	char *service, *str, *field;
-	DBusMessageIter dict_entry, field_entry, field_value;
-	char *argument, *value, *attr_type = NULL;
-
+	DBusMessageIter dict, entry, variant, dict_entry;
+	DBusMessageIter field_entry, field_value;
+	char *field, *argument, *value;
+	char *attr_type = NULL;
 	int i;
 
-	if (handle_message(message, request, agent_request_input) == false)
-		return NULL;
-
-	dbus_message_iter_init(message, &iter);
-
-	dbus_message_iter_get_basic(&iter, &str);
-	service = strip_path(str);
-
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &dict);
-
-	__connmanctl_save_rl();
-	if (strcmp(request->interface, AGENT_INTERFACE) == 0)
-		fprintf(stdout, "Agent RequestInput %s\n", service);
-	else
-		fprintf(stdout, "VPN Agent RequestInput %s\n", service);
-	__connmanctl_dbus_print(&dict, "  ", " = ", "\n");
-	fprintf(stdout, "\n");
-
-	dbus_message_iter_recurse(&iter, &dict);
+	dbus_message_iter_recurse(iter, &dict);
 
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
 
@@ -566,6 +545,76 @@ static DBusMessage *agent_request_input(DBusConnection *connection,
 
 		dbus_message_iter_next(&dict);
 	}
+}
+
+static DBusMessage *agent_request_input(DBusConnection *connection,
+		DBusMessage *message, void *user_data)
+{
+	struct agent_data *request = user_data;
+	DBusMessageIter iter, dict;
+	char *service, *str;
+
+	if (handle_message(message, request, agent_request_input) == false)
+		return NULL;
+
+	dbus_message_iter_init(message, &iter);
+
+	dbus_message_iter_get_basic(&iter, &str);
+	service = strip_path(str);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &dict);
+
+	__connmanctl_save_rl();
+	if (strcmp(request->interface, AGENT_INTERFACE) == 0)
+		fprintf(stdout, "Agent RequestInput %s\n", service);
+	else
+		fprintf(stdout, "VPN Agent RequestInput %s\n", service);
+	__connmanctl_dbus_print(&dict, "  ", " = ", "\n");
+	fprintf(stdout, "\n");
+
+	parse_agent_request(request, &iter);
+
+	request->reply = dbus_message_new_method_return(message);
+	dbus_message_iter_init_append(request->reply, &request->iter);
+
+	dbus_message_iter_open_container(&request->iter, DBUS_TYPE_ARRAY,
+                        DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+                        DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+                        DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+			&request->dict);
+
+	request_input_next(request);
+
+	return NULL;
+}
+
+static DBusMessage *
+agent_request_peer_authorization(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct agent_data *request = user_data;
+	DBusMessageIter iter, dict;
+	char *peer, *str;
+
+	if (handle_message(message, request, agent_request_peer_authorization)
+								== false)
+		return NULL;
+
+	dbus_message_iter_init(message, &iter);
+
+	dbus_message_iter_get_basic(&iter, &str);
+	peer = strip_path(str);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &dict);
+
+	__connmanctl_save_rl();
+	fprintf(stdout, "Agent RequestPeerAuthorization %s\n", peer);
+	__connmanctl_dbus_print(&dict, "  ", " = ", "\n");
+	fprintf(stdout, "\n");
+
+	parse_agent_request(request, &iter);
 
 	request->reply = dbus_message_new_method_return(message);
 	dbus_message_iter_init_append(request->reply, &request->iter);
@@ -601,6 +650,11 @@ static const GDBusMethodTable agent_methods[] = {
 					{ "fields", "a{sv}" }),
 				GDBUS_ARGS({ "fields", "a{sv}" }),
 				agent_request_input) },
+	{ GDBUS_ASYNC_METHOD("RequestPeerAuthorization",
+				GDBUS_ARGS({ "peer", "o" },
+					{ "fields", "a{sv}" }),
+				GDBUS_ARGS({ "fields", "a{sv}" }),
+				agent_request_peer_authorization) },
 	{ },
 };
 
