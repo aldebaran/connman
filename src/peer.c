@@ -27,6 +27,8 @@
 #include <gdbus.h>
 #include <gdhcp/gdhcp.h>
 
+#include <connman/agent.h>
+
 #include "connman.h"
 
 static DBusConnection *connection = NULL;
@@ -464,6 +466,7 @@ static int peer_disconnect(struct connman_peer *peer)
 {
 	int err = -ENOTSUP;
 
+	connman_agent_cancel(peer);
 	reply_pending(peer, ECONNABORTED);
 
 	if (peer->connection_master)
@@ -660,6 +663,55 @@ static int start_dhcp_client(struct connman_peer *peer)
 	return __connman_dhcp_start(peer->ipconfig, NULL, dhcp_callback, peer);
 }
 
+static void report_error_cb(void *user_context, bool retry, void *user_data)
+{
+	struct connman_peer *peer = user_context;
+
+	if (retry) {
+		int err;
+		err = peer_connect(peer);
+
+		if (err == 0 || err == -EINPROGRESS)
+			return;
+	}
+
+	reply_pending(peer, ENOTCONN);
+
+	peer_disconnect(peer);
+
+	if (!peer->connection_master) {
+		__connman_dhcp_stop(peer->ipconfig);
+		__connman_ipconfig_disable(peer->ipconfig);
+	} else
+		stop_dhcp_server(peer);
+
+	peer->connection_master = false;
+	peer->sub_device = NULL;
+}
+
+static const char *get_dbus_sender(struct connman_peer *peer)
+{
+	if (!peer->pending)
+		return NULL;
+
+	return dbus_message_get_sender(peer->pending);
+}
+
+static int manage_peer_error(struct connman_peer *peer)
+{
+	int err;
+
+	err = __connman_agent_report_peer_error(peer, peer->path,
+					"connect-failed", report_error_cb,
+					get_dbus_sender(peer), NULL);
+	if (err != -EINPROGRESS) {
+		report_error_cb(peer, false, NULL);
+		return err;
+	}
+
+	return 0;
+}
+
 int connman_peer_set_state(struct connman_peer *peer,
 					enum connman_peer_state new_state)
 {
@@ -697,19 +749,8 @@ int connman_peer_set_state(struct connman_peer *peer,
 
 		break;
 	case CONNMAN_PEER_STATE_FAILURE:
-		reply_pending(peer, ENOTCONN);
-
-		peer_disconnect(peer);
-
-		if (!peer->connection_master) {
-			__connman_dhcp_stop(peer->ipconfig);
-			__connman_ipconfig_disable(peer->ipconfig);
-		} else
-			stop_dhcp_server(peer);
-
-		peer->connection_master = false;
-		peer->sub_device = NULL;
-
+		if (manage_peer_error(peer) == 0)
+			return 0;
 		break;
 	};
 
@@ -852,6 +893,7 @@ void connman_peer_unregister(struct connman_peer *peer)
 	if (!peer->path || !peer->registered)
 		return;
 
+	connman_agent_cancel(peer);
 	reply_pending(peer, EIO);
 
 	g_dbus_unregister_interface(connection, peer->path,
