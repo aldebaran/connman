@@ -4720,17 +4720,6 @@ int g_supplicant_interface_p2p_connect(GSupplicantInterface *interface,
 	if (!interface->p2p_support)
 		return -ENOTSUP;
 
-	if (!peer_params->path) {
-		GSupplicantPeer *peer;
-
-		peer = g_supplicant_interface_peer_lookup(interface,
-						peer_params->identifier);
-		if (!peer)
-			return -ENODEV;
-
-		peer_params->path = g_strdup(peer->path);
-	}
-
 	data = dbus_malloc0(sizeof(*data));
 	data->interface = interface;
 	data->path = g_strdup(interface->path);
@@ -4763,8 +4752,7 @@ int g_supplicant_interface_p2p_disconnect(GSupplicantInterface *interface,
 	if (!interface->p2p_support)
 		return -ENOTSUP;
 
-	peer = g_supplicant_interface_peer_lookup(interface,
-						peer_params->identifier);
+	peer = g_hash_table_lookup(interface->peer_table, peer_params->path);
 	if (!peer)
 		return -ENODEV;
 
