@@ -788,6 +788,7 @@ int __connman_peer_init(void);
 void __connman_peer_cleanup(void);
 
 void __connman_peer_list_struct(DBusMessageIter *array);
+const char *__connman_peer_get_path(struct connman_peer *peer);
 
 #include <connman/session.h>
 

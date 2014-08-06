@@ -894,6 +894,14 @@ void __connman_peer_list_struct(DBusMessageIter *array)
 	g_hash_table_foreach(peers_table, append_peer_struct, array);
 }
 
+const char *__connman_peer_get_path(struct connman_peer *peer)
+{
+	if (!peer || !peer->registered)
+		return NULL;
+
+	return peer->path;
+}
+
 int __connman_peer_init(void)
 {
 	DBG("");
