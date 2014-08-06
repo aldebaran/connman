@@ -88,7 +88,10 @@ int __connman_counter_unregister(const char *owner, const char *path);
 int __connman_counter_init(void);
 void __connman_counter_cleanup(void);
 
+#include <connman/agent.h>
+
 struct connman_service;
+struct connman_peer;
 
 void __connman_agent_cancel(struct connman_service *service);
 
@@ -111,6 +114,11 @@ int __connman_agent_request_login_input(struct connman_service *service,
 int __connman_agent_request_browser(struct connman_service *service,
 				browser_authentication_cb_t callback,
 				const char *url, void *user_data);
+int __connman_agent_report_peer_error(struct connman_peer *peer,
+					const char *path, const char *error,
+					report_error_cb_t callback,
+					const char *dbus_sender,
+					void *user_data);
 
 #include <connman/log.h>
 

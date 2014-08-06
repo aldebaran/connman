@@ -644,3 +644,13 @@ int __connman_agent_request_browser(struct connman_service *service,
 
 	return -EINPROGRESS;
 }
+
+int __connman_agent_report_peer_error(struct connman_peer *peer,
+					const char *path, const char *error,
+					report_error_cb_t callback,
+					const char *dbus_sender,
+					void *user_data)
+{
+	return connman_agent_report_error_full(peer, path, "ReportPeerError",
+				error, callback, dbus_sender, user_data);
+}
