@@ -2339,9 +2339,10 @@ static void peer_changed(GSupplicantPeer *peer,
 	case G_SUPPLICANT_PEER_GROUP_CHANGED:
 		if (!g_supplicant_peer_is_in_a_group(peer))
 			p_state = CONNMAN_PEER_STATE_IDLE;
+		else
+			p_state = CONNMAN_PEER_STATE_CONFIGURATION;
 		break;
 	case G_SUPPLICANT_PEER_GROUP_STARTED:
-		p_state = CONNMAN_PEER_STATE_CONFIGURATION;
 		break;
 	case G_SUPPLICANT_PEER_GROUP_FINISHED:
 		p_state = CONNMAN_PEER_STATE_IDLE;
