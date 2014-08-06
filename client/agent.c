@@ -368,6 +368,36 @@ static DBusMessage *agent_report_error(DBusConnection *connection,
 	return NULL;
 }
 
+static DBusMessage *agent_report_peer_error(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct agent_data *request = user_data;
+	char *path, *peer, *error;
+	DBusMessageIter iter;
+
+	if (handle_message(message, request,
+				agent_report_peer_error) == false)
+		return NULL;
+
+	dbus_message_iter_init(message, &iter);
+
+	dbus_message_iter_get_basic(&iter, &path);
+	peer = strip_path(path);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_get_basic(&iter, &error);
+
+	__connmanctl_save_rl();
+	fprintf(stdout, "Agent ReportPeerError %s\n", peer);
+	fprintf(stdout, "  %s\n", error);
+	__connmanctl_redraw_rl();
+
+	request->message = dbus_message_ref(message);
+	__connmanctl_agent_mode("Retry (yes/no)? ",
+				report_error_return, request);
+	return NULL;
+}
+
 static void request_input_next(struct agent_data *request)
 {
 	int i;
@@ -562,6 +592,10 @@ static const GDBusMethodTable agent_methods[] = {
 				GDBUS_ARGS({ "service", "o" },
 					{ "error", "s" }),
 				NULL, agent_report_error) },
+	{ GDBUS_ASYNC_METHOD("ReportPeerError",
+				GDBUS_ARGS({ "peer", "o" },
+					{ "error", "s" }),
+				NULL, agent_report_peer_error) },
 	{ GDBUS_ASYNC_METHOD("RequestInput",
 				GDBUS_ARGS({ "service", "o" },
 					{ "fields", "a{sv}" }),
