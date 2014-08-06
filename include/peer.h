@@ -36,6 +36,12 @@ enum connman_peer_state {
 	CONNMAN_PEER_STATE_FAILURE       = 6,
 };
 
+enum connman_peer_wps_method {
+	CONNMAN_PEER_WPS_UNKNOWN         = 0,
+	CONNMAN_PEER_WPS_PBC             = 1,
+	CONNMAN_PEER_WPS_PIN             = 2,
+};
+
 struct connman_peer;
 
 struct connman_peer *connman_peer_create(const char *identifier);
@@ -69,7 +75,9 @@ struct connman_peer *connman_peer_get(struct connman_device *device,
 						const char *identifier);
 
 struct connman_peer_driver {
-	int (*connect) (struct connman_peer *peer);
+	int (*connect) (struct connman_peer *peer,
+			enum connman_peer_wps_method wps_method,
+			const char *wps_pin);
 	int (*disconnect) (struct connman_peer *peer);
 };
 

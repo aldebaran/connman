@@ -236,7 +236,9 @@ static void peer_connect_callback(int result, GSupplicantInterface *interface,
 						peer_connect_timeout, wifi);
 }
 
-static int peer_connect(struct connman_peer *peer)
+static int peer_connect(struct connman_peer *peer,
+			enum connman_peer_wps_method wps_method,
+			const char *wps_pin)
 {
 	struct connman_device *device = connman_peer_get_device(peer);
 	GSupplicantPeerParams *peer_params;

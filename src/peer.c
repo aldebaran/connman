@@ -454,7 +454,8 @@ static int peer_connect(struct connman_peer *peer)
 	int err = -ENOTSUP;
 
 	if (peer_driver->connect)
-		err = peer_driver->connect(peer);
+		err = peer_driver->connect(peer,
+					CONNMAN_PEER_WPS_UNKNOWN, NULL);
 
 	return err;
 }
