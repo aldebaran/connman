@@ -3159,6 +3159,29 @@ int g_supplicant_interface_set_p2p_device_config(GSupplicantInterface *interface
 	return ret;
 }
 
+static gboolean peer_lookup_by_identifier(gpointer key, gpointer value,
+							gpointer user_data)
+{
+	const GSupplicantPeer *peer = value;
+	const char *identifier = user_data;
+
+	if (!g_strcmp0(identifier, peer->identifier))
+		return TRUE;
+
+	return FALSE;
+}
+
+GSupplicantPeer *g_supplicant_interface_peer_lookup(GSupplicantInterface *interface,
+							const char *identifier)
+{
+	GSupplicantPeer *peer;
+
+	peer = g_hash_table_find(interface->peer_table,
+					peer_lookup_by_identifier,
+					(void *) identifier);
+	return peer;
+}
+
 struct interface_data {
 	GSupplicantInterface *interface;
 	char *path; /* Interface path cannot be taken from interface (above) as
@@ -4676,18 +4699,6 @@ static void interface_p2p_connect_params(DBusMessageIter *iter, void *user_data)
 	supplicant_dbus_dict_close(iter, &dict);
 }
 
-static gboolean peer_lookup_by_identifier(gpointer key, gpointer value,
-							gpointer user_data)
-{
-	const GSupplicantPeer *peer = value;
-	const char *identifier = user_data;
-
-	if (!g_strcmp0(identifier, peer->identifier))
-		return TRUE;
-
-	return FALSE;
-}
-
 int g_supplicant_interface_p2p_connect(GSupplicantInterface *interface,
 					GSupplicantPeerParams *peer_params,
 					GSupplicantInterfaceCallback callback,
@@ -4704,9 +4715,8 @@ int g_supplicant_interface_p2p_connect(GSupplicantInterface *interface,
 	if (!peer_params->path) {
 		GSupplicantPeer *peer;
 
-		peer = g_hash_table_find(interface->peer_table,
-					peer_lookup_by_identifier,
-					(void *) peer_params->identifier);
+		peer = g_supplicant_interface_peer_lookup(interface,
+						peer_params->identifier);
 		if (!peer)
 			return -ENODEV;
 
@@ -4745,9 +4755,8 @@ int g_supplicant_interface_p2p_disconnect(GSupplicantInterface *interface,
 	if (!interface->p2p_support)
 		return -ENOTSUP;
 
-	peer = g_hash_table_find(interface->peer_table,
-					peer_lookup_by_identifier,
-					(void *) peer_params->identifier);
+	peer = g_supplicant_interface_peer_lookup(interface,
+						peer_params->identifier);
 	if (!peer)
 		return -ENODEV;
 
