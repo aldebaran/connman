@@ -306,7 +306,9 @@ static int peer_disconnect(struct connman_peer *peer)
 {
 	struct connman_device *device = connman_peer_get_device(peer);
 	GSupplicantPeerParams peer_params = {};
+	GSupplicantPeer *gs_peer;
 	struct wifi_data *wifi;
+	int ret;
 
 	DBG("peer %p", peer);
 
@@ -317,10 +319,18 @@ static int peer_disconnect(struct connman_peer *peer)
 	if (!wifi)
 		return -ENODEV;
 
-	peer_params.identifier = connman_peer_get_identifier(peer);
+	gs_peer = g_supplicant_interface_peer_lookup(wifi->interface,
+					connman_peer_get_identifier(peer));
+	if (!gs_peer)
+		return -EINVAL;
 
-	return g_supplicant_interface_p2p_disconnect(wifi->interface,
+	peer_params.path = g_strdup(g_supplicant_peer_get_path(gs_peer));
+
+	ret = g_supplicant_interface_p2p_disconnect(wifi->interface,
 							&peer_params);
+	g_free(peer_params.path);
+
+	return ret;
 }
 
 static struct connman_peer_driver peer_driver = {
