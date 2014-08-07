@@ -1116,7 +1116,11 @@ bool g_supplicant_peer_is_client(GSupplicantPeer *peer)
 		return false;
 
 	for (list = peer->groups; list; list = list->next) {
-		group = list->data;
+		const char *path = list->data;
+
+		group = g_hash_table_lookup(group_mapping, path);
+		if (!group)
+			continue;
 
 		if (group->role != G_SUPPLICANT_GROUP_ROLE_CLIENT ||
 				group->orig_interface != peer->interface)
