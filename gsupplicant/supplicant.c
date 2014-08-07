@@ -2848,7 +2848,6 @@ static void signal_group_started(const char *path, DBusMessageIter *iter)
 	if (!group)
 		return;
 
-	group->interface = interface;
 	group->interface = g_interface;
 	group->orig_interface = interface;
 	group->path = g_strdup(data.group_obj_path);
