@@ -1878,6 +1878,15 @@ static void interface_bss_removed(DBusMessageIter *iter, void *user_data)
 		g_hash_table_remove(interface->network_table, network->group);
 }
 
+static void interface_detect_p2p_support(GSupplicantInterface *interface)
+{
+	SUPPLICANT_DBG("p2p detect");
+	if (interface->mode_capa & G_SUPPLICANT_CAPABILITY_MODE_P2P) {
+		interface->p2p_support = true;
+		callback_p2p_support(interface);
+	}
+}
+
 static void interface_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
@@ -1913,6 +1922,7 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 	if (g_strcmp0(key, "Capabilities") == 0) {
 		supplicant_dbus_property_foreach(iter, interface_capability,
 								interface);
+		interface_detect_p2p_support(interface);
 	} else if (g_strcmp0(key, "State") == 0) {
 		const char *str = NULL;
 
@@ -2079,22 +2089,13 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
 		supplicant_dbus_property_foreach(iter, interface_property,
 								interface);
 		interface_property(NULL, NULL, interface);
-		goto p2p_detection;
+		return;
 	}
 
 	supplicant_dbus_property_get_all(path,
 					SUPPLICANT_INTERFACE ".Interface",
 					interface_property, interface,
 					interface);
-
-p2p_detection:
-
-	if (interface->mode_capa & G_SUPPLICANT_CAPABILITY_MODE_P2P) {
-		interface->p2p_support = true;
-		callback_p2p_support(interface);
-	}
-
-	return;
 }
 
 static void interface_removed(DBusMessageIter *iter, void *user_data)
