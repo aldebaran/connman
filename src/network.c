@@ -1392,22 +1392,6 @@ void connman_network_set_error(struct connman_network *network,
 	network_change(network);
 }
 
-void connman_network_clear_error(struct connman_network *network)
-{
-	struct connman_service *service;
-
-	DBG("network %p", network);
-
-	if (!network)
-		return;
-
-	if (network->connecting || network->associating)
-		return;
-
-	service = connman_service_lookup_from_network(network);
-	__connman_service_clear_error(service);
-}
-
 /**
  * connman_network_set_connected:
  * @network: network structure
