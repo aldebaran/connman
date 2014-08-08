@@ -5683,9 +5683,6 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 	switch (new_state) {
 	case CONNMAN_SERVICE_STATE_UNKNOWN:
 	case CONNMAN_SERVICE_STATE_IDLE:
-		if (service->state == CONNMAN_SERVICE_STATE_FAILURE)
-			return -EINVAL;
-		break;
 	case CONNMAN_SERVICE_STATE_ASSOCIATION:
 		break;
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
@@ -5953,6 +5950,8 @@ int __connman_service_connect(struct connman_service *service,
 
 	if (!is_ipconfig_usable(service))
 		return -ENOLINK;
+
+	__connman_service_clear_error(service);
 
 	err = service_connect(service);
 
