@@ -5941,12 +5941,20 @@ int __connman_service_connect(struct connman_service *service,
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_P2P:
 		return -EINVAL;
-	default:
-		if (!is_ipconfig_usable(service))
-			return -ENOLINK;
 
-		err = service_connect(service);
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		break;
 	}
+
+	if (!is_ipconfig_usable(service))
+		return -ENOLINK;
+
+	err = service_connect(service);
 
 	service->connect_reason = reason;
 	if (err >= 0) {
