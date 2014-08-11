@@ -4935,15 +4935,15 @@ void g_supplicant_unregister(const GSupplicantCallbacks *callbacks)
 		group_mapping = NULL;
 	}
 
-	if (system_available)
-		callback_system_killed();
-
 	if (interface_table) {
 		g_hash_table_foreach(interface_table,
 					unregister_remove_interface, NULL);
 		g_hash_table_destroy(interface_table);
 		interface_table = NULL;
 	}
+
+	if (system_available)
+		callback_system_killed();
 
 	if (connection) {
 		dbus_connection_unref(connection);
