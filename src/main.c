@@ -713,12 +713,12 @@ int main(int argc, char *argv[])
 	__connman_nat_cleanup();
 	__connman_firewall_cleanup();
 	__connman_iptables_cleanup();
+	__connman_peer_cleanup();
 	__connman_ippool_cleanup();
 	__connman_device_cleanup();
 	__connman_network_cleanup();
 	__connman_dhcp_cleanup();
 	__connman_service_cleanup();
-	__connman_peer_cleanup();
 	__connman_agent_cleanup();
 	__connman_ipconfig_cleanup();
 	__connman_notifier_cleanup();
