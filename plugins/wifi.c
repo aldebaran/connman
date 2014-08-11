@@ -178,9 +178,14 @@ static struct wifi_data *get_pending_wifi_data(const char *ifname)
 	GList *list;
 
 	for (list = pending_wifi_device; list; list = list->next) {
-		struct wifi_data *wifi = list->data;
-		const char *dev_name = connman_device_get_string(wifi->device,
-								"Interface");
+		struct wifi_data *wifi;
+		const char *dev_name;
+
+		wifi = list->data;
+		if (!wifi)
+			continue;
+
+		dev_name = connman_device_get_string(wifi->device, "Interface");
 		if (!g_strcmp0(ifname, dev_name)) {
 			pending_wifi_device = g_list_delete_link(
 						pending_wifi_device, list);
