@@ -5008,7 +5008,7 @@ static void report_error_cb(void *user_context, bool retry,
 	else {
 		/* It is not relevant to stay on Failure state
 		 * when failing is due to wrong user input */
-		service->state = CONNMAN_SERVICE_STATE_IDLE;
+		__connman_service_clear_error(service);
 
 		service_complete(service);
 		__connman_connection_update_gateway();
