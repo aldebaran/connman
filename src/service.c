@@ -234,6 +234,23 @@ enum connman_service_type __connman_service_string2type(const char *str)
 	return CONNMAN_SERVICE_TYPE_UNKNOWN;
 }
 
+enum connman_service_security __connman_service_string2security(const char *str)
+{
+	if (!str)
+		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
+
+	if (!strcmp(str, "psk"))
+		return CONNMAN_SERVICE_SECURITY_PSK;
+	if (!strcmp(str, "ieee8021x"))
+		return CONNMAN_SERVICE_SECURITY_8021X;
+	if (!strcmp(str, "none"))
+		return CONNMAN_SERVICE_SECURITY_NONE;
+	if (!strcmp(str, "wep"))
+		return CONNMAN_SERVICE_SECURITY_WEP;
+
+	return CONNMAN_SERVICE_SECURITY_UNKNOWN;
+}
+
 static const char *security2string(enum connman_service_security security)
 {
 	switch (security) {
