@@ -52,6 +52,7 @@ struct connman_config_service {
 	char *private_key_passphrase_type;
 	char *phase2;
 	char *passphrase;
+	enum connman_service_security security;
 	GSList *service_identifiers;
 	char *config_ident; /* file prefix */
 	char *config_entry; /* entry name */
@@ -99,6 +100,7 @@ static bool cleanup = false;
 #define SERVICE_KEY_IDENTITY           "Identity"
 #define SERVICE_KEY_PHASE2             "Phase2"
 #define SERVICE_KEY_PASSPHRASE         "Passphrase"
+#define SERVICE_KEY_SECURITY           "Security"
 #define SERVICE_KEY_HIDDEN             "Hidden"
 
 #define SERVICE_KEY_IPv4               "IPv4"
@@ -129,6 +131,7 @@ static const char *service_possible_keys[] = {
 	SERVICE_KEY_IDENTITY,
 	SERVICE_KEY_PHASE2,
 	SERVICE_KEY_PASSPHRASE,
+	SERVICE_KEY_SECURITY,
 	SERVICE_KEY_HIDDEN,
 	SERVICE_KEY_IPv4,
 	SERVICE_KEY_IPv6,
@@ -513,6 +516,7 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 	struct connman_config_service *service;
 	const char *ident;
 	char *str, *hex_ssid;
+	enum connman_service_security security;
 	bool service_created = false;
 
 	/* Strip off "service_" prefix */
@@ -662,6 +666,38 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 	if (str) {
 		g_free(service->passphrase);
 		service->passphrase = str;
+	}
+
+	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_SECURITY,
+			NULL);
+	security = __connman_service_string2security(str);
+
+	if (service->eap) {
+
+		if (str && security != CONNMAN_SERVICE_SECURITY_8021X)
+			connman_info("Mismatch between EAP configuration and "
+					"setting %s = %s",
+					SERVICE_KEY_SECURITY, str);
+
+		service->security = CONNMAN_SERVICE_SECURITY_8021X;
+
+	} else if (service->passphrase) {
+
+		if (str) {
+			if (security == CONNMAN_SERVICE_SECURITY_PSK ||
+					security == CONNMAN_SERVICE_SECURITY_WEP) {
+				service->security = security;
+			} else {
+				connman_info("Mismatch with passphrase and "
+						"setting %s = %s",
+						SERVICE_KEY_SECURITY, str);
+
+				service->security =
+					CONNMAN_SERVICE_SECURITY_PSK;
+			}
+
+		} else
+			service->security = CONNMAN_SERVICE_SECURITY_PSK;
 	}
 
 	service->config_ident = g_strdup(config->ident);
@@ -1062,6 +1098,7 @@ static int try_provision_service(struct connman_config_service *config,
 	enum connman_service_type type;
 	const void *ssid;
 	unsigned int ssid_len;
+	const char *str;
 
 	type = connman_service_get_type(service);
 	if (type == CONNMAN_SERVICE_TYPE_WIFI &&
@@ -1119,6 +1156,10 @@ static int try_provision_service(struct connman_config_service *config,
 			return -ENOENT;
 
 		if (memcmp(config->ssid, ssid, ssid_len) != 0)
+			return -ENOENT;
+
+		str = connman_network_get_string(network, "WiFi.Security");
+		if (config->security != __connman_service_string2security(str))
 			return -ENOENT;
 	}
 
