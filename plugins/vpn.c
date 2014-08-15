@@ -1078,7 +1078,7 @@ static struct vpn_route *parse_user_route(const char *user_route)
 				char *ptr;
 				long int value = strtol(netmask, &ptr, 10);
 				if (ptr != netmask && *ptr == '\0' &&
-								value <= 32)
+						value && value <= 32)
 					prefix_len = value;
 			}
 
