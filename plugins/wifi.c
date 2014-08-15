@@ -1376,13 +1376,18 @@ error:
 
 static int p2p_find(struct connman_device *device)
 {
-	struct wifi_data *wifi = connman_device_get_data(device);
+	struct wifi_data *wifi;
 	int ret;
 
 	DBG("");
 
 	if (!p2p_technology)
 		return -ENOTSUP;
+
+	wifi = connman_device_get_data(device);
+
+	if (g_supplicant_interface_is_p2p_finding(wifi->interface))
+		return -EALREADY;
 
 	reset_autoscan(device);
 	connman_device_ref(device);
