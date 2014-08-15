@@ -5373,6 +5373,9 @@ static int service_indicate_state(struct connman_service *service)
 			vpn_auto_connect();
 
 	} else if (new_state == CONNMAN_SERVICE_STATE_DISCONNECT) {
+
+		reply_pending(service, ECONNABORTED);
+
 		def_service = __connman_service_get_default();
 
 		if (!__connman_notifier_is_connected() &&
