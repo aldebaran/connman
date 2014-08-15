@@ -399,7 +399,7 @@ static bool load_service_generic(GKeyFile *keyfile,
 			char *ptr;
 			long int value = strtol(mask, &ptr, 10);
 
-			if (ptr != mask && *ptr == '\0' && value <= 32)
+			if (ptr != mask && *ptr == '\0' && value && value <= 32)
 				prefix_len = value;
 
 			addr = 0xffffffff << (32 - prefix_len);
