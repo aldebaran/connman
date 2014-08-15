@@ -4647,6 +4647,14 @@ int g_supplicant_interface_p2p_find(GSupplicantInterface *interface,
 	return ret;
 }
 
+bool g_supplicant_interface_is_p2p_finding(GSupplicantInterface *interface)
+{
+	if (!interface)
+		return false;
+
+	return interface->p2p_finding;
+}
+
 int g_supplicant_interface_p2p_stop_find(GSupplicantInterface *interface)
 {
 	if (!interface->p2p_finding)

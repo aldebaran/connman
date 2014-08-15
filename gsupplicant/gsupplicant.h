@@ -300,6 +300,7 @@ bool g_supplicant_peer_is_wps_pin(GSupplicantPeer *peer);
 bool g_supplicant_peer_is_in_a_group(GSupplicantPeer *peer);
 GSupplicantInterface *g_supplicant_peer_get_group_interface(GSupplicantPeer *peer);
 bool g_supplicant_peer_is_client(GSupplicantPeer *peer);
+bool g_supplicant_interface_is_p2p_finding(GSupplicantInterface *interface);
 
 struct _GSupplicantCallbacks {
 	void (*system_ready) (void);
