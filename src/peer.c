@@ -791,6 +791,8 @@ int connman_peer_set_state(struct connman_peer *peer,
 	case CONNMAN_PEER_STATE_UNKNOWN:
 		return -EINVAL;
 	case CONNMAN_PEER_STATE_IDLE:
+		if (is_connecting(peer) || is_connected(peer))
+			return peer_disconnect(peer);
 		peer->sub_device = NULL;
 		break;
 	case CONNMAN_PEER_STATE_ASSOCIATION:
