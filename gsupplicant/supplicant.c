@@ -4623,7 +4623,7 @@ int g_supplicant_interface_p2p_find(GSupplicantInterface *interface,
 		return -ENOTSUP;
 
 	ret = interface_ready_to_scan(interface);
-	if (ret)
+	if (ret && ret != -EALREADY)
 		return ret;
 
 	data = dbus_malloc0(sizeof(*data));
