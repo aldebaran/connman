@@ -622,7 +622,8 @@ int __connman_dhcp_start(struct connman_ipconfig *ipconfig,
 		err = dhcp_initialize(dhcp);
 
 		if (err < 0) {
-			connman_network_unref(network);
+			if (network)
+				connman_network_unref(network);
 			g_free(dhcp);
 			return err;
 		}
