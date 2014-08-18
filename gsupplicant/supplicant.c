@@ -588,7 +588,8 @@ static void remove_peer(gpointer data)
 	if (peer->groups)
 		g_slist_free_full(peer->groups, g_free);
 
-	g_hash_table_remove(peer_mapping, peer->path);
+	if (peer_mapping)
+		g_hash_table_remove(peer_mapping, peer->path);
 
 	g_free(peer->path);
 	g_free(peer->name);
