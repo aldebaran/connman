@@ -1,3 +1,12 @@
+ver 1.25:
+	Fix issue with handling rebind timer for DHCPv6.
+	Fix issue with handling DHCP renew transaction.
+	Fix issue with user supplied proxy settings and DHCP.
+	Fix issue with extra status codes from captive portals.
+	Fix issue with service idle state reset on failure.
+	Fix issue with DNS label compression handling.
+	Add support for experimental P2P Peer service.
+
 ver 1.24:
 	Fix issue with handling slave interfaces.
 	Fix issue with handling DHCPv4 broadcast flag.
