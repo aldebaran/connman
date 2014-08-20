@@ -196,6 +196,18 @@ static struct wifi_data *get_pending_wifi_data(const char *ifname)
 	return NULL;
 }
 
+static void remove_pending_wifi_device(struct wifi_data *wifi)
+{
+	GList *link;
+
+	link = g_list_find(pending_wifi_device, wifi);
+
+	if (!link)
+		return;
+
+	pending_wifi_device = g_list_delete_link(pending_wifi_device, link);
+}
+
 static void peer_cancel_timeout(struct wifi_data *wifi)
 {
 	if (wifi->p2p_connection_timeout > 0)
@@ -506,6 +518,8 @@ static void wifi_remove(struct connman_device *device)
 		iface_list = g_list_remove(iface_list, wifi);
 
 	check_p2p_technology();
+
+	remove_pending_wifi_device(wifi);
 
 	if (wifi->p2p_find_timeout) {
 		g_source_remove(wifi->p2p_find_timeout);
