@@ -182,7 +182,7 @@ static struct wifi_data *get_pending_wifi_data(const char *ifname)
 		const char *dev_name;
 
 		wifi = list->data;
-		if (!wifi)
+		if (!wifi || !wifi->device)
 			continue;
 
 		dev_name = connman_device_get_string(wifi->device, "Interface");
