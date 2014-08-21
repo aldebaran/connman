@@ -88,7 +88,7 @@ The following options are valid if Type is "wifi"
   authentication method (should only be used with EAP = TTLS).
 - Passphrase: RSN/WPA/WPA2 Passphrase
 - Security: The security type of the network. Possible values are 'psk'
-  (WPA/WPA2 PSK), 'ieee802x' (WPA EAP), 'none' and 'wep'. When not set, the
+  (WPA/WPA2 PSK), 'ieee8021x' (WPA EAP), 'none' and 'wep'. When not set, the
   default value is 'ieee8021x' if an EAP type is configured, 'psk' if a
   passphrase is present and 'none' otherwise.
 - Hidden: If set to true, then this AP is hidden. If missing or set to false,
