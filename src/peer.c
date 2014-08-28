@@ -493,7 +493,9 @@ static void request_authorization_cb(struct connman_peer *peer,
 
 	if (error) {
 		if (g_strcmp0(error,
-				"net.connman.Agent.Error.Canceled") == 0) {
+				"net.connman.Agent.Error.Canceled") == 0 ||
+			g_strcmp0(error,
+				"net.connman.Agent.Error.Rejected") == 0) {
 			err = -EINVAL;
 			goto out;
 		}
@@ -826,6 +828,13 @@ int connman_peer_set_state(struct connman_peer *peer,
 	state_changed(peer);
 
 	return 0;
+}
+
+int connman_peer_request_connection(struct connman_peer *peer)
+{
+	return __connman_agent_request_peer_authorization(peer,
+					request_authorization_cb, false,
+					NULL, NULL);
 }
 
 static void peer_up(struct connman_ipconfig *ipconfig, const char *ifname)
