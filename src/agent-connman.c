@@ -710,7 +710,7 @@ static void request_peer_authorization_reply(DBusMessage *reply,
 		dbus_message_iter_next(&dict);
 	}
 
-	if (auth_reply->wps_requested)
+	if (!auth_reply->wps_requested)
 		choice_done = true;
 
 done:
