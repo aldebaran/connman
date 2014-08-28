@@ -508,6 +508,17 @@ static void callback_peer_changed(GSupplicantPeer *peer,
 	callbacks_pointer->peer_changed(peer, state);
 }
 
+static void callback_peer_request(GSupplicantPeer *peer)
+{
+	if (!callbacks_pointer)
+		return;
+
+	if (!callbacks_pointer->peer_request)
+		return;
+
+	callbacks_pointer->peer_request(peer);
+}
+
 static void remove_group(gpointer data)
 {
 	GSupplicantGroup *group = data;
@@ -2880,6 +2891,29 @@ static void signal_group_finished(const char *path, DBusMessageIter *iter)
 	g_hash_table_remove(interface->group_table, data.group_obj_path);
 }
 
+static void signal_group_request(const char *path, DBusMessageIter *iter)
+{
+	GSupplicantInterface *interface;
+	GSupplicantPeer *peer;
+	const char *obj_path;
+
+	SUPPLICANT_DBG("");
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (!interface)
+		return;
+
+	dbus_message_iter_get_basic(iter, &obj_path);
+	if (!obj_path || !g_strcmp0(obj_path, "/"))
+		return;
+
+	peer = g_hash_table_lookup(interface->peer_table, obj_path);
+	if (!peer)
+		return;
+
+	callback_peer_request(peer);
+}
+
 static void signal_group_peer_joined(const char *path, DBusMessageIter *iter)
 {
 	const char *peer_path = NULL;
@@ -2979,6 +3013,7 @@ static struct {
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GONegotiationFailure", signal_group_failure },
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GroupStarted", signal_group_started },
 	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GroupFinished", signal_group_finished },
+	{ SUPPLICANT_INTERFACE ".Interface.P2PDevice", "GONegotiationRequest", signal_group_request },
 
 	{ SUPPLICANT_INTERFACE ".Group", "PeerJoined", signal_group_peer_joined },
 	{ SUPPLICANT_INTERFACE ".Group", "PeerDisconnected", signal_group_peer_disconnected },
