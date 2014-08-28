@@ -2453,6 +2453,24 @@ static void peer_changed(GSupplicantPeer *peer,
 	connman_peer_set_state(connman_peer, p_state);
 }
 
+static void peer_request(GSupplicantPeer *peer)
+{
+	GSupplicantInterface *iface = g_supplicant_peer_get_interface(peer);
+	struct wifi_data *wifi = g_supplicant_interface_get_data(iface);
+	struct connman_peer *connman_peer;
+	const char *identifier;
+
+	identifier = g_supplicant_peer_get_identifier(peer);
+
+	DBG("ident: %s", identifier);
+
+	connman_peer = connman_peer_get(wifi->device, identifier);
+	if (!connman_peer)
+		return;
+
+	connman_peer_request_connection(connman_peer);
+}
+
 static void debug(const char *str)
 {
 	if (getenv("CONNMAN_SUPPLICANT_DEBUG"))
@@ -2474,6 +2492,7 @@ static const GSupplicantCallbacks callbacks = {
 	.peer_found		= peer_found,
 	.peer_lost		= peer_lost,
 	.peer_changed		= peer_changed,
+	.peer_request		= peer_request,
 	.debug			= debug,
 };
 
