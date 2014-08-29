@@ -2166,9 +2166,11 @@ void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 
 	if (ipconfig->index >= 0) {
 		char *ifname = connman_inet_ifname(ipconfig->index);
-		connman_dbus_dict_append_basic(iter, "Interface",
-					DBUS_TYPE_STRING, &ifname);
-		g_free(ifname);
+		if (ifname) {
+			connman_dbus_dict_append_basic(iter, "Interface",
+						DBUS_TYPE_STRING, &ifname);
+			g_free(ifname);
+		}
 	}
 
 	if (ipdevice->address)
