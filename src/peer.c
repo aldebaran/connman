@@ -786,6 +786,9 @@ int connman_peer_set_state(struct connman_peer *peer,
 	enum connman_peer_state old_state = peer->state;
 	int err;
 
+	DBG("peer (%s) old state %d new state %d", peer->name,
+				old_state, new_state);
+
 	if (old_state == new_state)
 		return -EALREADY;
 
