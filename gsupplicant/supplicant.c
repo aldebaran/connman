@@ -2915,6 +2915,8 @@ static void signal_group_finished(const char *path, DBusMessageIter *iter)
 
 	remove_peer_group_interface(interface->group_table, data.group_obj_path);
 
+	g_hash_table_remove(group_mapping, data.group_obj_path);
+
 	g_hash_table_remove(interface->group_table, data.group_obj_path);
 }
 
