@@ -2873,6 +2873,31 @@ static void signal_group_started(const char *path, DBusMessageIter *iter)
 	callback_peer_changed(peer, G_SUPPLICANT_PEER_GROUP_STARTED);
 }
 
+static void remove_peer_group_interface(GHashTable *group_table,
+				const char* path)
+{
+	GSupplicantGroup *group;
+	GHashTableIter iter;
+	gpointer value, key;
+
+	if (!group_table)
+		return;
+
+	group = g_hash_table_lookup(group_table, path);
+
+	if (!group || !group->orig_interface)
+		return;
+
+	g_hash_table_iter_init(&iter, group->orig_interface->peer_table);
+
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
+		GSupplicantPeer *peer = value;
+
+		if (peer->current_group_iface == group->interface)
+			peer->current_group_iface = NULL;
+	}
+}
+
 static void signal_group_finished(const char *path, DBusMessageIter *iter)
 {
 	GSupplicantInterface *interface;
@@ -2887,6 +2912,8 @@ static void signal_group_finished(const char *path, DBusMessageIter *iter)
 	supplicant_dbus_property_foreach(iter, group_sig_property, &data);
 	if (!data.interface_obj_path || !data.group_obj_path)
 		return;
+
+	remove_peer_group_interface(interface->group_table, data.group_obj_path);
 
 	g_hash_table_remove(interface->group_table, data.group_obj_path);
 }
