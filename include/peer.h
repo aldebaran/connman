@@ -75,11 +75,23 @@ void connman_peer_unregister(struct connman_peer *peer);
 struct connman_peer *connman_peer_get(struct connman_device *device,
 						const char *identifier);
 
+typedef void (* peer_service_registration_cb_t) (int result, void *user_data);
+
 struct connman_peer_driver {
 	int (*connect) (struct connman_peer *peer,
 			enum connman_peer_wps_method wps_method,
 			const char *wps_pin);
 	int (*disconnect) (struct connman_peer *peer);
+	int (*register_service) (const unsigned char *specification,
+				int specification_length,
+				const unsigned char *query,
+				int query_length, int version,
+				peer_service_registration_cb_t callback,
+				void *user_data);
+	int (*unregister_service) (const unsigned char *specification,
+					int specification_length,
+					const unsigned char *query,
+					int query_length, int version);
 };
 
 int connman_peer_driver_register(struct connman_peer_driver *driver);
