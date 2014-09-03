@@ -1001,6 +1001,8 @@ int connman_peer_driver_register(struct connman_peer_driver *driver)
 
 	peer_driver = driver;
 
+	__connman_peer_service_set_driver(driver);
+
 	return 0;
 }
 

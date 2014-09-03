@@ -644,6 +644,7 @@ int main(int argc, char *argv[])
 	__connman_notifier_init();
 	__connman_agent_init();
 	__connman_service_init();
+	__connman_peer_service_init();
 	__connman_peer_init();
 	__connman_provider_init();
 	__connman_network_init();
@@ -713,6 +714,7 @@ int main(int argc, char *argv[])
 	__connman_nat_cleanup();
 	__connman_firewall_cleanup();
 	__connman_iptables_cleanup();
+	__connman_peer_service_cleanup();
 	__connman_peer_cleanup();
 	__connman_ippool_cleanup();
 	__connman_device_cleanup();
