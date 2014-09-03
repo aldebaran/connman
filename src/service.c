@@ -4358,12 +4358,12 @@ static void service_schedule_added(struct connman_service *service)
 
 static void service_schedule_removed(struct connman_service *service)
 {
-	DBG("service %p %s", service, service->path);
-
 	if (!service || !service->path) {
 		DBG("service %p or path is NULL", service);
 		return;
 	}
+
+	DBG("service %p %s", service, service->path);
 
 	g_hash_table_remove(services_notify->add, service->path);
 	g_hash_table_replace(services_notify->remove, g_strdup(service->path),
