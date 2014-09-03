@@ -67,6 +67,8 @@
 
 #define P2P_FIND_TIMEOUT 30
 #define P2P_CONNECTION_TIMEOUT 100
+#define P2P_LISTEN_PERIOD 500
+#define P2P_LISTEN_INTERVAL 2000
 
 static struct connman_technology *wifi_technology = NULL;
 static struct connman_technology *p2p_technology = NULL;
@@ -362,6 +364,10 @@ static void register_peer_service_cb(int result,
 
 	DBG("");
 
+	if (result == 0)
+		g_supplicant_interface_p2p_listen(iface, P2P_LISTEN_PERIOD,
+							P2P_LISTEN_INTERVAL);
+
 	if (reg_data->callback)
 		reg_data->callback(result, reg_data->user_data);
 
@@ -490,6 +496,8 @@ static int peer_unregister_service(const unsigned char *specification,
 		ret = g_supplicant_interface_p2p_del_service(iface, params);
 		if (ret != 0 && ret != -EINPROGRESS)
 			free_peer_service_params(params);
+
+		g_supplicant_interface_p2p_listen(iface, 0, 0);
 	}
 
 	return 0;
