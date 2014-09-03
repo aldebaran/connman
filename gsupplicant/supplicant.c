@@ -4860,6 +4860,132 @@ int g_supplicant_interface_p2p_disconnect(GSupplicantInterface *interface,
 	return -EINPROGRESS;
 }
 
+struct p2p_service_data {
+	bool registration;
+	GSupplicantInterface *interface;
+	GSupplicantP2PServiceParams *service;
+	GSupplicantInterfaceCallback callback;
+	void *user_data;
+};
+
+static void interface_p2p_service_result(const char *error,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct p2p_service_data *data = user_data;
+	int result = 0;
+
+	SUPPLICANT_DBG("%s result - %s", data->registration ?
+				"Registration" : "Deletion",
+				error ? error : "Success");
+	if (error)
+		result = -EINVAL;
+
+	if (data->callback)
+		data->callback(result, data->interface, data->user_data);
+
+	g_free(data->service->query);
+	g_free(data->service->response);
+	g_free(data->service->service);
+	g_free(data->service);
+	dbus_free(data);
+}
+
+static void interface_p2p_service_params(DBusMessageIter *iter,
+							void *user_data)
+{
+	struct p2p_service_data *data = user_data;
+	GSupplicantP2PServiceParams *service;
+	DBusMessageIter dict;
+	const char *type;
+
+	SUPPLICANT_DBG("");
+
+	service = data->service;
+
+	supplicant_dbus_dict_open(iter, &dict);
+
+	if (service->query && service->response) {
+		type = "bonjour";
+		supplicant_dbus_dict_append_basic(&dict, "service_type",
+						DBUS_TYPE_STRING, &type);
+		supplicant_dbus_dict_append_fixed_array(&dict, "query",
+					DBUS_TYPE_BYTE, &service->query,
+					service->query_length);
+		supplicant_dbus_dict_append_fixed_array(&dict, "response",
+					DBUS_TYPE_BYTE, &service->response,
+					service->response_length);
+	} else if (service->version && service->service) {
+		type = "upnp";
+		supplicant_dbus_dict_append_basic(&dict, "service_type",
+						DBUS_TYPE_STRING, &type);
+		supplicant_dbus_dict_append_basic(&dict, "version",
+					DBUS_TYPE_INT32, &service->version);
+		supplicant_dbus_dict_append_basic(&dict, "service",
+					DBUS_TYPE_STRING, &service->service);
+	}
+
+	supplicant_dbus_dict_close(iter, &dict);
+}
+
+int g_supplicant_interface_p2p_add_service(GSupplicantInterface *interface,
+				GSupplicantInterfaceCallback callback,
+				GSupplicantP2PServiceParams *p2p_service_params,
+				void *user_data)
+{
+	struct p2p_service_data *data;
+	int ret;
+
+	SUPPLICANT_DBG("");
+
+	if (!interface->p2p_support)
+		return -ENOTSUP;
+
+	data = dbus_malloc0(sizeof(*data));
+	data->registration = true;
+	data->interface = interface;
+	data->service = p2p_service_params;
+	data->callback = callback;
+	data->user_data = user_data;
+
+	ret = supplicant_dbus_method_call(interface->path,
+		SUPPLICANT_INTERFACE ".Interface.P2PDevice", "AddService",
+		interface_p2p_service_params, interface_p2p_service_result,
+		data, interface);
+	if (ret < 0) {
+		dbus_free(data);
+		return ret;
+	}
+
+	return -EINPROGRESS;
+}
+
+int g_supplicant_interface_p2p_del_service(GSupplicantInterface *interface,
+				GSupplicantP2PServiceParams *p2p_service_params)
+{
+	struct p2p_service_data *data;
+	int ret;
+
+	SUPPLICANT_DBG("");
+
+	if (!interface->p2p_support)
+		return -ENOTSUP;
+
+	data = dbus_malloc0(sizeof(*data));
+	data->interface = interface;
+	data->service = p2p_service_params;
+
+	ret = supplicant_dbus_method_call(interface->path,
+		SUPPLICANT_INTERFACE ".Interface.P2PDevice", "DeleteService",
+		interface_p2p_service_params, interface_p2p_service_result,
+		data, interface);
+	if (ret < 0) {
+		dbus_free(data);
+		return ret;
+	}
+
+	return -EINPROGRESS;
+}
+
 static const char *g_supplicant_rule0 = "type=signal,"
 					"path=" DBUS_PATH_DBUS ","
 					"sender=" DBUS_SERVICE_DBUS ","

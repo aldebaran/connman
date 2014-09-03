@@ -176,6 +176,17 @@ struct _GSupplicantPeerParams {
 
 typedef struct _GSupplicantPeerParams GSupplicantPeerParams;
 
+struct _GSupplicantP2PServiceParams {
+	int version;
+	char *service;
+	unsigned char *query;
+	int query_length;
+	unsigned char *response;
+	int response_length;
+};
+
+typedef struct _GSupplicantP2PServiceParams GSupplicantP2PServiceParams;
+
 /* global API */
 typedef void (*GSupplicantCountryCallback) (int result,
 						const char *alpha2,
@@ -228,6 +239,14 @@ int g_supplicant_interface_p2p_connect(GSupplicantInterface *interface,
 
 int g_supplicant_interface_p2p_disconnect(GSupplicantInterface *interface,
 					GSupplicantPeerParams *peer_params);
+
+int g_supplicant_interface_p2p_add_service(GSupplicantInterface *interface,
+				GSupplicantInterfaceCallback callback,
+				GSupplicantP2PServiceParams *p2p_service_params,
+				void *user_data);
+
+int g_supplicant_interface_p2p_del_service(GSupplicantInterface *interface,
+				GSupplicantP2PServiceParams *p2p_service_params);
 
 int g_supplicant_interface_connect(GSupplicantInterface *interface,
 					GSupplicantSSID *ssid,
