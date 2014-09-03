@@ -58,7 +58,38 @@ Properties	string State [readonly] [experimental]
 
 				The current configured IPv4 netmask.
 
-		array{array{byte}} Services [readonly] [experimental]
+		array{dict} Services [readonly] [experimental]
 
-			Array of P2P service specifications, which are
-			themselves a TLV formated byte array.
+			Array of P2P service specifications consisting of
+			either UpnpService and UpnpVersion or BonjourQuery
+			and BonjourResponse, but not a mix of these. The
+			dict members have the following format:
+
+			String UpnpService [readonly]
+
+				The UPNP service URI.
+
+			int32 UpnpVersion [readonly]
+
+				The UPNP version in use.
+
+			array{byte} BonjourQuery [readonly]
+
+				The bonjour service query data, provided
+				through a byte array.
+
+				Note: a Peer object will never show this
+				information. When scanning, a device gets
+				only the bonjour response data. However,
+				this information is mandatory when a bonjour
+				service is given through Manager API
+				RegisterPeerService and
+				UnregisterPeerService.
+
+			array{byte} BonjourResponse [readonly]
+
+				The bonjour service response data, provided
+				through a byte array.
+
+				Note: this will be the only bonjour related
+				information a Peer object will show.
