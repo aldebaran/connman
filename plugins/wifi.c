@@ -350,9 +350,156 @@ static int peer_disconnect(struct connman_peer *peer)
 	return ret;
 }
 
+struct peer_service_registration {
+	peer_service_registration_cb_t callback;
+	void *user_data;
+};
+
+static void register_peer_service_cb(int result,
+				GSupplicantInterface *iface, void *user_data)
+{
+	struct peer_service_registration *reg_data = user_data;
+
+	DBG("");
+
+	if (reg_data->callback)
+		reg_data->callback(result, reg_data->user_data);
+
+	g_free(reg_data);
+}
+
+static GSupplicantP2PServiceParams *fill_in_peer_service_params(
+				const unsigned char *spec,
+				int spec_length, const unsigned char *query,
+				int query_length, int version)
+{
+	GSupplicantP2PServiceParams *params;
+
+	params = g_try_malloc0(sizeof(GSupplicantP2PServiceParams));
+	if (!params)
+		return NULL;
+
+	if (version > 0) {
+		params->version = version;
+		params->service = g_memdup(spec, spec_length);
+	} else {
+		params->query = g_memdup(query, query_length);
+		params->query_length = query_length;
+
+		params->response = g_memdup(spec, spec_length);
+		params->response_length = spec_length;
+	}
+
+	return params;
+}
+
+static void free_peer_service_params(GSupplicantP2PServiceParams *params)
+{
+	if (!params)
+		return;
+
+	g_free(params->service);
+	g_free(params->query);
+	g_free(params->response);
+
+	g_free(params);
+}
+
+static int peer_register_service(const unsigned char *specification,
+				int specification_length,
+				const unsigned char *query,
+				int query_length, int version,
+				peer_service_registration_cb_t callback,
+				void *user_data)
+{
+	struct peer_service_registration *reg_data;
+	GSupplicantP2PServiceParams *params;
+	bool found = false;
+	int ret, ret_f;
+	GList *list;
+
+	DBG("");
+
+	reg_data = g_try_malloc0(sizeof(*reg_data));
+	if (!reg_data)
+		return -ENOMEM;
+
+	reg_data->callback = callback;
+	reg_data->user_data = user_data;
+
+	ret_f = -EOPNOTSUPP;
+
+	for (list = iface_list; list; list = list->next) {
+		struct wifi_data *wifi = list->data;
+		GSupplicantInterface *iface = wifi->interface;
+
+		if (!g_supplicant_interface_has_p2p(iface))
+			continue;
+
+		params = fill_in_peer_service_params(specification,
+						specification_length, query,
+						query_length, version);
+		if (!params) {
+			ret = -ENOMEM;
+			continue;
+		}
+
+		if (!found) {
+			ret_f = g_supplicant_interface_p2p_add_service(iface,
+				register_peer_service_cb, params, reg_data);
+			if (ret_f == 0 || ret_f == -EINPROGRESS)
+				found = true;
+			ret = ret_f;
+		} else
+			ret = g_supplicant_interface_p2p_add_service(iface,
+				register_peer_service_cb, params, NULL);
+		if (ret != 0 && ret != -EINPROGRESS)
+			free_peer_service_params(params);
+	}
+
+	if (ret_f != 0 && ret_f != -EINPROGRESS)
+		g_free(reg_data);
+
+	return ret_f;
+}
+
+static int peer_unregister_service(const unsigned char *specification,
+						int specification_length,
+						const unsigned char *query,
+						int query_length, int version)
+{
+	GSupplicantP2PServiceParams *params;
+	GList *list;
+	int ret;
+
+	for (list = iface_list; list; list = list->next) {
+		struct wifi_data *wifi = list->data;
+		GSupplicantInterface *iface = wifi->interface;
+
+		if (!g_supplicant_interface_has_p2p(iface))
+			continue;
+
+		params = fill_in_peer_service_params(specification,
+						specification_length, query,
+						query_length, version);
+		if (!params) {
+			ret = -ENOMEM;
+			continue;
+		}
+
+		ret = g_supplicant_interface_p2p_del_service(iface, params);
+		if (ret != 0 && ret != -EINPROGRESS)
+			free_peer_service_params(params);
+	}
+
+	return 0;
+}
+
 static struct connman_peer_driver peer_driver = {
 	.connect    = peer_connect,
 	.disconnect = peer_disconnect,
+	.register_service = peer_register_service,
+	.unregister_service = peer_unregister_service,
 };
 
 static void handle_tethering(struct wifi_data *wifi)
