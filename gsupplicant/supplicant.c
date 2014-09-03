@@ -157,7 +157,6 @@ struct _GSupplicantInterface {
 	unsigned int scan_capa;
 	unsigned int mode_capa;
 	unsigned int max_scan_ssids;
-	bool p2p_checked;
 	bool p2p_support;
 	bool p2p_finding;
 	dbus_bool_t ready;
@@ -409,10 +408,8 @@ static void callback_p2p_support(GSupplicantInterface *interface)
 {
 	SUPPLICANT_DBG("");
 
-	if (interface->p2p_checked)
+	if (!interface->p2p_support)
 		return;
-
-	interface->p2p_checked = true;
 
 	if (callbacks_pointer && callbacks_pointer->p2p_support)
 		callbacks_pointer->p2p_support(interface);
@@ -1890,15 +1887,6 @@ static void interface_bss_removed(DBusMessageIter *iter, void *user_data)
 		g_hash_table_remove(interface->network_table, network->group);
 }
 
-static void interface_detect_p2p_support(GSupplicantInterface *interface)
-{
-	SUPPLICANT_DBG("p2p detect");
-	if (interface->mode_capa & G_SUPPLICANT_CAPABILITY_MODE_P2P) {
-		interface->p2p_support = true;
-		callback_p2p_support(interface);
-	}
-}
-
 static void interface_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
@@ -1934,7 +1922,8 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 	if (g_strcmp0(key, "Capabilities") == 0) {
 		supplicant_dbus_property_foreach(iter, interface_capability,
 								interface);
-		interface_detect_p2p_support(interface);
+		if (interface->mode_capa & G_SUPPLICANT_CAPABILITY_MODE_P2P)
+			interface->p2p_support = true;
 	} else if (g_strcmp0(key, "State") == 0) {
 		const char *str = NULL;
 
@@ -3331,8 +3320,10 @@ static void interface_create_property(const char *key, DBusMessageIter *iter,
 	GSupplicantInterface *interface = data->interface;
 
 	if (!key) {
-		if (data->callback)
+		if (data->callback) {
 			data->callback(0, data->interface, data->user_data);
+			callback_p2p_support(interface);
+		}
 
 		interface_create_data_free(data);
 	}
@@ -3439,8 +3430,10 @@ static void interface_get_result(const char *error,
 		goto done;
 	}
 
-	if (data->callback)
+	if (data->callback) {
 		data->callback(0, interface, data->user_data);
+		callback_p2p_support(interface);
+	}
 
 	interface_create_data_free(data);
 
