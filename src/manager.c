@@ -380,6 +380,115 @@ static DBusMessage *release_private_network(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static int parse_peers_service_specs(DBusMessageIter *array,
+			const unsigned char **spec, int *spec_len,
+			const unsigned char **query, int *query_len,
+			int *version)
+{
+	*spec = *query = NULL;
+	*spec_len = *query_len = *version = 0;
+
+	while (dbus_message_iter_get_arg_type(array) ==
+							DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(array, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if  (!g_strcmp0(key, "BonjourResponse")) {
+			dbus_message_iter_get_fixed_array(&value,
+							spec, spec_len);
+		} else if (!g_strcmp0(key, "BonjourQuery")) {
+			dbus_message_iter_get_fixed_array(&value,
+							query, query_len);
+		} else if (!g_strcmp0(key, "UpnpService")) {
+			dbus_message_iter_get_basic(&value, spec);
+			*spec_len = strlen((const char *)*spec)+1;
+		} else if (!g_strcmp0(key, "UpnpVersion")) {
+			dbus_message_iter_get_basic(&value, version);
+		} else
+			return -EINVAL;
+
+		dbus_message_iter_next(array);
+	}
+
+	if ((*query && *version) || (!*spec && *query) || (!spec && *version))
+		return -EINVAL;
+
+	return 0;
+}
+
+static DBusMessage *register_peer_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const unsigned char *spec, *query;
+	DBusMessageIter iter, array;
+	int spec_len, query_len;
+	dbus_bool_t master;
+	const char *owner;
+	int version;
+	int ret;
+
+	DBG("");
+
+	owner = dbus_message_get_sender(msg);
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_recurse(&iter, &array);
+
+	ret = parse_peers_service_specs(&array, &spec, &spec_len,
+						&query, &query_len, &version);
+	if (ret)
+		goto error;
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_get_basic(&iter, &master);
+
+	ret = __connman_peer_service_register(owner, msg, spec, spec_len,
+						query, query_len, version);
+	if (!ret)
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	if (ret == -EINPROGRESS)
+		return NULL;
+error:
+	return __connman_error_failed(msg, -ret);
+}
+
+static DBusMessage *unregister_peer_service(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	const unsigned char *spec, *query;
+	DBusMessageIter iter, array;
+	int spec_len, query_len;
+	const char *owner;
+	int version;
+	int ret;
+
+	DBG("");
+
+	owner = dbus_message_get_sender(msg);
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_recurse(&iter, &array);
+
+	ret = parse_peers_service_specs(&array, &spec, &spec_len,
+						&query, &query_len, &version);
+	if (ret)
+		goto error;
+
+	ret = __connman_peer_service_unregister(owner, spec, spec_len,
+						query, query_len, version);
+	if (!ret)
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+error:
+	return __connman_error_failed(msg, -ret);
+
+}
+
 static const GDBusMethodTable manager_methods[] = {
 	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
@@ -432,6 +541,13 @@ static const GDBusMethodTable manager_methods[] = {
 	{ GDBUS_METHOD("ReleasePrivateNetwork",
 			GDBUS_ARGS({ "path", "o" }), NULL,
 			release_private_network) },
+	{ GDBUS_ASYNC_METHOD("RegisterPeerService",
+			GDBUS_ARGS({ "specification", "a{sv}" },
+				   { "master", "b" }), NULL,
+			register_peer_service) },
+	{ GDBUS_METHOD("UnregisterPeerService",
+			GDBUS_ARGS({ "specification", "a{sv}" }), NULL,
+			unregister_peer_service) },
 	{ },
 };
 
