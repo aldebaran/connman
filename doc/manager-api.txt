@@ -156,36 +156,43 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		void RegisterPeerService(array{byte} specification,  boolean master) [experimental]
+		void RegisterPeerService(dict specification, boolean master)
+			   [experimental]
 
 			Registers a local P2P Peer service
 
-			If p2p technology is not available, this will raise a
-			'not supported' error. This behavior does not apply if
-			such technology is just disabled.
+			Even if p2p techonology is not available, it will be
+			possible to register peer services, since a p2p
+			enabled WiFi device might appear at anytime. The
+			registered peer services will automatically be enabled
+			for the p2p WiFi device; the application does not need
+			to do any re-registration.
 
 			A Peer service belongs to the process that registers
 			it, thus if that process dies, its Peer services will
 			be destroyed as well.
 
-			"specification" is the TLV formated byte array
-			describing the WiFi P2P service.
+			The specification dict follows the format described
+			in the Peer API document.
 
 			ConnMan will be able to determine in most cases
 			whether to be the P2P Group Owner or not. If the
-			service must belong to a group that this device
-			manages, the "master" property can be set. Do not set
-			the "master" property unless you are absolutely sure
-			you know what you are doing.
+			service for some reason must belong to a group that
+			this device manages, the "master" property can be
+			set. Do not enable the "master" property unless it
+			is absolutely sure that this is needed for the
+			provided peer service.
 
 			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.AlreadyExists
 					 [service].Error.NotSupported
 
-		void UnregisterPeerService(array{byte} specification) [experimental]
+		void UnregisterPeerService(dict specification) [experimental]
 
 			Unregisters an existing local P2P Peer service
 
 			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotRegistered
 
 Signals		TechnologyAdded(object path, dict properties)
 
