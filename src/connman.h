@@ -95,8 +95,6 @@ struct connman_peer;
 
 void __connman_agent_cancel(struct connman_service *service);
 
-int __connman_service_add_passphrase(struct connman_service *service,
-					const gchar *passphrase);
 typedef void (* authentication_cb_t) (struct connman_service *service,
 				bool values_received,
 				const char *name, int name_len,

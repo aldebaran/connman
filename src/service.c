@@ -2833,9 +2833,17 @@ static int check_passphrase(enum connman_service_security security,
 	length = strlen(passphrase);
 
 	switch (security) {
-	case CONNMAN_SERVICE_SECURITY_PSK:
+	case CONNMAN_SERVICE_SECURITY_UNKNOWN:
+	case CONNMAN_SERVICE_SECURITY_NONE:
 	case CONNMAN_SERVICE_SECURITY_WPA:
 	case CONNMAN_SERVICE_SECURITY_RSN:
+
+		DBG("service security '%s' (%d) not handled",
+				security2string(security), security);
+
+		return -EOPNOTSUPP;
+
+	case CONNMAN_SERVICE_SECURITY_PSK:
 		/* A raw key is always 64 bytes length,
 		 * its content is in hex representation.
 		 * A PSK key must be between [8..63].
@@ -2860,8 +2868,7 @@ static int check_passphrase(enum connman_service_security security,
 		} else if (length != 5 && length != 13)
 			return -ENOKEY;
 		break;
-	case CONNMAN_SERVICE_SECURITY_UNKNOWN:
-	case CONNMAN_SERVICE_SECURITY_NONE:
+
 	case CONNMAN_SERVICE_SECURITY_8021X:
 		break;
 	}
@@ -5031,31 +5038,6 @@ static void report_error_cb(void *user_context, bool retry,
 	}
 }
 
-int __connman_service_add_passphrase(struct connman_service *service,
-				const gchar *passphrase)
-{
-	int err = 0;
-
-	switch (service->security) {
-	case CONNMAN_SERVICE_SECURITY_WEP:
-	case CONNMAN_SERVICE_SECURITY_PSK:
-	case CONNMAN_SERVICE_SECURITY_8021X:
-		err = __connman_service_set_passphrase(service, passphrase);
-		break;
-
-	case CONNMAN_SERVICE_SECURITY_UNKNOWN:
-	case CONNMAN_SERVICE_SECURITY_NONE:
-	case CONNMAN_SERVICE_SECURITY_WPA:
-	case CONNMAN_SERVICE_SECURITY_RSN:
-		DBG("service security '%s' (%d) not handled",
-				security2string(service->security),
-				service->security);
-		break;
-	}
-
-	return err;
-}
-
 static int check_wpspin(struct connman_service *service, const char *wpspin)
 {
 	int length;
@@ -5149,7 +5131,7 @@ static void request_input_cb(struct connman_service *service,
 		__connman_service_set_agent_identity(service, identity);
 
 	if (passphrase)
-		err = __connman_service_add_passphrase(service, passphrase);
+		err = __connman_service_set_passphrase(service, passphrase);
 
  done:
 	if (err >= 0) {

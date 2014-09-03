@@ -1480,7 +1480,7 @@ int connman_network_connect_hidden(struct connman_network *network,
 		__connman_service_set_agent_identity(service, identity);
 
 	if (passphrase)
-		err = __connman_service_add_passphrase(service, passphrase);
+		err = __connman_service_set_passphrase(service, passphrase);
 
 	if (err == -ENOKEY) {
 		__connman_service_indicate_error(service,
