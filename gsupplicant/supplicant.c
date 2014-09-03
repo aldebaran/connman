@@ -4979,6 +4979,44 @@ int g_supplicant_interface_p2p_del_service(GSupplicantInterface *interface,
 	return -EINPROGRESS;
 }
 
+struct p2p_listen_data {
+	int period;
+	int interval;
+};
+
+static void interface_p2p_listen_params(DBusMessageIter *iter, void *user_data)
+{
+	struct p2p_listen_data *params = user_data;
+	DBusMessageIter dict;
+
+	supplicant_dbus_dict_open(iter, &dict);
+
+	supplicant_dbus_dict_append_basic(&dict, "period",
+					DBUS_TYPE_INT32, &params->period);
+	supplicant_dbus_dict_append_basic(&dict, "interval",
+					DBUS_TYPE_INT32, &params->interval);
+	supplicant_dbus_dict_close(iter, &dict);
+}
+
+int g_supplicant_interface_p2p_listen(GSupplicantInterface *interface,
+						int period, int interval)
+{
+	struct p2p_listen_data params;
+
+	SUPPLICANT_DBG("");
+
+	if (!interface->p2p_support)
+		return -ENOTSUP;
+
+	params.period = period;
+	params.interval = interval;
+
+	return supplicant_dbus_method_call(interface->path,
+			SUPPLICANT_INTERFACE ".Interface.P2PDevice",
+			"ExtendedListen", interface_p2p_listen_params,
+			NULL, &params, NULL);
+}
+
 static const char *g_supplicant_rule0 = "type=signal,"
 					"path=" DBUS_PATH_DBUS ","
 					"sender=" DBUS_SERVICE_DBUS ","

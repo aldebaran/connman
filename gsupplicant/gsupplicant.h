@@ -240,6 +240,9 @@ int g_supplicant_interface_p2p_connect(GSupplicantInterface *interface,
 int g_supplicant_interface_p2p_disconnect(GSupplicantInterface *interface,
 					GSupplicantPeerParams *peer_params);
 
+int g_supplicant_interface_p2p_listen(GSupplicantInterface *interface,
+						int period, int interval);
+
 int g_supplicant_interface_p2p_add_service(GSupplicantInterface *interface,
 				GSupplicantInterfaceCallback callback,
 				GSupplicantP2PServiceParams *p2p_service_params,
