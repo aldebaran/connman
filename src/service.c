@@ -2872,25 +2872,25 @@ static int check_passphrase(enum connman_service_security security,
 int __connman_service_set_passphrase(struct connman_service *service,
 					const char *passphrase)
 {
-	int err = 0;
+	int err;
 
 	if (service->immutable || service->hidden)
 		return -EINVAL;
 
 	err = check_passphrase(service->security, passphrase);
 
-	if (err == 0) {
-		g_free(service->passphrase);
-		service->passphrase = g_strdup(passphrase);
+	if (err < 0)
+		return err;
 
-		if (service->network)
-			connman_network_set_string(service->network,
-							"WiFi.Passphrase",
-							service->passphrase);
-		service_save(service);
-	}
+	g_free(service->passphrase);
+	service->passphrase = g_strdup(passphrase);
 
-	return err;
+	if (service->network)
+		connman_network_set_string(service->network, "WiFi.Passphrase",
+				service->passphrase);
+	service_save(service);
+
+	return 0;
 }
 
 const char *__connman_service_get_passphrase(struct connman_service *service)
