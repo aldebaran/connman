@@ -799,6 +799,21 @@ void __connman_peer_cleanup(void);
 void __connman_peer_list_struct(DBusMessageIter *array);
 const char *__connman_peer_get_path(struct connman_peer *peer);
 
+int __connman_peer_service_init(void);
+void __connman_peer_service_cleanup(void);
+
+void __connman_peer_service_set_driver(struct connman_peer_driver *driver);
+int __connman_peer_service_register(const char *owner, DBusMessage *msg,
+					const unsigned char *specification,
+					int specification_length,
+					const unsigned char *query,
+					int query_length, int version);
+int __connman_peer_service_unregister(const char *owner,
+					const unsigned char *specification,
+					int specification_length,
+					const unsigned char *query,
+					int query_length, int version);
+
 #include <connman/session.h>
 
 typedef void (* service_iterate_cb) (struct connman_service *service,
