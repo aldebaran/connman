@@ -2821,23 +2821,14 @@ void __connman_service_set_agent_identity(struct connman_service *service,
 					service->agent_identity);
 }
 
-static int check_passphrase(struct connman_service *service,
-				enum connman_service_security security,
-				const char *passphrase)
+static int check_passphrase(enum connman_service_security security,
+		const char *passphrase)
 {
 	guint i;
 	gsize length;
 
-	if (!passphrase) {
-		/*
-		 * This will prevent __connman_service_set_passphrase() to
-		 * wipe the passphrase out in case of -ENOKEY error for a
-		 * favorite service. */
-		if (service->favorite)
-			return 1;
-		else
-			return 0;
-	}
+	if (!passphrase)
+		return 0;
 
 	length = strlen(passphrase);
 
@@ -2886,7 +2877,7 @@ int __connman_service_set_passphrase(struct connman_service *service,
 	if (service->immutable || service->hidden)
 		return -EINVAL;
 
-	err = check_passphrase(service, service->security, passphrase);
+	err = check_passphrase(service->security, passphrase);
 
 	if (err == 0) {
 		g_free(service->passphrase);
@@ -2908,6 +2899,16 @@ const char *__connman_service_get_passphrase(struct connman_service *service)
 		return NULL;
 
 	return service->passphrase;
+}
+
+static void clear_passphrase(struct connman_service *service)
+{
+	g_free(service->passphrase);
+	service->passphrase = NULL;
+
+	if (service->network)
+		connman_network_set_string(service->network, "WiFi.Passphrase",
+				service->passphrase);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -5485,7 +5486,7 @@ int __connman_service_indicate_error(struct connman_service *service,
 	 */
 	if (service->error == CONNMAN_SERVICE_ERROR_INVALID_KEY ||
 			service->security == CONNMAN_SERVICE_SECURITY_8021X)
-		__connman_service_set_passphrase(service, NULL);
+		clear_passphrase(service);
 
 	__connman_service_set_agent_identity(service, NULL);
 
