@@ -31,6 +31,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -2096,6 +2097,234 @@ static char *lookup_session(const char *text, int state)
 	return lookup_options(session_options, text, state);
 }
 
+static int peer_service_cb(DBusMessageIter *iter, const char *error,
+							void *user_data)
+{
+	bool registration = GPOINTER_TO_INT(user_data);
+
+	if (error)
+		fprintf(stderr, "Error %s peer service: %s\n",
+			registration ? "registering" : "unregistering", error);
+	else
+		fprintf(stdout, "Peer service %s\n",
+			registration ? "registered" : "unregistered");
+
+	return 0;
+}
+
+struct _peer_service {
+	unsigned char *bjr_query;
+	int bjr_query_len;
+	unsigned char *bjr_response;
+	int bjr_response_len;
+	char *upnp_service;
+	int version;
+	int master;
+};
+
+static void append_dict_entry_fixed_array(DBusMessageIter *iter,
+			const char *property, void *value, int length)
+{
+	DBusMessageIter dict_entry, variant, array;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_DICT_ENTRY,
+							NULL, &dict_entry);
+	dbus_message_iter_append_basic(&dict_entry, DBUS_TYPE_STRING,
+								&property);
+	dbus_message_iter_open_container(&dict_entry, DBUS_TYPE_VARIANT,
+			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING,
+			&variant);
+	dbus_message_iter_open_container(&variant, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &array);
+	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+							value, length);
+	dbus_message_iter_close_container(&variant, &array);
+	dbus_message_iter_close_container(&dict_entry, &variant);
+	dbus_message_iter_close_container(iter, &dict_entry);
+}
+
+static void append_peer_service_dict(DBusMessageIter *iter, void *user_data)
+{
+	struct _peer_service *service = user_data;
+
+	if (service->bjr_query && service->bjr_response) {
+		append_dict_entry_fixed_array(iter, "BonjourQuery",
+			&service->bjr_query, service->bjr_query_len);
+		append_dict_entry_fixed_array(iter, "BonjourResponse",
+			&service->bjr_response, service->bjr_response_len);
+	} else if (service->upnp_service && service->version) {
+		__connmanctl_dbus_append_dict_entry(iter, "UpnpVersion",
+					DBUS_TYPE_INT32, &service->version);
+		__connmanctl_dbus_append_dict_entry(iter, "UpnpService",
+				DBUS_TYPE_STRING, &service->upnp_service);
+	}
+}
+
+static void peer_service_append(DBusMessageIter *iter, void *user_data)
+{
+	struct _peer_service *service = user_data;
+	dbus_bool_t master;
+
+	__connmanctl_dbus_append_dict(iter, append_peer_service_dict, service);
+
+	if (service->master < 0)
+		return;
+
+	master = service->master == 1 ? TRUE : FALSE;
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &master);
+}
+
+static struct _peer_service *fill_in_peer_service(unsigned char *bjr_query,
+				int bjr_query_len, unsigned char *bjr_response,
+				int bjr_response_len, char *upnp_service,
+				int version)
+{
+	struct _peer_service *service;
+
+	service = dbus_malloc0(sizeof(*service));
+
+	if (bjr_query_len && bjr_response_len) {
+		service->bjr_query = dbus_malloc0(bjr_query_len);
+		memcpy(service->bjr_query, bjr_query, bjr_query_len);
+		service->bjr_query_len = bjr_query_len;
+
+		service->bjr_response = dbus_malloc0(bjr_response_len);
+		memcpy(service->bjr_response, bjr_response, bjr_response_len);
+		service->bjr_response_len = bjr_response_len;
+	} else if (upnp_service && version) {
+		service->upnp_service = strdup(upnp_service);
+		service->version = version;
+	}
+
+	return service;
+}
+
+static void free_peer_service(struct _peer_service *service)
+{
+	dbus_free(service->bjr_query);
+	dbus_free(service->bjr_response);
+	free(service->upnp_service);
+	dbus_free(service);
+}
+
+static int peer_service_register(unsigned char *bjr_query, int bjr_query_len,
+			unsigned char *bjr_response, int bjr_response_len,
+			char *upnp_service, int version, int master)
+{
+	struct _peer_service *service;
+	bool registration = true;
+	int ret;
+
+	service = fill_in_peer_service(bjr_query, bjr_query_len, bjr_response,
+				bjr_response_len, upnp_service, version);
+	service->master = master;
+
+	ret = __connmanctl_dbus_method_call(connection, "net.connman", "/",
+			"net.connman.Manager", "RegisterPeerService",
+			peer_service_cb, GINT_TO_POINTER(registration),
+			peer_service_append, service);
+
+	free_peer_service(service);
+
+	return ret;
+}
+
+static int peer_service_unregister(unsigned char *bjr_query, int bjr_query_len,
+			unsigned char *bjr_response, int bjr_response_len,
+			char *upnp_service, int version)
+{
+	struct _peer_service *service;
+	bool registration = false;
+	int ret;
+
+	service = fill_in_peer_service(bjr_query, bjr_query_len, bjr_response,
+				bjr_response_len, upnp_service, version);
+	service->master = -1;
+
+	ret = __connmanctl_dbus_method_call(connection, "net.connman", "/",
+			"net.connman.Manager", "UnregisterPeerService",
+			peer_service_cb, GINT_TO_POINTER(registration),
+			peer_service_append, service);
+
+	free_peer_service(service);
+
+	return ret;
+}
+
+static int parse_spec_array(char *command, unsigned char spec[1024])
+{
+	int length, pos, end;
+	char b[3] = {};
+	char *e;
+
+	end = strlen(command);
+	for (e = NULL, length = pos = 0; command[pos] != '\0'; length++) {
+		if (pos+2 > end)
+			return -EINVAL;
+
+		b[0] = command[pos];
+		b[1] = command[pos+1];
+
+		spec[length] = strtol(b, &e, 16);
+		if (e && *e != '\0')
+			return -EINVAL;
+
+		pos += 2;
+	}
+
+	return length;
+}
+
+static int cmd_peer_service(char *args[], int num,
+				struct connman_option *options)
+{
+	unsigned char bjr_query[1024] = {};
+	unsigned char bjr_response[1024] = {};
+	char *upnp_service = NULL;
+	int bjr_query_len = 0, bjr_response_len = 0;
+	int version = 0, master = 0;
+
+	if (num < 6)
+		return -EINVAL;
+
+	if (!strcmp(args[2], "bjr_query")) {
+		if (strcmp(args[4], "bjr_response"))
+			return -EINVAL;
+		bjr_query_len = parse_spec_array(args[3], bjr_query);
+		bjr_response_len = parse_spec_array(args[5], bjr_response);
+
+		if (bjr_query_len == -EINVAL || bjr_response_len == -EINVAL)
+			return -EINVAL;
+	} else if (!strcmp(args[2], "upnp_service")) {
+		char *e = NULL;
+
+		if (strcmp(args[4], "upnp_version"))
+			return -EINVAL;
+		upnp_service = args[3];
+		version = strtol(args[5], &e, 10);
+		if (*e != '\0')
+			return -EINVAL;
+	}
+
+	if (num == 7) {
+		master = parse_boolean(args[6]);
+		if (master < 0)
+			return -EINVAL;
+	}
+
+	if (!strcmp(args[1], "register")) {
+		return peer_service_register(bjr_query, bjr_query_len,
+				bjr_response, bjr_response_len, upnp_service,
+				version, master);
+	} else if (!strcmp(args[1], "unregister")) {
+		return peer_service_unregister(bjr_query, bjr_query_len,
+				bjr_response, bjr_response_len, upnp_service,
+				version);
+	}
+
+	return -EINVAL;
+}
+
 static const struct {
         const char *cmd;
 	const char *argument;
@@ -2142,6 +2371,11 @@ static const struct {
 	  "VPN Agent mode", lookup_agent },
 	{ "session",      "on|off|connect|disconnect|config", session_options,
 	  cmd_session, "Enable or disable a session", lookup_session },
+	{ "peer_service", "register|unregister <specs> <master>\n"
+			  "Where specs are:\n"
+			  "\tbjr_query <query> bjr_response <response>\n"
+			  "\tupnp_service <service> upnp_version <version>\n", NULL,
+	  cmd_peer_service, "(Un)Register a Peer Service", NULL },
 	{ "help",         NULL,           NULL,            cmd_help,
 	  "Show help", NULL },
 	{ "exit",         NULL,           NULL,            cmd_exit,

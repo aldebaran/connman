@@ -213,6 +213,9 @@ static int append_variant(DBusMessageIter *iter, const char *property,
         case DBUS_TYPE_STRING:
                 type_str = DBUS_TYPE_STRING_AS_STRING;
                 break;
+	case DBUS_TYPE_INT32:
+		type_str = DBUS_TYPE_INT32_AS_STRING;
+		break;
 	default:
 		return -EOPNOTSUPP;
 	}
