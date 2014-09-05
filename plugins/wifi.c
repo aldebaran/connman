@@ -125,6 +125,7 @@ struct wifi_data {
 	struct connman_peer *pending_peer;
 	bool p2p_connecting;
 	bool p2p_device;
+	int servicing;
 };
 
 static GList *iface_list = NULL;
@@ -360,13 +361,20 @@ struct peer_service_registration {
 static void register_peer_service_cb(int result,
 				GSupplicantInterface *iface, void *user_data)
 {
+	struct wifi_data *wifi = g_supplicant_interface_get_data(iface);
 	struct peer_service_registration *reg_data = user_data;
 
 	DBG("");
 
-	if (result == 0)
-		g_supplicant_interface_p2p_listen(iface, P2P_LISTEN_PERIOD,
+	if (result == 0) {
+		if (!wifi->servicing) {
+			g_supplicant_interface_p2p_listen(iface,
+							P2P_LISTEN_PERIOD,
 							P2P_LISTEN_INTERVAL);
+		}
+
+		wifi->servicing++;
+	}
 
 	if (reg_data->callback)
 		reg_data->callback(result, reg_data->user_data);
@@ -497,7 +505,11 @@ static int peer_unregister_service(const unsigned char *specification,
 		if (ret != 0 && ret != -EINPROGRESS)
 			free_peer_service_params(params);
 
-		g_supplicant_interface_p2p_listen(iface, 0, 0);
+		wifi->servicing--;
+		if (!wifi->servicing || wifi->servicing < 0) {
+			g_supplicant_interface_p2p_listen(iface, 0, 0);
+			wifi->servicing = 0;
+		}
 	}
 
 	return 0;
