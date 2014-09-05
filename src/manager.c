@@ -390,14 +390,16 @@ static int parse_peers_service_specs(DBusMessageIter *array,
 
 	while (dbus_message_iter_get_arg_type(array) ==
 							DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
+		DBusMessageIter entry, inter, value;
 		const char *key;
 
 		dbus_message_iter_recurse(array, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
 
 		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &value);
+
+		dbus_message_iter_recurse(&entry, &inter);
+		dbus_message_iter_recurse(&inter, &value);
 
 		if  (!g_strcmp0(key, "BonjourResponse")) {
 			dbus_message_iter_get_fixed_array(&value,
