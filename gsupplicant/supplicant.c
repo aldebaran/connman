@@ -139,6 +139,7 @@ static GHashTable *interface_table;
 static GHashTable *bss_mapping;
 static GHashTable *peer_mapping;
 static GHashTable *group_mapping;
+static GHashTable *pending_peer_connection;
 
 struct _GSupplicantWpsCredentials {
 	unsigned char ssid[32];
@@ -598,6 +599,9 @@ static void remove_peer(gpointer data)
 
 	if (peer_mapping)
 		g_hash_table_remove(peer_mapping, peer->path);
+
+	if (pending_peer_connection)
+		g_hash_table_remove(pending_peer_connection, peer->path);
 
 	g_free(peer->path);
 	g_free(peer->name);
@@ -2575,6 +2579,7 @@ static void peer_groups_relation(DBusMessageIter *iter, void *user_data)
 static void peer_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
+	GSupplicantPeer *pending_peer;
 	GSupplicantPeer *peer = user_data;
 
 	SUPPLICANT_DBG("key: %s", key);
@@ -2586,6 +2591,14 @@ static void peer_property(const char *key, DBusMessageIter *iter,
 		if (peer->name) {
 			create_peer_identifier(peer);
 			callback_peer_found(peer);
+			pending_peer = g_hash_table_lookup(
+					pending_peer_connection, peer->path);
+
+			if (pending_peer && pending_peer == peer) {
+				callback_peer_request(peer);
+				g_hash_table_remove(pending_peer_connection,
+						peer->path);
+			}
 		}
 
 		return;
@@ -2929,7 +2942,15 @@ static void signal_group_request(const char *path, DBusMessageIter *iter)
 	if (!peer)
 		return;
 
-	callback_peer_request(peer);
+	/*
+	 * Peer has been previously found and property set,
+	 * otherwise, defer connection to when peer property
+	 * is set.
+	 */
+	if (peer->identifier)
+		callback_peer_request(peer);
+	else
+		g_hash_table_replace(pending_peer_connection, peer->path, peer);
 }
 
 static void signal_group_peer_joined(const char *path, DBusMessageIter *iter)
@@ -5081,6 +5102,8 @@ int g_supplicant_register(const GSupplicantCallbacks *callbacks)
 	peer_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
 								NULL, NULL);
 	group_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
+								NULL, NULL);
+	pending_peer_connection = g_hash_table_new_full(g_str_hash, g_str_equal,
 								NULL, NULL);
 
 	supplicant_dbus_setup(connection);
