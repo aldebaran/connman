@@ -1100,22 +1100,6 @@ static int try_provision_service(struct connman_config_service *config,
 	unsigned int ssid_len;
 	const char *str;
 
-	type = connman_service_get_type(service);
-	if (type == CONNMAN_SERVICE_TYPE_WIFI &&
-				g_strcmp0(config->type, "wifi") != 0)
-		return -ENOENT;
-
-	if (type == CONNMAN_SERVICE_TYPE_ETHERNET &&
-				g_strcmp0(config->type, "ethernet") != 0)
-		return -ENOENT;
-
-	if (type == CONNMAN_SERVICE_TYPE_GADGET &&
-				g_strcmp0(config->type, "gadget") != 0)
-		return -ENOENT;
-
-	DBG("service %p ident %s", service,
-					__connman_service_get_ident(service));
-
 	network = __connman_service_get_network(service);
 	if (!network) {
 		connman_error("Service has no network set");
@@ -1124,6 +1108,54 @@ static int try_provision_service(struct connman_config_service *config,
 
 	DBG("network %p ident %s", network,
 				connman_network_get_identifier(network));
+
+	type = connman_service_get_type(service);
+
+	switch(type) {
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		if (__connman_service_string2type(config->type) != type)
+			return -ENOENT;
+
+		ssid = connman_network_get_blob(network, "WiFi.SSID",
+						&ssid_len);
+		if (!ssid) {
+			connman_error("Network SSID not set");
+			return -EINVAL;
+		}
+
+		if (!config->ssid || ssid_len != config->ssid_len)
+			return -ENOENT;
+
+		if (memcmp(config->ssid, ssid, ssid_len))
+			return -ENOENT;
+
+		str = connman_network_get_string(network, "WiFi.Security");
+		if (config->security != __connman_service_string2security(str))
+			return -ENOENT;
+
+		break;
+
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+
+		if (__connman_service_string2type(config->type) != type)
+			return -ENOENT;
+
+		break;
+
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_P2P:
+
+		return -ENOENT;
+	}
+
+	DBG("service %p ident %s", service,
+					__connman_service_get_ident(service));
 
 	if (config->mac) {
 		struct connman_device *device;
@@ -1140,26 +1172,6 @@ static int try_provision_service(struct connman_config_service *config,
 		DBG("wants %s has %s", config->mac, device_addr);
 
 		if (g_ascii_strcasecmp(device_addr, config->mac) != 0)
-			return -ENOENT;
-	}
-
-	if (g_strcmp0(config->type, "wifi") == 0 &&
-				type == CONNMAN_SERVICE_TYPE_WIFI) {
-		ssid = connman_network_get_blob(network, "WiFi.SSID",
-						&ssid_len);
-		if (!ssid) {
-			connman_error("Network SSID not set");
-			return -EINVAL;
-		}
-
-		if (!config->ssid || ssid_len != config->ssid_len)
-			return -ENOENT;
-
-		if (memcmp(config->ssid, ssid, ssid_len) != 0)
-			return -ENOENT;
-
-		str = connman_network_get_string(network, "WiFi.Security");
-		if (config->security != __connman_service_string2security(str))
 			return -ENOENT;
 	}
 
@@ -1281,8 +1293,7 @@ static int try_provision_service(struct connman_config_service *config,
 		__connman_service_set_timeservers(service,
 						config->timeservers);
 
-	if (g_strcmp0(config->type, "wifi") == 0 &&
-				type == CONNMAN_SERVICE_TYPE_WIFI) {
+	if (type == CONNMAN_SERVICE_TYPE_WIFI) {
 		provision_service_wifi(config, service, network,
 							ssid, ssid_len);
 	} else
