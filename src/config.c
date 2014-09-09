@@ -1263,9 +1263,6 @@ static int try_provision_service(struct connman_config_service *config,
 		g_slist_prepend(config->service_identifiers,
 				g_strdup(service_id));
 
-	if (!config->virtual)
-		__connman_service_set_immutable(service, true);
-
 	__connman_service_set_favorite_delayed(service, true, true);
 
 	__connman_service_set_config(service, config->config_ident,
@@ -1313,6 +1310,8 @@ static int try_provision_service(struct connman_config_service *config,
 
 		return 0;
 	}
+
+	__connman_service_set_immutable(service, true);
 
 	if (type == CONNMAN_SERVICE_TYPE_ETHERNET ||
 			type == CONNMAN_SERVICE_TYPE_GADGET) {
