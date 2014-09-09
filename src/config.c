@@ -1296,9 +1296,7 @@ static int try_provision_service(struct connman_config_service *config,
 	if (type == CONNMAN_SERVICE_TYPE_WIFI) {
 		provision_service_wifi(config, service, network,
 							ssid, ssid_len);
-	} else
-		__connman_service_connect(service,
-					CONNMAN_SERVICE_CONNECT_REASON_AUTO);
+	}
 
 	__connman_service_mark_dirty();
 
@@ -1312,8 +1310,19 @@ static int try_provision_service(struct connman_config_service *config,
 		virtual->vfile = config->virtual_file;
 
 		g_timeout_add(0, remove_virtual_config, virtual);
-	} else
-		__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
+
+		return 0;
+	}
+
+	if (type == CONNMAN_SERVICE_TYPE_ETHERNET ||
+			type == CONNMAN_SERVICE_TYPE_GADGET) {
+		__connman_service_connect(service,
+				CONNMAN_SERVICE_CONNECT_REASON_AUTO);
+
+		return 0;
+	}
+
+	__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 
 	return 0;
 }
