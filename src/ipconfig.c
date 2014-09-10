@@ -1774,6 +1774,25 @@ static int string2privacy(const char *privacy)
 		return 0;
 }
 
+int __connman_ipconfig_ipv6_reset_privacy(struct connman_ipconfig *ipconfig)
+{
+	struct connman_ipdevice *ipdevice;
+	int err;
+
+	if (!ipconfig)
+		return -EINVAL;
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+						GINT_TO_POINTER(ipconfig->index));
+	if (!ipdevice)
+		return -ENODEV;
+
+	err = __connman_ipconfig_ipv6_set_privacy(ipconfig, privacy2string(
+							ipdevice->ipv6_privacy));
+
+	return err;
+}
+
 int __connman_ipconfig_ipv6_set_privacy(struct connman_ipconfig *ipconfig,
 					const char *value)
 {

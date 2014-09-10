@@ -413,6 +413,7 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix);
 bool __connman_ipconfig_ipv6_privacy_enabled(struct connman_ipconfig *ipconfig);
+int __connman_ipconfig_ipv6_reset_privacy(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_ipv6_set_privacy(struct connman_ipconfig *ipconfig,
 					const char *value);
 bool __connman_ipconfig_ipv6_is_enabled(struct connman_ipconfig *ipconfig);

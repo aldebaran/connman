@@ -4051,6 +4051,8 @@ bool __connman_service_remove(struct connman_service *service)
 
 	__connman_service_set_favorite(service, false);
 
+	__connman_ipconfig_ipv6_reset_privacy(service->ipconfig_ipv6);
+
 	service_save(service);
 
 	return true;
