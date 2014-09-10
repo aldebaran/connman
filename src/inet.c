@@ -330,36 +330,6 @@ done:
 	return err;
 }
 
-bool connman_inet_is_cfg80211(int index)
-{
-	bool result = false;
-	char phy80211_path[PATH_MAX];
-	struct stat st;
-	struct ifreq ifr;
-	int sk;
-
-	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return false;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0)
-		goto done;
-
-	snprintf(phy80211_path, PATH_MAX,
-				"/sys/class/net/%s/phy80211", ifr.ifr_name);
-
-	if (stat(phy80211_path, &st) == 0 && (st.st_mode & S_IFDIR))
-		result = true;
-
-done:
-	close(sk);
-
-	return result;
-}
-
 struct in6_ifreq {
 	struct in6_addr ifr6_addr;
 	__u32 ifr6_prefixlen;
