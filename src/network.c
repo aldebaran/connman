@@ -594,6 +594,8 @@ static void autoconf_ipv6_set(struct connman_network *network)
 	if (!ipconfig)
 		return;
 
+	__connman_ipconfig_address_remove(ipconfig);
+
 	index = __connman_ipconfig_get_index(ipconfig);
 
 	connman_network_ref(network);
