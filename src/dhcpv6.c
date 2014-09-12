@@ -631,6 +631,7 @@ static void set_address(int ifindex, struct connman_ipconfig *ipconfig,
 		/* Is this prefix part of the subnet we are suppose to use? */
 		prefix_len = check_ipv6_addr_prefix(prefixes, address);
 
+		__connman_ipconfig_address_remove(ipconfig);
 		__connman_ipconfig_set_local(ipconfig, address);
 		__connman_ipconfig_set_prefixlen(ipconfig, prefix_len);
 
