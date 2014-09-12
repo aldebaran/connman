@@ -2047,7 +2047,7 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 			memcpy(&dhcp_client->ia_ta, &addr,
 						sizeof(struct in6_addr));
 
-		if (valid > dhcp_client->expire)
+		if (valid != dhcp_client->expire)
 			dhcp_client->expire = valid;
 	}
 
