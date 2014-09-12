@@ -464,6 +464,7 @@ static void check_dhcpv6(struct nd_router_advert *reply,
 			unsigned int length, void *user_data)
 {
 	struct connman_network *network = user_data;
+	struct connman_service *service;
 	GSList *prefixes;
 
 	DBG("reply %p", reply);
@@ -497,6 +498,23 @@ static void check_dhcpv6(struct nd_router_advert *reply,
 	}
 
 	prefixes = __connman_inet_ipv6_get_prefixes(reply, length);
+
+	/*
+	 * If IPv6 config is missing from service, then create it.
+	 * The ipconfig might be missing if we got a rtnl message
+	 * that disabled IPv6 config and thus removed it. This
+	 * can happen if we are switching from one service to
+	 * another in the same interface. The only way to get IPv6
+	 * config back is to re-create it here.
+	 */
+	service = connman_service_lookup_from_network(network);
+	if (service) {
+		connman_service_create_ip6config(service, network->index);
+
+		__connman_service_ipconfig_indicate_state(service,
+					CONNMAN_SERVICE_STATE_CONFIGURATION,
+					CONNMAN_IPCONFIG_TYPE_IPV6);
+	}
 
 	/*
 	 * We do stateful/stateless DHCPv6 if router advertisement says so.
