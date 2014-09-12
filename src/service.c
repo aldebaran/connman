@@ -2881,7 +2881,11 @@ int __connman_service_set_passphrase(struct connman_service *service,
 {
 	int err;
 
-	if (service->immutable || service->hidden)
+	if (service->hidden)
+		return -EINVAL;
+
+	if (service->immutable &&
+			service->security != CONNMAN_SERVICE_SECURITY_8021X)
 		return -EINVAL;
 
 	err = check_passphrase(service->security, passphrase);
