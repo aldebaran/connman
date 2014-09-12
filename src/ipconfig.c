@@ -1701,10 +1701,6 @@ int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig)
 	if (ipdevice->config_ipv6 == ipconfig) {
 		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
 
-		if (ipdevice->config_ipv6->method ==
-						CONNMAN_IPCONFIG_METHOD_AUTO)
-			disable_ipv6(ipdevice->config_ipv6);
-
 		connman_ipaddress_clear(ipdevice->config_ipv6->system);
 		__connman_ipconfig_unref(ipdevice->config_ipv6);
 		ipdevice->config_ipv6 = NULL;
