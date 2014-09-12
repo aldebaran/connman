@@ -2106,8 +2106,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 		ipconfig->method = method;
-		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
-			disable_ipv6(ipconfig);
+
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
@@ -2117,7 +2116,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 		ipconfig->method = method;
 		if (privacy_string)
 			ipconfig->ipv6_privacy_config = privacy;
-		enable_ipv6(ipconfig);
+
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
@@ -2152,6 +2151,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 			return connman_ipaddress_set_ipv6(
 					ipconfig->address, address,
 						prefix_length, gateway);
+
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
