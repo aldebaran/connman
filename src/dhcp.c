@@ -443,13 +443,11 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("c_address %s", c_address);
 
-	if (address && c_address && g_strcmp0(address, c_address) != 0)
+	if (g_strcmp0(address, c_address))
 		ip_change = true;
-	else if (gateway && c_gateway && g_strcmp0(gateway, c_gateway) != 0)
+	else if (g_strcmp0(gateway, c_gateway))
 		ip_change = true;
 	else if (prefixlen != c_prefixlen)
-		ip_change = true;
-	else if (!c_address || !c_gateway)
 		ip_change = true;
 	else
 		ip_change = false;
