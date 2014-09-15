@@ -117,7 +117,7 @@ static void resolv_result(GResolvResultStatus status, char **results,
  * Once the timeserver list (ts_list) is created, we start querying the
  * servers one by one. If resolving fails on one of them, we move to the
  * next one. The user can enter either an IP address or a URL for the
- * timeserver. We only resolve the urls. Once we have a IP for the NTP
+ * timeserver. We only resolve the URLs. Once we have an IP for the NTP
  * server, we start querying it for time corrections.
  */
 void __connman_timeserver_sync_next()
@@ -137,7 +137,7 @@ void __connman_timeserver_sync_next()
 
 	ts_list = g_slist_delete_link(ts_list, ts_list);
 
-	/* if its a IP , directly query it. */
+	/* if it's an IP, directly query it. */
 	if (connman_inet_check_ipaddress(ts_current) > 0) {
 		DBG("Using timeserver %s", ts_current);
 
@@ -146,7 +146,7 @@ void __connman_timeserver_sync_next()
 		return;
 	}
 
-	DBG("Resolving server %s", ts_current);
+	DBG("Resolving timeserver %s", ts_current);
 
 	resolv_id = g_resolv_lookup_hostname(resolv, ts_current,
 						resolv_result, NULL);
@@ -200,7 +200,7 @@ GSList *__connman_timeserver_get_all(struct connman_service *service)
 
 	service_ts = connman_service_get_timeservers(service);
 
-	/* First add Service Timeservers via DHCP to the list */
+	/* Then add Service Timeservers via DHCP to the list */
 	for (i = 0; service_ts && service_ts[i]; i++)
 		list = __connman_timeserver_add_list(list, service_ts[i]);
 
@@ -286,7 +286,7 @@ static void ts_recheck_enable(void)
 
 /*
  * This function must be called everytime the default service changes, the
- * service timeserver(s) or gatway changes or the global timeserver(s) changes.
+ * service timeserver(s) or gateway changes or the global timeserver(s) changes.
  */
 int __connman_timeserver_sync(struct connman_service *default_service)
 {
