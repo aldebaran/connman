@@ -399,19 +399,20 @@ static int parse_peers_service_specs(DBusMessageIter *array,
 		dbus_message_iter_next(&entry);
 
 		dbus_message_iter_recurse(&entry, &inter);
-		dbus_message_iter_recurse(&inter, &value);
 
 		if  (!g_strcmp0(key, "BonjourResponse")) {
+			dbus_message_iter_recurse(&inter, &value);
 			dbus_message_iter_get_fixed_array(&value,
 							spec, spec_len);
 		} else if (!g_strcmp0(key, "BonjourQuery")) {
+			dbus_message_iter_recurse(&inter, &value);
 			dbus_message_iter_get_fixed_array(&value,
 							query, query_len);
 		} else if (!g_strcmp0(key, "UpnpService")) {
-			dbus_message_iter_get_basic(&value, spec);
+			dbus_message_iter_get_basic(&inter, spec);
 			*spec_len = strlen((const char *)*spec)+1;
 		} else if (!g_strcmp0(key, "UpnpVersion")) {
-			dbus_message_iter_get_basic(&value, version);
+			dbus_message_iter_get_basic(&inter, version);
 		} else
 			return -EINVAL;
 
