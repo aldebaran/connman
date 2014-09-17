@@ -2329,7 +2329,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		return TRUE;
 
 	debug(dhcp_client, "received DHCP packet xid 0x%04x "
-			"(current state %d)", xid, dhcp_client->state);
+		"(current state %d)", ntohl(xid), dhcp_client->state);
 
 	switch (dhcp_client->state) {
 	case INIT_SELECTING:
