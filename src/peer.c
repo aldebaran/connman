@@ -1012,6 +1012,8 @@ void connman_peer_driver_unregister(struct connman_peer_driver *driver)
 		return;
 
 	peer_driver = NULL;
+
+	__connman_peer_service_set_driver(NULL);
 }
 
 void __connman_peer_list_struct(DBusMessageIter *array)
