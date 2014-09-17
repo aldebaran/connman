@@ -376,10 +376,10 @@ static void register_peer_service_cb(int result,
 		wifi->servicing++;
 	}
 
-	if (reg_data->callback)
+	if (reg_data && reg_data->callback) {
 		reg_data->callback(result, reg_data->user_data);
-
-	g_free(reg_data);
+		g_free(reg_data);
+	}
 }
 
 static GSupplicantP2PServiceParams *fill_in_peer_service_params(
