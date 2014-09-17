@@ -2257,6 +2257,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	if (dhcp_client->listen_mode == L2) {
 		re = dhcp_recv_l2_packet(&packet,
 					dhcp_client->listener_sockfd);
+		xid = packet.xid;
 	} else if (dhcp_client->listen_mode == L3) {
 		if (dhcp_client->type == G_DHCP_IPV6) {
 			re = dhcpv6_recv_l3_packet(&packet6, buf, sizeof(buf),
