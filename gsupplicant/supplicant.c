@@ -3181,6 +3181,9 @@ int g_supplicant_interface_set_country(GSupplicantInterface *interface,
 
 bool g_supplicant_interface_has_p2p(GSupplicantInterface *interface)
 {
+	if (!interface)
+		return false;
+
 	return interface->p2p_support;
 }
 
