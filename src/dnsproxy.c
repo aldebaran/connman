@@ -2204,7 +2204,8 @@ static void destroy_server(struct server_data *server)
 	 * without any good reason. The small delay allows the new RDNSS to
 	 * create a new DNS server instance and the refcount does not go to 0.
 	 */
-	g_timeout_add_seconds(3, try_remove_cache, NULL);
+	if (cache)
+		g_timeout_add_seconds(3, try_remove_cache, NULL);
 
 	g_free(server);
 }
