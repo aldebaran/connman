@@ -1,7 +1,7 @@
 ConnMan policy file format
 **************************
 
-The session policy pluging allows to configure/provision a session.
+The session policy plugin allows to configure/provision a session.
 ConnMan will be looking for policy files in STORAGEDIR/session_policy_local
 which by default points to /var/lib/connman. Policy file names must
 not include other characters than letters or numbers and must have
@@ -41,13 +41,13 @@ Allowed fields:
   The policy ConnectionType overrules the settings done via
   D-Bus.
 
-- Priority: A boolean which tells ConnMan to preferred the session
-  over other Sessions. This priority value is more for application
+- Priority: A boolean which tells ConnMan to prefer the session
+  over other Sessions. This priority value is more for applications
   that want to push themselves up in the asychronization notification
   queue once a bearer becomes online.
 
   This actual priority order also depends on the allowed bearers and
-  other factors. This is setting is just a little indicator of one
+  other factors. This setting is just a little indicator for one
   application being notified before another one.
 
 - RoamingPolicy: The allowed roaming behavior.
