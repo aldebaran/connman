@@ -7,7 +7,7 @@ Connection management algorithm basics
 
 The Session core uses the normal auto-connect algorithm for selecting
 which services will be connected or disconnected. That means only
-Services with AutoConnect to set to true will be used. The Session
+Services with AutoConnect set to true will be used. The Session
 core will assign a connected Service to a Session if the Service
 is matching the AllowedBearer filter.
 
