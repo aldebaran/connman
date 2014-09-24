@@ -511,8 +511,9 @@ int dhcpv6_send_packet(int index, struct dhcpv6_packet *dhcp_pkt, int len)
 }
 
 int dhcp_send_raw_packet(struct dhcp_packet *dhcp_pkt,
-		uint32_t source_ip, int source_port, uint32_t dest_ip,
-			int dest_port, const uint8_t *dest_arp, int ifindex)
+			uint32_t source_ip, int source_port,
+			uint32_t dest_ip, int dest_port,
+			const uint8_t *dest_arp, int ifindex, bool bcast)
 {
 	struct sockaddr_ll dest;
 	struct ip_udp_dhcp_packet packet;
@@ -529,7 +530,8 @@ int dhcp_send_raw_packet(struct dhcp_packet *dhcp_pkt,
 	if (fd < 0)
 		return -errno;
 
-	dhcp_pkt->flags |= htons(BROADCAST_FLAG);
+	if (bcast)
+		dhcp_pkt->flags |= htons(BROADCAST_FLAG);
 
 	memset(&dest, 0, sizeof(dest));
 	memset(&packet, 0, sizeof(packet));

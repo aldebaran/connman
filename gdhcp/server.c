@@ -529,7 +529,7 @@ static void send_packet_to_client(GDHCPServer *dhcp_server,
 	dhcp_send_raw_packet(dhcp_pkt,
 		dhcp_server->server_nip, SERVER_PORT,
 		ciaddr, CLIENT_PORT, chaddr,
-		dhcp_server->ifindex);
+		dhcp_server->ifindex, false);
 }
 
 static void send_offer(GDHCPServer *dhcp_server,
@@ -626,7 +626,7 @@ static void send_NAK(GDHCPServer *dhcp_server,
 	dhcp_send_raw_packet(&packet,
 			dhcp_server->server_nip, SERVER_PORT,
 			INADDR_BROADCAST, CLIENT_PORT, MAC_BCAST_ADDR,
-			dhcp_server->ifindex);
+			dhcp_server->ifindex, false);
 }
 
 static void send_inform(GDHCPServer *dhcp_server,
