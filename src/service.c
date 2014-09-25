@@ -5491,6 +5491,8 @@ int __connman_service_indicate_error(struct connman_service *service,
 
 int __connman_service_clear_error(struct connman_service *service)
 {
+	DBusMessage *pending, *provider_pending;
+
 	DBG("service %p", service);
 
 	if (!service)
@@ -5499,25 +5501,23 @@ int __connman_service_clear_error(struct connman_service *service)
 	if (service->state != CONNMAN_SERVICE_STATE_FAILURE)
 		return -EINVAL;
 
-	service->state_ipv4 = service->state_ipv6 =
-						CONNMAN_SERVICE_STATE_UNKNOWN;
-	set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
+	pending = service->pending;
+	service->pending = NULL;
+	provider_pending = service->provider_pending;
+	service->provider_pending = NULL;
 
 	__connman_service_ipconfig_indicate_state(service,
-					CONNMAN_SERVICE_STATE_IDLE,
-					CONNMAN_IPCONFIG_TYPE_IPV6);
+						CONNMAN_SERVICE_STATE_IDLE,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
 
-	/*
-	 * Toggling the IPv6 state to IDLE could trigger the auto connect
-	 * machinery and consequently the IPv4 state.
-	 */
-	if (service->state_ipv4 != CONNMAN_SERVICE_STATE_UNKNOWN &&
-			service->state_ipv4 != CONNMAN_SERVICE_STATE_FAILURE)
-		return 0;
-
-	return __connman_service_ipconfig_indicate_state(service,
+	__connman_service_ipconfig_indicate_state(service,
 						CONNMAN_SERVICE_STATE_IDLE,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
+
+	service->pending = pending;
+	service->provider_pending = provider_pending;
+
+	return 0;
 }
 
 int __connman_service_indicate_default(struct connman_service *service)
