@@ -160,8 +160,6 @@ vpn_exit:
 			ret = VPN_PROVIDER_ERROR_UNKNOWN;
 
 		vpn_provider_indicate_error(provider, ret);
-
-		vpn_provider_set_state(provider, VPN_PROVIDER_STATE_FAILURE);
 	} else
 		vpn_provider_set_state(provider, VPN_PROVIDER_STATE_IDLE);
 
