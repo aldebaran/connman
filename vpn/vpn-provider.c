@@ -1311,13 +1311,6 @@ static int provider_indicate_state(struct vpn_provider *provider,
 					VPN_CONNECTION_INTERFACE, "State",
 					DBUS_TYPE_STRING, &str);
 
-	/*
-	 * We do not stay in failure state as clients like connmand can
-	 * get confused about our current state.
-	 */
-	if (provider->state == VPN_PROVIDER_STATE_FAILURE)
-		provider->state = VPN_PROVIDER_STATE_IDLE;
-
 	return 0;
 }
 
@@ -1554,15 +1547,16 @@ int vpn_provider_indicate_error(struct vpn_provider *provider,
 	DBG("provider %p id %s error %d", provider, provider->identifier,
 									error);
 
+	vpn_provider_set_state(provider, VPN_PROVIDER_STATE_FAILURE);
+
 	switch (error) {
-	case VPN_PROVIDER_ERROR_LOGIN_FAILED:
-		break;
-	case VPN_PROVIDER_ERROR_AUTH_FAILED:
-		vpn_provider_set_state(provider, VPN_PROVIDER_STATE_FAILURE);
-		break;
+	case VPN_PROVIDER_ERROR_UNKNOWN:
 	case VPN_PROVIDER_ERROR_CONNECT_FAILED:
 		break;
-	default:
+
+        case VPN_PROVIDER_ERROR_LOGIN_FAILED:
+        case VPN_PROVIDER_ERROR_AUTH_FAILED:
+		vpn_provider_set_state(provider, VPN_PROVIDER_STATE_IDLE);
 		break;
 	}
 
