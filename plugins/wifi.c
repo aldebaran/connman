@@ -2284,6 +2284,9 @@ static void interface_removed(GSupplicantInterface *interface)
 
 	wifi = g_supplicant_interface_get_data(interface);
 
+	if (wifi)
+		wifi->interface = NULL;
+
 	if (wifi && wifi->tethering)
 		return;
 
@@ -2292,7 +2295,6 @@ static void interface_removed(GSupplicantInterface *interface)
 		return;
 	}
 
-	wifi->interface = NULL;
 	connman_device_set_powered(wifi->device, false);
 
 	check_p2p_technology();
