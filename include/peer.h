@@ -42,6 +42,11 @@ enum connman_peer_wps_method {
 	CONNMAN_PEER_WPS_PIN             = 2,
 };
 
+enum connman_peer_service_type {
+	CONNMAN_PEER_SERVICE_UNKNOWN      = 0,
+	CONNMAN_PEER_SERVICE_WIFI_DISPLAY = 1,
+};
+
 struct connman_peer;
 
 struct connman_peer *connman_peer_create(const char *identifier);
@@ -68,6 +73,10 @@ void connman_peer_set_as_master(struct connman_peer *peer, bool master);
 int connman_peer_set_state(struct connman_peer *peer,
 					enum connman_peer_state new_state);
 int connman_peer_request_connection(struct connman_peer *peer);
+void connman_peer_reset_services(struct connman_peer *peer);
+void connman_peer_add_service(struct connman_peer *peer,
+				enum connman_peer_service_type type,
+				const unsigned char *data, int data_length);
 
 int connman_peer_register(struct connman_peer *peer);
 void connman_peer_unregister(struct connman_peer *peer);

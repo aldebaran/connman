@@ -44,6 +44,12 @@ struct _peers_notify {
 	GHashTable *remove;
 } *peers_notify;
 
+struct _peer_service {
+	enum connman_peer_service_type type;
+	unsigned char *data;
+	int length;
+};
+
 struct connman_peer {
 	int refcount;
 	struct connman_device *device;
@@ -58,6 +64,7 @@ struct connman_peer {
 	bool connection_master;
 	struct connman_ippool *ip_pool;
 	GDHCPServer *dhcp_server;
+	GSList *services;
 };
 
 static void stop_dhcp_server(struct connman_peer *peer)
@@ -187,6 +194,9 @@ static void peer_free(gpointer data)
 		connman_device_unref(peer->device);
 		peer->device = NULL;
 	}
+
+	if (peer->services)
+		connman_peer_reset_services(peer);
 
 	g_free(peer->identifier);
 	g_free(peer->name);
@@ -838,6 +848,43 @@ int connman_peer_request_connection(struct connman_peer *peer)
 	return __connman_agent_request_peer_authorization(peer,
 					request_authorization_cb, false,
 					NULL, NULL);
+}
+
+static void peer_service_free(gpointer data)
+{
+	struct _peer_service *service = data;
+
+	if (!service)
+		return;
+
+	g_free(service->data);
+	g_free(service);
+}
+
+void connman_peer_reset_services(struct connman_peer *peer)
+{
+	if (!peer)
+		return;
+
+	g_slist_free_full(peer->services, peer_service_free);
+	peer->services = NULL;
+}
+
+void connman_peer_add_service(struct connman_peer *peer,
+				enum connman_peer_service_type type,
+				const unsigned char *data, int data_length)
+{
+	struct _peer_service *service;
+
+	if (!peer || !data || type == CONNMAN_PEER_SERVICE_UNKNOWN)
+		return;
+
+	service = g_malloc0(sizeof(struct _peer_service));
+	service->type = type;
+	service->data = g_memdup(data, data_length * sizeof(unsigned char));
+	service->length = data_length;
+
+	peer->services = g_slist_prepend(peer->services, service);
 }
 
 static void peer_up(struct connman_ipconfig *ipconfig, const char *ifname)
