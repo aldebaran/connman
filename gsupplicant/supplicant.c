@@ -2560,6 +2560,7 @@ struct peer_property_data {
 	GSupplicantPeer *peer;
 	GSList *old_groups;
 	bool groups_changed;
+	bool services_changed;
 };
 
 static void peer_groups_relation(DBusMessageIter *iter, void *user_data)
@@ -2666,6 +2667,9 @@ static void peer_property(const char *key, DBusMessageIter *iter,
 			return;
 
 		if (peer->widi_ies) {
+			if (memcmp(peer->widi_ies, ie, ie_len) == 0)
+				return;
+
 			g_free(peer->widi_ies);
 			peer->widi_ies_length = 0;
 		}
@@ -2674,6 +2678,7 @@ static void peer_property(const char *key, DBusMessageIter *iter,
 
 		memcpy(peer->widi_ies, ie, ie_len);
 		peer->widi_ies_length = ie_len;
+		data->services_changed = true;
 	}
 }
 
@@ -2768,10 +2773,12 @@ static void signal_peer_changed(const char *path, DBusMessageIter *iter)
 	property_data->peer = peer;
 
 	supplicant_dbus_property_foreach(iter, peer_property, property_data);
-	if (!property_data->groups_changed)
-		return;
+	if (property_data->services_changed)
+		callback_peer_changed(peer,
+					G_SUPPLICANT_PEER_SERVICES_CHANGED);
 
-	callback_peer_changed(peer, G_SUPPLICANT_PEER_GROUP_CHANGED);
+	if (property_data->groups_changed)
+		callback_peer_changed(peer, G_SUPPLICANT_PEER_GROUP_CHANGED);
 
 	dbus_free(property_data);
 }
