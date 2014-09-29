@@ -229,6 +229,8 @@ struct _GSupplicantPeer {
 	unsigned char device_address[ETH_ALEN];
 	unsigned char iface_address[ETH_ALEN];
 	char *name;
+	unsigned char *widi_ies;
+	int widi_ies_length;
 	char *identifier;
 	unsigned int wps_capabilities;
 	GSList *groups;
@@ -2642,6 +2644,26 @@ static void peer_property(const char *key, DBusMessageIter *iter,
 			g_slist_free_full(data->old_groups, g_free);
 			data->groups_changed = true;
 		}
+	} else if (g_strcmp0(key, "IEs") == 0) {
+		DBusMessageIter array;
+		unsigned char *ie;
+		int ie_len;
+
+		dbus_message_iter_recurse(iter, &array);
+		dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
+
+		if (!ie || ie_len < 2)
+			return;
+
+		if (peer->widi_ies) {
+			g_free(peer->widi_ies);
+			peer->widi_ies_length = 0;
+		}
+
+		peer->widi_ies = g_malloc0(ie_len * sizeof(unsigned char));
+
+		memcpy(peer->widi_ies, ie, ie_len);
+		peer->widi_ies_length = ie_len;
 	}
 }
 
