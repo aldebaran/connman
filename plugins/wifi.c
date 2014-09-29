@@ -2680,8 +2680,7 @@ static void peer_lost(GSupplicantPeer *peer)
 	}
 }
 
-static void peer_changed(GSupplicantPeer *peer,
-					GSupplicantPeerGroupState state)
+static void peer_changed(GSupplicantPeer *peer, GSupplicantPeerState state)
 {
 	GSupplicantInterface *iface = g_supplicant_peer_get_interface(peer);
 	struct wifi_data *wifi = g_supplicant_interface_get_data(iface);

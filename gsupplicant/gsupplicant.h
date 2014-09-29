@@ -126,7 +126,7 @@ typedef enum {
 	G_SUPPLICANT_PEER_GROUP_JOINED,
 	G_SUPPLICANT_PEER_GROUP_DISCONNECTED,
 	G_SUPPLICANT_PEER_GROUP_FAILED,
-} GSupplicantPeerGroupState;
+} GSupplicantPeerState;
 
 struct _GSupplicantSSID {
 	const void *ssid;
@@ -348,7 +348,7 @@ struct _GSupplicantCallbacks {
 	void (*peer_found) (GSupplicantPeer *peer);
 	void (*peer_lost) (GSupplicantPeer *peer);
 	void (*peer_changed) (GSupplicantPeer *peer,
-					GSupplicantPeerGroupState state);
+					GSupplicantPeerState state);
 	void (*peer_request) (GSupplicantPeer *peer);
 	void (*debug) (const char *str);
 };

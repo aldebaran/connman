@@ -496,7 +496,7 @@ static void callback_peer_lost(GSupplicantPeer *peer)
 }
 
 static void callback_peer_changed(GSupplicantPeer *peer,
-					GSupplicantPeerGroupState state)
+						GSupplicantPeerState state)
 {
 	if (!callbacks_pointer)
 		return;
