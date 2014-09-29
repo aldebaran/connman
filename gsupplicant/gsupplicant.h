@@ -183,6 +183,8 @@ struct _GSupplicantP2PServiceParams {
 	int query_length;
 	unsigned char *response;
 	int response_length;
+	unsigned char *wfd_ies;
+	int wfd_ies_length;
 };
 
 typedef struct _GSupplicantP2PServiceParams GSupplicantP2PServiceParams;
@@ -250,6 +252,10 @@ int g_supplicant_interface_p2p_add_service(GSupplicantInterface *interface,
 
 int g_supplicant_interface_p2p_del_service(GSupplicantInterface *interface,
 				GSupplicantP2PServiceParams *p2p_service_params);
+
+int g_supplicant_set_widi_ies(GSupplicantP2PServiceParams *p2p_service_params,
+					GSupplicantInterfaceCallback callback,
+					void *user_data);
 
 int g_supplicant_interface_connect(GSupplicantInterface *interface,
 					GSupplicantSSID *ssid,

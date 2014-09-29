@@ -4903,6 +4903,7 @@ static void interface_p2p_service_result(const char *error,
 	g_free(data->service->query);
 	g_free(data->service->response);
 	g_free(data->service->service);
+	g_free(data->service->wfd_ies);
 	g_free(data->service);
 	dbus_free(data);
 }
@@ -5040,6 +5041,61 @@ int g_supplicant_interface_p2p_listen(GSupplicantInterface *interface,
 			"ExtendedListen", interface_p2p_listen_params,
 			NULL, &params, NULL);
 }
+
+static void widi_ies_params(DBusMessageIter *iter, void *user_data)
+{
+	struct p2p_service_data *data = user_data;
+	GSupplicantP2PServiceParams *service = data->service;
+	DBusMessageIter array;
+
+	SUPPLICANT_DBG("%p - %d", service->wfd_ies, service->wfd_ies_length);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &array);
+
+	if (service->wfd_ies && service->wfd_ies_length > 0) {
+		dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+				&service->wfd_ies, service->wfd_ies_length);
+	}
+
+	dbus_message_iter_close_container(iter, &array);
+}
+
+int g_supplicant_set_widi_ies(GSupplicantP2PServiceParams *p2p_service_params,
+					GSupplicantInterfaceCallback callback,
+					void *user_data)
+{
+	struct p2p_service_data *data;
+	int ret;
+
+	SUPPLICANT_DBG("");
+
+	if (!system_available)
+		return -EFAULT;
+
+	data = dbus_malloc0(sizeof(*data));
+	data->service = p2p_service_params;
+	data->callback = callback;
+	data->user_data = user_data;
+
+	if (p2p_service_params->wfd_ies)
+		data->registration = true;
+
+	ret = supplicant_dbus_property_set(SUPPLICANT_PATH,
+					SUPPLICANT_INTERFACE, "WFDIEs",
+					DBUS_TYPE_ARRAY_AS_STRING
+					DBUS_TYPE_BYTE_AS_STRING,
+					widi_ies_params,
+					interface_p2p_service_result,
+					data, NULL);
+	if (ret < 0 && ret != -EINPROGRESS) {
+		dbus_free(data);
+		return ret;
+	}
+
+	return -EINPROGRESS;
+}
+
 
 static const char *g_supplicant_rule0 = "type=signal,"
 					"path=" DBUS_PATH_DBUS ","
