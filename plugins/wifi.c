@@ -2697,6 +2697,8 @@ static void peer_changed(GSupplicantPeer *peer, GSupplicantPeerState state)
 		return;
 
 	switch (state) {
+	case G_SUPPLICANT_PEER_SERVICES_CHANGED:
+		return;
 	case G_SUPPLICANT_PEER_GROUP_CHANGED:
 		if (!g_supplicant_peer_is_in_a_group(peer))
 			p_state = CONNMAN_PEER_STATE_IDLE;
