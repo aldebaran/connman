@@ -93,3 +93,8 @@ Properties	string State [readonly] [experimental]
 
 				Note: this will be the only bonjour related
 				information a Peer object will show.
+
+			array{byte} WiFiDisplayIEs [readonly]
+
+				The TLV formated byte array representing the
+				WiFi Display Informations Elements.
