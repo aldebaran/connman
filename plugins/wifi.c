@@ -132,6 +132,7 @@ static GList *iface_list = NULL;
 
 static GList *pending_wifi_device = NULL;
 static GList *p2p_iface_list = NULL;
+bool wfd_service_registered = false;
 
 static void start_autoscan(struct connman_device *device);
 
@@ -358,23 +359,39 @@ struct peer_service_registration {
 	void *user_data;
 };
 
-static void register_peer_service_cb(int result,
+static bool is_service_wfd(const unsigned char *specs, int length)
+{
+	if (length < 9 || specs[0] != 0 || specs[1] != 0 || specs[2] != 6)
+		return false;
+
+	return true;
+}
+
+static void apply_p2p_listen_on_iface(gpointer data, gpointer user_data)
+{
+	struct wifi_data *wifi = data;
+
+	if (!wifi->interface ||
+			!g_supplicant_interface_has_p2p(wifi->interface))
+		return;
+
+	if (!wifi->servicing) {
+		g_supplicant_interface_p2p_listen(wifi->interface,
+				P2P_LISTEN_PERIOD, P2P_LISTEN_INTERVAL);
+	}
+
+	wifi->servicing++;
+}
+
+static void register_wfd_service_cb(int result,
 				GSupplicantInterface *iface, void *user_data)
 {
-	struct wifi_data *wifi = g_supplicant_interface_get_data(iface);
 	struct peer_service_registration *reg_data = user_data;
 
 	DBG("");
 
-	if (result == 0) {
-		if (!wifi->servicing) {
-			g_supplicant_interface_p2p_listen(iface,
-							P2P_LISTEN_PERIOD,
-							P2P_LISTEN_INTERVAL);
-		}
-
-		wifi->servicing++;
-	}
+	if (result == 0)
+		g_list_foreach(iface_list, apply_p2p_listen_on_iface, NULL);
 
 	if (reg_data && reg_data->callback) {
 		reg_data->callback(result, reg_data->user_data);
@@ -396,12 +413,15 @@ static GSupplicantP2PServiceParams *fill_in_peer_service_params(
 	if (version > 0) {
 		params->version = version;
 		params->service = g_memdup(spec, spec_length);
-	} else {
+	} else if (query_length > 0 && spec_length > 0) {
 		params->query = g_memdup(query, query_length);
 		params->query_length = query_length;
 
 		params->response = g_memdup(spec, spec_length);
 		params->response_length = spec_length;
+	} else {
+		params->wfd_ies = g_memdup(spec, spec_length);
+		params->wfd_ies_length = spec_length;
 	}
 
 	return params;
@@ -415,8 +435,69 @@ static void free_peer_service_params(GSupplicantP2PServiceParams *params)
 	g_free(params->service);
 	g_free(params->query);
 	g_free(params->response);
+	g_free(params->wfd_ies);
 
 	g_free(params);
+}
+
+static int peer_register_wfd_service(const unsigned char *specification,
+				int specification_length,
+				peer_service_registration_cb_t callback,
+				void *user_data)
+{
+	struct peer_service_registration *reg_data = NULL;
+	static GSupplicantP2PServiceParams *params;
+	int ret;
+
+	DBG("");
+
+	if (wfd_service_registered)
+		return -EBUSY;
+
+	params = fill_in_peer_service_params(specification,
+					specification_length, NULL, 0, 0);
+	if (!params)
+		return -ENOMEM;
+
+	reg_data = g_try_malloc0(sizeof(*reg_data));
+	if (!reg_data) {
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	reg_data->callback = callback;
+	reg_data->user_data = user_data;
+
+	ret = g_supplicant_set_widi_ies(params,
+					register_wfd_service_cb, reg_data);
+	if (ret < 0 && ret != -EINPROGRESS)
+		goto error;
+
+	wfd_service_registered = true;
+
+	return ret;
+error:
+	free_peer_service_params(params);
+	g_free(reg_data);
+
+	return ret;
+}
+
+static void register_peer_service_cb(int result,
+				GSupplicantInterface *iface, void *user_data)
+{
+	struct wifi_data *wifi = g_supplicant_interface_get_data(iface);
+	struct peer_service_registration *reg_data = user_data;
+
+	DBG("");
+
+	if (result == 0)
+		apply_p2p_listen_on_iface(wifi, NULL);
+
+	if (reg_data->callback)
+		reg_data->callback(result, reg_data->user_data);
+
+	g_free(reg_data);
 }
 
 static int peer_register_service(const unsigned char *specification,
@@ -433,6 +514,12 @@ static int peer_register_service(const unsigned char *specification,
 	GList *list;
 
 	DBG("");
+
+	if (specification && !version && !query &&
+			is_service_wfd(specification, specification_length)) {
+		return peer_register_wfd_service(specification,
+				specification_length, callback, user_data);
+	}
 
 	reg_data = g_try_malloc0(sizeof(*reg_data));
 	if (!reg_data)
@@ -477,18 +564,63 @@ static int peer_register_service(const unsigned char *specification,
 	return ret_f;
 }
 
+static int peer_unregister_wfd_service(void)
+{
+	GSupplicantP2PServiceParams *params;
+	GList *list;
+
+	if (!wfd_service_registered)
+		return -EALREADY;
+
+	params = fill_in_peer_service_params(NULL, 0, NULL, 0, 0);
+	if (!params)
+		return -ENOMEM;
+
+	wfd_service_registered = false;
+
+	g_supplicant_set_widi_ies(params, NULL, NULL);
+
+	for (list = iface_list; list; list = list->next) {
+		struct wifi_data *wifi = list->data;
+
+		if (!g_supplicant_interface_has_p2p(wifi->interface))
+			continue;
+
+		wifi->servicing--;
+		if (!wifi->servicing || wifi->servicing < 0) {
+			g_supplicant_interface_p2p_listen(wifi->interface,
+									0, 0);
+			wifi->servicing = 0;
+		}
+	}
+
+	return 0;
+}
+
 static int peer_unregister_service(const unsigned char *specification,
 						int specification_length,
 						const unsigned char *query,
 						int query_length, int version)
 {
 	GSupplicantP2PServiceParams *params;
+	bool wfd = false;
 	GList *list;
 	int ret;
+
+	if (specification && !version && !query &&
+			is_service_wfd(specification, specification_length)) {
+		ret = peer_unregister_wfd_service();
+		if (ret != 0 && ret != -EINPROGRESS)
+			return ret;
+		wfd = true;
+	}
 
 	for (list = iface_list; list; list = list->next) {
 		struct wifi_data *wifi = list->data;
 		GSupplicantInterface *iface = wifi->interface;
+
+		if (wfd)
+			goto stop_listening;
 
 		if (!g_supplicant_interface_has_p2p(iface))
 			continue;
@@ -504,7 +636,7 @@ static int peer_unregister_service(const unsigned char *specification,
 		ret = g_supplicant_interface_p2p_del_service(iface, params);
 		if (ret != 0 && ret != -EINPROGRESS)
 			free_peer_service_params(params);
-
+stop_listening:
 		wifi->servicing--;
 		if (!wifi->servicing || wifi->servicing < 0) {
 			g_supplicant_interface_p2p_listen(iface, 0, 0);
