@@ -3393,7 +3393,7 @@ static void interface_create_result(const char *error,
 	err = supplicant_dbus_property_get_all(path,
 					SUPPLICANT_INTERFACE ".Interface",
 					interface_create_property, data,
-					data->interface);
+					NULL);
 	if (err == 0)
 		return;
 
