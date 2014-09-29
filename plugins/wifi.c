@@ -2627,6 +2627,23 @@ static void network_changed(GSupplicantNetwork *network, const char *property)
 	}
 }
 
+static void apply_peer_services(GSupplicantPeer *peer,
+				struct connman_peer *connman_peer)
+{
+	const unsigned char *data;
+	int length;
+
+	DBG("");
+
+	connman_peer_reset_services(connman_peer);
+
+	data = g_supplicant_peer_get_widi_ies(peer, &length);
+	if (data) {
+		connman_peer_add_service(connman_peer,
+			CONNMAN_PEER_SERVICE_WIFI_DISPLAY, data, length);
+	}
+}
+
 static void peer_found(GSupplicantPeer *peer)
 {
 	GSupplicantInterface *iface = g_supplicant_peer_get_interface(peer);
@@ -2647,6 +2664,7 @@ static void peer_found(GSupplicantPeer *peer)
 	connman_peer = connman_peer_create(identifier);
 	connman_peer_set_name(connman_peer, name);
 	connman_peer_set_device(connman_peer, wifi->device);
+	apply_peer_services(peer, connman_peer);
 
 	ret = connman_peer_register(connman_peer);
 	if (ret < 0 && ret != -EALREADY)
@@ -2698,6 +2716,8 @@ static void peer_changed(GSupplicantPeer *peer, GSupplicantPeerState state)
 
 	switch (state) {
 	case G_SUPPLICANT_PEER_SERVICES_CHANGED:
+		apply_peer_services(peer, connman_peer);
+		connman_peer_services_changed(connman_peer);
 		return;
 	case G_SUPPLICANT_PEER_GROUP_CHANGED:
 		if (!g_supplicant_peer_is_in_a_group(peer))
