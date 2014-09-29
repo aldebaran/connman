@@ -288,6 +288,31 @@ static void append_ipv4(DBusMessageIter *iter, void *user_data)
 		__connman_ipconfig_append_ipv4(peer->ipconfig, iter);
 }
 
+static void append_peer_services(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_peer *peer = user_data;
+	DBusMessageIter dict;
+	GSList *list;
+
+	for (list = peer->services; list; list = list->next) {
+		struct _peer_service *service = list->data;
+
+		connman_dbus_dict_open(iter, &dict);
+
+		switch (service->type) {
+		case CONNMAN_PEER_SERVICE_UNKNOWN:
+			/* Should never happen */
+			break;
+		case CONNMAN_PEER_SERVICE_WIFI_DISPLAY:
+			connman_dbus_property_append_fixed_array(&dict,
+					"WiFiDisplayIEs", DBUS_TYPE_BYTE,
+					&service->data, service->length);
+			break;
+		}
+		connman_dbus_dict_close(iter, &dict);
+	}
+}
+
 static void append_properties(DBusMessageIter *iter, struct connman_peer *peer)
 {
 	const char *state = state2string(peer->state);
@@ -300,7 +325,9 @@ static void append_properties(DBusMessageIter *iter, struct connman_peer *peer)
 	connman_dbus_dict_append_basic(&dict, "Name",
 					DBUS_TYPE_STRING, &peer->name);
 	connman_dbus_dict_append_dict(&dict, "IPv4", append_ipv4, peer);
-
+	connman_dbus_dict_append_array(&dict, "Services",
+					DBUS_TYPE_DICT_ENTRY,
+					append_peer_services, peer);
 	connman_dbus_dict_close(iter, &dict);
 }
 
@@ -868,6 +895,16 @@ void connman_peer_reset_services(struct connman_peer *peer)
 
 	g_slist_free_full(peer->services, peer_service_free);
 	peer->services = NULL;
+}
+
+void connman_peer_services_changed(struct connman_peer *peer)
+{
+	if (!peer || !peer->registered || !allow_property_changed(peer))
+		return;
+
+	connman_dbus_property_changed_array(peer->path,
+			CONNMAN_PEER_INTERFACE, "Services",
+			DBUS_TYPE_DICT_ENTRY, append_peer_services, peer);
 }
 
 void connman_peer_add_service(struct connman_peer *peer,

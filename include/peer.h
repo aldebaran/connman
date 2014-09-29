@@ -77,6 +77,7 @@ void connman_peer_reset_services(struct connman_peer *peer);
 void connman_peer_add_service(struct connman_peer *peer,
 				enum connman_peer_service_type type,
 				const unsigned char *data, int data_length);
+void connman_peer_services_changed(struct connman_peer *peer);
 
 int connman_peer_register(struct connman_peer *peer);
 void connman_peer_unregister(struct connman_peer *peer);
