@@ -413,13 +413,21 @@ static int parse_peers_service_specs(DBusMessageIter *array,
 			*spec_len = strlen((const char *)*spec)+1;
 		} else if (!g_strcmp0(key, "UpnpVersion")) {
 			dbus_message_iter_get_basic(&inter, version);
+		} else if (!g_strcmp0(key, "WiFiDisplayIEs")) {
+			if (*spec || *query)
+				return -EINVAL;
+
+			dbus_message_iter_recurse(&inter, &value);
+			dbus_message_iter_get_fixed_array(&value,
+							spec, spec_len);
 		} else
 			return -EINVAL;
 
 		dbus_message_iter_next(array);
 	}
 
-	if ((*query && *version) || (!*spec && *query) || (!spec && *version))
+	if ((*query && !*version) ||
+				(!*spec && !*query) || (!spec && *version))
 		return -EINVAL;
 
 	return 0;
