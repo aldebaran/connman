@@ -324,6 +324,8 @@ const char *g_supplicant_peer_get_path(GSupplicantPeer *peer);
 const char *g_supplicant_peer_get_identifier(GSupplicantPeer *peer);
 const void *g_supplicant_peer_get_device_address(GSupplicantPeer *peer);
 const char *g_supplicant_peer_get_name(GSupplicantPeer *peer);
+const unsigned char *g_supplicant_peer_get_widi_ies(GSupplicantPeer *peer,
+								int *length);
 bool g_supplicant_peer_is_wps_pbc(GSupplicantPeer *peer);
 bool g_supplicant_peer_is_wps_pin(GSupplicantPeer *peer);
 bool g_supplicant_peer_is_in_a_group(GSupplicantPeer *peer);
