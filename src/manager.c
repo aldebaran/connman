@@ -460,7 +460,7 @@ static DBusMessage *register_peer_service(DBusConnection *conn,
 	dbus_message_iter_get_basic(&iter, &master);
 
 	ret = __connman_peer_service_register(owner, msg, spec, spec_len,
-						query, query_len, version);
+					query, query_len, version,master);
 	if (!ret)
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	if (ret == -EINPROGRESS)

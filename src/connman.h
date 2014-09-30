@@ -806,7 +806,8 @@ int __connman_peer_service_register(const char *owner, DBusMessage *msg,
 					const unsigned char *specification,
 					int specification_length,
 					const unsigned char *query,
-					int query_length, int version);
+					int query_length, int version,
+					bool master);
 int __connman_peer_service_unregister(const char *owner,
 					const unsigned char *specification,
 					int specification_length,

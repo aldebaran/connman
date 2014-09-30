@@ -39,6 +39,8 @@ struct _peer_service {
 	GBytes *specification;
 	GBytes *query;
 	int version;
+
+	bool master;
 };
 
 struct _peer_service_owner {
@@ -51,6 +53,7 @@ static struct connman_peer_driver *peer_driver;
 
 static GHashTable *owners_map;
 static GHashTable *services_map;
+static int peer_master;
 
 static void reply_pending(struct _peer_service *service, int error)
 {
@@ -149,6 +152,9 @@ static void remove_peer_service(gpointer user_data)
 	if (service->query)
 		g_bytes_unref(service->query);
 
+	if (service->master)
+		peer_master--;
+
 	g_free(service);
 }
 
@@ -197,6 +203,8 @@ static void service_registration_result(int result, void *user_data)
 
 	if (result == 0) {
 		service->registered = true;
+		if (service->master)
+			peer_master++;
 		return;
 	}
 
@@ -247,7 +255,8 @@ int __connman_peer_service_register(const char *owner, DBusMessage *msg,
 					const unsigned char *specification,
 					int specification_length,
 					const unsigned char *query,
-					int query_length, int version)
+					int query_length, int version,
+					bool master)
 {
 	struct _peer_service_owner *ps_owner;
 	GBytes *spec, *query_spec = NULL;
@@ -306,6 +315,7 @@ int __connman_peer_service_register(const char *owner, DBusMessage *msg,
 	service->specification = spec;
 	service->query = query_spec;
 	service->version = version;
+	service->master = master;
 
 	g_hash_table_insert(services_map, spec, ps_owner);
 	spec = query_spec = NULL;
@@ -315,8 +325,11 @@ int __connman_peer_service_register(const char *owner, DBusMessage *msg,
 		goto error;
 	else if (ret == -EINPROGRESS)
 		service->pending = dbus_message_ref(msg);
-	else
+	else {
 		service->registered = true;
+		if (master)
+			peer_master++;
+	}
 
 	ps_owner->services = g_list_prepend(ps_owner->services, service);
 
@@ -387,6 +400,8 @@ int __connman_peer_service_init(void)
 						remove_peer_service_owner);
 	services_map = g_hash_table_new_full(g_bytes_hash, g_bytes_equal,
 								NULL, NULL);
+	peer_master = 0;
+
 	return 0;
 }
 
@@ -399,6 +414,7 @@ void __connman_peer_service_cleanup(void)
 
 	g_hash_table_destroy(owners_map);
 	g_hash_table_destroy(services_map);
+	peer_master = 0;
 
 	dbus_connection_unref(connection);
 	connection = NULL;
