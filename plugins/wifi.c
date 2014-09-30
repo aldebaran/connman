@@ -312,6 +312,8 @@ static int peer_connect(struct connman_peer *peer,
 	if (wps_pin)
 		peer_params->wps_pin = g_strdup(wps_pin);
 
+	peer_params->master = connman_peer_service_is_master();
+
 	ret = g_supplicant_interface_p2p_connect(wifi->interface, peer_params,
 						peer_connect_callback, wifi);
 	if (ret == -EINPROGRESS) {
