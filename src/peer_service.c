@@ -387,6 +387,14 @@ int __connman_peer_service_unregister(const char *owner,
 	return 0;
 }
 
+bool connman_peer_service_is_master(void)
+{
+	if (!peer_master || !peer_driver)
+		return false;
+
+	return true;
+}
+
 int __connman_peer_service_init(void)
 {
 	DBG("");

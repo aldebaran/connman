@@ -107,6 +107,8 @@ struct connman_peer_driver {
 int connman_peer_driver_register(struct connman_peer_driver *driver);
 void connman_peer_driver_unregister(struct connman_peer_driver *driver);
 
+bool connman_peer_service_is_master(void);
+
 #ifdef __cplusplus
 }
 #endif
