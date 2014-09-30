@@ -2117,6 +2117,8 @@ struct _peer_service {
 	int bjr_query_len;
 	unsigned char *bjr_response;
 	int bjr_response_len;
+	unsigned char *wfd_ies;
+	int wfd_ies_len;
 	char *upnp_service;
 	int version;
 	int master;
@@ -2157,6 +2159,9 @@ static void append_peer_service_dict(DBusMessageIter *iter, void *user_data)
 					DBUS_TYPE_INT32, &service->version);
 		__connmanctl_dbus_append_dict_entry(iter, "UpnpService",
 				DBUS_TYPE_STRING, &service->upnp_service);
+	} else if (service->wfd_ies) {
+		append_dict_entry_fixed_array(iter, "WiFiDisplayIEs",
+				&service->wfd_ies, service->wfd_ies_len);
 	}
 }
 
@@ -2177,7 +2182,8 @@ static void peer_service_append(DBusMessageIter *iter, void *user_data)
 static struct _peer_service *fill_in_peer_service(unsigned char *bjr_query,
 				int bjr_query_len, unsigned char *bjr_response,
 				int bjr_response_len, char *upnp_service,
-				int version)
+				int version, unsigned char *wfd_ies,
+				int wfd_ies_len)
 {
 	struct _peer_service *service;
 
@@ -2194,6 +2200,13 @@ static struct _peer_service *fill_in_peer_service(unsigned char *bjr_query,
 	} else if (upnp_service && version) {
 		service->upnp_service = strdup(upnp_service);
 		service->version = version;
+	} else if (wfd_ies && wfd_ies_len) {
+		service->wfd_ies = dbus_malloc0(wfd_ies_len);
+		memcpy(service->wfd_ies, wfd_ies, wfd_ies_len);
+		service->wfd_ies_len = wfd_ies_len;
+	} else {
+		dbus_free(service);
+		service = NULL;
 	}
 
 	return service;
@@ -2203,20 +2216,26 @@ static void free_peer_service(struct _peer_service *service)
 {
 	dbus_free(service->bjr_query);
 	dbus_free(service->bjr_response);
+	dbus_free(service->wfd_ies);
 	free(service->upnp_service);
 	dbus_free(service);
 }
 
 static int peer_service_register(unsigned char *bjr_query, int bjr_query_len,
 			unsigned char *bjr_response, int bjr_response_len,
-			char *upnp_service, int version, int master)
+			char *upnp_service, int version,
+			unsigned char *wfd_ies, int wfd_ies_len, int master)
 {
 	struct _peer_service *service;
 	bool registration = true;
 	int ret;
 
 	service = fill_in_peer_service(bjr_query, bjr_query_len, bjr_response,
-				bjr_response_len, upnp_service, version);
+				bjr_response_len, upnp_service, version,
+				wfd_ies, wfd_ies_len);
+	if (!service)
+		return -EINVAL;
+
 	service->master = master;
 
 	ret = __connmanctl_dbus_method_call(connection, "net.connman", "/",
@@ -2231,14 +2250,19 @@ static int peer_service_register(unsigned char *bjr_query, int bjr_query_len,
 
 static int peer_service_unregister(unsigned char *bjr_query, int bjr_query_len,
 			unsigned char *bjr_response, int bjr_response_len,
-			char *upnp_service, int version)
+			char *upnp_service, int version,
+			unsigned char *wfd_ies, int wfd_ies_len)
 {
 	struct _peer_service *service;
 	bool registration = false;
 	int ret;
 
 	service = fill_in_peer_service(bjr_query, bjr_query_len, bjr_response,
-				bjr_response_len, upnp_service, version);
+				bjr_response_len, upnp_service, version,
+				wfd_ies, wfd_ies_len);
+	if (!service)
+		return -EINVAL;
+
 	service->master = -1;
 
 	ret = __connmanctl_dbus_method_call(connection, "net.connman", "/",
@@ -2280,13 +2304,27 @@ static int cmd_peer_service(char *args[], int num,
 {
 	unsigned char bjr_query[1024] = {};
 	unsigned char bjr_response[1024] = {};
+	unsigned char wfd_ies[1024] = {};
 	char *upnp_service = NULL;
 	int bjr_query_len = 0, bjr_response_len = 0;
-	int version = 0, master = 0;
+	int version = 0, master = 0, wfd_ies_len = 0;
+	int limit;
+
+	if (num < 4)
+		return -EINVAL;
+
+	if (!strcmp(args[2], "wfd_ies")) {
+		wfd_ies_len = parse_spec_array(args[3], wfd_ies);
+		if (wfd_ies_len == -EINVAL)
+			return -EINVAL;
+		limit = 5;
+		goto master;
+	}
 
 	if (num < 6)
 		return -EINVAL;
 
+	limit = 7;
 	if (!strcmp(args[2], "bjr_query")) {
 		if (strcmp(args[4], "bjr_response"))
 			return -EINVAL;
@@ -2306,7 +2344,8 @@ static int cmd_peer_service(char *args[], int num,
 			return -EINVAL;
 	}
 
-	if (num == 7) {
+master:
+	if (num == limit) {
 		master = parse_boolean(args[6]);
 		if (master < 0)
 			return -EINVAL;
@@ -2315,11 +2354,11 @@ static int cmd_peer_service(char *args[], int num,
 	if (!strcmp(args[1], "register")) {
 		return peer_service_register(bjr_query, bjr_query_len,
 				bjr_response, bjr_response_len, upnp_service,
-				version, master);
+				version, wfd_ies, wfd_ies_len, master);
 	} else if (!strcmp(args[1], "unregister")) {
 		return peer_service_unregister(bjr_query, bjr_query_len,
 				bjr_response, bjr_response_len, upnp_service,
-				version);
+				version, wfd_ies, wfd_ies_len);
 	}
 
 	return -EINVAL;
@@ -2374,7 +2413,8 @@ static const struct {
 	{ "peer_service", "register|unregister <specs> <master>\n"
 			  "Where specs are:\n"
 			  "\tbjr_query <query> bjr_response <response>\n"
-			  "\tupnp_service <service> upnp_version <version>\n", NULL,
+			  "\tupnp_service <service> upnp_version <version>\n"
+			  "\twfd_ies <ies>\n", NULL,
 	  cmd_peer_service, "(Un)Register a Peer Service", NULL },
 	{ "help",         NULL,           NULL,            cmd_help,
 	  "Show help", NULL },
