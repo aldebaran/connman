@@ -171,6 +171,7 @@ struct _GSupplicantScanParams {
 typedef struct _GSupplicantScanParams GSupplicantScanParams;
 
 struct _GSupplicantPeerParams {
+	bool master;
 	char *wps_pin;
 	char *path;
 };

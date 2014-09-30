@@ -4831,6 +4831,9 @@ static void interface_p2p_connect_params(DBusMessageIter *iter, void *user_data)
 
 	supplicant_dbus_dict_open(iter, &dict);
 
+	if (data->peer->master)
+		go_intent = 15;
+
 	if (data->peer->wps_pin)
 		wps = "pin";
 
