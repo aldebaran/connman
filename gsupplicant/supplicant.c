@@ -32,6 +32,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <netinet/if_ether.h>
+#include <netinet/in.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -3237,6 +3238,8 @@ bool g_supplicant_interface_has_p2p(GSupplicantInterface *interface)
 
 struct supplicant_p2p_dev_config {
 	char *device_name;
+	char *dev_type;
+	char **sec_dev_types;
 };
 
 static void p2p_device_config_result(const char *error,
@@ -3245,10 +3248,61 @@ static void p2p_device_config_result(const char *error,
 	struct supplicant_p2p_dev_config *config = user_data;
 
 	if (error)
-		SUPPLICANT_DBG("Unable to set P2P Device configuration");
+		SUPPLICANT_DBG("Unable to set P2P Device configuration: %s",
+									error);
 
 	g_free(config->device_name);
+	g_free(config->dev_type);
+	g_strfreev(config->sec_dev_types);
 	dbus_free(config);
+}
+
+static int dev_type_str2bin(const char *type, unsigned char dev_type[8])
+{
+	int length, pos, end;
+	char b[3] = {};
+	char *e = NULL;
+
+	end = strlen(type);
+	for (length = pos = 0; type[pos] != '\0' && length < 8; length++) {
+		if (pos+2 > end)
+			return 0;
+
+		b[0] = type[pos];
+		b[1] = type[pos+1];
+
+		dev_type[length] = strtol(b, &e, 16);
+		if (e && *e != '\0')
+			return 0;
+
+		pos += 2;
+	}
+
+	return 8;
+}
+
+static void append_secondary_dev_types(DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_p2p_dev_config *config = user_data;
+	unsigned char dev_type[8] = {}, *type;
+	char **types;
+	int len;
+
+	type = dev_type;
+
+	for (types = config->sec_dev_types; *types; types++) {
+		DBusMessageIter array;
+
+		len = dev_type_str2bin(*types, dev_type);
+		if (!len)
+			continue;
+
+		dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &array);
+		dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+					&type, len);
+		dbus_message_iter_close_container(iter, &array);
+	}
 }
 
 static void p2p_device_config_params(DBusMessageIter *iter, void *user_data)
@@ -3261,22 +3315,49 @@ static void p2p_device_config_params(DBusMessageIter *iter, void *user_data)
 	supplicant_dbus_dict_append_basic(&dict, "DeviceName",
 				DBUS_TYPE_STRING, &config->device_name);
 
+	if (config->dev_type) {
+		unsigned char dev_type[8] = {}, *type;
+		int len;
+
+		len = dev_type_str2bin(config->dev_type, dev_type);
+		if (len) {
+			type = dev_type;
+			supplicant_dbus_dict_append_fixed_array(&dict,
+					"PrimaryDeviceType",
+					DBUS_TYPE_BYTE, &type, len);
+		}
+	}
+
+	if (config->sec_dev_types) {
+		supplicant_dbus_dict_append_array(&dict,
+				"SecondaryDeviceTypes",
+				DBUS_TYPE_BYTE, append_secondary_dev_types,
+				config);
+	}
+
 	supplicant_dbus_dict_close(iter, &dict);
 }
 
 int g_supplicant_interface_set_p2p_device_config(GSupplicantInterface *interface,
-						const char *device_name)
+					const char *device_name,
+					const char *primary_dev_type,
+					const char *secondary_dev_types)
 {
 	struct supplicant_p2p_dev_config *config;
 	int ret;
 
-	SUPPLICANT_DBG("P2P Device Name setting %s", device_name);
+	SUPPLICANT_DBG("P2P Device settings %s/%s/%s", device_name,
+				primary_dev_type, secondary_dev_types);
 
 	config = dbus_malloc0(sizeof(*config));
 	if (!config)
 		return -ENOMEM;
 
 	config->device_name = g_strdup(device_name);
+	config->dev_type = g_strdup(primary_dev_type);
+	if (secondary_dev_types)
+		config->sec_dev_types = g_strsplit(secondary_dev_types,
+								" ", 5);
 
 	ret = supplicant_dbus_property_set(interface->path,
 				SUPPLICANT_INTERFACE ".Interface.P2PDevice",
@@ -3290,6 +3371,8 @@ int g_supplicant_interface_set_p2p_device_config(GSupplicantInterface *interface
 				p2p_device_config_result, config, NULL);
 	if (ret < 0) {
 		g_free(config->device_name);
+		g_free(config->dev_type);
+		g_strfreev(config->sec_dev_types);
 		dbus_free(config);
 		SUPPLICANT_DBG("Unable to set P2P Device configuration");
 	}

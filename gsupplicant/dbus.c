@@ -624,6 +624,7 @@ void supplicant_dbus_property_append_array(DBusMessageIter *iter,
 
 	switch (type) {
 	case DBUS_TYPE_STRING:
+	case DBUS_TYPE_BYTE:
 		variant_sig = DBUS_TYPE_ARRAY_AS_STRING
 				DBUS_TYPE_ARRAY_AS_STRING
 				DBUS_TYPE_BYTE_AS_STRING;

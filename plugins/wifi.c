@@ -2452,7 +2452,8 @@ static void p2p_support(GSupplicantInterface *interface)
 	if (!hostname)
 		hostname = "ConnMan";
 
-	g_supplicant_interface_set_p2p_device_config(interface, hostname);
+	g_supplicant_interface_set_p2p_device_config(interface,
+							hostname, NULL, NULL);
 	connman_peer_driver_register(&peer_driver);
 }
 
