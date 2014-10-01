@@ -236,6 +236,7 @@ struct _GSupplicantPeer {
 	unsigned int wps_capabilities;
 	GSList *groups;
 	const GSupplicantInterface *current_group_iface;
+	bool connection_requested;
 };
 
 struct _GSupplicantGroup {
@@ -515,6 +516,8 @@ static void callback_peer_request(GSupplicantPeer *peer)
 
 	if (!callbacks_pointer->peer_request)
 		return;
+
+	peer->connection_requested = true;
 
 	callbacks_pointer->peer_request(peer);
 }
@@ -1156,6 +1159,14 @@ bool g_supplicant_peer_is_client(GSupplicantPeer *peer)
 	}
 
 	return false;
+}
+
+bool g_supplicant_peer_has_requested_connection(GSupplicantPeer *peer)
+{
+	if (!peer)
+		return false;
+
+	return peer->connection_requested;
 }
 
 static void merge_network(GSupplicantNetwork *network)
@@ -2782,6 +2793,9 @@ static void signal_peer_changed(const char *path, DBusMessageIter *iter)
 		callback_peer_changed(peer, G_SUPPLICANT_PEER_GROUP_CHANGED);
 
 	dbus_free(property_data);
+
+	if (!g_supplicant_peer_is_in_a_group(peer))
+		peer->connection_requested = false;
 }
 
 struct group_sig_data {
@@ -2873,6 +2887,7 @@ static void signal_group_failure(const char *path, DBusMessageIter *iter)
 		return;
 
 	callback_peer_changed(peer, G_SUPPLICANT_PEER_GROUP_FAILED);
+	peer->connection_requested = false;
 }
 
 static void signal_group_started(const char *path, DBusMessageIter *iter)
@@ -3066,6 +3081,7 @@ static void signal_group_peer_disconnected(const char *path, DBusMessageIter *it
 		return;
 
 	callback_peer_changed(peer, G_SUPPLICANT_PEER_GROUP_DISCONNECTED);
+	peer->connection_requested = false;
 }
 
 static struct {
