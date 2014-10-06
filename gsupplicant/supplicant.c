@@ -1914,6 +1914,14 @@ static void interface_bss_removed(DBusMessageIter *iter, void *user_data)
 		g_hash_table_remove(interface->network_table, network->group);
 }
 
+static void set_config_methods(DBusMessageIter *iter, void *user_data)
+{
+	const char *config_methods = "puth_button";
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+							&config_methods);
+}
+
 static void interface_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
@@ -1939,6 +1947,12 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 						interface->scan_capa);
 		debug_strvalmap("Mode capability", mode_capa_map,
 						interface->mode_capa);
+
+
+		supplicant_dbus_property_set(interface->path,
+				SUPPLICANT_INTERFACE ".Interface.WPS",
+				"ConfigMethods", DBUS_TYPE_STRING_AS_STRING,
+				set_config_methods, NULL, NULL, NULL);
 
 		if (interface->ready)
 			callback_interface_added(interface);
