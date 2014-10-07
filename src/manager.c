@@ -426,8 +426,8 @@ static int parse_peers_service_specs(DBusMessageIter *array,
 		dbus_message_iter_next(array);
 	}
 
-	if ((*query && !*version) ||
-				(!*spec && !*query) || (!spec && *version))
+	if ((*query && !*spec && !*version) ||
+				(!*spec && !*query) || (!*spec && *version))
 		return -EINVAL;
 
 	return 0;
