@@ -1029,3 +1029,8 @@ int __connman_nfacct_disable(struct nfacct_context *ctx,
 				void *user_data);
 
 void __connman_nfacct_cleanup(void);
+
+#include <connman/machine.h>
+
+int __connman_machine_init(void);
+void __connman_machine_cleanup(void);

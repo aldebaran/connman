@@ -679,6 +679,7 @@ int main(int argc, char *argv[])
 	__connman_wpad_init();
 	__connman_wispr_init();
 	__connman_rfkill_init();
+	__connman_machine_init();
 
 	g_free(option_config);
 	g_free(option_device);
@@ -690,6 +691,7 @@ int main(int argc, char *argv[])
 
 	g_source_remove(signal);
 
+	__connman_machine_cleanup();
 	__connman_rfkill_cleanup();
 	__connman_wispr_cleanup();
 	__connman_wpad_cleanup();
