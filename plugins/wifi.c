@@ -55,6 +55,7 @@
 #include <include/setting.h>
 #include <connman/provision.h>
 #include <connman/utsname.h>
+#include <connman/machine.h>
 
 #include <gsupplicant/gsupplicant.h>
 
@@ -2447,8 +2448,34 @@ static void interface_removed(GSupplicantInterface *interface)
 	check_p2p_technology();
 }
 
+static void set_device_type(const char *type, char dev_type[17])
+{
+	const char *oui = "0050F204";
+	const char *category = "0100";
+	const char *sub_category = "0000";
+
+	if (!g_strcmp0(type, "handset")) {
+		category = "0A00";
+		sub_category = "0500";
+	} else if (!g_strcmp0(type, "vm") || !g_strcmp0(type, "container"))
+		sub_category = "0100";
+	else if (!g_strcmp0(type, "server"))
+		sub_category = "0200";
+	else if (!g_strcmp0(type, "laptop"))
+		sub_category = "0500";
+	else if (!g_strcmp0(type, "desktop"))
+		sub_category = "0600";
+	else if (!g_strcmp0(type, "tablet"))
+		sub_category = "0900";
+	else if (!g_strcmp0(type, "watch"))
+		category = "FF00";
+
+	snprintf(dev_type, 17, "%s%s%s", category, oui, sub_category);
+}
+
 static void p2p_support(GSupplicantInterface *interface)
 {
+	char dev_type[17] = {};
 	const char *hostname;
 
 	DBG("");
@@ -2465,8 +2492,9 @@ static void p2p_support(GSupplicantInterface *interface)
 	if (!hostname)
 		hostname = "ConnMan";
 
+	set_device_type(connman_machine_get_type(), dev_type);
 	g_supplicant_interface_set_p2p_device_config(interface,
-							hostname, NULL);
+							hostname, dev_type);
 	connman_peer_driver_register(&peer_driver);
 }
 
