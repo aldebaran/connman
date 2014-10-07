@@ -294,9 +294,8 @@ int g_supplicant_interface_set_country(GSupplicantInterface *interface,
 							void *user_data);
 bool g_supplicant_interface_has_p2p(GSupplicantInterface *interface);
 int g_supplicant_interface_set_p2p_device_config(GSupplicantInterface *interface,
-					const char *device_name,
-					const char *primary_dev_type,
-					const char *secondary_dev_types);
+						const char *device_name,
+						const char *primary_dev_type);
 GSupplicantPeer *g_supplicant_interface_peer_lookup(GSupplicantInterface *interface,
 						const char *identifier);
 bool g_supplicant_interface_is_p2p_finding(GSupplicantInterface *interface);
