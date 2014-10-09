@@ -300,7 +300,7 @@ static void append_peer_service(DBusMessageIter *iter,
 		/* Should never happen */
 		break;
 	case CONNMAN_PEER_SERVICE_WIFI_DISPLAY:
-		connman_dbus_property_append_fixed_array(&dict,
+		connman_dbus_dict_append_fixed_array(&dict,
 				"WiFiDisplayIEs", DBUS_TYPE_BYTE,
 				&service->data, service->length);
 		break;
