@@ -319,18 +319,6 @@ static const char *error2string(enum connman_service_error error)
 	return NULL;
 }
 
-static enum connman_service_error string2error(const char *error)
-{
-	if (g_strcmp0(error, "dhcp-failed") == 0)
-		return CONNMAN_SERVICE_ERROR_DHCP_FAILED;
-	else if (g_strcmp0(error, "pin-missing") == 0)
-		return CONNMAN_SERVICE_ERROR_PIN_MISSING;
-	else if (g_strcmp0(error, "invalid-key") == 0)
-		return CONNMAN_SERVICE_ERROR_INVALID_KEY;
-
-	return CONNMAN_SERVICE_ERROR_UNKNOWN;
-}
-
 static const char *proxymethod2string(enum connman_service_proxy_method method)
 {
 	switch (method) {
@@ -497,15 +485,6 @@ static int service_load(struct connman_service *service)
 		service->favorite = g_key_file_get_boolean(keyfile,
 				service->identifier, "Favorite", NULL);
 
-		str = g_key_file_get_string(keyfile,
-				service->identifier, "Failure", NULL);
-		if (str) {
-			if (!service->favorite)
-				service->state_ipv4 = service->state_ipv6 =
-					CONNMAN_SERVICE_STATE_FAILURE;
-			service->error = string2error(str);
-			g_free(str);
-		}
 		/* fall through */
 
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
@@ -672,17 +651,9 @@ static int service_save(struct connman_service *service)
 		g_key_file_set_boolean(keyfile, service->identifier,
 					"Favorite", service->favorite);
 
-		if (service->state_ipv4 == CONNMAN_SERVICE_STATE_FAILURE ||
-			service->state_ipv6 == CONNMAN_SERVICE_STATE_FAILURE) {
-			const char *failure = error2string(service->error);
-			if (failure)
-				g_key_file_set_string(keyfile,
-							service->identifier,
-							"Failure", failure);
-		} else {
-			g_key_file_remove_key(keyfile, service->identifier,
-							"Failure", NULL);
-		}
+		g_key_file_remove_key(keyfile, service->identifier,
+				"Failure", NULL);
+
 		/* fall through */
 
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
