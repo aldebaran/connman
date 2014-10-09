@@ -5846,10 +5846,9 @@ static int service_connect(struct connman_service *service)
 				if (!service->wps ||
 					!connman_network_get_bool(service->network, "WiFi.UseWPS"))
 					return -ENOKEY;
-			} else if (service->error ==
-					CONNMAN_SERVICE_ERROR_INVALID_KEY)
-				return -ENOKEY;
+			}
 			break;
+
 		case CONNMAN_SERVICE_SECURITY_8021X:
 			if (!service->eap)
 				return -EINVAL;
