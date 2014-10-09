@@ -288,29 +288,47 @@ static void append_ipv4(DBusMessageIter *iter, void *user_data)
 		__connman_ipconfig_append_ipv4(peer->ipconfig, iter);
 }
 
+static void append_peer_service(DBusMessageIter *iter,
+					struct _peer_service *service)
+{
+	DBusMessageIter dict;
+
+	connman_dbus_dict_open(iter, &dict);
+
+	switch (service->type) {
+	case CONNMAN_PEER_SERVICE_UNKNOWN:
+		/* Should never happen */
+		break;
+	case CONNMAN_PEER_SERVICE_WIFI_DISPLAY:
+		connman_dbus_property_append_fixed_array(&dict,
+				"WiFiDisplayIEs", DBUS_TYPE_BYTE,
+				&service->data, service->length);
+		break;
+	}
+
+	connman_dbus_dict_close(iter, &dict);
+}
+
 static void append_peer_services(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_peer *peer = user_data;
-	DBusMessageIter dict;
+	DBusMessageIter container;
 	GSList *list;
 
-	for (list = peer->services; list; list = list->next) {
-		struct _peer_service *service = list->data;
+	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT,
+							NULL, &container);
 
-		connman_dbus_dict_open(iter, &dict);
+	if (!peer->services) {
+		DBusMessageIter dict;
 
-		switch (service->type) {
-		case CONNMAN_PEER_SERVICE_UNKNOWN:
-			/* Should never happen */
-			break;
-		case CONNMAN_PEER_SERVICE_WIFI_DISPLAY:
-			connman_dbus_property_append_fixed_array(&dict,
-					"WiFiDisplayIEs", DBUS_TYPE_BYTE,
-					&service->data, service->length);
-			break;
-		}
-		connman_dbus_dict_close(iter, &dict);
+		connman_dbus_dict_open(&container, &dict);
+		connman_dbus_dict_close(&container, &dict);
+	} else {
+		for (list = peer->services; list; list = list->next)
+			append_peer_service(&container, list->data);
 	}
+
+	dbus_message_iter_close_container(iter, &container);
 }
 
 static void append_properties(DBusMessageIter *iter, struct connman_peer *peer)
