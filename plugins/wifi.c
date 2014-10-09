@@ -218,10 +218,15 @@ static void peer_cancel_timeout(struct wifi_data *wifi)
 {
 	if (wifi->p2p_connection_timeout > 0)
 		g_source_remove(wifi->p2p_connection_timeout);
+
 	wifi->p2p_connection_timeout = 0;
 	wifi->p2p_connecting = false;
-	connman_peer_unref(wifi->pending_peer);
-	wifi->pending_peer = NULL;
+
+	if (wifi->pending_peer) {
+		connman_peer_unref(wifi->pending_peer);
+		wifi->pending_peer = NULL;
+	}
+
 	wifi->peer = NULL;
 }
 
@@ -366,6 +371,9 @@ static int peer_disconnect(struct connman_peer *peer)
 	ret = g_supplicant_interface_p2p_disconnect(wifi->interface,
 							&peer_params);
 	g_free(peer_params.path);
+
+	if (ret == -EINPROGRESS)
+		peer_cancel_timeout(wifi);
 
 	return ret;
 }
