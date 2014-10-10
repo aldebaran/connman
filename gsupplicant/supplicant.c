@@ -1916,7 +1916,7 @@ static void interface_bss_removed(DBusMessageIter *iter, void *user_data)
 
 static void set_config_methods(DBusMessageIter *iter, void *user_data)
 {
-	const char *config_methods = "puth_button";
+	const char *config_methods = "push_button";
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
 							&config_methods);
