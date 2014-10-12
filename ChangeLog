@@ -1,3 +1,17 @@
+ver 1.26:
+	Fix issue with missing WiFi security provisioning support.
+	Fix issue with immutable setting and provisioned services.
+	Fix issue with scheduling DNS cache cleanup procedure.
+	Fix issue with IPv6 Privacy setting on service removal.
+	Fix issue with DHCPv6 CONFIRM message sending procedure.
+	Fix issue with DHCPv6 lease expiration handling support.
+	Fix issue with DHCPv4 networks and broadcast flag handling.
+	Fix issue with DHCPv4 networks without gateway configuration.
+	Fix issue with P2P Peer authorization handling.
+	Fix issue with P2P Peer service registration.
+	Add support for WiFi Display information elements.
+	Add support for systemd-hostnamed integration.
+
 ver 1.25:
 	Fix issue with handling rebind timer for DHCPv6.
 	Fix issue with handling DHCP renew transaction.
