@@ -698,7 +698,7 @@ void __connman_ipconfig_newaddr(int index, int family, const char *label,
 		goto out;
 
 	if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) != (IFF_RUNNING | IFF_LOWER_UP))
-		return;
+		goto out;
 
 	for (list = g_list_first(ipconfig_list); list;
 						list = g_list_next(list)) {
