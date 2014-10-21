@@ -891,7 +891,7 @@ static void config_notify_handler(struct inotify_event *event,
 		return;
 	}
 
-	if (event->mask & IN_CREATE)
+	if (event->mask & IN_CREATE || event->mask & IN_MOVED_TO)
 		create_config(ident);
 
 	if (event->mask & IN_MODIFY) {
