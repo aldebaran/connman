@@ -44,6 +44,9 @@ struct proxy_lookup {
 
 static void remove_lookup(struct proxy_lookup *lookup)
 {
+	if (lookup->watch > 0)
+		g_source_remove(lookup->watch);
+
 	lookup_list = g_slist_remove(lookup_list, lookup);
 
 	connman_service_unref(lookup->service);
@@ -150,11 +153,6 @@ void connman_proxy_lookup_cancel(unsigned int token)
 	}
 
 	if (lookup) {
-		if (lookup->watch > 0) {
-			g_source_remove(lookup->watch);
-			lookup->watch = 0;
-		}
-
 		if (lookup->proxy &&
 					lookup->proxy->cancel_lookup)
 			lookup->proxy->cancel_lookup(lookup->service,
