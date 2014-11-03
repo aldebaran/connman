@@ -155,7 +155,9 @@ Properties	string State [readonly]
 			the "failure" state. Otherwise it might be empty or
 			not present at all.
 
-			Current defined error code is "dhcp-failed".
+			Currently defined error codes are: "out-of-range",
+			"pin-missing", "dhcp-failed", "connect-failed",
+			"login-failed", "auth-failed" and "invalid-key".
 
 		string Name [readonly]
 
