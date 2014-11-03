@@ -1340,6 +1340,9 @@ static void start_autoscan(struct connman_device *device)
 	if (wifi->p2p_device)
 		return;
 
+	if (wifi->connected)
+		return;
+
 	autoscan = wifi->autoscan;
 	if (!autoscan)
 		return;
