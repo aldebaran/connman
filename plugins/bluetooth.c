@@ -88,9 +88,10 @@ static bool proxy_get_bool(GDBusProxy *proxy, const char *property)
 	return value;
 }
 
-static const char* proxy_get_role(GDBusProxy *proxy)
+static const char *proxy_get_role(GDBusProxy *proxy)
 {
-        DBusMessageIter iter, value;
+	DBusMessageIter iter, value;
+	const char *pref = NULL;
 
 	if (!proxy)
 		return NULL;
@@ -104,20 +105,20 @@ static const char* proxy_get_role(GDBusProxy *proxy)
 
 		dbus_message_iter_get_basic(&value, &uuid);
 		/*
-		 * Order matters here. If a device offers more than one role,
-		 * we prefer NAP, then GN, then PANU.
+		 * If a device offers more than one role, we prefer NAP,
+		 * then GN, then PANU.
 		 */
 		if (!strcmp(uuid, BLUETOOTH_PAN_NAP))
 			return "nap";
 		if (!strcmp(uuid, BLUETOOTH_PAN_GN))
-			return "gn";
-		if (!strcmp(uuid, BLUETOOTH_PAN_PANU))
-			return "panu";
+			pref = "gn";
+		if (!strcmp(uuid, BLUETOOTH_PAN_PANU) && !pref)
+			pref = "panu";
 
                 dbus_message_iter_next(&value);
         }
 
-	return NULL;
+	return pref;
 }
 
 static int bluetooth_pan_probe(struct connman_network *network)
