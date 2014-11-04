@@ -393,7 +393,8 @@ static void btdevice_property_change(GDBusProxy *proxy, const char *name,
 		DBusMessageIter *iter, void *user_data)
 {
 	struct bluetooth_pan *pan;
-	const char* pan_role = NULL;
+	const char *old_role = NULL;
+	const char *new_role;
 
 	if (strcmp(name, "UUIDs"))
 		return;
@@ -404,12 +405,13 @@ static void btdevice_property_change(GDBusProxy *proxy, const char *name,
 
 	if (pan->network &&
 			connman_network_get_device(pan->network))
-		pan_role = pan->pan_role;
+		old_role = pan->pan_role;
+	new_role = proxy_get_role(pan->btdevice_proxy);
 
-	DBG("network %p network role %s proxy role %s", pan->network, pan_role,
-			proxy_get_role(pan->btdevice_proxy));
+	DBG("network %p network role %s proxy role %s", pan->network, old_role,
+			new_role);
 
-	if (!strcmp(proxy_get_role(pan->btdevice_proxy), pan_role))
+	if (old_role && new_role && !strcmp(old_role, new_role))
 		return;
 
 	pan_create_nap(pan);
