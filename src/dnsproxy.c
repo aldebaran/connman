@@ -218,7 +218,11 @@ static GHashTable *partial_tcp_req_table;
 
 static guint16 get_id(void)
 {
-	return random();
+	uint64_t rand;
+
+	__connman_util_get_random(&rand);
+
+	return rand;
 }
 
 static int protocol_offset(int protocol)
@@ -3828,8 +3832,6 @@ int __connman_dnsproxy_init(void)
 	int err, index;
 
 	DBG("");
-
-	srandom(time(NULL));
 
 	listener_table = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 							NULL, g_free);
