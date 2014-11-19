@@ -672,4 +672,6 @@ void __connman_dhcp_cleanup(void)
 
 	g_hash_table_destroy(ipconfig_table);
 	ipconfig_table = NULL;
+
+	dhcp_cleanup_random();
 }
