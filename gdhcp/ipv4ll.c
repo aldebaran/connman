@@ -34,23 +34,19 @@
 
 #include <glib.h>
 #include "ipv4ll.h"
+#include "common.h"
 
 /**
  * Return a random link local IP (in host byte order)
  */
-uint32_t ipv4ll_random_ip(int seed)
+uint32_t ipv4ll_random_ip(void)
 {
 	unsigned tmp;
+	uint64_t rand;
 
-	if (seed)
-		srand(seed);
-	else {
-		struct timeval tv;
-		gettimeofday(&tv, NULL);
-		srand(tv.tv_usec);
-	}
 	do {
-		tmp = rand();
+		dhcp_get_random(&rand);
+		tmp = rand;
 		tmp = tmp & IN_CLASSB_HOST;
 	} while (tmp > (IN_CLASSB_HOST - 0x0200));
 	return ((LINKLOCAL_ADDR + 0x0100) + tmp);
@@ -61,13 +57,10 @@ uint32_t ipv4ll_random_ip(int seed)
  */
 guint ipv4ll_random_delay_ms(guint secs)
 {
-	struct timeval tv;
-	guint tmp;
+	uint64_t rand;
 
-	gettimeofday(&tv, NULL);
-	srand(tv.tv_usec);
-	tmp = rand();
-	return tmp % (secs * 1000);
+	dhcp_get_random(&rand);
+	return rand % (secs * 1000);
 }
 
 int ipv4ll_send_arp_packet(uint8_t* source_eth, uint32_t source_ip,

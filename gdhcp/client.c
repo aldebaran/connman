@@ -514,11 +514,13 @@ static int send_release(GDHCPClient *dhcp_client,
 			uint32_t server, uint32_t ciaddr)
 {
 	struct dhcp_packet packet;
+	uint64_t rand;
 
 	debug(dhcp_client, "sending DHCP release request");
 
 	init_packet(dhcp_client, &packet, DHCPRELEASE);
-	packet.xid = rand();
+	dhcp_get_random(&rand);
+	packet.xid = rand;
 	packet.ciaddr = htonl(ciaddr);
 
 	dhcp_add_option_uint32(&packet, DHCP_SERVER_ID, server);
@@ -540,7 +542,7 @@ static gboolean send_probe_packet(gpointer dhcp_data)
 	/* if requested_ip is not valid, pick a new address*/
 	if (dhcp_client->requested_ip == 0) {
 		debug(dhcp_client, "pick a new random address");
-		dhcp_client->requested_ip = ipv4ll_random_ip(0);
+		dhcp_client->requested_ip = ipv4ll_random_ip();
 	}
 
 	debug(dhcp_client, "sending IPV4LL probe request");
@@ -1361,7 +1363,6 @@ static int dhcp_recv_l2_packet(struct dhcp_packet *dhcp_pkt, int fd,
 static void ipv4ll_start(GDHCPClient *dhcp_client)
 {
 	guint timeout;
-	int seed;
 
 	remove_timeouts(dhcp_client);
 
@@ -1369,9 +1370,7 @@ static void ipv4ll_start(GDHCPClient *dhcp_client)
 	dhcp_client->retry_times = 0;
 	dhcp_client->requested_ip = 0;
 
-	/*try to start with a based mac address ip*/
-	seed = (dhcp_client->mac_address[4] << 8 | dhcp_client->mac_address[4]);
-	dhcp_client->requested_ip = ipv4ll_random_ip(seed);
+	dhcp_client->requested_ip = ipv4ll_random_ip();
 
 	/*first wait a random delay to avoid storm of arp request on boot*/
 	timeout = ipv4ll_random_delay_ms(PROBE_WAIT);
@@ -1670,6 +1669,7 @@ static gboolean start_expire(gpointer user_data)
 static gboolean continue_rebound(gpointer user_data)
 {
 	GDHCPClient *dhcp_client = user_data;
+	uint64_t rand;
 
 	switch_listening_mode(dhcp_client, L2);
 	send_request(dhcp_client);
@@ -1680,9 +1680,10 @@ static gboolean continue_rebound(gpointer user_data)
 	/*recalculate remaining rebind time*/
 	dhcp_client->T2 >>= 1;
 	if (dhcp_client->T2 > 60) {
+		dhcp_get_random(&rand);
 		dhcp_client->t2_timeout =
 			g_timeout_add_full(G_PRIORITY_HIGH,
-					dhcp_client->T2 * 1000 + (rand() % 2000) - 1000,
+					dhcp_client->T2 * 1000 + (rand % 2000) - 1000,
 					continue_rebound,
 					dhcp_client,
 					NULL);
@@ -1714,6 +1715,7 @@ static gboolean start_rebound(gpointer user_data)
 static gboolean continue_renew (gpointer user_data)
 {
 	GDHCPClient *dhcp_client = user_data;
+	uint64_t rand;
 
 	switch_listening_mode(dhcp_client, L3);
 	send_request(dhcp_client);
@@ -1724,8 +1726,9 @@ static gboolean continue_renew (gpointer user_data)
 	dhcp_client->T1 >>= 1;
 
 	if (dhcp_client->T1 > 60) {
+		dhcp_get_random(&rand);
 		dhcp_client->t1_timeout = g_timeout_add_full(G_PRIORITY_HIGH,
-				dhcp_client->T1 * 1000 + (rand() % 2000) - 1000,
+				dhcp_client->T1 * 1000 + (rand % 2000) - 1000,
 				continue_renew,
 				dhcp_client,
 				NULL);
@@ -2707,6 +2710,7 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 {
 	int re;
 	uint32_t addr;
+	uint64_t rand;
 
 	if (dhcp_client->type == G_DHCP_IPV6) {
 		if (dhcp_client->information_req_cb) {
@@ -2815,7 +2819,8 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 		if (re != 0)
 			return re;
 
-		dhcp_client->xid = rand();
+		dhcp_get_random(&rand);
+		dhcp_client->xid = rand;
 		dhcp_client->start = time(NULL);
 	}
 
