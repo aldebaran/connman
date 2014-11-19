@@ -107,7 +107,10 @@ static void clear_timer(struct connman_dhcpv6 *dhcp)
 
 static inline float get_random(void)
 {
-	return (rand() % 200 - 100) / 1000.0;
+	uint64_t val;
+
+	__connman_util_get_random(&val);
+	return (val % 200 - 100) / 1000.0;
 }
 
 /* Calculate a random delay, RFC 3315 chapter 14 */
@@ -1601,6 +1604,7 @@ int __connman_dhcpv6_start_info(struct connman_network *network,
 {
 	struct connman_dhcpv6 *dhcp;
 	int delay;
+	uint64_t rand;
 
 	DBG("");
 
@@ -1626,7 +1630,8 @@ int __connman_dhcpv6_start_info(struct connman_network *network,
 	g_hash_table_replace(network_table, network, dhcp);
 
 	/* Initial timeout, RFC 3315, 18.1.5 */
-	delay = rand() % 1000;
+	__connman_util_get_random(&rand);
+	delay = rand % 1000;
 
 	dhcp->timeout = g_timeout_add(delay, start_info_req, dhcp);
 
@@ -1778,6 +1783,7 @@ int __connman_dhcpv6_start(struct connman_network *network,
 	struct connman_service *service;
 	struct connman_dhcpv6 *dhcp;
 	int delay;
+	uint64_t rand;
 
 	DBG("");
 
@@ -1807,7 +1813,8 @@ int __connman_dhcpv6_start(struct connman_network *network,
 	g_hash_table_replace(network_table, network, dhcp);
 
 	/* Initial timeout, RFC 3315, 17.1.2 */
-	delay = rand() % 1000;
+	__connman_util_get_random(&rand);
+	delay = rand % 1000;
 
 	/*
 	 * Start from scratch.
@@ -2639,8 +2646,6 @@ void __connman_dhcpv6_stop_pd(int index)
 int __connman_dhcpv6_init(void)
 {
 	DBG("");
-
-	srand(time(NULL));
 
 	network_table = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 							NULL, remove_network);
