@@ -223,6 +223,10 @@ void g_dhcp_server_set_lease_time(GDHCPServer *dhcp_server,
 						unsigned int lease_time);
 void g_dhcp_server_set_save_lease(GDHCPServer *dhcp_server,
 				GDHCPSaveLeaseFunc func, gpointer user_data);
+
+int dhcp_get_random(uint64_t *val);
+void dhcp_cleanup_random(void);
+
 #ifdef __cplusplus
 }
 #endif
