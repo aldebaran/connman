@@ -48,7 +48,7 @@ static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
 	struct connman_inotify *inotify = user_data;
-	char buffer[256];
+	char buffer[sizeof(struct inotify_event) + NAME_MAX + 1];
 	char *next_event;
 	gsize bytes_read;
 	GIOStatus status;
@@ -60,7 +60,7 @@ static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
 	}
 
 	status = g_io_channel_read_chars(channel, buffer,
-					sizeof(buffer) -1, &bytes_read, NULL);
+					sizeof(buffer), &bytes_read, NULL);
 
 	switch (status) {
 	case G_IO_STATUS_NORMAL:
