@@ -208,6 +208,8 @@ static void send_packet(int fd, const char *server, uint32_t timeout)
 
 static gboolean next_poll(gpointer user_data)
 {
+	poll_id = 0;
+
 	if (!timeserver || transmit_fd == 0)
 		return FALSE;
 
