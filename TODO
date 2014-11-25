@@ -111,12 +111,6 @@ WiFi
    Complexity: C1
 
 
-- WiFi p2p
-
-   Priority: Medium
-   Complexity: C2
-
-
 - Removing wpa_supplicant 0.7.x legacy support
 
   Priority: Low
