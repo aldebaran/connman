@@ -45,7 +45,7 @@ int __connman_util_get_random(uint64_t *val)
 	if (!val)
 		return -EINVAL;
 
-	if (read(f, val, sizeof(*val)) < 0) {
+	if (read(f, val, sizeof(uint64_t)) < 0) {
 		r = -errno;
 		connman_warn_once("Could not read from "URANDOM);
 		*val = random();
