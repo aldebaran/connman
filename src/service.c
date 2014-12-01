@@ -5732,9 +5732,9 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
-        case CONNMAN_IPCONFIG_METHOD_MANUAL:
-        case CONNMAN_IPCONFIG_METHOD_DHCP:
-        case CONNMAN_IPCONFIG_METHOD_AUTO:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		break;
 
 	}
