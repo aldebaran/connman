@@ -5653,7 +5653,7 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 					enum connman_ipconfig_type type)
 {
 	struct connman_ipconfig *ipconfig = NULL;
-	enum connman_service_state *old_state;
+	enum connman_service_state old_state;
 	enum connman_ipconfig_method method;
 
 	if (!service)
@@ -5664,13 +5664,13 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 		return -EINVAL;
 
 	case CONNMAN_IPCONFIG_TYPE_IPV4:
-		old_state = &service->state_ipv4;
+		old_state = service->state_ipv4;
 		ipconfig = service->ipconfig_ipv4;
 
 		break;
 
 	case CONNMAN_IPCONFIG_TYPE_IPV6:
-		old_state = &service->state_ipv6;
+		old_state = service->state_ipv6;
 		ipconfig = service->ipconfig_ipv6;
 
 		break;
@@ -5680,12 +5680,12 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 		return -EINVAL;
 
 	/* Any change? */
-	if (*old_state == new_state)
+	if (old_state == new_state)
 		return -EALREADY;
 
 	DBG("service %p (%s) old state %d (%s) new state %d (%s) type %d (%s)",
 		service, service ? service->identifier : NULL,
-		*old_state, state2string(*old_state),
+		old_state, state2string(old_state),
 		new_state, state2string(new_state),
 		type, __connman_ipconfig_type2string(type));
 
@@ -5739,7 +5739,10 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 
 	}
 
-	*old_state = new_state;
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		service->state_ipv4 = new_state;
+	else
+		service->state_ipv6 = new_state;
 
 	update_nameservers(service);
 
