@@ -135,6 +135,7 @@ const char *__connman_ipconfig_type2string(enum connman_ipconfig_type type)
 {
 	switch (type) {
 	case CONNMAN_IPCONFIG_TYPE_UNKNOWN:
+	case CONNMAN_IPCONFIG_TYPE_ALL:
 		return "unknown";
 	case CONNMAN_IPCONFIG_TYPE_IPV4:
 		return "IPv4";
@@ -2128,6 +2129,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 			type = AF_INET6;
 			break;
 		case CONNMAN_IPCONFIG_TYPE_UNKNOWN:
+		case CONNMAN_IPCONFIG_TYPE_ALL:
 			type = -1;
 			break;
 		}
@@ -2217,6 +2219,7 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 			ipconfig->method = CONNMAN_IPCONFIG_METHOD_AUTO;
 			break;
 		case CONNMAN_IPCONFIG_TYPE_UNKNOWN:
+		case CONNMAN_IPCONFIG_TYPE_ALL:
 			ipconfig->method = CONNMAN_IPCONFIG_METHOD_OFF;
 			break;
 		}

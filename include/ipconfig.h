@@ -36,9 +36,9 @@ extern "C" {
 
 enum connman_ipconfig_type {
 	CONNMAN_IPCONFIG_TYPE_UNKNOWN = 0,
-	CONNMAN_IPCONFIG_TYPE_ALL     = 0,
 	CONNMAN_IPCONFIG_TYPE_IPV4    = 1,
 	CONNMAN_IPCONFIG_TYPE_IPV6    = 2,
+	CONNMAN_IPCONFIG_TYPE_ALL     = 3,
 };
 
 enum connman_ipconfig_method {

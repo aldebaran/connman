@@ -143,6 +143,7 @@ static void free_wispr_routes(struct connman_wispr_portal_context *wp_context)
 					route->address);
 			break;
 		case CONNMAN_IPCONFIG_TYPE_UNKNOWN:
+		case CONNMAN_IPCONFIG_TYPE_ALL:
 			break;
 		}
 
@@ -487,6 +488,7 @@ static bool wispr_route_request(const char *address, int ai_family,
 				gateway);
 		break;
 	case CONNMAN_IPCONFIG_TYPE_UNKNOWN:
+	case CONNMAN_IPCONFIG_TYPE_ALL:
 		break;
 	}
 
