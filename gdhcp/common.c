@@ -76,7 +76,7 @@ int dhcp_get_random(uint64_t *val)
 		}
 	}
 
-	if (read(random_fd, &val, sizeof(uint64_t)) < 0) {
+	if (read(random_fd, val, sizeof(uint64_t)) < 0) {
 		r = -errno;
 		*val = random();
 
