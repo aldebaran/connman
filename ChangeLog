@@ -1,3 +1,10 @@
+ver 1.27:
+	Fix issue with memory leak in IP configuration.
+	Fix issue with providing random numbers for DHCP.
+	Fix issue with handling IN_MOVED_TO inotify events.
+	Fix issue with channel selection for WiFi scanning.
+	Add support for handling Bluetooth GN and PANU roles.
+
 ver 1.26:
 	Fix issue with missing WiFi security provisioning support.
 	Fix issue with immutable setting and provisioned services.
