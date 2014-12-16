@@ -45,8 +45,6 @@ struct connman_ipconfig {
 	int index;
 	enum connman_ipconfig_type type;
 
-	struct connman_ipconfig *origin;
-
 	const struct connman_ipconfig_ops *ops;
 	void *ops_data;
 
@@ -1254,11 +1252,6 @@ void __connman_ipconfig_unref_debug(struct connman_ipconfig *ipconfig,
 
 	__connman_ipconfig_set_ops(ipconfig, NULL);
 
-	if (ipconfig->origin && ipconfig->origin != ipconfig) {
-		__connman_ipconfig_unref(ipconfig->origin);
-		ipconfig->origin = NULL;
-	}
-
 	connman_ipaddress_free(ipconfig->system);
 	connman_ipaddress_free(ipconfig->address);
 	g_free(ipconfig->last_dhcp_address);
@@ -1302,9 +1295,6 @@ int __connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
 {
 	if (!ipconfig)
 		return -1;
-
-	if (ipconfig->origin)
-		return ipconfig->origin->index;
 
 	return ipconfig->index;
 }
