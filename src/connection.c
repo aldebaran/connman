@@ -401,13 +401,9 @@ static struct gateway_data *add_gateway(struct connman_service *service,
 			data->ipv4_gateway = old->ipv4_gateway;
 			old->ipv4_gateway = NULL;
 		}
-	} else {
-		/*
-		 * Only take a ref if we are adding new stuff to hash.
-		 */
-		connman_service_ref(service);
 	}
 
+	connman_service_ref(data->service);
 	g_hash_table_replace(gateway_hash, service, data);
 
 	return data;
@@ -708,6 +704,8 @@ static void remove_gateway(gpointer user_data)
 		g_free(data->ipv6_gateway);
 	}
 
+	connman_service_unref(data->service);
+
 	g_free(data);
 }
 
@@ -999,9 +997,7 @@ void __connman_connection_gateway_remove(struct connman_service *service,
 		(data->ipv4_gateway && !data->ipv6_gateway
 			&& do_ipv4) ||
 		(data->ipv6_gateway && !data->ipv4_gateway
-			&& do_ipv6)
-		) {
-		connman_service_unref(service);
+			&& do_ipv6)) {
 		g_hash_table_remove(gateway_hash, service);
 	} else
 		DBG("Not yet removing gw ipv4 %p/%d ipv6 %p/%d",
