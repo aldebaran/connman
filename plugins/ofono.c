@@ -325,10 +325,16 @@ static void set_disconnected(struct modem_data *modem)
 {
 	DBG("%s", modem->path);
 
-	if (!modem->network)
-		return;
+	if (modem->network)
+		connman_network_set_connected(modem->network, false);
 
-	connman_network_set_connected(modem->network, false);
+	if (modem->context) {
+		g_free(modem->context->ipv4_nameservers);
+		modem->context->ipv4_nameservers = NULL;
+
+		g_free(modem->context->ipv6_nameservers);
+		modem->context->ipv6_nameservers = NULL;
+	}
 }
 
 typedef void (*set_property_cb)(struct modem_data *data,
