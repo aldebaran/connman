@@ -133,8 +133,11 @@ void __connman_counter_send_usage(const char *path,
 	struct connman_counter *counter;
 
 	counter = g_hash_table_lookup(counter_table, path);
-	if (!counter)
+	if (!counter) {
+		if (message)
+			dbus_message_unref(message);
 		return;
+	}
 
 	dbus_message_set_destination(message, counter->owner);
 	dbus_message_set_path(message, counter->path);
