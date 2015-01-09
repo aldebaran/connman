@@ -64,6 +64,8 @@ void connman_peer_unref_debug(struct connman_peer *peer,
 
 const char *connman_peer_get_identifier(struct connman_peer *peer);
 void connman_peer_set_name(struct connman_peer *peer, const char *name);
+void connman_peer_set_iface_address(struct connman_peer *peer,
+					const unsigned char *iface_address);
 void connman_peer_set_device(struct connman_peer *peer,
 				struct connman_device *device);
 struct connman_device *connman_peer_get_device(struct connman_peer *peer);

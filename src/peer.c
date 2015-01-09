@@ -27,6 +27,7 @@
 #include <ctype.h>
 #include <gdbus.h>
 #include <gdhcp/gdhcp.h>
+#include <netinet/if_ether.h>
 
 #include <connman/agent.h>
 
@@ -54,6 +55,7 @@ struct connman_peer {
 	int refcount;
 	struct connman_device *device;
 	struct connman_device *sub_device;
+	unsigned char *iface_address[ETH_ALEN];
 	char *identifier;
 	char *name;
 	char *path;
@@ -723,6 +725,13 @@ void connman_peer_set_name(struct connman_peer *peer, const char *name)
 {
 	g_free(peer->name);
 	peer->name = g_strdup(name);
+}
+
+void connman_peer_set_iface_address(struct connman_peer *peer,
+					const unsigned char *iface_address)
+{
+	memset(peer->iface_address, 0, ETH_ALEN);
+	memcpy(peer->iface_address, iface_address, ETH_ALEN);
 }
 
 void connman_peer_set_device(struct connman_peer *peer,
