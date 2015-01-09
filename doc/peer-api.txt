@@ -50,13 +50,15 @@ Properties	string State [readonly] [experimental]
 
 		dict IPv4 [readonly] [experimental]
 
-			string Address [readonly]
+			string Local [readonly]
 
-				The current configured IPv4 address.
+				The current peer's local configured IPv4
+				address.
 
-			string Netmask [readonly]
+			string Remote [readonly]
 
-				The current configured IPv4 netmask.
+				The current peer's remote configured IPv4
+				address.
 
 		array{dict} Services [readonly] [experimental]
 
