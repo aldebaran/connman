@@ -1079,6 +1079,14 @@ const void *g_supplicant_peer_get_device_address(GSupplicantPeer *peer)
 	return peer->device_address;
 }
 
+const void *g_supplicant_peer_get_iface_address(GSupplicantPeer *peer)
+{
+	if (!peer)
+		return NULL;
+
+	return peer->iface_address;
+}
+
 const char *g_supplicant_peer_get_name(GSupplicantPeer *peer)
 {
 	if (!peer)
@@ -2838,7 +2846,6 @@ static void group_sig_property(const char *key, DBusMessageIter *iter,
 
 		if (len == ETH_ALEN)
 			memcpy(data->iface_address, dev_addr, len);
-
 	} else if (g_strcmp0(key, "role") == 0) {
 		const char *str = NULL;
 
