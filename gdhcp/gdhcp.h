@@ -201,6 +201,9 @@ typedef enum {
 
 typedef void (*GDHCPSaveLeaseFunc) (unsigned char *mac,
 			unsigned int nip, unsigned int expire);
+
+typedef void (*GDHCPLeaseAddedCb) (unsigned char *mac, uint32_t ip);
+
 struct _GDHCPServer;
 
 typedef struct _GDHCPServer GDHCPServer;
@@ -223,6 +226,8 @@ void g_dhcp_server_set_lease_time(GDHCPServer *dhcp_server,
 						unsigned int lease_time);
 void g_dhcp_server_set_save_lease(GDHCPServer *dhcp_server,
 				GDHCPSaveLeaseFunc func, gpointer user_data);
+void g_dhcp_server_set_lease_added_cb(GDHCPServer *dhcp_server,
+							GDHCPLeaseAddedCb cb);
 
 int dhcp_get_random(uint64_t *val);
 void dhcp_cleanup_random(void);
