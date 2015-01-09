@@ -2787,9 +2787,8 @@ static void peer_changed(GSupplicantPeer *peer, GSupplicantPeerState state)
 		p_state = CONNMAN_PEER_STATE_IDLE;
 		break;
 	case G_SUPPLICANT_PEER_GROUP_JOINED:
-		if (!g_supplicant_peer_is_in_a_group(peer))
-			break;
-		p_state = CONNMAN_PEER_STATE_READY;
+		connman_peer_set_iface_address(connman_peer,
+				g_supplicant_peer_get_iface_address(peer));
 		break;
 	case G_SUPPLICANT_PEER_GROUP_DISCONNECTED:
 		p_state = CONNMAN_PEER_STATE_IDLE;
