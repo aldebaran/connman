@@ -215,6 +215,7 @@ static GSList *request_list = NULL;
 static GHashTable *listener_table = NULL;
 static time_t next_refresh;
 static GHashTable *partial_tcp_req_table;
+static guint cache_timer = 0;
 
 static guint16 get_id(void)
 {
@@ -768,6 +769,8 @@ static void cache_element_destroy(gpointer value)
 
 static gboolean try_remove_cache(gpointer user_data)
 {
+	cache_timer = 0;
+
 	if (__sync_fetch_and_sub(&cache_refcount, 1) == 1) {
 		DBG("No cache users, removing it.");
 
@@ -2208,8 +2211,8 @@ static void destroy_server(struct server_data *server)
 	 * without any good reason. The small delay allows the new RDNSS to
 	 * create a new DNS server instance and the refcount does not go to 0.
 	 */
-	if (cache)
-		g_timeout_add_seconds(3, try_remove_cache, NULL);
+	if (cache && !cache_timer)
+		cache_timer = g_timeout_add_seconds(3, try_remove_cache, NULL);
 
 	g_free(server);
 }
@@ -3863,6 +3866,14 @@ destroy:
 void __connman_dnsproxy_cleanup(void)
 {
 	DBG("");
+
+	if (cache_timer) {
+		g_source_remove(cache_timer);
+		cache_timer = 0;
+	}
+
+	g_hash_table_destroy(cache);
+	cache = NULL;
 
 	connman_notifier_unregister(&dnsproxy_notifier);
 
