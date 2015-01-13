@@ -1291,6 +1291,7 @@ static const char *type2string(uint16_t type)
 }
 
 static GIOChannel *channel = NULL;
+static guint channel_watch = 0;
 
 struct rtnl_request {
 	struct nlmsghdr hdr;
@@ -1621,8 +1622,9 @@ int __connman_rtnl_init(void)
 	g_io_channel_set_encoding(channel, NULL, NULL);
 	g_io_channel_set_buffered(channel, FALSE);
 
-	g_io_add_watch(channel, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-							netlink_event, NULL);
+	channel_watch = g_io_add_watch(channel,
+				G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+				netlink_event, NULL);
 
 	return 0;
 }
@@ -1671,6 +1673,11 @@ void __connman_rtnl_cleanup(void)
 
 	g_slist_free(request_list);
 	request_list = NULL;
+
+	if (channel_watch) {
+		g_source_remove(channel_watch);
+		channel_watch = 0;
+	}
 
 	g_io_channel_shutdown(channel, TRUE, NULL);
 	g_io_channel_unref(channel);
