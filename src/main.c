@@ -749,6 +749,7 @@ int main(int argc, char *argv[])
 	g_strfreev(connman_settings.tethering_technologies);
 
 	g_free(option_debug);
+	g_free(option_wifi);
 
 	return 0;
 }
