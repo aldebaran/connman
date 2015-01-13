@@ -1184,6 +1184,10 @@ void __connman_peer_cleanup(void)
 {
 	DBG("");
 
+	g_hash_table_destroy(peers_notify->remove);
+	g_hash_table_destroy(peers_notify->add);
+	g_free(peers_notify);
+
 	g_hash_table_destroy(peers_table);
 	peers_table = NULL;
 	dbus_connection_unref(connection);
