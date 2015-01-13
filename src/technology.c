@@ -1811,6 +1811,12 @@ void __connman_technology_cleanup(void)
 {
 	DBG("");
 
+	while (technology_list) {
+		struct connman_technology *technology = technology_list->data;
+		technology_list = g_slist_remove(technology_list, technology);
+		technology_put(technology);
+	}
+
 	g_hash_table_destroy(rfkill_list);
 
 	dbus_connection_unref(connection);
