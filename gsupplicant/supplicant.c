@@ -3086,7 +3086,11 @@ static void signal_group_peer_disconnected(const char *path, DBusMessageIter *it
 	if (!peer_path)
 		return;
 
-	elem = g_slist_find_custom(group->members, peer_path, g_str_equal);
+	for (elem = group->members; elem; elem = elem->next) {
+		if (!g_strcmp0(elem->data, peer_path))
+			break;
+	}
+
 	if (!elem)
 		return;
 
