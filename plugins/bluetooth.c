@@ -899,7 +899,7 @@ static int bluetooth_tech_set_tethering(struct connman_technology *technology,
 	if (i == 0)
 		return -ENODEV;
 
-       return -EINPROGRESS;
+	return 0;
 }
 
 static struct connman_technology_driver tech_driver = {
