@@ -911,6 +911,10 @@ int connman_peer_set_state(struct connman_peer *peer,
 	peer->state = new_state;
 	state_changed(peer);
 
+	if (peer->state == CONNMAN_PEER_STATE_READY ||
+				peer->state == CONNMAN_PEER_STATE_DISCONNECT)
+		settings_changed(peer);
+
 	return 0;
 }
 
@@ -1002,7 +1006,8 @@ static void peer_ip_bound(struct connman_ipconfig *ipconfig,
 
 	DBG("%s ip bound", ifname);
 
-	settings_changed(peer);
+	if (peer->state == CONNMAN_PEER_STATE_READY)
+		settings_changed(peer);
 	connman_peer_set_state(peer, CONNMAN_PEER_STATE_READY);
 }
 
@@ -1013,7 +1018,8 @@ static void peer_ip_release(struct connman_ipconfig *ipconfig,
 
 	DBG("%s ip release", ifname);
 
-	settings_changed(peer);
+	if (peer->state == CONNMAN_PEER_STATE_READY)
+		settings_changed(peer);
 }
 
 static const struct connman_ipconfig_ops peer_ip_ops = {
