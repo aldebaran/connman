@@ -1311,7 +1311,7 @@ static gboolean autoscan_timeout(gpointer data)
 	} else
 		interval = autoscan->interval * autoscan->base;
 
-	if (autoscan->interval >= autoscan->limit)
+	if (interval > autoscan->limit)
 		interval = autoscan->limit;
 
 	throw_wifi_scan(wifi->device, scan_callback_hidden);
