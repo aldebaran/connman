@@ -2870,7 +2870,6 @@ int __connman_service_set_passphrase(struct connman_service *service,
 	if (service->network)
 		connman_network_set_string(service->network, "WiFi.Passphrase",
 				service->passphrase);
-	service_save(service);
 
 	return 0;
 }
