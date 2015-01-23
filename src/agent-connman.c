@@ -79,8 +79,10 @@ static void request_input_passphrase_reply(DBusMessage *reply, void *user_data)
 	int name_len = 0;
 	DBusMessageIter iter, dict;
 
-	if (!reply)
-		goto out;
+	if (!reply) {
+		error = CONNMAN_ERROR_INTERFACE ".OperationAborted";
+		goto done;
+	}
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		error = dbus_message_get_error_name(reply);
@@ -160,7 +162,7 @@ done:
 					values_received, name, name_len,
 					identity, passphrase, wps, wpspin,
 					error, passphrase_reply->user_data);
-out:
+
 	g_free(passphrase_reply);
 }
 
@@ -365,8 +367,10 @@ static void request_input_login_reply(DBusMessage *reply, void *user_data)
 	char *key;
 	DBusMessageIter iter, dict;
 
-	if (!reply)
-		goto out;
+	if (!reply) {
+		error = CONNMAN_ERROR_INTERFACE ".OperationAborted";
+		goto done;
+	}
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		error = dbus_message_get_error_name(reply);
@@ -414,7 +418,7 @@ done:
 			username_password_reply->service, values_received,
 			NULL, 0, username, password, FALSE, NULL, error,
 			username_password_reply->user_data);
-out:
+
 	g_free(username_password_reply);
 }
 
@@ -582,8 +586,10 @@ static void request_browser_reply(DBusMessage *reply, void *user_data)
 	bool result = false;
 	const char *error = NULL;
 
-	if (!reply)
+	if (!reply) {
+		error = CONNMAN_ERROR_INTERFACE ".OperationAborted";
 		goto done;
+	}
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		error = dbus_message_get_error_name(reply);
@@ -677,8 +683,10 @@ static void request_peer_authorization_reply(DBusMessage *reply,
 	char *wpspin = NULL;
 	char *key;
 
-	if (!reply)
-		goto out;
+	if (!reply) {
+		error = CONNMAN_ERROR_INTERFACE ".OperationAborted";
+		goto done;
+	}
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		error = dbus_message_get_error_name(reply);
@@ -719,7 +727,7 @@ static void request_peer_authorization_reply(DBusMessage *reply,
 done:
 	auth_reply->peer_callback(auth_reply->peer, choice_done, wpspin,
 						error, auth_reply->user_data);
-out:
+
 	g_free(auth_reply);
 }
 
