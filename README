@@ -312,13 +312,6 @@ CONFIG_BGSCAN_SIMPLE=y
 This last option will enable the support of background scanning while being
 connected, which is necessary when roaming on wifi.
 
-and finally:
-
-CONFIG_AUTOSCAN_EXPONENTIAL=y
-
-This will enable the exact same function as bgscan but while being
-disconnected.
-
 It is recommended to use wpa_supplicant 2.x or later.
 
 If wpa_supplicant is configured to D-Bus autostart, then ConnMan will
