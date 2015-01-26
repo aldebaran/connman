@@ -56,7 +56,7 @@ struct _GDHCPServer {
 	char *interface;
 	uint32_t start_ip;
 	uint32_t end_ip;
-	uint32_t server_nip;
+	uint32_t server_nip;	/* our address in network byte order */
 	uint32_t lease_seconds;
 	int listener_sockfd;
 	guint listener_watch;
@@ -454,7 +454,7 @@ static void init_packet(GDHCPServer *dhcp_server, struct dhcp_packet *packet,
 	packet->gateway_nip = client_packet->gateway_nip;
 	packet->ciaddr = client_packet->ciaddr;
 	dhcp_add_option_uint32(packet, DHCP_SERVER_ID,
-						dhcp_server->server_nip);
+					ntohl(dhcp_server->server_nip));
 }
 
 static void add_option(gpointer key, gpointer value, gpointer user_data)
