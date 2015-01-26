@@ -285,6 +285,7 @@ static void append_ipv4(DBusMessageIter *iter, void *user_data)
 	char trans[INET_ADDRSTRLEN+1] = {};
 	const char *local = "";
 	const char *remote = "";
+	char *dhcp = NULL;
 
 	if (!is_connected(peer))
 		return;
@@ -299,13 +300,22 @@ static void append_ipv4(DBusMessageIter *iter, void *user_data)
 		remote = trans;
 	} else if (peer->ipconfig) {
 		local = __connman_ipconfig_get_local(peer->ipconfig);
+
 		remote = __connman_ipconfig_get_gateway(peer->ipconfig);
+		if (!remote) {
+			remote = dhcp = __connman_dhcp_get_server_address(
+							peer->ipconfig);
+			if (!dhcp)
+				remote = "";
+		}
 	}
 
 	connman_dbus_dict_append_basic(iter, "Local",
 						DBUS_TYPE_STRING, &local);
 	connman_dbus_dict_append_basic(iter, "Remote",
 						DBUS_TYPE_STRING, &remote);
+	if (dhcp)
+		g_free(dhcp);
 }
 
 static void append_peer_service(DBusMessageIter *iter,
