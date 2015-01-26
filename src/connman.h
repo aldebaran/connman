@@ -451,6 +451,7 @@ typedef void (* dhcpv6_cb) (struct connman_network *network,
 typedef void (* dhcp_cb) (struct connman_ipconfig *ipconfig,
 			struct connman_network *opt_network,
 			bool success, gpointer data);
+char *__connman_dhcp_get_server_address(struct connman_ipconfig *ipconfig);
 int __connman_dhcp_start(struct connman_ipconfig *ipconfig,
 			struct connman_network *network, dhcp_cb callback,
 			gpointer user_data);
