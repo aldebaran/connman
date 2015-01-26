@@ -2989,6 +2989,14 @@ int g_dhcp_client_get_index(GDHCPClient *dhcp_client)
 	return dhcp_client->ifindex;
 }
 
+char *g_dhcp_client_get_server_address(GDHCPClient *dhcp_client)
+{
+	if (!dhcp_client)
+		return NULL;
+
+	return get_ip(dhcp_client->server_ip);
+}
+
 char *g_dhcp_client_get_address(GDHCPClient *dhcp_client)
 {
 	return g_strdup(dhcp_client->assigned_ip);

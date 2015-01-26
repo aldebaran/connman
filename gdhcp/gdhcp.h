@@ -150,6 +150,7 @@ GDHCPClientError g_dhcp_client_set_send(GDHCPClient *client,
 						unsigned char option_code,
 						const char *option_value);
 
+char *g_dhcp_client_get_server_address(GDHCPClient *client);
 char *g_dhcp_client_get_address(GDHCPClient *client);
 char *g_dhcp_client_get_netmask(GDHCPClient *client);
 GList *g_dhcp_client_get_option(GDHCPClient *client,
