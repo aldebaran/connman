@@ -668,7 +668,8 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 
 	server_id_option = dhcp_get_option(&packet, DHCP_SERVER_ID);
 	if (server_id_option) {
-		uint32_t server_nid = get_be32(server_id_option);
+		uint32_t server_nid =
+			get_unaligned((const uint32_t *) server_id_option);
 
 		if (server_nid != dhcp_server->server_nip)
 			return TRUE;
