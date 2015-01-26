@@ -225,11 +225,6 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 					GSupplicantInterfaceCallback callback,
 							void *user_data);
 
-int g_supplicant_interface_autoscan(GSupplicantInterface *interface,
-					const char *autoscan_data,
-					GSupplicantInterfaceCallback callback,
-							void *user_data);
-
 int g_supplicant_interface_p2p_find(GSupplicantInterface *interface,
 					GSupplicantInterfaceCallback callback,
 							void *user_data);
