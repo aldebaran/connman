@@ -3872,8 +3872,10 @@ void __connman_dnsproxy_cleanup(void)
 		cache_timer = 0;
 	}
 
-	g_hash_table_destroy(cache);
-	cache = NULL;
+	if (cache) {
+		g_hash_table_destroy(cache);
+		cache = NULL;
+	}
 
 	connman_notifier_unregister(&dnsproxy_notifier);
 
