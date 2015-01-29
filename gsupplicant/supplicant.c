@@ -4069,6 +4069,14 @@ error:
 	g_free(data);
 }
 
+static void add_network_security_none(DBusMessageIter *dict)
+{
+	const char *auth_alg = "OPEN";
+
+	supplicant_dbus_dict_append_basic(dict, "auth_alg",
+					DBUS_TYPE_STRING, &auth_alg);
+}
+
 static void add_network_security_wep(DBusMessageIter *dict,
 					GSupplicantSSID *ssid)
 {
@@ -4414,8 +4422,12 @@ static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
 	char *key_mgmt;
 
 	switch (ssid->security) {
-	case G_SUPPLICANT_SECURITY_UNKNOWN:
 	case G_SUPPLICANT_SECURITY_NONE:
+		key_mgmt = "NONE";
+		add_network_security_none(dict);
+		add_network_security_ciphers(dict, ssid);
+		break;
+	case G_SUPPLICANT_SECURITY_UNKNOWN:
 	case G_SUPPLICANT_SECURITY_WEP:
 		key_mgmt = "NONE";
 		add_network_security_wep(dict, ssid);
