@@ -473,12 +473,6 @@ uint16_t dhcp_checksum(void *addr, int count)
 static const struct in6_addr in6addr_all_dhcp_relay_agents_and_servers_mc =
 	IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS_MC_INIT;
 
-/* from netinet/in.h */
-struct in6_pktinfo {
-	struct in6_addr ipi6_addr;  /* src/dst IPv6 address */
-	unsigned int ipi6_ifindex;  /* send/recv interface index */
-};
-
 int dhcpv6_send_packet(int index, struct dhcpv6_packet *dhcp_pkt, int len)
 {
 	struct msghdr m;
