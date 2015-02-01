@@ -402,7 +402,7 @@ DISTCLEANFILES = $(pkgconfig_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
-	ltmain.sh depcomp compile missing install-sh mkinstalldirs
+	ltmain.sh depcomp compile missing install-sh mkinstalldirs test-driver
 
 
 src/builtin.h: src/genbuiltin $(builtin_sources)

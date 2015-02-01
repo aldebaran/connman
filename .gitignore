@@ -23,6 +23,7 @@ ltmain.sh
 missing
 stamp-h1
 autom4te.cache
+test-driver
 
 connman.pc
 include/connman
