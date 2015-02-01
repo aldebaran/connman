@@ -31,6 +31,7 @@ src/builtin.h
 src/connmand
 src/connman.conf
 src/connman.service
+src/net.connman.service
 src/*-connman.rules
 plugins/connman.policy
 scripts/connman
