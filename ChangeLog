@@ -1,3 +1,13 @@
+ver 1.28:
+	Fix issue with DHCPv6 re-transmission timer.
+	Fix issue with DHCP service ID option byte order.
+	Fix issue with IPv6 connections and SLAAC/DHCPv6.
+	Fix issue with telephony and IPv6 autoconfiguration.
+	Fix issue with Bluetooth technology setting changes.
+	Fix issue with WiFi autoscan interval calculation.
+	Fix issue with WiFi and missing BSS signal strength.
+	Add support for IPv4 information for WiFi Display.
+
 ver 1.27:
 	Fix issue with memory leak in IP configuration.
 	Fix issue with providing random numbers for DHCP.
