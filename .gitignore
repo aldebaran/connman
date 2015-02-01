@@ -60,8 +60,6 @@ tools/session-test
 tools/netlink-test
 unit/test-ippool
 unit/test-nat
-unit/test-pbkdf2-sha1
-unit/test-prf-sha1
 
 doc/*.bak
 doc/*.stamp

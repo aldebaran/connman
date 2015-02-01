@@ -254,22 +254,14 @@ client_connmanctl_LDADD = gdbus/libgdbus-internal.la @DBUS_LIBS@ @GLIB_LIBS@ \
 				-lreadline -ldl
 endif
 
-noinst_PROGRAMS += unit/test-pbkdf2-sha1 unit/test-prf-sha1 unit/test-ippool
-
-unit_test_pbkdf2_sha1_SOURCES = unit/test-pbkdf2-sha1.c \
-				src/shared/sha1.h src/shared/sha1.c
-unit_test_pbkdf2_sha1_LDADD = @GLIB_LIBS@
-
-unit_test_prf_sha1_SOURCES = unit/test-prf-sha1.c \
-				src/shared/sha1.h src/shared/sha1.c
-unit_test_prf_sha1_LDADD = @GLIB_LIBS@
+noinst_PROGRAMS += unit/test-ippool
 
 unit_test_ippool_SOURCES = src/log.c src/dbus.c src/error.c \
 					src/ippool.c unit/test-ippool.c
 unit_test_ippool_LDADD = gdbus/libgdbus-internal.la \
 				@GLIB_LIBS@ @DBUS_LIBS@ -ldl
 
-TESTS = unit/test-pbkdf2-sha1 unit/test-prf-sha1 unit/test-ippool
+TESTS = unit/test-ippool
 
 if WISPR
 noinst_PROGRAMS += tools/wispr
