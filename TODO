@@ -16,7 +16,6 @@ Core
 
    Priority: Low
    Complexity: C8
-   Owner: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
 
    Discuss and implement a basic and safe firewalling strategy into
    Connman. Provide a D-Bus API for personal firewalling.
@@ -61,7 +60,7 @@ Core
 
 - Unit tests for DHCP, DNS and HTTP
 
-   Priority: Medium
+   Priority: Low
    Complexity: C4
 
    Create unit tests for these components starting with DHCP. Use gtest
@@ -71,7 +70,7 @@ Core
 
 - Support other time sources than NTP
 
-   Priority: Medium
+   Priority: Low
    Complexity: C2
 
    Support other time sources like cellular, GPS in addition to NTP.
@@ -97,7 +96,6 @@ WiFi
 
    Priority: Medium
    Complexity: C2
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
 
    This EAP is needed for SIM card based network authentication.
    ConnMan here plays a minor role: Once wpa_supplicant is set up for
@@ -115,7 +113,6 @@ WiFi
 
   Priority: Low
   Complexity: C1
-  Owner: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
 
   Removing global country property setter in gsupplicant, and removing
   wifi's technology set_regdom implementation. Removing autoscan fallback.
@@ -143,7 +140,7 @@ VPN
 
    Priority: Medium
    Complexity: C4
-   Owner: Jukka Rissanen <jukka.rissanen@linux.intel.com>
+
 
 - L2TP & PPTP compatibility prefix removal
 
@@ -185,7 +182,7 @@ User Interface
 
    Priority: Low
    Complexity: C4
-   Owner: Alok Barsode <alok.barsode@linux.intel.com>
 
    A GNOME3 shell user interface would make it easier for mainstream distros
-   users to use ConnMan.
+   users to use ConnMan. Continue/restart the work at
+   https://github.com/connectivity/gnome-extension-connman
