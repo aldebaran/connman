@@ -1080,12 +1080,53 @@ static void remove_network(struct modem_data *modem)
 	modem->network = NULL;
 }
 
+static int set_context_ipconfig(struct network_context *context,
+				const char *protocol)
+{
+	DBG("context %p protocol %s", context, protocol);
+
+	if (!context || !protocol)
+		return -EINVAL;
+
+	if (g_str_equal(protocol, "ip")) {
+		if (context->ipv4_method == CONNMAN_IPCONFIG_METHOD_OFF)
+			context->ipv4_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+
+		context->ipv6_method = CONNMAN_IPCONFIG_METHOD_OFF;
+
+		connman_ipaddress_free(context->ipv6_address);
+		context->ipv6_address = NULL;
+
+	} else if (g_str_equal(protocol, "ipv6")) {
+		if (context->ipv6_method == CONNMAN_IPCONFIG_METHOD_OFF)
+			context->ipv6_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+
+		context->ipv4_method = CONNMAN_IPCONFIG_METHOD_OFF;
+
+		connman_ipaddress_free(context->ipv4_address);
+		context->ipv4_address = NULL;
+
+	} else if (g_str_equal(protocol, "dual")) {
+		if (context->ipv4_method == CONNMAN_IPCONFIG_METHOD_OFF)
+			context->ipv4_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+
+		if (context->ipv6_method == CONNMAN_IPCONFIG_METHOD_OFF)
+			context->ipv6_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+	}
+
+	DBG("ipv4 method %d ipv6 method %d", context->ipv4_method,
+		context->ipv6_method);
+
+	return 0;
+}
+
 static int add_cm_context(struct modem_data *modem, const char *context_path,
 				DBusMessageIter *dict)
 {
 	const char *context_type = NULL;
 	struct network_context *context = NULL;
 	dbus_bool_t active = FALSE;
+	const char *ip_protocol = NULL;
 
 	DBG("%s context path %s", modem->path, context_path);
 
@@ -1138,7 +1179,14 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 				modem->valid_apn = false;
 
 			DBG("%s AccessPointName '%s'", modem->path, apn);
+		}  else if (g_str_equal(key, "Protocol") &&
+			dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_STRING ) {
+
+			dbus_message_iter_get_basic(&value, &ip_protocol);
+
+			DBG("%s Protocol %s", modem->path, ip_protocol);
 		}
+
 		dbus_message_iter_next(dict);
 	}
 
@@ -1146,6 +1194,9 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 		network_context_free(context);
 		return -EINVAL;
 	}
+
+	if (ip_protocol)
+		set_context_ipconfig(context, ip_protocol);
 
 	modem->context = context;
 	modem->active = active;
@@ -1261,6 +1312,14 @@ static gboolean context_changed(DBusConnection *conn,
 
 			remove_network(modem);
 		}
+
+	} else if (g_str_equal(key, "Protocol") &&
+		dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_STRING ) {
+		const char *ip_protocol;
+
+		dbus_message_iter_get_basic(&value, &ip_protocol);
+
+		set_context_ipconfig(modem->context, ip_protocol);
 	}
 
 	return TRUE;
