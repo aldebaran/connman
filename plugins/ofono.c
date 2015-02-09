@@ -330,11 +330,15 @@ static void set_disconnected(struct modem_data *modem)
 	if (modem->context) {
 		g_free(modem->context->ipv4_nameservers);
 		modem->context->ipv4_nameservers = NULL;
-		modem->context->ipv4_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+		if (modem->context->ipv4_method != CONNMAN_IPCONFIG_METHOD_OFF)
+			modem->context->ipv4_method =
+					CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 
 		g_free(modem->context->ipv6_nameservers);
 		modem->context->ipv6_nameservers = NULL;
-		modem->context->ipv6_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+		if (modem->context->ipv6_method != CONNMAN_IPCONFIG_METHOD_OFF)
+			modem->context->ipv6_method =
+					CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 	}
 }
 
