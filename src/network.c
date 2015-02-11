@@ -650,8 +650,9 @@ static void set_connected(struct connman_network *network)
 
 	switch (ipv6_method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-	case CONNMAN_IPCONFIG_METHOD_OFF:
 		break;
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+		__connman_ipconfig_disable_ipv6(ipconfig_ipv6);
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		autoconf_ipv6_set(network);
@@ -1680,8 +1681,9 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 
 		switch (method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-		case CONNMAN_IPCONFIG_METHOD_OFF:
 			break;
+		case CONNMAN_IPCONFIG_METHOD_OFF:
+			__connman_ipconfig_disable_ipv6(ipconfig_ipv6);
 		case CONNMAN_IPCONFIG_METHOD_AUTO:
 			autoconf_ipv6_set(network);
 			break;
