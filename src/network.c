@@ -521,10 +521,14 @@ static void check_dhcpv6(struct nd_router_advert *reply,
 	/*
 	 * We do stateful/stateless DHCPv6 if router advertisement says so.
 	 */
-	if (reply->nd_ra_flags_reserved & ND_RA_FLAG_MANAGED)
+	if (reply->nd_ra_flags_reserved & ND_RA_FLAG_MANAGED) {
 		__connman_dhcpv6_start(network, prefixes, dhcpv6_callback);
-	else if (reply->nd_ra_flags_reserved & ND_RA_FLAG_OTHER)
+	} else if (reply->nd_ra_flags_reserved & ND_RA_FLAG_OTHER) {
 		__connman_dhcpv6_start_info(network, dhcpv6_info_callback);
+		network->connecting = false;
+	} else {
+		network->connecting = false;
+	}
 
 	connman_network_unref(network);
 }
@@ -603,8 +607,6 @@ static void autoconf_ipv6_set(struct connman_network *network)
 	__connman_device_set_network(network->device, network);
 
 	connman_device_set_disconnected(network->device, false);
-
-	network->connecting = false;
 
 	service = connman_service_lookup_from_network(network);
 	if (!service)
