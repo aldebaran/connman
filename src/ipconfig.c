@@ -2249,42 +2249,59 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 	g_free(method);
 	g_free(key);
 
-	key = g_strdup_printf("%snetmask_prefixlen", prefix);
-	ipconfig->address->prefixlen = g_key_file_get_integer(
-				keyfile, identifier, key, NULL);
-	g_free(key);
+	switch (ipconfig->method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+		break;
 
-	key = g_strdup_printf("%slocal_address", prefix);
-	g_free(ipconfig->address->local);
-	ipconfig->address->local = g_key_file_get_string(
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+
+		key = g_strdup_printf("%snetmask_prefixlen", prefix);
+		ipconfig->address->prefixlen = g_key_file_get_integer(
+				keyfile, identifier, key, NULL);
+		g_free(key);
+
+		key = g_strdup_printf("%slocal_address", prefix);
+		g_free(ipconfig->address->local);
+		ipconfig->address->local = g_key_file_get_string(
 			keyfile, identifier, key, NULL);
-	g_free(key);
+		g_free(key);
 
-	key = g_strdup_printf("%speer_address", prefix);
-	g_free(ipconfig->address->peer);
-	ipconfig->address->peer = g_key_file_get_string(
+		key = g_strdup_printf("%speer_address", prefix);
+		g_free(ipconfig->address->peer);
+		ipconfig->address->peer = g_key_file_get_string(
 				keyfile, identifier, key, NULL);
-	g_free(key);
+		g_free(key);
 
-	key = g_strdup_printf("%sbroadcast_address", prefix);
-	g_free(ipconfig->address->broadcast);
-	ipconfig->address->broadcast = g_key_file_get_string(
+		key = g_strdup_printf("%sbroadcast_address", prefix);
+		g_free(ipconfig->address->broadcast);
+		ipconfig->address->broadcast = g_key_file_get_string(
 				keyfile, identifier, key, NULL);
-	g_free(key);
+		g_free(key);
 
-	key = g_strdup_printf("%sgateway", prefix);
-	g_free(ipconfig->address->gateway);
-	ipconfig->address->gateway = g_key_file_get_string(
+		key = g_strdup_printf("%sgateway", prefix);
+		g_free(ipconfig->address->gateway);
+		ipconfig->address->gateway = g_key_file_get_string(
 				keyfile, identifier, key, NULL);
-	g_free(key);
+		g_free(key);
+		break;
 
-	key = g_strdup_printf("%sDHCP.LastAddress", prefix);
-	str = g_key_file_get_string(keyfile, identifier, key, NULL);
-	if (str) {
-		g_free(ipconfig->last_dhcp_address);
-		ipconfig->last_dhcp_address = str;
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+
+		key = g_strdup_printf("%sDHCP.LastAddress", prefix);
+		str = g_key_file_get_string(keyfile, identifier, key, NULL);
+		if (str) {
+			g_free(ipconfig->last_dhcp_address);
+			ipconfig->last_dhcp_address = str;
+		}
+		g_free(key);
+
+		break;
+
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		break;
 	}
-	g_free(key);
 
 	return 0;
 }
