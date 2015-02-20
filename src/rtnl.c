@@ -1083,6 +1083,8 @@ static void rtnl_route(struct nlmsghdr *hdr)
 
 static bool is_route_rtmsg(struct rtmsg *msg)
 {
+	if (msg->rtm_flags & RTM_F_CLONED)
+		return false;
 
 	if (msg->rtm_table != RT_TABLE_MAIN)
 		return false;
