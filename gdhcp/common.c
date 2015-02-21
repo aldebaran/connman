@@ -479,7 +479,8 @@ int dhcpv6_send_packet(int index, struct dhcpv6_packet *dhcp_pkt, int len)
 	struct iovec v;
 	struct in6_pktinfo *pktinfo;
 	struct cmsghdr *cmsg;
-	int fd, ret;
+	int fd, ret, opt = 1;
+	struct sockaddr_in6 src;
 	struct sockaddr_in6 dst;
 	void *control_buf;
 	size_t control_buf_len;
@@ -487,6 +488,17 @@ int dhcpv6_send_packet(int index, struct dhcpv6_packet *dhcp_pkt, int len)
 	fd = socket(PF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
 	if (fd < 0)
 		return -errno;
+
+	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+	memset(&src, 0, sizeof(src));
+	src.sin6_family = AF_INET6;
+	src.sin6_port = htons(DHCPV6_CLIENT_PORT);
+
+	if (bind(fd, (struct sockaddr *) &src, sizeof(src)) <0) {
+		close(fd);
+		return -errno;
+	}
 
 	memset(&dst, 0, sizeof(dst));
 	dst.sin6_family = AF_INET6;
