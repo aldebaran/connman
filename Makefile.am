@@ -82,6 +82,7 @@ builtin_libadd =
 builtin_cflags =
 
 noinst_PROGRAMS =
+bin_PROGRAMS =
 
 unit_objects =
 
@@ -237,9 +238,9 @@ script_LTLIBRARIES =
 include Makefile.plugins
 
 if CLIENT
-noinst_PROGRAMS += client/connmanctl
+bin_PROGRAMS += client/connmanctl
 
-noinst_MANUAL_PAGES = doc/connmanctl.1
+MANUAL_PAGES += doc/connmanctl.1
 
 client_connmanctl_SOURCES = client/dbus_helpers.h client/dbus_helpers.c \
 			client/services.h client/services.c \
