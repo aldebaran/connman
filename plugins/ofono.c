@@ -277,13 +277,11 @@ static void set_connected(struct modem_data *modem)
 	if (!service)
 		return;
 
+	connman_service_create_ip4config(service, index);
+	connman_network_set_ipv4_method(modem->network, method);
+
 	if (method == CONNMAN_IPCONFIG_METHOD_FIXED ||
 			method == CONNMAN_IPCONFIG_METHOD_DHCP)	{
-		connman_service_create_ip4config(service, index);
-		connman_network_set_index(modem->network, index);
-
-		connman_network_set_ipv4_method(modem->network, method);
-
 		setip = true;
 	}
 
@@ -293,10 +291,10 @@ static void set_connected(struct modem_data *modem)
 	}
 
 	method = modem->context->ipv6_method;
-	if (method == CONNMAN_IPCONFIG_METHOD_AUTO) {
-		connman_service_create_ip6config(service, index);
-		connman_network_set_ipv6_method(modem->network, method);
+	connman_service_create_ip6config(service, index);
+	connman_network_set_ipv6_method(modem->network, method);
 
+	if (method == CONNMAN_IPCONFIG_METHOD_AUTO) {
 		setip = true;
 	}
 
@@ -316,8 +314,10 @@ static void set_connected(struct modem_data *modem)
 					modem->context->ipv6_nameservers);
 	}
 
-	if (setip)
+	if (setip) {
+		connman_network_set_index(modem->network, index);
 		connman_network_set_connected(modem->network, true);
+	}
 }
 
 static void set_disconnected(struct modem_data *modem)
