@@ -76,6 +76,40 @@ Core
    Support other time sources like cellular, GPS in addition to NTP.
 
 
+- Get interface names from src/device.c
+
+   Priority: Low
+   Complexity: C2
+
+   Instead of using ioctls in connman_inet_ifindex and connman_inet_ifname,
+   utilize the information already provided by netlink in src/device.c.
+
+
+- Simplify gateway selection code
+
+   Priority: Low
+   Complexity: C4
+
+   The service list is always sorted according to preference with the
+   first service always owning the default route. See if update_order and
+   find_default_gateway in src/connection.c can be modified to use the
+   sorted service list instead of walking through the gateway_hash.
+
+
+- Support D-Bus ObjectManager
+
+   Priority: Medium
+   Complexity: C4
+
+   Support D-Bus ObjectManager by using functionality already present in
+   ./gdbus. Method calls and signals are already registered with gdbus, but
+   properties and replies especially in Agent are still handled with plain
+   dbus library function calls.
+
+   With this, Manager API is removed, and a WiFi P2P API based on
+   ObjectManager common to Linux desktops can be implemented.
+
+
 WiFi
 ====
 
