@@ -3454,13 +3454,13 @@ static void set_error(struct connman_service *service,
 	if (!service->path)
 		return;
 
+	if (!allow_property_changed(service))
+		return;
+
 	str = error2string(service->error);
 
 	if (!str)
 		str = "";
-
-	if (!allow_property_changed(service))
-		return;
 
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Error",
