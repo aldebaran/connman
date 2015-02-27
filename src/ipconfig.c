@@ -444,12 +444,9 @@ static void update_stats(struct connman_ipdevice *ipdevice,
 	if (!ipdevice->config_ipv4 && !ipdevice->config_ipv6)
 		return;
 
-	if (ipdevice->config_ipv4)
-		service = __connman_ipconfig_get_data(ipdevice->config_ipv4);
-	else if (ipdevice->config_ipv6)
-		service = __connman_ipconfig_get_data(ipdevice->config_ipv6);
-	else
-		return;
+	service = __connman_service_lookup_from_index(ipdevice->index);
+
+	DBG("service %p", service);
 
 	if (!service)
 		return;
