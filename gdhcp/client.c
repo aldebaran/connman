@@ -2464,7 +2464,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			rapid_commit = dhcpv6_get_option(packet6, pkt_len,
 							G_DHCPV6_RAPID_COMMIT,
 							&option_len, &count);
-			if (!rapid_commit || option_len == 0 ||
+			if (!rapid_commit || option_len != 0 ||
 								count != 1)
 				/* RFC 3315, 17.1.4 */
 				return TRUE;
