@@ -1107,7 +1107,7 @@ static void re_cb(enum request_type req_type, GDHCPClient *dhcp_client,
 			if (!option) {
 				switch (req_type) {
 				case REQ_REQUEST:
-					dhcpv6_request(dhcp, true);
+					do_resend_request(dhcp);
 					break;
 				case REQ_REBIND:
 					dhcpv6_rebind(dhcp);
