@@ -612,17 +612,18 @@ static void process_newaddr(unsigned char family, unsigned char prefixlen,
 	if (!inet_ntop(family, src, ip_string, INET6_ADDRSTRLEN))
 		return;
 
-	__connman_ipconfig_newaddr(index, family, label,
-					prefixlen, ip_string);
-
-	if (family == AF_INET6) {
-		/*
-		 * Re-create RDNSS configured servers if there are any
-		 * for this interface. This is done because we might
-		 * have now properly configured interface with proper
-		 * autoconfigured address.
-		 */
-		__connman_resolver_redo_servers(index);
+	if (__connman_ipconfig_newaddr(index, family, label,
+					prefixlen, ip_string) >= 0) {
+		if (family == AF_INET6) {
+			/*
+			 * Re-create RDNSS configured servers if there
+			 * are any for this interface. This is done
+			 * because we might have now properly
+			 * configured interface with proper
+			 * autoconfigured address.
+			 */
+			__connman_resolver_redo_servers(index);
+		}
 	}
 }
 
