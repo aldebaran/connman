@@ -30,7 +30,7 @@
 
 #include "connman.h"
 
-#define STATUS_URL_IPV4  "http://ipv4.connman.net/online/status.html"
+#define STATUS_URL_IPV4  "http://connman.aldebaran.com/online/status.html"
 #define STATUS_URL_IPV6  "http://ipv6.connman.net/online/status.html"
 
 struct connman_wispr_message {
