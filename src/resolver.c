@@ -608,14 +608,6 @@ int __connman_resolver_redo_servers(int index)
 		 */
 		__connman_dnsproxy_remove(entry->index, entry->domain,
 					entry->server);
-		/*
-		 * Remove also the resolver timer for the old server entry.
-		 * A new timer will be set for the new server entry
-		 * when the next Router Advertisement message arrives
-		 * with RDNSS/DNSSL settings.
-		 */
-		g_source_remove(entry->timeout);
-		entry->timeout = 0;
 
 		__connman_dnsproxy_append(entry->index, entry->domain,
 					entry->server);
