@@ -6742,8 +6742,32 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 
 	if (service->favorite) {
 		device = connman_network_get_device(service->network);
-		if (device && !connman_device_get_scanning(device))
-			__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
+		if (device && !connman_device_get_scanning(device)) {
+
+			switch (service->type) {
+			case CONNMAN_SERVICE_TYPE_UNKNOWN:
+			case CONNMAN_SERVICE_TYPE_SYSTEM:
+			case CONNMAN_SERVICE_TYPE_P2P:
+				break;
+
+			case CONNMAN_SERVICE_TYPE_GADGET:
+			case CONNMAN_SERVICE_TYPE_ETHERNET:
+				if (service->autoconnect) {
+					__connman_service_connect(service,
+						CONNMAN_SERVICE_CONNECT_REASON_AUTO);
+					break;
+				}
+
+				/* fall through */
+			case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+			case CONNMAN_SERVICE_TYPE_GPS:
+			case CONNMAN_SERVICE_TYPE_VPN:
+			case CONNMAN_SERVICE_TYPE_WIFI:
+			case CONNMAN_SERVICE_TYPE_CELLULAR:
+				__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
+				break;
+			}
+		}
 	}
 
 	__connman_notifier_service_add(service, service->name);
