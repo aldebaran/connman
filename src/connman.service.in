@@ -9,7 +9,7 @@ Wants=remote-fs-pre.target
 Type=dbus
 BusName=net.connman
 Restart=on-failure
-ExecStart=@prefix@/sbin/connmand -n
+ExecStart=@sbindir@/connmand -n
 StandardOutput=null
 
 [Install]
