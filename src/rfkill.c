@@ -160,7 +160,7 @@ int __connman_rfkill_block(enum connman_service_type type, bool block)
 	uint8_t rfkill_type;
 	struct rfkill_event event;
 	ssize_t len;
-	int fd, err;
+	int fd, err = 0;
 
 	DBG("type %d block %d", type, block);
 
@@ -170,7 +170,7 @@ int __connman_rfkill_block(enum connman_service_type type, bool block)
 
 	fd = open("/dev/rfkill", O_RDWR | O_CLOEXEC);
 	if (fd < 0)
-		return fd;
+		return -errno;
 
 	memset(&event, 0, sizeof(event));
 	event.op = RFKILL_OP_CHANGE_ALL;
@@ -179,10 +179,9 @@ int __connman_rfkill_block(enum connman_service_type type, bool block)
 
 	len = write(fd, &event, sizeof(event));
 	if (len < 0) {
+		err = -errno;
 		connman_error("Failed to change RFKILL state");
-		err = len;
-	} else
-		err = 0;
+	}
 
 	close(fd);
 
