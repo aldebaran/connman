@@ -618,8 +618,8 @@ static gboolean technology_pending_reply(gpointer user_data)
 static int technology_affect_devices(struct connman_technology *technology,
 						bool enable_device)
 {
+	int err = 0, err_dev;
 	GSList *list;
-	int err = -ENXIO;
 
 	if (technology->type == CONNMAN_SERVICE_TYPE_P2P) {
 		if (enable_device)
@@ -633,9 +633,12 @@ static int technology_affect_devices(struct connman_technology *technology,
 		struct connman_device *device = list->data;
 
 		if (enable_device)
-			err = __connman_device_enable(device);
+			err_dev = __connman_device_enable(device);
 		else
-			err = __connman_device_disable(device);
+			err_dev = __connman_device_disable(device);
+
+		if (err_dev < 0 && err_dev != -EALREADY)
+			err = err_dev;
 	}
 
 	return err;
