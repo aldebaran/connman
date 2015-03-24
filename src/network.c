@@ -347,10 +347,6 @@ static int dhcpv6_set_addresses(struct connman_network *network)
 	if (err < 0)
 		goto err;
 
-	err = __connman_ipconfig_gateway_add(ipconfig_ipv6);
-	if (err < 0)
-		goto err;
-
 	return 0;
 
 err:
