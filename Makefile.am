@@ -432,6 +432,14 @@ endif
 
 EXTRA_DIST += vpn/connman-task.te
 
+do_subst = $(AM_V_GEN)$(SED) \
+		-e 's,[@]prefix[@],$(prefix),g' \
+		-e 's,[@]sbindir[@],$(sbindir),g' \
+		-e 's,[@]sysconfdir[@],$(sysconfdir),g'
+
+%.service: %.service.in Makefile
+	$(do_subst) < $< > $@
+
 include/connman/version.h: include/version.h
 	$(AM_V_at)$(MKDIR_P) include/connman
 	$(AM_V_GEN)$(LN_S) $(abs_top_builddir)/$< $@
