@@ -153,7 +153,7 @@ vpn_connman_vpnd_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/vpn/vpn.ver
 endif
 
-BUILT_SOURCES = $(local_headers) src/builtin.h $(service_files)
+BUILT_SOURCES = $(local_headers) src/builtin.h $(service_files) scripts/connman
 
 if VPN
 BUILT_SOURCES += vpn/builtin.h
@@ -221,7 +221,7 @@ src_connmand_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
 
 EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf \
 				plugins/connman-nmcompat.conf \
-				$(service_files_sources)
+				$(service_files_sources) scripts/connman.in
 
 if VPN
 vpn_connman_vpnd_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ \
@@ -449,6 +449,9 @@ do_subst = $(AM_V_GEN)$(SED) \
 		-e 's,[@]sysconfdir[@],$(sysconfdir),g'
 
 %.service: %.service.in Makefile
+	$(do_subst) < $< > $@
+
+scripts/connman: scripts/connman.in Makefile
 	$(do_subst) < $< > $@
 
 include/connman/version.h: include/version.h

@@ -6,7 +6,7 @@ After=dbus.socket
 [Service]
 Type=dbus
 BusName=net.connman.vpn
-ExecStart=@prefix@/sbin/connman-vpnd -n
+ExecStart=@sbindir@/connman-vpnd -n
 StandardOutput=null
 
 [Install]

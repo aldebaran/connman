@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DAEMON=@prefix@/sbin/connmand
+DAEMON=@sbindir@/connmand
 DESC="Connection Manager"
 
 . /lib/lsb/init-functions

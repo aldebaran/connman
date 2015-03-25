@@ -384,5 +384,4 @@ AM_CONDITIONAL(VPN, test "${enable_openconnect}" != "no" -o \
 			"${enable_l2tp}" != "no" -o \
 			"${enable_pptp}" != "no")
 
-AC_OUTPUT(Makefile include/version.h scripts/connman
-		   connman.pc)
+AC_OUTPUT(Makefile include/version.h connman.pc)
