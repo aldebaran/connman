@@ -72,6 +72,13 @@ endif
 endif
 endif
 
+service_files_sources = src/connman.service.in src/net.connman.service.in \
+				vpn/connman-vpn.service.in \
+				vpn/net.connman.vpn.service.in
+service_files = src/connman.service src/net.connman.service \
+				vpn/connman-vpn.service \
+				vpn/net.connman.vpn.service
+
 plugin_LTLIBRARIES =
 
 plugin_objects =
@@ -146,13 +153,13 @@ vpn_connman_vpnd_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/vpn/vpn.ver
 endif
 
-BUILT_SOURCES = $(local_headers) src/builtin.h
+BUILT_SOURCES = $(local_headers) src/builtin.h $(service_files)
 
 if VPN
 BUILT_SOURCES += vpn/builtin.h
 endif
 
-CLEANFILES = src/connman.conf $(BUILT_SOURCES)
+CLEANFILES = src/connman.conf $(BUILT_SOURCES) $(service_files)
 
 statedir = $(localstatedir)/run/connman
 vpn_statedir = $(localstatedir)/run/connman-vpn
@@ -213,7 +220,8 @@ src_connmand_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
 				-I$(builddir)/src
 
 EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf \
-						plugins/connman-nmcompat.conf
+				plugins/connman-nmcompat.conf \
+				$(service_files_sources)
 
 if VPN
 vpn_connman_vpnd_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ \
