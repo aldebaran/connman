@@ -471,10 +471,12 @@ static void check_dhcpv6(struct nd_router_advert *reply,
 	 */
 	if (reply->nd_ra_flags_reserved & ND_RA_FLAG_MANAGED) {
 		__connman_dhcpv6_start(network, prefixes, dhcpv6_callback);
-	} else if (reply->nd_ra_flags_reserved & ND_RA_FLAG_OTHER) {
-		__connman_dhcpv6_start_info(network, dhcpv6_info_callback);
-		network->connecting = false;
 	} else {
+		if (reply->nd_ra_flags_reserved & ND_RA_FLAG_OTHER)
+			__connman_dhcpv6_start_info(network,
+							dhcpv6_info_callback);
+
+		g_slist_free_full(prefixes, g_free);
 		network->connecting = false;
 	}
 
