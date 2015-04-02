@@ -521,8 +521,8 @@ void connman_agent_cancel(void *user_context)
 
 				agent_request_free(request);
 
-				agent->queue = list->next;
-				list = g_list_delete_link(list, list);
+				agent->queue = g_list_delete_link(agent->queue,
+									list);
 			} else
 				list = list->next;
 		}
