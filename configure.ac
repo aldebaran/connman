@@ -121,6 +121,9 @@ fi
 AM_CONDITIONAL(VPNC, test "${enable_vpnc}" != "no")
 AM_CONDITIONAL(VPNC_BUILTIN, test "${enable_vpnc}" = "builtin")
 
+AC_ARG_WITH(l2tp, AC_HELP_STRING([--with-l2tp=PROGRAM],
+        [specify location of l2tp binary]), [path_l2tp=${withval}])
+
 AC_ARG_ENABLE(l2tp,
 	AC_HELP_STRING([--enable-l2tp], [enable l2tp support]),
 			[enable_l2tp=${enableval}], [enable_l2tp="no"])
