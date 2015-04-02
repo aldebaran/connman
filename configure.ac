@@ -146,6 +146,9 @@ fi
 AM_CONDITIONAL(L2TP, test "${enable_l2tp}" != "no")
 AM_CONDITIONAL(L2TP_BUILTIN, test "${enable_l2tp}" = "builtin")
 
+AC_ARG_WITH(pptp, AC_HELP_STRING([--with-pptp=PROGRAM],
+        [specify location of pptp binary]), [path_pptp=${withval}])
+
 AC_ARG_ENABLE(pptp,
 	AC_HELP_STRING([--enable-pptp], [enable pptp support]),
 			[enable_pptp=${enableval}], [enable_pptp="no"])
