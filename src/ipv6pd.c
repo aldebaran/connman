@@ -165,8 +165,10 @@ static void cleanup(void)
 		timer_uplink = 0;
 	}
 
-	g_hash_table_destroy(timer_hash);
-	timer_hash = NULL;
+	if (timer_hash) {
+		g_hash_table_destroy(timer_hash);
+		timer_hash = NULL;
+	}
 
 	if (prefixes) {
 		g_slist_free_full(prefixes, g_free);
