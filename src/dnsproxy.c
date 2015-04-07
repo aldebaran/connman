@@ -538,7 +538,6 @@ static gboolean request_timeout(gpointer user_data)
 	DBG("id 0x%04x", req->srcid);
 
 	request_list = g_slist_remove(request_list, req);
-	req->numserv--;
 
 	if (req->resplen > 0 && req->resp) {
 		int sk, err;
@@ -558,7 +557,7 @@ static gboolean request_timeout(gpointer user_data)
 		}
 		if (err < 0)
 			return FALSE;
-	} else if (req->request && req->numserv == 0) {
+	} else if (req->request) {
 		struct domain_hdr *hdr;
 
 		if (req->protocol == IPPROTO_TCP) {
