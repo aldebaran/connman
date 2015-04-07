@@ -531,6 +531,8 @@ static void destroy_request_data(struct request_data *req)
 static gboolean request_timeout(gpointer user_data)
 {
 	struct request_data *req = user_data;
+	struct sockaddr *sa;
+	int sk;
 
 	if (!req)
 		return FALSE;
@@ -539,45 +541,37 @@ static gboolean request_timeout(gpointer user_data)
 
 	request_list = g_slist_remove(request_list, req);
 
+	if (req->protocol == IPPROTO_UDP) {
+		sk = get_req_udp_socket(req);
+		sa = &req->sa;
+	} else if (req->protocol == IPPROTO_TCP) {
+		sk = req->client_sk;
+		sa = NULL;
+	} else
+		goto out;
+
 	if (req->resplen > 0 && req->resp) {
-		int sk, err;
+		/*
+		 * Here we have received at least one reply (probably telling
+		 * "not found" result), so send that back to client instead
+		 * of more fatal server failed error.
+		 */
+		if (sk >= 0)
+			sendto(sk, req->resp, req->resplen, MSG_NOSIGNAL,
+				sa, req->sa_len);
 
-		if (req->protocol == IPPROTO_UDP) {
-			sk = get_req_udp_socket(req);
-			if (sk < 0)
-				return FALSE;
-
-			err = sendto(sk, req->resp, req->resplen, MSG_NOSIGNAL,
-				&req->sa, req->sa_len);
-		} else {
-			sk = req->client_sk;
-			err = send(sk, req->resp, req->resplen, MSG_NOSIGNAL);
-			if (err < 0)
-				close(sk);
-		}
-		if (err < 0)
-			return FALSE;
 	} else if (req->request) {
+		/*
+		 * There was not reply from server at all.
+		 */
 		struct domain_hdr *hdr;
 
-		if (req->protocol == IPPROTO_TCP) {
-			hdr = (void *) (req->request + 2);
-			hdr->id = req->srcid;
-			send_response(req->client_sk, req->request,
-				req->request_len, NULL, 0, IPPROTO_TCP);
+		hdr = (void *)(req->request + protocol_offset(req->protocol));
+		hdr->id = req->srcid;
 
-		} else if (req->protocol == IPPROTO_UDP) {
-			int sk;
-
-			hdr = (void *) (req->request);
-			hdr->id = req->srcid;
-
-			sk = get_req_udp_socket(req);
-			if (sk >= 0)
-				send_response(sk, req->request,
-					req->request_len, &req->sa,
-					req->sa_len, IPPROTO_UDP);
-		}
+		if (sk >= 0)
+			send_response(sk, req->request, req->request_len,
+				sa, req->sa_len, req->protocol);
 	}
 
 	/*
@@ -590,6 +584,7 @@ static gboolean request_timeout(gpointer user_data)
 				GINT_TO_POINTER(req->client_sk));
 	}
 
+out:
 	req->timeout = 0;
 	destroy_request_data(req);
 
