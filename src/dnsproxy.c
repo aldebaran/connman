@@ -3467,6 +3467,9 @@ static bool udp_listener_event(GIOChannel *channel, GIOCondition condition,
 		return true;
 	}
 
+	req->name = g_strdup(query);
+	req->request = g_malloc(len);
+	memcpy(req->request, buf, len);
 	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
 	request_list = g_slist_append(request_list, req);
 
