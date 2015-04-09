@@ -2886,16 +2886,6 @@ const char *__connman_service_get_passphrase(struct connman_service *service)
 	return service->passphrase;
 }
 
-static void clear_passphrase(struct connman_service *service)
-{
-	g_free(service->passphrase);
-	service->passphrase = NULL;
-
-	if (service->network)
-		connman_network_set_string(service->network, "WiFi.Passphrase",
-				service->passphrase);
-}
-
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -5456,15 +5446,6 @@ int __connman_service_indicate_error(struct connman_service *service,
 		return -EALREADY;
 
 	set_error(service, error);
-
-	/*
-	 * Supplicant does not always return invalid key error for
-	 * WPA-EAP so clear the credentials always.
-	 */
-	if (service->security == CONNMAN_SERVICE_SECURITY_8021X)
-		clear_passphrase(service);
-
-	__connman_service_set_agent_identity(service, NULL);
 
 	__connman_service_ipconfig_indicate_state(service,
 						CONNMAN_SERVICE_STATE_FAILURE,
