@@ -283,6 +283,8 @@ static void remove_entries(GSList *entries)
 	}
 
 	g_slist_free(entries);
+
+	append_fallback_nameservers();
 }
 
 static gboolean resolver_expire_cb(gpointer user_data)
@@ -560,21 +562,6 @@ int connman_resolver_remove_all(int index)
 	remove_entries(matches);
 
 	return 0;
-}
-
-/**
- * connman_resolver_flush:
- *
- * Flush pending resolver requests
- */
-void connman_resolver_flush(void)
-{
-	append_fallback_nameservers();
-
-	if (dnsproxy_enabled)
-		__connman_dnsproxy_flush();
-
-	return;
 }
 
 int __connman_resolver_redo_servers(int index)

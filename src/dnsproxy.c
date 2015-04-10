@@ -2754,33 +2754,6 @@ int __connman_dnsproxy_remove(int index, const char *domain,
 	return 0;
 }
 
-void __connman_dnsproxy_flush(void)
-{
-	GSList *list;
-
-	list = request_list;
-	while (list) {
-		struct request_data *req = list->data;
-
-		list = list->next;
-
-		if (resolv(req, req->request, req->name)) {
-			/*
-			 * A cached result was sent,
-			 * so the request can be released
-			 */
-			request_list =
-				g_slist_remove(request_list, req);
-			destroy_request_data(req);
-			continue;
-		}
-
-		if (req->timeout > 0)
-			g_source_remove(req->timeout);
-		req->timeout = g_timeout_add_seconds(5, request_timeout, req);
-	}
-}
-
 static void dnsproxy_offline_mode(bool enabled)
 {
 	GSList *list;

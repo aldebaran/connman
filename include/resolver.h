@@ -40,8 +40,6 @@ int connman_resolver_remove(int index, const char *domain,
 							const char *server);
 int connman_resolver_remove_all(int index);
 
-void connman_resolver_flush(void);
-
 #ifdef __cplusplus
 }
 #endif

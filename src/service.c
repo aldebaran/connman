@@ -1070,8 +1070,6 @@ static void update_nameservers(struct connman_service *service)
 		}
 	} else if (service->domainname)
 		connman_resolver_append(index, service->domainname, NULL);
-
-	connman_resolver_flush();
 }
 
 /*
