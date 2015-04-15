@@ -992,7 +992,7 @@ static int get_hidden_connections(GSupplicantScanParams *scan_data)
 	GKeyFile *keyfile;
 	gchar **services;
 	char *ssid, *name;
-	int i, freq, ret;
+	int i, ret;
 	bool value;
 	int num_ssids = 0, add_param_failed = 0;
 
@@ -1022,13 +1022,10 @@ static int get_hidden_connections(GSupplicantScanParams *scan_data)
 		ssid = g_key_file_get_string(keyfile,
 					services[i], "SSID", NULL);
 
-		freq = g_key_file_get_integer(keyfile, services[i],
-					"Frequency", NULL);
-
 		name = g_key_file_get_string(keyfile, services[i], "Name",
 								NULL);
 
-		ret = add_scan_param(ssid, NULL, 0, freq, scan_data, 0, name);
+		ret = add_scan_param(ssid, NULL, 0, 0, scan_data, 0, name);
 		if (ret < 0)
 			add_param_failed++;
 		else if (ret > 0)
