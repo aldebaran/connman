@@ -170,6 +170,9 @@ static void read_uevent(struct interface_data *interface)
 		} else if (strcmp(line + 8, "gadget") == 0) {
 			interface->service_type = CONNMAN_SERVICE_TYPE_GADGET;
 			interface->device_type = CONNMAN_DEVICE_TYPE_GADGET;
+		} else if (strcmp(line + 8, "vlan") == 0) {
+			interface->service_type = CONNMAN_SERVICE_TYPE_ETHERNET;
+			interface->device_type = CONNMAN_DEVICE_TYPE_ETHERNET;
 
 		} else {
 			interface->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;

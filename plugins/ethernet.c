@@ -25,6 +25,13 @@
 
 #include <errno.h>
 #include <net/if.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <stdio.h>
+
+#include <linux/if_vlan.h>
+#include <linux/sockios.h>
 
 #ifndef IFF_LOWER_UP
 #define IFF_LOWER_UP	0x10000
@@ -49,6 +56,32 @@ struct ethernet_data {
 	unsigned int watch;
 	struct connman_network *network;
 };
+
+
+static int get_vlan_vid(const char *ifname)
+{
+	struct vlan_ioctl_args vifr;
+	int vid;
+	int sk;
+
+	memset(&vifr, 0, sizeof(vifr));
+
+	sk = socket(AF_INET, SOCK_STREAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	vifr.cmd = GET_VLAN_VID_CMD;
+	strncpy(vifr.device1, ifname, sizeof(vifr.device1));
+
+	if(ioctl(sk, SIOCSIFVLAN, &vifr) >= 0)
+		vid = vifr.u.VID;
+	else
+		vid = -errno;
+
+	close(sk);
+
+	return vid;
+}
 
 static int eth_network_probe(struct connman_network *network)
 {
@@ -93,7 +126,8 @@ static void add_network(struct connman_device *device,
 			struct ethernet_data *ethernet)
 {
 	struct connman_network *network;
-	int index;
+	int index, vid;
+	char *ifname;
 
 	network = connman_network_create("carrier",
 					CONNMAN_NETWORK_TYPE_ETHERNET);
@@ -102,6 +136,10 @@ static void add_network(struct connman_device *device,
 
 	index = connman_device_get_index(device);
 	connman_network_set_index(network, index);
+	ifname = connman_inet_ifname(index);
+	if (!ifname)
+		return;
+	vid = get_vlan_vid(ifname);
 
 	connman_network_set_name(network, "Wired");
 
@@ -110,15 +148,21 @@ static void add_network(struct connman_device *device,
 		return;
 	}
 
-	if (!eth_tethering)
+	if (!eth_tethering) {
+		char group[10] = "cable";
 		/*
 		 * Prevent service from starting the reconnect
 		 * procedure as we do not want the DHCP client
 		 * to run when tethering.
 		 */
-		connman_network_set_group(network, "cable");
+		if (vid >= 0)
+			snprintf(group, sizeof(group), "%03x_cable", vid);
+
+		connman_network_set_group(network, group);
+	}
 
 	ethernet->network = network;
+	g_free(ifname);
 }
 
 static void remove_network(struct connman_device *device,
