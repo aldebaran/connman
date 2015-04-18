@@ -1723,6 +1723,8 @@ static gboolean continue_renew (gpointer user_data)
 	if (dhcp_client->t1_timeout > 0)
 		g_source_remove(dhcp_client->t1_timeout);
 
+	dhcp_client->t1_timeout = 0;
+
 	dhcp_client->T1 >>= 1;
 
 	if (dhcp_client->T1 > 60) {
