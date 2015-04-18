@@ -126,5 +126,10 @@ really know what you are doing.
 Restore earlier tethering status when returning from offline mode,
 re-enabling a technology, and after restarts and reboots.
 Default value is false.
+.TP
+.B Enable6to4=\fPtrue|false\fP
+Automatically enable Anycast 6to4 if possible. This is not recommended, as the
+use of 6to4 will generally lead to a severe degradation of connection quality.
+See RFC6343.  Default value is false (as recommended by RFC6343 section 4.1).
 .SH "SEE ALSO"
 .BR Connman (8)

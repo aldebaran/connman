@@ -399,7 +399,8 @@ static bool apply_lease_available_on_network(GDHCPClient *dhcp_client,
 								dhcp->pac);
 	}
 
-	__connman_6to4_probe(service);
+	if (connman_setting_get_bool("Enable6to4"))
+		__connman_6to4_probe(service);
 
 	return true;
 }
