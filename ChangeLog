@@ -1,3 +1,15 @@
+ver 1.29:
+	Fix issue with IPv6 autoconfiguration when disabled.
+	Fix issue with IPv6 temporary route handling.
+	Fix issue with IPv6 timers for nameservers.
+	Fix issue with DHPCv6 and route configuration.
+	Fix issue with DHCPv6 source port and buggy servers.
+	Fix issue with DHCPv6 rapid commit option length.
+	Fix issue with DHCPv6 rapid commit error handling.
+	Fix issue with handling invalid WiFi passphrases.
+	Fix issue with connecting Ethernet devices.
+	Add support for Ethernet and VLAN usage.
+
 ver 1.28:
 	Fix issue with DHCPv6 re-transmission timer.
 	Fix issue with DHCP service ID option byte order.
