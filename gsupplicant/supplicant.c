@@ -163,6 +163,7 @@ struct _GSupplicantInterface {
 	unsigned int max_scan_ssids;
 	bool p2p_support;
 	bool p2p_finding;
+	bool ap_create_in_progress;
 	dbus_bool_t ready;
 	GSupplicantState state;
 	dbus_bool_t scanning;
@@ -430,6 +431,17 @@ static void callback_scan_started(GSupplicantInterface *interface)
 		return;
 
 	callbacks_pointer->scan_started(interface);
+}
+
+static void callback_ap_create_fail(GSupplicantInterface *interface)
+{
+	if (!callbacks_pointer)
+		return;
+
+	if (!callbacks_pointer->scan_started)
+		return;
+
+	callbacks_pointer->ap_create_fail(interface);
 }
 
 static void callback_scan_finished(GSupplicantInterface *interface)
@@ -790,20 +802,59 @@ static void interface_capability(const char *key, DBusMessageIter *iter,
 				key, dbus_message_iter_get_arg_type(iter));
 }
 
+struct set_apscan_data
+{
+	unsigned int ap_scan;
+	GSupplicantInterface *interface;
+};
+
 static void set_apscan(DBusMessageIter *iter, void *user_data)
 {
-	unsigned int ap_scan = *(unsigned int *)user_data;
+	struct set_apscan_data *data = user_data;
+	unsigned int ap_scan = data->ap_scan;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &ap_scan);
+}
+
+static void set_apscan_complete(const char *error,
+		DBusMessageIter *iter, void *user_data)
+{
+	struct set_apscan_data *data = user_data;
+	GSupplicantInterface *interface = data->interface;
+
+	if (error) {
+		interface->ap_create_in_progress = false;
+		SUPPLICANT_DBG("Set AP scan error %s", error);
+		goto error;
+	}
+
+	interface->ap_create_in_progress = true;
+error:
+	dbus_free(data);
 }
 
 int g_supplicant_interface_set_apscan(GSupplicantInterface *interface,
 							unsigned int ap_scan)
 {
-	return supplicant_dbus_property_set(interface->path,
+	struct set_apscan_data *data;
+	int ret;
+
+	data = dbus_malloc0(sizeof(*data));
+
+	if (!data)
+		return -ENOMEM;
+
+	data->ap_scan = ap_scan;
+	data->interface = interface;
+
+	ret = supplicant_dbus_property_set(interface->path,
 			SUPPLICANT_INTERFACE ".Interface",
-				"ApScan", DBUS_TYPE_UINT32_AS_STRING,
-					set_apscan, NULL, &ap_scan, NULL);
+			"ApScan", DBUS_TYPE_UINT32_AS_STRING,
+			set_apscan, set_apscan_complete, data, NULL);
+	if (ret < 0)
+		dbus_free(data);
+
+	return ret;
 }
 
 void g_supplicant_interface_set_data(GSupplicantInterface *interface,
@@ -1988,6 +2039,14 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 				interface->state = string2state(str);
 				callback_interface_state(interface);
 			}
+
+		if (interface->ap_create_in_progress) {
+			if (interface->state == G_SUPPLICANT_STATE_DISCONNECTED)
+				callback_ap_create_fail(interface);
+
+			interface->ap_create_in_progress = false;
+		}
+
 		if (interface->state == G_SUPPLICANT_STATE_DISABLED)
 			interface->ready = FALSE;
 		else
