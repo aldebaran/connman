@@ -695,8 +695,6 @@ int __connman_service_set_ignore(struct connman_service *service,
 						bool ignore);
 void __connman_service_set_search_domains(struct connman_service *service,
 					char **domains);
-void __connman_service_update_search_domains(struct connman_service *service,
-					char **domains);
 
 void __connman_service_set_string(struct connman_service *service,
 					const char *key, const char *value);

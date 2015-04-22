@@ -505,7 +505,7 @@ static int set_other_addresses(GDHCPClient *dhcp_client,
 			for (i = 0, list = option; list;
 						list = list->next, i++)
 				domains[i] = g_strdup(list->data);
-			__connman_service_update_search_domains(service, domains);
+			__connman_service_set_search_domains(service, domains);
 			g_strfreev(domains);
 		}
 	}

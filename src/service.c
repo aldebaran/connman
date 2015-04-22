@@ -4972,18 +4972,6 @@ void __connman_service_set_search_domains(struct connman_service *service,
 	searchdomain_add_all(service);
 }
 
-/*
- * This variant is used when domain search list is updated via
- * dhcp and in that case the service is not yet fully connected so
- * we cannot do same things as what the set() variant is doing.
- */
-void __connman_service_update_search_domains(struct connman_service *service,
-					char **domains)
-{
-	g_strfreev(service->domains);
-	service->domains = g_strdupv(domains);
-}
-
 static void service_complete(struct connman_service *service)
 {
 	reply_pending(service, EIO);
