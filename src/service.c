@@ -1172,12 +1172,13 @@ int __connman_service_nameserver_remove(struct connman_service *service,
 		return -ENOMEM;
 
 	for (i = 0, j = 0; i < len; i++) {
-		if (g_strcmp0(nameservers[i], nameserver) != 0) {
-			servers[j] = g_strdup(nameservers[i]);
-			if (!servers[j])
-				return -ENOMEM;
+		if (g_strcmp0(nameservers[i], nameserver)) {
+			servers[j] = nameservers[i];
 			j++;
-		}
+		} else
+			g_free(nameservers[i]);
+
+		nameservers[i] = NULL;
 	}
 	servers[len - 1] = NULL;
 
