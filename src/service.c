@@ -932,61 +932,8 @@ static bool is_connected(struct connman_service *service)
 	return is_connected_state(service, service->state);
 }
 
-static int nameserver_get_index(struct connman_service *service)
-{
-	switch (combine_state(service->state_ipv4, service->state_ipv6)) {
-	case CONNMAN_SERVICE_STATE_UNKNOWN:
-	case CONNMAN_SERVICE_STATE_IDLE:
-	case CONNMAN_SERVICE_STATE_ASSOCIATION:
-	case CONNMAN_SERVICE_STATE_CONFIGURATION:
-	case CONNMAN_SERVICE_STATE_FAILURE:
-	case CONNMAN_SERVICE_STATE_DISCONNECT:
-		return -1;
-	case CONNMAN_SERVICE_STATE_READY:
-	case CONNMAN_SERVICE_STATE_ONLINE:
-		break;
-	}
-
-	return __connman_service_get_index(service);
-}
-
-static void remove_nameservers(struct connman_service *service,
-		int index, char **ns)
-{
-	int i;
-
-	if (!ns)
-		return;
-
-	if (index < 0)
-		index = nameserver_get_index(service);
-
-	if (index < 0)
-			return;
-
-	for (i = 0; ns[i]; i++)
-		connman_resolver_remove(index, NULL, ns[i]);
-}
-
-static void remove_searchdomains(struct connman_service *service,
-		int index, char **sd)
-{
-	int i;
-
-	if (!sd)
-		return;
-
-	if (index < 0)
-		index = nameserver_get_index(service);
-
-	if (index < 0)
-		return;
-
-	for (i = 0; sd[i]; i++)
-		connman_resolver_remove(index, sd[i], NULL);
-}
-
-static bool nameserver_available(struct connman_service *service, char *ns)
+static bool nameserver_available(struct connman_service *service,
+				const char *ns)
 {
 	int family;
 
@@ -1001,75 +948,130 @@ static bool nameserver_available(struct connman_service *service, char *ns)
 	return false;
 }
 
-static void update_nameservers(struct connman_service *service)
+static int nameserver_add(struct connman_service *service,
+			const char *nameserver)
 {
 	int index;
-	char *ns;
+
+	if (!nameserver_available(service, nameserver))
+		return 0;
 
 	index = __connman_service_get_index(service);
 	if (index < 0)
-		return;
+		return -ENXIO;
 
-	switch (combine_state(service->state_ipv4, service->state_ipv6)) {
-	case CONNMAN_SERVICE_STATE_UNKNOWN:
-	case CONNMAN_SERVICE_STATE_IDLE:
-	case CONNMAN_SERVICE_STATE_ASSOCIATION:
-	case CONNMAN_SERVICE_STATE_CONFIGURATION:
-		return;
-	case CONNMAN_SERVICE_STATE_FAILURE:
-	case CONNMAN_SERVICE_STATE_DISCONNECT:
-		connman_resolver_remove_all(index);
-		return;
-	case CONNMAN_SERVICE_STATE_READY:
-	case CONNMAN_SERVICE_STATE_ONLINE:
-		break;
-	}
+	return connman_resolver_append(index, NULL, nameserver);
+}
+
+static int nameserver_add_all(struct connman_service *service)
+{
+	int i = 0;
 
 	if (service->nameservers_config) {
-		int i;
-
-		remove_nameservers(service, index, service->nameservers);
-
-		i = g_strv_length(service->nameservers_config);
-		while (i != 0) {
-			i--;
-
-			ns = service->nameservers_config[i];
-
-			if (nameserver_available(service, ns))
-				connman_resolver_append(index, NULL, ns);
+		while (service->nameservers_config[i]) {
+			nameserver_add(service, service->nameservers_config[i]);
+			i++;
 		}
-	} else if (service->nameservers) {
-		int i;
 
-		remove_nameservers(service, index, service->nameservers);
+		return 0;
+	}
 
-		i = g_strv_length(service->nameservers);
-		while (i != 0) {
-			i--;
-
-			ns = service->nameservers[i];
-
-			if (nameserver_available(service, ns))
-				connman_resolver_append(index, NULL, ns);
+	if (service->nameservers) {
+		while (service->nameservers[i]) {
+			nameserver_add(service, service->nameservers[i]);
+			i++;
 		}
 	}
 
+	return 0;
+}
+
+static int nameserver_remove(struct connman_service *service,
+			const char *nameserver)
+{
+	int index;
+
+	if (!nameserver_available(service, nameserver))
+		return 0;
+
+	index = __connman_service_get_index(service);
+	if (index < 0)
+		return -ENXIO;
+
+	return connman_resolver_remove(index, NULL, nameserver);
+}
+
+static int nameserver_remove_all(struct connman_service *service)
+{
+	int index, i = 0;
+
+	index = __connman_service_get_index(service);
+	if (index < 0)
+		return -ENXIO;
+
+	while (service->nameservers_config && service->nameservers_config[i]) {
+
+		nameserver_remove(service, service->nameservers_config[i]);
+		i++;
+	}
+
+	i = 0;
+	while (service->nameservers && service->nameservers[i]) {
+		nameserver_remove(service, service->nameservers[i]);
+		i++;
+	}
+
+	return 0;
+}
+
+static int searchdomain_add_all(struct connman_service *service)
+{
+	int index, i = 0;
+
+	if (!is_connected(service))
+		return -ENOTCONN;
+
+	index = __connman_service_get_index(service);
+	if (index < 0)
+		return -ENXIO;
+
 	if (service->domains) {
-		char *searchdomains[2] = {NULL, NULL};
-		int i;
-
-		searchdomains[0] = service->domainname;
-		remove_searchdomains(service, index, searchdomains);
-
-		i = g_strv_length(service->domains);
-		while (i != 0) {
-			i--;
+		while (service->domains[i]) {
 			connman_resolver_append(index, service->domains[i],
 						NULL);
+			i++;
 		}
-	} else if (service->domainname)
+
+		return 0;
+	}
+
+	if (service->domainname)
 		connman_resolver_append(index, service->domainname, NULL);
+
+	return 0;
+
+}
+
+static int searchdomain_remove_all(struct connman_service *service)
+{
+	int index, i = 0;
+
+	if (!is_connected(service))
+		return -ENOTCONN;
+
+	index = __connman_service_get_index(service);
+	if (index < 0)
+		return -ENXIO;
+
+	while (service->domains && service->domains[i]) {
+		connman_resolver_remove(index, service->domains[i], NULL);
+		i++;
+	}
+
+	if (service->domainname)
+		connman_resolver_remove(index, service->domainname, NULL);
+
+	return 0;
 }
 
 /*
@@ -1118,7 +1120,7 @@ int __connman_service_nameserver_append(struct connman_service *service,
 		service->nameservers_auto = nameservers;
 	} else {
 		service->nameservers = nameservers;
-		update_nameservers(service);
+		nameserver_add(service, nameserver);
 	}
 
 	return 0;
@@ -1186,7 +1188,7 @@ int __connman_service_nameserver_remove(struct connman_service *service,
 		service->nameservers_auto = nameservers;
 	} else {
 		service->nameservers = nameservers;
-		update_nameservers(service);
+		nameserver_remove(service, nameserver);
 	}
 
 	return 0;
@@ -1194,10 +1196,12 @@ int __connman_service_nameserver_remove(struct connman_service *service,
 
 void __connman_service_nameserver_clear(struct connman_service *service)
 {
+	nameserver_remove_all(service);
+
 	g_strfreev(service->nameservers);
 	service->nameservers = NULL;
 
-	update_nameservers(service);
+	nameserver_add_all(service);
 }
 
 static void add_nameserver_route(int family, int index, char *nameserver,
@@ -3239,7 +3243,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 			}
 		}
 
-		remove_nameservers(service, -1, service->nameservers_config);
+		nameserver_remove_all(service);
 		g_strfreev(service->nameservers_config);
 
 		if (str->len > 0) {
@@ -3254,7 +3258,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (gw && strlen(gw))
 			__connman_service_nameserver_add_routes(service, gw);
 
-		update_nameservers(service);
+		nameserver_add_all(service);
 		dns_configuration_changed(service);
 
 		if (__connman_service_is_connected_state(service,
@@ -3341,7 +3345,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 				g_string_append(str, val);
 		}
 
-		remove_searchdomains(service, -1, service->domains);
+		searchdomain_remove_all(service);
 		g_strfreev(service->domains);
 
 		if (str->len > 0)
@@ -3351,7 +3355,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		g_string_free(str, TRUE);
 
-		update_nameservers(service);
+		searchdomain_add_all(service);
 		domain_configuration_changed(service);
 		domain_changed(service);
 
@@ -4961,20 +4965,14 @@ void __connman_service_set_string(struct connman_service *service,
 void __connman_service_set_search_domains(struct connman_service *service,
 					char **domains)
 {
-	int index;
+	searchdomain_remove_all(service);
 
-	index = __connman_service_get_index(service);
-	if (index < 0)
-		return;
-
-	if (service->domains) {
-		remove_searchdomains(service, index, service->domains);
+	if (service->domains)
 		g_strfreev(service->domains);
 
-		service->domains = g_strdupv(domains);
+	service->domains = g_strdupv(domains);
 
-		update_nameservers(service);
-	}
+	searchdomain_add_all(service);
 }
 
 /*
@@ -5266,6 +5264,10 @@ static int service_indicate_state(struct connman_service *service)
 	if (old_state == CONNMAN_SERVICE_STATE_ONLINE)
 		__connman_notifier_leave_online(service->type);
 
+	if (is_connected_state(service, old_state) &&
+			!is_connected_state(service, new_state))
+		searchdomain_remove_all(service);
+
 	service->state = new_state;
 	state_changed(service);
 
@@ -5330,6 +5332,7 @@ static int service_indicate_state(struct connman_service *service)
 		g_get_current_time(&service->modified);
 		service_save(service);
 
+		searchdomain_add_all(service);
 		dns_changed(service);
 		domain_changed(service);
 		proxy_changed(service);
@@ -5734,12 +5737,18 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 
 	}
 
+	if (is_connected_state(service, old_state) &&
+			!is_connected_state(service, new_state))
+		nameserver_remove_all(service);
+
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
 		service->state_ipv4 = new_state;
 	else
 		service->state_ipv6 = new_state;
 
-	update_nameservers(service);
+	if (!is_connected_state(service, old_state) &&
+			is_connected_state(service, new_state))
+		nameserver_add_all(service);
 
 	return service_indicate_state(service);
 }
