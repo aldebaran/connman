@@ -4507,10 +4507,18 @@ static void interface_wps_start_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct interface_connect_data *data = user_data;
+	int err;
 
 	SUPPLICANT_DBG("");
-	if (error)
+
+	err = 0;
+	if (error) {
 		SUPPLICANT_DBG("error: %s", error);
+		err = parse_supplicant_error(iter);
+	}
+
+	if(data->callback)
+		data->callback(err, data->interface, data->user_data);
 
 	g_free(data->path);
 	g_free(data->ssid);
