@@ -2229,10 +2229,8 @@ static int inet_rtnl_recv(GIOChannel *chan, gpointer user_data)
 
 		h = ptr;
 
-		if (!NLMSG_OK(h, len)) {
+		if (!NLMSG_OK(h, len))
 			return -1;
-			break;
-		}
 
 		if (h->nlmsg_seq != rth->seq) {
 			/* Skip this msg */
