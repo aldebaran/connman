@@ -2262,6 +2262,9 @@ static bool handle_4way_handshake_failure(GSupplicantInterface *interface,
 	if (wifi->state != G_SUPPLICANT_STATE_4WAY_HANDSHAKE)
 		return false;
 
+	if (wifi->connected)
+		return false;
+
 	service = connman_service_lookup_from_network(network);
 	if (!service)
 		return false;
