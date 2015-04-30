@@ -5735,6 +5735,8 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 			is_connected_state(service, new_state))
 		nameserver_add_all(service);
 
+	__connman_timeserver_sync(service);
+
 	return service_indicate_state(service);
 }
 
