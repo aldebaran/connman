@@ -5681,6 +5681,26 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 	if (!ipconfig)
 		return -EINVAL;
 
+	method = __connman_ipconfig_get_method(ipconfig);
+
+	switch (method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+		if (new_state != CONNMAN_SERVICE_STATE_IDLE)
+			connman_warn("ipconfig state %d ipconfig method %d",
+				new_state, method);
+
+		new_state = CONNMAN_SERVICE_STATE_IDLE;
+		break;
+
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		break;
+
+	}
+
 	/* Any change? */
 	if (old_state == new_state)
 		return -EALREADY;
@@ -5720,25 +5740,6 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 		break;
 	case CONNMAN_SERVICE_STATE_FAILURE:
 		break;
-	}
-
-	/* Keep that state, but if the ipconfig method is OFF, then we set
-	   the state to IDLE so that it will not affect the combined state
-	   in the future.
-	 */
-	method = __connman_ipconfig_get_method(ipconfig);
-	switch (method) {
-	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-	case CONNMAN_IPCONFIG_METHOD_OFF:
-		new_state = CONNMAN_SERVICE_STATE_IDLE;
-		break;
-
-	case CONNMAN_IPCONFIG_METHOD_FIXED:
-	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-	case CONNMAN_IPCONFIG_METHOD_DHCP:
-	case CONNMAN_IPCONFIG_METHOD_AUTO:
-		break;
-
 	}
 
 	if (is_connected_state(service, old_state) &&
