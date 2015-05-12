@@ -933,27 +933,37 @@ static bool is_connected(struct connman_service *service)
 }
 
 static bool nameserver_available(struct connman_service *service,
+				enum connman_ipconfig_type type,
 				const char *ns)
 {
 	int family;
 
 	family = connman_inet_check_ipaddress(ns);
 
-	if (family == AF_INET)
-		return is_connected_state(service, service->state_ipv4);
+	if (family == AF_INET) {
+		if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
+			return false;
 
-	if (family == AF_INET6)
+		return is_connected_state(service, service->state_ipv4);
+	}
+
+	if (family == AF_INET6) {
+		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+			return false;
+
 		return is_connected_state(service, service->state_ipv6);
+	}
 
 	return false;
 }
 
 static int nameserver_add(struct connman_service *service,
+			enum connman_ipconfig_type type,
 			const char *nameserver)
 {
 	int index;
 
-	if (!nameserver_available(service, nameserver))
+	if (!nameserver_available(service, type, nameserver))
 		return 0;
 
 	index = __connman_service_get_index(service);
@@ -963,13 +973,15 @@ static int nameserver_add(struct connman_service *service,
 	return connman_resolver_append(index, NULL, nameserver);
 }
 
-static int nameserver_add_all(struct connman_service *service)
+static int nameserver_add_all(struct connman_service *service,
+			enum connman_ipconfig_type type)
 {
 	int i = 0;
 
 	if (service->nameservers_config) {
 		while (service->nameservers_config[i]) {
-			nameserver_add(service, service->nameservers_config[i]);
+			nameserver_add(service, type,
+				service->nameservers_config[i]);
 			i++;
 		}
 
@@ -978,7 +990,8 @@ static int nameserver_add_all(struct connman_service *service)
 
 	if (service->nameservers) {
 		while (service->nameservers[i]) {
-			nameserver_add(service, service->nameservers[i]);
+			nameserver_add(service, type,
+				service->nameservers[i]);
 			i++;
 		}
 	}
@@ -987,11 +1000,12 @@ static int nameserver_add_all(struct connman_service *service)
 }
 
 static int nameserver_remove(struct connman_service *service,
+			enum connman_ipconfig_type type,
 			const char *nameserver)
 {
 	int index;
 
-	if (!nameserver_available(service, nameserver))
+	if (!nameserver_available(service, type, nameserver))
 		return 0;
 
 	index = __connman_service_get_index(service);
@@ -1001,7 +1015,8 @@ static int nameserver_remove(struct connman_service *service,
 	return connman_resolver_remove(index, NULL, nameserver);
 }
 
-static int nameserver_remove_all(struct connman_service *service)
+static int nameserver_remove_all(struct connman_service *service,
+				enum connman_ipconfig_type type)
 {
 	int index, i = 0;
 
@@ -1011,13 +1026,14 @@ static int nameserver_remove_all(struct connman_service *service)
 
 	while (service->nameservers_config && service->nameservers_config[i]) {
 
-		nameserver_remove(service, service->nameservers_config[i]);
+		nameserver_remove(service, type,
+				service->nameservers_config[i]);
 		i++;
 	}
 
 	i = 0;
 	while (service->nameservers && service->nameservers[i]) {
-		nameserver_remove(service, service->nameservers[i]);
+		nameserver_remove(service, type, service->nameservers[i]);
 		i++;
 	}
 
@@ -1120,7 +1136,7 @@ int __connman_service_nameserver_append(struct connman_service *service,
 		service->nameservers_auto = nameservers;
 	} else {
 		service->nameservers = nameservers;
-		nameserver_add(service, nameserver);
+		nameserver_add(service, CONNMAN_IPCONFIG_TYPE_ALL, nameserver);
 	}
 
 	return 0;
@@ -1185,7 +1201,8 @@ set_servers:
 		service->nameservers_auto = nameservers;
 	} else {
 		service->nameservers = nameservers;
-		nameserver_remove(service, nameserver);
+		nameserver_remove(service, CONNMAN_IPCONFIG_TYPE_ALL,
+				nameserver);
 	}
 
 	return 0;
@@ -1193,12 +1210,12 @@ set_servers:
 
 void __connman_service_nameserver_clear(struct connman_service *service)
 {
-	nameserver_remove_all(service);
+	nameserver_remove_all(service, CONNMAN_IPCONFIG_TYPE_ALL);
 
 	g_strfreev(service->nameservers);
 	service->nameservers = NULL;
 
-	nameserver_add_all(service);
+	nameserver_add_all(service, CONNMAN_IPCONFIG_TYPE_ALL);
 }
 
 static void add_nameserver_route(int family, int index, char *nameserver,
@@ -1642,7 +1659,9 @@ static void append_nameservers(DBusMessageIter *iter,
 
 	for (i = 0; servers[i]; i++) {
 		if (service)
-			available = nameserver_available(service, servers[i]);
+			available = nameserver_available(service,
+						CONNMAN_IPCONFIG_TYPE_ALL,
+						servers[i]);
 
 		DBG("servers[%d] %s available %d", i, servers[i], available);
 
@@ -3240,7 +3259,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 			}
 		}
 
-		nameserver_remove_all(service);
+		nameserver_remove_all(service, CONNMAN_IPCONFIG_TYPE_ALL);
 		g_strfreev(service->nameservers_config);
 
 		if (str->len > 0) {
@@ -3255,7 +3274,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (gw && strlen(gw))
 			__connman_service_nameserver_add_routes(service, gw);
 
-		nameserver_add_all(service);
+		nameserver_add_all(service, CONNMAN_IPCONFIG_TYPE_ALL);
 		dns_configuration_changed(service);
 
 		if (__connman_service_is_connected_state(service,
@@ -5724,7 +5743,7 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 
 	if (is_connected_state(service, old_state) &&
 			!is_connected_state(service, new_state))
-		nameserver_remove_all(service);
+		nameserver_remove_all(service, type);
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
 		service->state_ipv4 = new_state;
@@ -5733,7 +5752,7 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 
 	if (!is_connected_state(service, old_state) &&
 			is_connected_state(service, new_state))
-		nameserver_add_all(service);
+		nameserver_add_all(service, type);
 
 	__connman_timeserver_sync(service);
 
