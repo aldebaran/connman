@@ -2309,6 +2309,7 @@ static void interface_state(GSupplicantInterface *interface)
 	struct wifi_data *wifi;
 	GSupplicantState state = g_supplicant_interface_get_state(interface);
 	bool wps;
+	bool old_connected;
 
 	wifi = g_supplicant_interface_get_data(interface);
 
@@ -2341,6 +2342,9 @@ static void interface_state(GSupplicantInterface *interface)
 
 	switch (state) {
 	case G_SUPPLICANT_STATE_SCANNING:
+		if (wifi->connected)
+			connman_network_set_connected(network, false);
+
 		break;
 
 	case G_SUPPLICANT_STATE_AUTHENTICATING:
@@ -2413,6 +2417,7 @@ static void interface_state(GSupplicantInterface *interface)
 		break;
 	}
 
+	old_connected = wifi->connected;
 	wifi->state = state;
 
 	/* Saving wpa_s state policy:
@@ -2434,6 +2439,12 @@ static void interface_state(GSupplicantInterface *interface)
 						" Staying connected...");
 		else
 			wifi->connected = false;
+		break;
+	case G_SUPPLICANT_STATE_SCANNING:
+		wifi->connected = false;
+
+		if (old_connected)
+			start_autoscan(device);
 		break;
 	case G_SUPPLICANT_STATE_COMPLETED:
 		wifi->connected = true;
