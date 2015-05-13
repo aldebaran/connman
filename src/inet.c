@@ -647,6 +647,81 @@ out:
 	return err;
 }
 
+int connman_inet_add_network_route_with_table(int index, const char *host,
+						const char *gateway,
+						unsigned char prefix_len)
+{
+	uint8_t request[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+			NLMSG_ALIGN(sizeof(struct rtmsg)) +
+			RTA_LENGTH(sizeof(struct in_addr)) +
+			RTA_LENGTH(sizeof(struct in_addr)) +
+			RTA_LENGTH(sizeof(int))];
+
+	int sk, err = 0;
+	struct nlmsghdr *header;
+	struct sockaddr_nl nl_addr;
+	struct rtmsg *rtmsg;
+	struct in_addr ipv4_gw, ipv4_dst;
+
+	DBG("%s/%u via %s table %d interface %d",
+	    host, prefix_len, gateway, index, index);
+
+	memset(&request, 0, sizeof(request));
+
+	header = (struct nlmsghdr *)request;
+	header->nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+	header->nlmsg_flags = NLM_F_REQUEST|NLM_F_CREATE;
+	header->nlmsg_type = RTM_NEWROUTE;
+
+	rtmsg = NLMSG_DATA(header);
+	rtmsg->rtm_family = AF_INET;
+	rtmsg->rtm_protocol = RTPROT_BOOT;
+	rtmsg->rtm_scope = RT_SCOPE_UNIVERSE;
+	rtmsg->rtm_type = RTN_UNICAST;
+	rtmsg->rtm_table = index;
+	rtmsg->rtm_dst_len = prefix_len;
+
+	if (gateway != NULL) {
+		inet_pton(AF_INET, gateway, &ipv4_gw);
+		if ((err = __connman_inet_rtnl_addattr_l(header, sizeof(request), RTA_GATEWAY,
+				&ipv4_gw, sizeof(ipv4_gw))) < 0)
+			goto out;
+	}
+
+	if (host != NULL) {
+		inet_pton(AF_INET, host, &ipv4_dst);
+		if ((err = __connman_inet_rtnl_addattr_l(header, sizeof(request), RTA_DST,
+				      &ipv4_dst, sizeof(ipv4_dst))) < 0)
+			goto out;
+
+	}
+
+	if ((err = __connman_inet_rtnl_addattr_l(header, sizeof(request), RTA_OIF,
+			      &index, 4)) < 0)
+		goto out;
+
+	sk = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+	if (sk < 0) {
+		err = -1;
+		goto out;
+	}
+
+	memset(&nl_addr, 0, sizeof(nl_addr));
+	nl_addr.nl_family = AF_NETLINK;
+	if ((err = sendto(sk, request, header->nlmsg_len, 0,
+			(struct sockaddr *) &nl_addr, sizeof(nl_addr))) < 0)
+		goto out;
+
+	err = 0;
+	close(sk);
+out:
+	if (err < 0)
+		connman_error("Set IPv4 host route error (%s)",
+						strerror(errno));
+
+	return err;
+}
+
 int connman_inet_del_network_route(int index, const char *host)
 {
 	struct ifreq ifr;
@@ -736,6 +811,76 @@ out:
 	if (err < 0)
 		connman_error("Del IPv6 host route error (%s)",
 						strerror(-err));
+
+	return err;
+}
+
+int connman_inet_del_network_route_with_table(int index, const char *host,
+						const char *gateway)
+{
+	uint8_t request[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+			NLMSG_ALIGN(sizeof(struct rtmsg)) +
+			RTA_LENGTH(sizeof(struct in_addr)) +
+			RTA_LENGTH(sizeof(struct in_addr))];
+
+	int err, sk = 0;
+	struct nlmsghdr *header;
+	struct sockaddr_nl nl_addr;
+	struct rtmsg *rtmsg;
+	struct in_addr ipv4_dst, ipv4_gw;
+
+	DBG("interface %d host %s table %d", index, host, index);
+
+	header = (struct nlmsghdr *)request;
+	header->nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+	header->nlmsg_flags = NLM_F_REQUEST;
+	header->nlmsg_type = RTM_NEWROUTE;
+
+	rtmsg = NLMSG_DATA(header);
+	rtmsg->rtm_dst_len = sizeof(struct in_addr);
+	rtmsg->rtm_family = AF_INET;
+	rtmsg->rtm_scope = RT_SCOPE_NOWHERE;
+	rtmsg->rtm_table = index;
+
+	if (host != NULL) {
+		rtmsg->rtm_dst_len = 32;
+		inet_pton(AF_INET, host, &ipv4_dst);
+		if ((err = __connman_inet_rtnl_addattr_l(header, sizeof(request), RTA_DST,
+				      &ipv4_dst, sizeof(ipv4_dst))) < 0)
+			goto out;
+
+	}
+
+	if (gateway != NULL) {
+		inet_pton(AF_INET, gateway, &ipv4_gw);
+		if ((err = __connman_inet_rtnl_addattr_l(header, sizeof(request), RTA_GATEWAY,
+				&ipv4_gw, sizeof(ipv4_gw))) < 0)
+			goto out;
+	}
+
+
+	if ((err = __connman_inet_rtnl_addattr_l(header, sizeof(request), RTA_OIF,
+			      &index, 4)) < 0)
+		goto out;
+
+	sk = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+	if (sk < 0) {
+		err = -1;
+		goto out;
+	}
+
+	memset(&nl_addr, 0, sizeof(nl_addr));
+	nl_addr.nl_family = AF_NETLINK;
+	if ((err = sendto(sk, request, header->nlmsg_len, 0,
+			(struct sockaddr *) &nl_addr, sizeof(nl_addr))) < 0)
+		goto out;
+
+ out:
+	if (err < 0)
+		connman_error("Deleting host route failed (%s)",
+							strerror(errno));
+
+	close(sk);
 
 	return err;
 }
