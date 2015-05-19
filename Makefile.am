@@ -410,11 +410,11 @@ MAINTAINERCLEANFILES = Makefile.in \
 
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
-	$(AM_V_AT)$(MKDIR_P) $(dir $@)
+	$(AM_V_at)$(MKDIR_P) $(dir $@)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
 
 vpn/builtin.h: src/genbuiltin $(builtin_vpn_sources)
-	$(AM_V_AT)$(MKDIR_P) $(dir $@)
+	$(AM_V_at)$(MKDIR_P) $(dir $@)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_vpn_modules) > $@
 
 src/connman.conf: src/connman-dbus.conf src/connman-polkit.conf
@@ -451,11 +451,11 @@ do_subst = $(AM_V_GEN)$(SED) \
 		-e 's,[@]sysconfdir[@],$(sysconfdir),g'
 
 %.service: %.service.in Makefile
-	$(AM_V_AT)$(MKDIR_P) $(dir $@)
+	$(AM_V_at)$(MKDIR_P) $(dir $@)
 	$(do_subst) < $< > $@
 
 scripts/connman: scripts/connman.in Makefile
-	$(AM_V_at)$(MKDIR_P) scripts
+	$(AM_V_at)$(MKDIR_P) $(dir $@)
 	$(do_subst) < $< > $@
 
 include/connman/version.h: include/version.h
