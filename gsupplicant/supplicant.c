@@ -2678,7 +2678,7 @@ static void peer_groups_relation(DBusMessageIter *iter, void *user_data)
 	if (!group)
 		return;
 
-	elem = g_slist_find_custom(data->old_groups, str, g_str_equal);
+	elem = g_slist_find_custom(data->old_groups, str, (GCompareFunc)g_strcmp0);
 	if (elem) {
 		data->old_groups = g_slist_remove_link(data->old_groups, elem);
 		peer->groups = g_slist_concat(elem, peer->groups);
