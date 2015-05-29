@@ -2485,24 +2485,24 @@ static void interface_removed(GSupplicantInterface *interface)
 static void set_device_type(const char *type, char dev_type[17])
 {
 	const char *oui = "0050F204";
-	const char *category = "0100";
+	const char *category = "0001";
 	const char *sub_category = "0000";
 
 	if (!g_strcmp0(type, "handset")) {
-		category = "0A00";
-		sub_category = "0500";
+		category = "000A";
+		sub_category = "0005";
 	} else if (!g_strcmp0(type, "vm") || !g_strcmp0(type, "container"))
-		sub_category = "0100";
+		sub_category = "0001";
 	else if (!g_strcmp0(type, "server"))
-		sub_category = "0200";
+		sub_category = "0002";
 	else if (!g_strcmp0(type, "laptop"))
-		sub_category = "0500";
+		sub_category = "0005";
 	else if (!g_strcmp0(type, "desktop"))
-		sub_category = "0600";
+		sub_category = "0006";
 	else if (!g_strcmp0(type, "tablet"))
-		sub_category = "0900";
+		sub_category = "0009";
 	else if (!g_strcmp0(type, "watch"))
-		category = "FF00";
+		category = "00FF";
 
 	snprintf(dev_type, 17, "%s%s%s", category, oui, sub_category);
 }
