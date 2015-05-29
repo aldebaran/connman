@@ -909,6 +909,8 @@ int connman_peer_set_state(struct connman_peer *peer,
 	case CONNMAN_PEER_STATE_DISCONNECT:
 		if (peer->connection_master)
 			stop_dhcp_server(peer);
+		else
+			__connman_dhcp_stop(peer->ipconfig);
 		peer->connection_master = false;
 		peer->sub_device = NULL;
 
