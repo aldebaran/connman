@@ -255,7 +255,7 @@ static inline void debug(const char *format, ...)
 	char str[256];
 	va_list ap;
 
-	if (!callbacks_pointer->debug)
+	if (!callbacks_pointer || !callbacks_pointer->debug)
 		return;
 
 	va_start(ap, format);
