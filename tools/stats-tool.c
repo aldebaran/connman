@@ -885,6 +885,11 @@ int main(int argc, char *argv[])
 	else
 		start_ts = option_start_ts;
 
+	if (option_interval == 0) {
+		printf("interval cannot be zero, using the default value\n");
+		option_interval = 3;
+	}
+
 	if (option_create > 0)
 		stats_create(data_file, option_create, option_interval,
 				start_ts, rec);
