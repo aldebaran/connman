@@ -178,7 +178,6 @@ struct _GSupplicantInterface {
 	GHashTable *network_table;
 	GHashTable *peer_table;
 	GHashTable *group_table;
-	GHashTable *net_mapping;
 	GHashTable *bss_mapping;
 	void *data;
 	const char *pending_peer_path;
@@ -552,7 +551,6 @@ static void remove_interface(gpointer data)
 	GSupplicantInterface *interface = data;
 
 	g_hash_table_destroy(interface->bss_mapping);
-	g_hash_table_destroy(interface->net_mapping);
 	g_hash_table_destroy(interface->network_table);
 	g_hash_table_destroy(interface->peer_table);
 	g_hash_table_destroy(interface->group_table);
@@ -1320,10 +1318,6 @@ static void interface_network_added(DBusMessageIter *iter, void *user_data)
 	if (g_strcmp0(path, "/") == 0)
 		return;
 
-	network = g_hash_table_lookup(interface->net_mapping, path);
-	if (network)
-		return;
-
 	network = g_try_new0(GSupplicantNetwork, 1);
 	if (!network)
 		return;
@@ -1349,19 +1343,8 @@ static void interface_network_added(DBusMessageIter *iter, void *user_data)
 
 static void interface_network_removed(DBusMessageIter *iter, void *user_data)
 {
-	GSupplicantInterface *interface = user_data;
-	GSupplicantNetwork *network;
-	const char *path = NULL;
-
-	dbus_message_iter_get_basic(iter, &path);
-	if (!path)
-		return;
-
-	network = g_hash_table_lookup(interface->net_mapping, path);
-	if (!network)
-		return;
-
-	g_hash_table_remove(interface->net_mapping, path);
+	SUPPLICANT_DBG("");
+	return;
 }
 
 static char *create_name(unsigned char *ssid, int ssid_len)
@@ -2167,8 +2150,6 @@ static GSupplicantInterface *interface_alloc(const char *path)
 					g_str_equal, NULL, remove_peer);
 	interface->group_table = g_hash_table_new_full(g_str_hash,
 					g_str_equal, NULL, remove_group);
-	interface->net_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
-								NULL, NULL);
 	interface->bss_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
 								NULL, NULL);
 
