@@ -3299,6 +3299,7 @@ int g_supplicant_interface_set_country(GSupplicantInterface *interface,
 							void *user_data)
 {
 	struct supplicant_regdom *regdom;
+	int ret;
 
 	regdom = dbus_malloc0(sizeof(*regdom));
 	if (!regdom)
@@ -3308,11 +3309,17 @@ int g_supplicant_interface_set_country(GSupplicantInterface *interface,
 	regdom->alpha2 = alpha2;
 	regdom->user_data = user_data;
 
-	return supplicant_dbus_property_set(interface->path,
+	ret =  supplicant_dbus_property_set(interface->path,
 				SUPPLICANT_INTERFACE ".Interface",
 				"Country", DBUS_TYPE_STRING_AS_STRING,
 				country_params, country_result,
 					regdom, NULL);
+	if (ret < 0) {
+		dbus_free(regdom);
+		SUPPLICANT_DBG("Unable to set Country configuration");
+	}
+
+	return ret;
 }
 
 bool g_supplicant_interface_has_p2p(GSupplicantInterface *interface)
