@@ -788,6 +788,64 @@ static int cmd_service_move_before(char *args[], int num,
 					services->target);
 }
 
+static int move_after_return(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	struct move_service *services = user_data;
+	char *service;
+	char *target;
+
+	if (!error) {
+		service = strrchr(services->service, '/');
+		service++;
+		target = strrchr(services->target, '/');
+		target++;
+		fprintf(stdout, "Moved %s after %s\n", service, target);
+	} else
+		fprintf(stderr, "Error %s: %s\n", services->service, error);
+
+	g_free(services->service);
+	g_free(services->target);
+	g_free(user_data);
+
+	return 0;
+}
+
+static void move_after_append_args(DBusMessageIter *iter, void *user_data)
+{
+	char *path = user_data;
+
+	dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_OBJECT_PATH, &path);
+
+	return;
+}
+
+static int cmd_service_move_after(char *args[], int num,
+		struct connman_option *options)
+{
+	const char *iface = "net.connman.Service";
+	struct move_service *services = g_new(struct move_service, 1);
+
+	if (num > 3)
+		return -E2BIG;
+
+	if (num < 3)
+		return -EINVAL;
+
+	if (check_dbus_name(args[1]) == false)
+		return -EINVAL;
+
+	services->service = g_strdup_printf("/net/connman/service/%s", args[1]);
+	services->target = g_strdup_printf("/net/connman/service/%s", args[2]);
+
+	return __connmanctl_dbus_method_call(connection, CONNMAN_SERVICE,
+					services->service, iface, "MoveAfter",
+					move_after_return, services,
+					move_after_append_args,
+					services->target);
+}
+
 static int config_return(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
@@ -2463,6 +2521,9 @@ static const struct {
 	  "Disconnect a given service or peer", lookup_service_arg },
 	{ "move-before",   "<service> <target service>	", NULL,
 	  cmd_service_move_before, "Move <service> before <target service>",
+	  lookup_service_arg },
+	{ "move-after",   "<service> <target service>	", NULL,
+	  cmd_service_move_after, "Move <service> after <target service>",
 	  lookup_service_arg },
 	{ "config",       "<service>",    config_options,  cmd_config,
 	  "Set service configuration options", lookup_config },
