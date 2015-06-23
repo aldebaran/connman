@@ -3116,31 +3116,17 @@ static int enable_wifi_tethering(struct connman_technology *technology,
 		info->technology = technology;
 		info->wifi->bridge = bridge;
 		info->ssid = ssid_ap_init(identifier, passphrase);
-		if (!info->ssid) {
-			g_free(info);
-			g_free(wifi->tethering_param);
-			wifi->tethering_param = NULL;
-			continue;
-		}
+		if (!info->ssid)
+			goto failed;
+
 		info->ifname = g_strdup(ifname);
-		if (!info->ifname) {
-			g_free(info->ssid);
-			g_free(wifi->tethering_param);
-			g_free(info);
-			wifi->tethering_param = NULL;
-			continue;
-		}
+		if (!info->ifname)
+			goto failed;
 
 		wifi->tethering_param->technology = technology;
 		wifi->tethering_param->ssid = ssid_ap_init(identifier, passphrase);
-		if (!wifi->tethering_param->ssid) {
-			g_free(info->ifname);
-			g_free(info->ssid);
-			g_free(wifi->tethering_param);
-			g_free(info);
-			wifi->tethering_param = NULL;
-			continue;
-		}
+		if (!wifi->tethering_param->ssid)
+			goto failed;
 
 		info->wifi->tethering = true;
 		info->wifi->ap_supported = WIFI_AP_SUPPORTED;
@@ -3153,6 +3139,12 @@ static int enable_wifi_tethering(struct connman_technology *technology,
 			return 0;
 		}
 
+	failed:
+		g_free(info->ifname);
+		g_free(info->ssid);
+		g_free(info);
+		g_free(wifi->tethering_param);
+		wifi->tethering_param = NULL;
 	}
 
 	return -EOPNOTSUPP;
