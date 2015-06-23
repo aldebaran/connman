@@ -2093,18 +2093,9 @@ static void disconnect_callback(int result, GSupplicantInterface *interface,
 	}
 
 	if (wifi->network) {
-		/*
-		 * if result < 0 supplican return an error because
-		 * the network is not current.
-		 * we wont receive G_SUPPLICANT_STATE_DISCONNECTED since it
-		 * failed, call connman_network_set_connected to report
-		 * disconnect is completed.
-		 */
-		if (result < 0)
-			connman_network_set_connected(wifi->network, false);
+		connman_network_set_connected(wifi->network, false);
+		wifi->network = NULL;
 	}
-
-	wifi->network = NULL;
 
 	wifi->disconnecting = false;
 
