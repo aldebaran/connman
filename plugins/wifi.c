@@ -3062,9 +3062,9 @@ static void sta_remove_callback(int result,
 							info);
 }
 
-static int tech_set_tethering(struct connman_technology *technology,
-				const char *identifier, const char *passphrase,
-				const char *bridge, bool enabled)
+static int enable_wifi_tethering(struct connman_technology *technology,
+				const char *bridge, const char *identifier,
+				const char *passphrase, bool available)
 {
 	GList *list;
 	GSupplicantInterface *interface;
@@ -3074,45 +3074,33 @@ static int tech_set_tethering(struct connman_technology *technology,
 	unsigned int mode;
 	int err;
 
-	DBG("");
-
-	if (!enabled) {
-		for (list = iface_list; list; list = list->next) {
-			wifi = list->data;
-
-			if (wifi->tethering) {
-				wifi->tethering = false;
-
-				connman_inet_remove_from_bridge(wifi->index,
-									bridge);
-				wifi->bridged = false;
-			}
-		}
-
-		connman_technology_tethering_notify(technology, false);
-
-		return 0;
-	}
-
 	for (list = iface_list; list; list = list->next) {
 		wifi = list->data;
+
+		DBG("wifi %p network %p pending_network %p", wifi,
+			wifi->network, wifi->pending_network);
 
 		interface = wifi->interface;
 
 		if (!interface)
 			continue;
 
-		if (wifi->ap_supported == WIFI_AP_NOT_SUPPORTED)
-			continue;
-
 		ifname = g_supplicant_interface_get_ifname(wifi->interface);
+
+		if (wifi->ap_supported == WIFI_AP_NOT_SUPPORTED) {
+			DBG("%s does not support AP mode (detected)", ifname);
+			continue;
+		}
 
 		mode = g_supplicant_interface_get_mode(interface);
 		if ((mode & G_SUPPLICANT_CAPABILITY_MODE_AP) == 0) {
 			wifi->ap_supported = WIFI_AP_NOT_SUPPORTED;
-			DBG("%s does not support AP mode", ifname);
+			DBG("%s does not support AP mode (capability)", ifname);
 			continue;
 		}
+
+		if (wifi->network && available)
+			continue;
 
 		info = g_try_malloc0(sizeof(struct wifi_tethering_info));
 		if (!info)
@@ -3160,11 +3148,55 @@ static int tech_set_tethering(struct connman_technology *technology,
 		err = g_supplicant_interface_remove(interface,
 						sta_remove_callback,
 							info);
-		if (err == 0)
-			return err;
+		if (err >= 0) {
+			DBG("tethering wifi %p ifname %s", wifi, ifname);
+			return 0;
+		}
+
 	}
 
 	return -EOPNOTSUPP;
+}
+
+static int tech_set_tethering(struct connman_technology *technology,
+				const char *identifier, const char *passphrase,
+				const char *bridge, bool enabled)
+{
+	GList *list;
+	struct wifi_data *wifi;
+	int err;
+
+	DBG("");
+
+	if (!enabled) {
+		for (list = iface_list; list; list = list->next) {
+			wifi = list->data;
+
+			if (wifi->tethering) {
+				wifi->tethering = false;
+
+				connman_inet_remove_from_bridge(wifi->index,
+									bridge);
+				wifi->bridged = false;
+			}
+		}
+
+		connman_technology_tethering_notify(technology, false);
+
+		return 0;
+	}
+
+	DBG("trying tethering for available devices");
+	err = enable_wifi_tethering(technology, bridge, identifier, passphrase,
+				true);
+
+	if (err < 0) {
+		DBG("trying tethering for any device");
+		err = enable_wifi_tethering(technology, bridge, identifier,
+					passphrase, false);
+	}
+
+	return err;
 }
 
 static void regdom_callback(int result, const char *alpha2, void *user_data)
