@@ -356,8 +356,11 @@ static int peer_connect(struct connman_peer *peer,
 		wifi->pending_peer = connman_peer_ref(peer);
 		wifi->peer = gs_peer;
 		wifi->p2p_connecting = true;
-	} else if (ret < 0)
+	} else if (ret < 0) {
+		g_free(peer_params->path);
+		g_free(peer_params->wps_pin);
 		g_free(peer_params);
+	}
 
 	return ret;
 }
