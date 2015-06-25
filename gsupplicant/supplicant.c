@@ -437,7 +437,7 @@ static void callback_ap_create_fail(GSupplicantInterface *interface)
 	if (!callbacks_pointer)
 		return;
 
-	if (!callbacks_pointer->scan_started)
+	if (!callbacks_pointer->ap_create_fail)
 		return;
 
 	callbacks_pointer->ap_create_fail(interface);
