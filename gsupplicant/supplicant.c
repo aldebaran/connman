@@ -1415,7 +1415,7 @@ static char *create_group(struct g_supplicant_bss *bss)
 	return g_string_free(str, FALSE);
 }
 
-static void add_or_replace_bss_to_network(struct g_supplicant_bss *bss)
+static int add_or_replace_bss_to_network(struct g_supplicant_bss *bss)
 {
 	GSupplicantInterface *interface = bss->interface;
 	GSupplicantNetwork *network;
@@ -1425,7 +1425,7 @@ static void add_or_replace_bss_to_network(struct g_supplicant_bss *bss)
 	SUPPLICANT_DBG("New group created: %s", group);
 
 	if (!group)
-		return;
+		return -ENOMEM;
 
 	network = g_hash_table_lookup(interface->network_table, group);
 	if (network) {
@@ -1438,7 +1438,7 @@ static void add_or_replace_bss_to_network(struct g_supplicant_bss *bss)
 	network = g_try_new0(GSupplicantNetwork, 1);
 	if (!network) {
 		g_free(group);
-		return;
+		return -ENOMEM;
 	}
 
 	network->interface = interface;
@@ -1484,6 +1484,8 @@ done:
 	g_hash_table_replace(network->bss_table, bss->path, bss);
 
 	g_hash_table_replace(bss_mapping, bss->path, interface);
+
+	return 0;
 }
 
 static void bss_rates(DBusMessageIter *iter, void *user_data)
@@ -1885,7 +1887,8 @@ static void interface_bss_added_with_keys(DBusMessageIter *iter,
 	supplicant_dbus_property_foreach(iter, bss_property, bss);
 
 	bss_compute_security(bss);
-	add_or_replace_bss_to_network(bss);
+	if (add_or_replace_bss_to_network(bss) < 0)
+		SUPPLICANT_DBG("add_or_replace_bss_to_network failed");
 }
 
 static void interface_bss_added_without_keys(DBusMessageIter *iter,
@@ -1904,7 +1907,8 @@ static void interface_bss_added_without_keys(DBusMessageIter *iter,
 					bss_property, bss, NULL);
 
 	bss_compute_security(bss);
-	add_or_replace_bss_to_network(bss);
+	if (add_or_replace_bss_to_network(bss) < 0)
+			SUPPLICANT_DBG("add_or_replace_bss_to_network failed");
 }
 
 static void update_signal(gpointer key, gpointer value,
@@ -2485,7 +2489,14 @@ static void signal_bss_changed(const char *path, DBusMessageIter *iter)
 
 		g_hash_table_remove(interface->network_table, network->group);
 
-		add_or_replace_bss_to_network(new_bss);
+		if (add_or_replace_bss_to_network(new_bss) < 0) {
+			/* Remove entries in hash tables to handle the
+			 * failure in add_or_replace_bss_to_network
+			 */
+			g_hash_table_remove(bss_mapping, path);
+			g_hash_table_remove(interface->bss_mapping, path);
+			g_hash_table_remove(network->bss_table, path);
+		}
 
 		return;
 	}
