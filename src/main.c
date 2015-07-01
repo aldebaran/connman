@@ -676,7 +676,6 @@ int main(int argc, char *argv[])
 	__connman_stats_init();
 	__connman_clock_init();
 
-	__connman_resolver_init(option_dnsproxy);
 	__connman_ipconfig_init();
 	__connman_rtnl_init();
 	__connman_task_init();
@@ -688,6 +687,7 @@ int main(int argc, char *argv[])
 
 	__connman_plugin_init(option_plugin, option_noplugin);
 
+	__connman_resolver_init(option_dnsproxy);
 	__connman_rtnl_start();
 	__connman_dhcp_init();
 	__connman_dhcpv6_init();
