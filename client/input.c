@@ -114,6 +114,7 @@ static void rl_handler(char *input)
 
 	g_strfreev(args);
 	g_free(trim_args);
+	free(input);
 }
 
 static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
