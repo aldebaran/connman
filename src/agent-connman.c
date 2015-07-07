@@ -140,18 +140,21 @@ static void request_input_passphrase_reply(DBusMessage *reply, void *user_data)
 			dbus_message_iter_get_basic(&value, &name);
 			name_len = strlen(name);
 		} else if (g_str_equal(key, "SSID")) {
+			DBusMessageIter array_iter;
+
 			dbus_message_iter_next(&entry);
 			if (dbus_message_iter_get_arg_type(&entry)
 							!= DBUS_TYPE_VARIANT)
 				break;
 			dbus_message_iter_recurse(&entry, &value);
 			if (dbus_message_iter_get_arg_type(&value)
-							!= DBUS_TYPE_VARIANT)
+							!= DBUS_TYPE_ARRAY)
 				break;
-			if (dbus_message_iter_get_element_type(&value)
-							!= DBUS_TYPE_VARIANT)
+			dbus_message_iter_recurse(&value, &array_iter);
+			if (dbus_message_iter_get_arg_type(&array_iter)
+							!= DBUS_TYPE_BYTE)
 				break;
-			dbus_message_iter_get_fixed_array(&value, &name,
+			dbus_message_iter_get_fixed_array(&array_iter, &name,
 							&name_len);
 		}
 		dbus_message_iter_next(&dict);
