@@ -1,7 +1,8 @@
 [Unit]
 Description=Connection service
-Before=remote-fs-pre.target
-Wants=remote-fs-pre.target
+After=dbus.service network-pre.target
+Before=network.target remote-fs-pre.target
+Wants=network.target remote-fs-pre.target
 
 [Service]
 Type=dbus
