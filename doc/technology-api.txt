@@ -56,7 +56,7 @@ Properties	boolean Powered [readwrite]
 
 			Boolean representing if a technology is connected.
 
-			This is just a convience property for allowing the
+			This is just a convenience property for allowing the
 			UI to easily show if this technology has an active
 			connection or not.
 
