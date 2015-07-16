@@ -3085,7 +3085,7 @@ static int update_proxy_configuration(struct connman_service *service,
 		g_free(service->pac);
 
 		if (url && strlen(url) > 0)
-			service->pac = g_strdup(url);
+			service->pac = g_strstrip(g_strdup(url));
 		else
 			service->pac = NULL;
 
