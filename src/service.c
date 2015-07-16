@@ -3311,8 +3311,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		service_save(service);
 	} else if (g_str_equal(name, "Timeservers.Configuration")) {
 		DBusMessageIter entry;
-		GSList *list = NULL;
-		int count = 0;
+		GString *str;
 
 		if (service->immutable)
 			return __connman_error_not_supported(msg);
@@ -3320,35 +3319,37 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (type != DBUS_TYPE_ARRAY)
 			return __connman_error_invalid_arguments(msg);
 
+		str = g_string_new(NULL);
+		if (!str)
+			return __connman_error_invalid_arguments(msg);
+
 		dbus_message_iter_recurse(&value, &entry);
 
 		while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
 			const char *val;
-			GSList *new_head;
-
 			dbus_message_iter_get_basic(&entry, &val);
-
-			new_head = __connman_timeserver_add_list(list, val);
-			if (list != new_head) {
-				count++;
-				list = new_head;
-			}
-
 			dbus_message_iter_next(&entry);
+
+			if (!val[0])
+				continue;
+
+			if (str->len > 0)
+				g_string_append_printf(str, " %s", val);
+			else
+				g_string_append(str, val);
 		}
 
 		g_strfreev(service->timeservers_config);
 		service->timeservers_config = NULL;
 
-		if (list) {
-			service->timeservers_config = g_new0(char *, count+1);
+		if (str->len > 0) {
+			char **timeservers = g_strsplit_set(str->str, " ", 0);
+			timeservers = remove_empty_strings(timeservers);
+			service->timeservers_config = timeservers;
+		} else
+			service->timeservers = NULL;
 
-			while (list) {
-				count--;
-				service->timeservers_config[count] = list->data;
-				list = g_slist_delete_link(list, list);
-			};
-		}
+		g_string_free(str, TRUE);
 
 		service_save(service);
 		timeservers_configuration_changed(service);
