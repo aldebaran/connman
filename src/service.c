@@ -3056,20 +3056,24 @@ static int update_proxy_configuration(struct connman_service *service,
 		if (servers_str) {
 			g_strfreev(service->proxies);
 
-			if (servers_str->len > 0)
-				service->proxies = g_strsplit_set(
+			if (servers_str->len > 0) {
+				char **proxies = g_strsplit_set(
 					servers_str->str, " ", 0);
-			else
+				proxies = remove_empty_strings(proxies);
+				service->proxies = proxies;
+			} else
 				service->proxies = NULL;
 		}
 
 		if (excludes_str) {
 			g_strfreev(service->excludes);
 
-			if (excludes_str->len > 0)
-				service->excludes = g_strsplit_set(
+			if (excludes_str->len > 0) {
+				char **excludes = g_strsplit_set(
 					excludes_str->str, " ", 0);
-			else
+				excludes = remove_empty_strings(excludes);
+				service->excludes = excludes;
+			} else
 				service->excludes = NULL;
 		}
 
