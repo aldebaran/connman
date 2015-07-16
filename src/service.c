@@ -3272,20 +3272,30 @@ static DBusMessage *set_property(DBusConnection *conn,
 			const char *val;
 			dbus_message_iter_get_basic(&entry, &val);
 			dbus_message_iter_next(&entry);
-			if (connman_inet_check_ipaddress(val) > 0) {
-				if (str->len > 0)
-					g_string_append_printf(str, " %s", val);
-				else
-					g_string_append(str, val);
-			}
+
+			if (!val[0])
+				continue;
+
+			if (str->len > 0)
+				g_string_append_printf(str, " %s", val);
+			else
+				g_string_append(str, val);
 		}
 
 		nameserver_remove_all(service, CONNMAN_IPCONFIG_TYPE_ALL);
 		g_strfreev(service->nameservers_config);
 
 		if (str->len > 0) {
-			service->nameservers_config =
-				g_strsplit_set(str->str, " ", 0);
+			char **nameservers, **iter;
+
+			nameservers = g_strsplit_set(str->str, " ", 0);
+
+			for (iter = nameservers; *iter; iter++)
+				if (connman_inet_check_ipaddress(*iter) <= 0)
+					*iter[0] = '\0';
+
+			nameservers = remove_empty_strings(nameservers);
+			service->nameservers_config = nameservers;
 		} else {
 			service->nameservers_config = NULL;
 		}
