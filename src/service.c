@@ -3372,6 +3372,10 @@ static DBusMessage *set_property(DBusConnection *conn,
 			const char *val;
 			dbus_message_iter_get_basic(&entry, &val);
 			dbus_message_iter_next(&entry);
+
+			if (!val[0])
+				continue;
+
 			if (str->len > 0)
 				g_string_append_printf(str, " %s", val);
 			else
@@ -3381,9 +3385,11 @@ static DBusMessage *set_property(DBusConnection *conn,
 		searchdomain_remove_all(service);
 		g_strfreev(service->domains);
 
-		if (str->len > 0)
-			service->domains = g_strsplit_set(str->str, " ", 0);
-		else
+		if (str->len > 0) {
+			char **domains = g_strsplit_set(str->str, " ", 0);
+			domains = remove_empty_strings(domains);
+			service->domains = domains;
+		} else
 			service->domains = NULL;
 
 		g_string_free(str, TRUE);
