@@ -510,25 +510,6 @@ static int send_request(GDHCPClient *dhcp_client)
 				dhcp_client->request_bcast);
 }
 
-static int send_release(GDHCPClient *dhcp_client,
-			uint32_t server, uint32_t ciaddr)
-{
-	struct dhcp_packet packet;
-	uint64_t rand;
-
-	debug(dhcp_client, "sending DHCP release request");
-
-	init_packet(dhcp_client, &packet, DHCPRELEASE);
-	dhcp_get_random(&rand);
-	packet.xid = rand;
-	packet.ciaddr = htonl(ciaddr);
-
-	dhcp_add_option_uint32(&packet, DHCP_SERVER_ID, server);
-
-	return dhcp_send_kernel_packet(&packet, ciaddr, CLIENT_PORT,
-						server, SERVER_PORT);
-}
-
 static gboolean ipv4ll_probe_timeout(gpointer dhcp_data);
 static int switch_listening_mode(GDHCPClient *dhcp_client,
 					ListenMode listen_mode);
@@ -2868,12 +2849,6 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 void g_dhcp_client_stop(GDHCPClient *dhcp_client)
 {
 	switch_listening_mode(dhcp_client, L_NONE);
-
-	if (dhcp_client->state == BOUND ||
-			dhcp_client->state == RENEWING ||
-				dhcp_client->state == REBINDING)
-		send_release(dhcp_client, dhcp_client->server_ip,
-					dhcp_client->requested_ip);
 
 	remove_timeouts(dhcp_client);
 
