@@ -568,7 +568,7 @@ int connman_device_set_powered(struct connman_device *device,
 {
 	enum connman_service_type type;
 
-	DBG("driver %p powered %d", device, powered);
+	DBG("device %p powered %d", device, powered);
 
 	if (device->powered == powered)
 		return -EALREADY;
