@@ -2387,7 +2387,7 @@ static void interface_state(GSupplicantInterface *interface)
 		 * wpa_supplicant will loop retrying */
 		if (g_supplicant_interface_enable_selected_network(interface,
 						FALSE) != 0)
-			DBG("Could not disables selected network");
+			DBG("Could not disable selected network");
 
 		connman_network_set_connected(network, false);
 		connman_network_set_associating(network, false);
