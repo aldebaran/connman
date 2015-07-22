@@ -642,7 +642,8 @@ int __connman_provider_indicate_state(struct connman_provider *provider,
 					enum connman_provider_state state);
 int __connman_provider_indicate_error(struct connman_provider *provider,
 					enum connman_provider_error error);
-int __connman_provider_connect(struct connman_provider *provider);
+int __connman_provider_connect(struct connman_provider *provider,
+					const char *dbus_sender);
 int __connman_provider_remove_by_path(const char *path);
 void __connman_provider_cleanup(void);
 int __connman_provider_init(void);

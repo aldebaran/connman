@@ -5963,7 +5963,8 @@ static int service_connect(struct connman_service *service)
 		err = __connman_network_connect(service->network);
 	} else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
 					service->provider)
-		err = __connman_provider_connect(service->provider);
+		err = __connman_provider_connect(service->provider,
+						get_dbus_sender(service));
 	else
 		return -EOPNOTSUPP;
 

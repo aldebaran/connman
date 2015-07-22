@@ -501,6 +501,12 @@ static DBusMessage *do_connect(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
+static DBusMessage *do_connect2(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	return do_connect(conn, msg, data);
+}
+
 static DBusMessage *do_disconnect(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -527,6 +533,9 @@ static const GDBusMethodTable connection_methods[] = {
 			GDBUS_ARGS({ "name", "s" }), NULL,
 			clear_property) },
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, do_connect) },
+	{ GDBUS_ASYNC_METHOD("Connect2",
+			GDBUS_ARGS({ "dbus_sender", "s" }),
+			NULL, do_connect2) },
 	{ GDBUS_METHOD("Disconnect", NULL, NULL, do_disconnect) },
 	{ },
 };
@@ -1087,10 +1096,22 @@ int __vpn_provider_connect(struct vpn_provider *provider, DBusMessage *msg)
 	DBG("provider %p", provider);
 
 	if (provider->driver && provider->driver->connect) {
+		const char *dbus_sender = dbus_message_get_sender(msg);
+
 		dbus_message_ref(msg);
+
+		if (dbus_message_has_signature(msg,
+						DBUS_TYPE_STRING_AS_STRING)) {
+			const char *sender = NULL;
+
+			dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING,
+					&sender, DBUS_TYPE_INVALID);
+			if (sender && sender[0])
+				dbus_sender = sender;
+		}
+
 		err = provider->driver->connect(provider, connect_cb,
-						dbus_message_get_sender(msg),
-						msg);
+						dbus_sender, msg);
 	} else
 		return -EOPNOTSUPP;
 

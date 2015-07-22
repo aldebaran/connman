@@ -124,7 +124,8 @@ struct connman_provider_driver {
 	enum connman_provider_type type;
 	int (*probe) (struct connman_provider *provider);
 	int (*remove) (struct connman_provider *provider);
-	int (*connect) (struct connman_provider *provider);
+	int (*connect) (struct connman_provider *provider,
+			const char *dbus_sender);
 	int (*disconnect) (struct connman_provider *provider);
 	int (*save) (struct connman_provider *provider, GKeyFile *keyfile);
 	int (*set_property) (struct connman_provider *provider,

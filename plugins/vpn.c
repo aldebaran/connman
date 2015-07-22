@@ -512,26 +512,39 @@ done:
 	dbus_pending_call_unref(call);
 }
 
-static int connect_provider(struct connection_data *data, void *user_data)
+static int connect_provider(struct connection_data *data, void *user_data,
+			const char *dbus_sender)
 {
 	DBusPendingCall *call;
 	DBusMessage *message;
 	struct config_create_data *cb_data = user_data;
 
-	DBG("data %p user %p path %s", data, cb_data, data->path);
+	DBG("data %p user %p path %s sender %s", data, cb_data, data->path,
+								dbus_sender);
 
 	data->connect_pending = false;
 
+#define VPN_CONNECT2 "Connect2"
+
+	/* We need to pass original dbus sender to connman-vpnd,
+	 * use a Connect2 method for that.
+	 */
 	message = dbus_message_new_method_call(VPN_SERVICE, data->path,
 					VPN_CONNECTION_INTERFACE,
-					VPN_CONNECT);
+					VPN_CONNECT2);
 	if (!message)
 		return -ENOMEM;
+
+	if (dbus_sender)
+		dbus_message_append_args(message, DBUS_TYPE_STRING,
+					&dbus_sender, NULL);
+	else
+		dbus_sender = "";
 
 	if (!dbus_connection_send_with_reply(connection, message,
 						&call, DBUS_TIMEOUT)) {
 		connman_error("Unable to call %s.%s()",
-			VPN_CONNECTION_INTERFACE, VPN_CONNECT);
+			VPN_CONNECTION_INTERFACE, VPN_CONNECT2);
 		dbus_message_unref(message);
 		return -EINVAL;
 	}
@@ -658,8 +671,15 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 		connman_provider_set_domain(data->provider,
 						data->domain);
 
-	if (data->connect_pending)
-		connect_provider(data, data->cb_data);
+	if (data->connect_pending) {
+		const char *dbus_sender = NULL;
+
+		if (data->cb_data && data->cb_data->message) {
+			dbus_sender =
+				dbus_message_get_sender(data->cb_data->message);
+		}
+		connect_provider(data, data->cb_data, dbus_sender);
+	}
 
 	return;
 
@@ -857,7 +877,8 @@ static int provider_remove(struct connman_provider *provider)
 	return 0;
 }
 
-static int provider_connect(struct connman_provider *provider)
+static int provider_connect(struct connman_provider *provider,
+					const char *dbus_sender)
 {
 	struct connection_data *data;
 
@@ -865,7 +886,7 @@ static int provider_connect(struct connman_provider *provider)
 	if (!data)
 		return -EINVAL;
 
-	return connect_provider(data, NULL);
+	return connect_provider(data, NULL, dbus_sender);
 }
 
 static void disconnect_reply(DBusPendingCall *call, void *user_data)
