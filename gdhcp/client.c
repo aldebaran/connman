@@ -2832,7 +2832,7 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 		addr = ntohl(inet_addr(last_address));
 		if (addr == 0xFFFFFFFF) {
 			addr = 0;
-		} else {
+		} else if (dhcp_client->last_address != last_address) {
 			g_free(dhcp_client->last_address);
 			dhcp_client->last_address = g_strdup(last_address);
 		}
