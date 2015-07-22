@@ -132,6 +132,8 @@ struct vpn_provider_driver {
 			void *user_data);
 	int (*disconnect) (struct vpn_provider *provider);
 	int (*save) (struct vpn_provider *provider, GKeyFile *keyfile);
+	int (*set_state)(struct vpn_provider *provider,
+						enum vpn_provider_state state);
 };
 
 int vpn_provider_driver_register(struct vpn_provider_driver *driver);

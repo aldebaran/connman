@@ -1587,6 +1587,9 @@ int vpn_provider_indicate_error(struct vpn_provider *provider,
 		break;
 	}
 
+	if (provider->driver && provider->driver->set_state)
+		provider->driver->set_state(provider, provider->state);
+
 	return 0;
 }
 

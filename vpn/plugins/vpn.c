@@ -195,6 +195,32 @@ int vpn_set_ifname(struct vpn_provider *provider, const char *ifname)
 	return 0;
 }
 
+static int vpn_set_state(struct vpn_provider *provider,
+						enum vpn_provider_state state)
+{
+	struct vpn_data *data = vpn_provider_get_data(provider);
+
+	switch (state) {
+	case VPN_PROVIDER_STATE_UNKNOWN:
+		return -EINVAL;
+	case VPN_PROVIDER_STATE_IDLE:
+		data->state = VPN_STATE_IDLE;
+		break;
+	case VPN_PROVIDER_STATE_CONNECT:
+	case VPN_PROVIDER_STATE_READY:
+		data->state = VPN_STATE_CONNECT;
+		break;
+	case VPN_PROVIDER_STATE_DISCONNECT:
+		data->state = VPN_STATE_DISCONNECT;
+		break;
+	case VPN_PROVIDER_STATE_FAILURE:
+		data->state = VPN_STATE_FAILURE;
+		break;
+	}
+
+	return 0;
+}
+
 static void vpn_newlink(unsigned flags, unsigned change, void *user_data)
 {
 	struct vpn_provider *provider = user_data;
@@ -572,6 +598,7 @@ int vpn_register(const char *name, struct vpn_driver *vpn_driver,
 	data->provider_driver.probe = vpn_probe;
 	data->provider_driver.remove = vpn_remove;
 	data->provider_driver.save = vpn_save;
+	data->provider_driver.set_state = vpn_set_state;
 
 	if (!driver_hash)
 		driver_hash = g_hash_table_new_full(g_str_hash,
