@@ -165,12 +165,17 @@ static int send_cancel_request(struct connman_agent *agent,
 			struct connman_agent_request *request)
 {
 	DBusMessage *message;
+	const char *interface = NULL;
 
-	DBG("send cancel req to %s %s", agent->owner, agent->path);
+	if (request && request->driver)
+		interface = request->driver->interface;
+
+	DBG("send cancel req to %s %s iface %s", agent->owner, agent->path,
+								interface);
 
 	message = dbus_message_new_method_call(agent->owner,
 					agent->path,
-					request->driver->interface,
+					interface,
 					"Cancel");
 	if (!message) {
 		connman_error("Couldn't allocate D-Bus message");
