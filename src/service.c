@@ -6040,6 +6040,7 @@ int __connman_service_connect(struct connman_service *service,
 	if (service->connect_reason == CONNMAN_SERVICE_CONNECT_REASON_USER) {
 		if (err == -ENOKEY || err == -EPERM) {
 			DBusMessage *pending = NULL;
+			const char *dbus_sender = get_dbus_sender(service);
 
 			/*
 			 * We steal the reply here. The idea is that the
@@ -6054,7 +6055,7 @@ int __connman_service_connect(struct connman_service *service,
 
 			err = __connman_agent_request_passphrase_input(service,
 					request_input_cb,
-					get_dbus_sender(service),
+					dbus_sender,
 					pending);
 			if (service->hidden && err != -EINPROGRESS)
 				service->pending = pending;
