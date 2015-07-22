@@ -549,6 +549,12 @@ static void resolv_result(GResolvResultStatus status,
 		provider->host_ip = g_strdupv(results);
 
 	vpn_provider_unref(provider);
+
+	/* Remove the resolver here so that it will not be left
+	 * hanging around and cause double free in unregister_provider()
+	 */
+	g_resolv_unref(provider->resolv);
+	provider->resolv = NULL;
 }
 
 static void provider_resolv_host_addr(struct vpn_provider *provider)
@@ -1604,6 +1610,18 @@ static void unregister_provider(gpointer data)
 	configuration_count_del();
 
 	connection_unregister(provider);
+
+	/* If the provider has any DNS resolver queries pending,
+	 * they need to be cleared here because the unref will not
+	 * be able to do that (because the provider_resolv_host_addr()
+	 * has increased the ref count by 1). This is quite rare as
+	 * normally the resolving either returns a value or has a
+	 * timeout which clears the memory. Typically resolv_result() will
+	 * unref the provider but in this case that call has not yet
+	 * happened.
+	 */
+	if (provider->resolv)
+		vpn_provider_unref(provider);
 
 	vpn_provider_unref(provider);
 }
