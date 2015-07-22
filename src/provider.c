@@ -148,6 +148,10 @@ int connman_provider_disconnect(struct connman_provider *provider)
 		return -EINPROGRESS;
 	}
 
+	if (provider->vpn_service)
+		provider_indicate_state(provider,
+					CONNMAN_SERVICE_STATE_IDLE);
+
 	return 0;
 }
 
