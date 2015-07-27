@@ -199,6 +199,8 @@ static int vpn_set_state(struct vpn_provider *provider,
 						enum vpn_provider_state state)
 {
 	struct vpn_data *data = vpn_provider_get_data(provider);
+	if (!data)
+		return -EINVAL;
 
 	switch (state) {
 	case VPN_PROVIDER_STATE_UNKNOWN:
