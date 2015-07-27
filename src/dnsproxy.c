@@ -333,14 +333,14 @@ static void refresh_dns_entry(struct cache_entry *entry, char *name)
 	}
 
 	if (!entry->ipv4) {
-		DBG("Refresing A record for %s", name);
+		DBG("Refreshing A record for %s", name);
 		g_resolv_lookup_hostname(ipv4_resolve, name,
 					dummy_resolve_func, NULL);
 		age = 4;
 	}
 
 	if (!entry->ipv6) {
-		DBG("Refresing AAAA record for %s", name);
+		DBG("Refreshing AAAA record for %s", name);
 		g_resolv_lookup_hostname(ipv6_resolve, name,
 					dummy_resolve_func, NULL);
 		age = 4;
