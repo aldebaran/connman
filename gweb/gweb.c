@@ -1075,7 +1075,6 @@ static int connect_session_transport(struct web_session *session)
 			session->addr->ai_addrlen) < 0) {
 		if (errno != EINPROGRESS) {
 			debug(session->web, "connect() %s", strerror(errno));
-			close(sk);
 			return -EIO;
 		}
 	}
