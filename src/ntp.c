@@ -332,14 +332,14 @@ static void decode_msg(void *base, size_t len, struct timeval *tv,
 		adj.tv_sec = (long) offset;
 		adj.tv_usec = (offset - adj.tv_sec) * 1000000;
 
-		DBG("adjusting time");
+		DBG("adjusting time %ld seconds, %ld msecs", adj.tv_sec, adj.tv_usec);
 
 		if (adjtime(&adj, &adj) < 0) {
 			connman_error("Failed to adjust time");
 			return;
 		}
 
-		DBG("%lu seconds, %lu msecs", adj.tv_sec, adj.tv_usec);
+		DBG("remaining adjustment %ld seconds, %ld msecs", adj.tv_sec, adj.tv_usec);
 	} else {
 		struct timeval cur;
 		double dtime;
@@ -349,14 +349,13 @@ static void decode_msg(void *base, size_t len, struct timeval *tv,
 		cur.tv_sec = (long) dtime;
 		cur.tv_usec = (dtime - cur.tv_sec) * 1000000;
 
-		DBG("setting time");
+		DBG("setting time: %ld seconds, %ld msecs", cur.tv_sec, cur.tv_usec);
 
 		if (settimeofday(&cur, NULL) < 0) {
 			connman_error("Failed to set time");
 			return;
 		}
 
-		DBG("%lu seconds, %lu msecs", cur.tv_sec, cur.tv_usec);
 	}
 }
 
