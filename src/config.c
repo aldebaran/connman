@@ -900,7 +900,7 @@ static void config_notify_handler(struct inotify_event *event,
 		return;
 	}
 
-	if (event->mask & IN_CREATE || event->mask & IN_MOVED_TO)
+	if (event->mask & (IN_CREATE | IN_MOVED_TO))
 		create_config(ident);
 
 	if (event->mask & IN_MODIFY) {
@@ -925,7 +925,7 @@ static void config_notify_handler(struct inotify_event *event,
 		}
 	}
 
-	if (event->mask & IN_DELETE)
+	if (event->mask & (IN_DELETE | IN_MOVED_FROM))
 		g_hash_table_remove(config_table, ident);
 }
 
