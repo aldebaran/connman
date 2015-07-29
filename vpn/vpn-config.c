@@ -484,12 +484,12 @@ static void config_notify_handler(struct inotify_event *event,
 	if (event->mask & IN_CREATE)
 		return;
 
-	if (event->mask & IN_DELETE) {
+	if (event->mask & (IN_DELETE | IN_MOVED_FROM)) {
 		g_hash_table_remove(config_table, ident);
 		return;
 	}
 
-	if (event->mask & IN_MODIFY) {
+	if (event->mask & (IN_MODIFY | IN_MOVED_TO)) {
 		struct vpn_config *config;
 		char *path = get_dir();
 
