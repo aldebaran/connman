@@ -119,7 +119,7 @@ Fields		string Name
 		string PreviousPassphrase
 
 			The previous passphrase successfully saved, i.e.
-			which lead to a successfull connection. This field is
+			which led to a successfull connection. This field is
 			provided as an informational argument when connecting
 			with it does not work anymore, for instance when it
 			has been changed on the AP. Such argument appears when
@@ -166,10 +166,10 @@ Arguments	string Type
 			would be the network name or SSID.
 
 			All "mandatory" fields must be returned, while the
-			"optional" can be returned if available.
+			"optional" ones can be returned if available.
 
 			Nothing needs to be returned for "informational", as it
-			is here only to provide an information so a value is
+			is here only to provide an information. A value is
 			attached to it.
 
 		array{string} Alternates
