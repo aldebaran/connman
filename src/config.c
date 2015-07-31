@@ -1335,22 +1335,35 @@ static int try_provision_service(struct connman_config_service *config,
 	return 0;
 }
 
+static int
+find_and_provision_service_from_config(struct connman_service *service,
+					struct connman_config *config)
+{
+	GHashTableIter iter;
+	gpointer value, key;
+
+	g_hash_table_iter_init(&iter, config->service_table);
+	while (g_hash_table_iter_next(&iter, &key,
+					&value)) {
+		if (!try_provision_service(value, service))
+			return 0;
+	}
+
+	return -ENOENT;
+}
+
 static int find_and_provision_service(struct connman_service *service)
 {
-	GHashTableIter iter, iter_service;
-	gpointer value, key, value_service, key_service;
+	GHashTableIter iter;
+	gpointer value, key;
 
 	g_hash_table_iter_init(&iter, config_table);
 
 	while (g_hash_table_iter_next(&iter, &key, &value)) {
 		struct connman_config *config = value;
 
-		g_hash_table_iter_init(&iter_service, config->service_table);
-		while (g_hash_table_iter_next(&iter_service, &key_service,
-						&value_service)) {
-			if (!try_provision_service(value_service, service))
-				return 0;
-		}
+		if (!find_and_provision_service_from_config(service, config))
+			return 0;
 	}
 
 	return -ENOENT;
@@ -1434,7 +1447,7 @@ int __connman_config_provision_service_ident(struct connman_service *service,
 			}
 		}
 
-		find_and_provision_service(service);
+		find_and_provision_service_from_config(service, config);
 	}
 
 	return ret;
