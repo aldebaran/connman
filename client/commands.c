@@ -46,6 +46,7 @@
 
 static DBusConnection *connection;
 static GHashTable *service_hash;
+static GHashTable *vpnconnection_hash;
 static GHashTable *peer_hash;
 static GHashTable *technology_hash;
 static char *session_notify_path;
@@ -1959,22 +1960,21 @@ static int cmd_exit(char *args[], int num, struct connman_option *options)
 	return 1;
 }
 
-static char *lookup_service(const char *text, int state)
+static char *lookup_key_from_table(GHashTable *hash, const char *text,
+					int state)
 {
 	static int len = 0;
 	static GHashTableIter iter;
 	gpointer key, value;
 
 	if (state == 0) {
-		g_hash_table_iter_init(&iter, service_hash);
+		g_hash_table_iter_init(&iter, hash);
 		len = strlen(text);
 	}
 
-	while (g_hash_table_iter_next(&iter, &key, &value)) {
-		const char *service = key;
-		if (strncmp(text, service, len) == 0)
-			return strdup(service);
-	}
+	while (g_hash_table_iter_next(&iter, &key, &value))
+		if (strncmp(text, key, len) == 0)
+			return strdup(key);
 
 	return NULL;
 }
@@ -1986,7 +1986,7 @@ static char *lookup_service_arg(const char *text, int state)
 		return NULL;
 	}
 
-	return lookup_service(text, state);
+	return lookup_key_from_table(service_hash, text, state);
 }
 
 static char *lookup_peer(const char *text, int state)
@@ -2130,6 +2130,16 @@ static char *lookup_agent(const char *text, int state)
 	return lookup_on_off(text, state);
 }
 
+static char *lookup_vpnconnection_arg(const char *text, int state)
+{
+	if (__connmanctl_input_calc_level() > 1) {
+		__connmanctl_input_lookup_end();
+		return NULL;
+	}
+
+	return lookup_key_from_table(vpnconnection_hash, text, state);
+}
+
 static struct connman_option service_options[] = {
 	{"properties", 'p', "[<service>]      (obsolete)"},
 	{ NULL, }
@@ -2208,7 +2218,7 @@ static char *lookup_monitor(const char *text, int state)
 static char *lookup_config(const char *text, int state)
 {
 	if (__connmanctl_input_calc_level() < 2)
-		return lookup_service(text, state);
+		return lookup_key_from_table(service_hash, text, state);
 
 	return lookup_options(config_options, text, state);
 }
@@ -2531,8 +2541,8 @@ static const struct {
 	  "Monitor signals from interfaces", lookup_monitor },
 	{ "agent", "on|off",              NULL,            cmd_agent,
 	  "Agent mode", lookup_agent },
-	{"vpnconnections", "[<connection>]", NULL,         cmd_vpnconnections,
-	 "Display VPN connections", NULL },
+	{ "vpnconnections", "[<connection>]", NULL,        cmd_vpnconnections,
+	  "Display VPN connections", lookup_vpnconnection_arg },
 	{ "vpnagent",     "on|off",     NULL,            cmd_vpnagent,
 	  "VPN Agent mode", lookup_agent },
 	{ "session",      "on|off|connect|disconnect|config", session_options,
@@ -2736,6 +2746,72 @@ static int populate_service_hash(DBusMessageIter *iter, const char *error,
 	return 0;
 }
 
+static void add_vpnconnection_id(const char *path)
+{
+	g_hash_table_replace(vpnconnection_hash, g_strdup(path),
+			GINT_TO_POINTER(TRUE));
+}
+
+static void remove_vpnconnection_id(const char *path)
+{
+	g_hash_table_remove(vpnconnection_hash, path);
+}
+
+static void vpnconnection_added(DBusMessageIter *iter)
+{
+	char *path = NULL;
+
+	dbus_message_iter_get_basic(iter, &path);
+	add_vpnconnection_id(get_path(path));
+}
+
+static void vpnconnection_removed(DBusMessageIter *iter)
+{
+	char *path = NULL;
+
+	dbus_message_iter_get_basic(iter, &path);
+	remove_vpnconnection_id(get_path(path));
+}
+
+static void add_vpnconnections(DBusMessageIter *iter)
+{
+	DBusMessageIter array;
+	char *path = NULL;
+
+	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_STRUCT) {
+
+		dbus_message_iter_recurse(iter, &array);
+		if (dbus_message_iter_get_arg_type(&array) !=
+						DBUS_TYPE_OBJECT_PATH)
+			return;
+
+		dbus_message_iter_get_basic(&array, &path);
+		add_vpnconnection_id(get_path(path));
+
+		dbus_message_iter_next(iter);
+	}
+}
+
+static int populate_vpnconnection_hash(DBusMessageIter *iter, const char *error,
+				void *user_data)
+{
+	DBusMessageIter array;
+
+	if (error) {
+		fprintf(stderr, "Error getting VPN connections: %s", error);
+		return 0;
+	}
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+		return 0;
+
+	dbus_message_iter_recurse(iter, &array);
+
+	add_vpnconnections(&array);
+
+	return 0;
+}
+
 static void add_peer_id(const char *path)
 {
 	g_hash_table_replace(peer_hash, g_strdup(path),	GINT_TO_POINTER(TRUE));
@@ -2888,6 +2964,20 @@ static DBusHandlerResult monitor_completions_changed(
 		return handled;
 	}
 
+	if (dbus_message_is_signal(message, "net.connman.vpn.Manager",
+					"ConnectionAdded")) {
+		dbus_message_iter_init(message, &iter);
+		vpnconnection_added(&iter);
+		return handled;
+	}
+
+	if (dbus_message_is_signal(message, "net.connman.vpn.Manager",
+					"ConnectionRemoved")) {
+		dbus_message_iter_init(message, &iter);
+		vpnconnection_removed(&iter);
+		return handled;
+	}
+
 	if (dbus_message_is_signal(message, "net.connman.Manager",
 						"PeersChanged")) {
 		dbus_message_iter_init(message, &iter);
@@ -2931,10 +3021,14 @@ void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 
 	if (!dbus_conn) {
 		g_hash_table_destroy(service_hash);
+		g_hash_table_destroy(vpnconnection_hash);
 		g_hash_table_destroy(technology_hash);
 
 		dbus_bus_remove_match(connection,
 			"type='signal',interface='net.connman.Manager'", NULL);
+		dbus_bus_remove_match(connection,
+			"type='signal',interface='net.connman.vpn.Manager'",
+			NULL);
 		dbus_connection_remove_filter(connection,
 					monitor_completions_changed,
 					manager_enabled);
@@ -2944,6 +3038,9 @@ void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 	connection = dbus_conn;
 
 	service_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+								g_free, NULL);
+
+	vpnconnection_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 								g_free, NULL);
 
 	peer_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
@@ -2956,6 +3053,11 @@ void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 				CONNMAN_SERVICE, CONNMAN_PATH,
 				"net.connman.Manager", "GetServices",
 				populate_service_hash, NULL, NULL, NULL);
+
+	__connmanctl_dbus_method_call(connection,
+				VPN_SERVICE, CONNMAN_PATH,
+				"net.connman.vpn.Manager", "GetConnections",
+				populate_vpnconnection_hash, NULL, NULL, NULL);
 
 	__connmanctl_dbus_method_call(connection,
 				CONNMAN_SERVICE, CONNMAN_PATH,
@@ -2974,6 +3076,15 @@ void __connmanctl_monitor_completions(DBusConnection *dbus_conn)
 	dbus_error_init(&err);
 	dbus_bus_add_match(connection,
 			"type='signal',interface='net.connman.Manager'", &err);
+
+	if (dbus_error_is_set(&err)) {
+		fprintf(stderr, "Error: %s\n", err.message);
+		return;
+	}
+
+	dbus_bus_add_match(connection,
+			"type='signal',interface='net.connman.vpn.Manager'",
+			&err);
 
 	if (dbus_error_is_set(&err))
 		fprintf(stderr, "Error: %s\n", err.message);
