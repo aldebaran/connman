@@ -5112,7 +5112,8 @@ static void request_input_cb(struct connman_service *service,
 
 			if (service->hidden)
 				__connman_service_return_error(service,
-							ECANCELED, user_data);
+							ECONNABORTED,
+							user_data);
 			goto done;
 		} else {
 			if (service->hidden)
