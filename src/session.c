@@ -69,6 +69,7 @@ struct connman_session {
 
 	enum connman_session_id_type id_type;
 	struct firewall_context *fw;
+	int snat_id;
 	uint32_t mark;
 	int index;
 	char *gateway;
@@ -365,6 +366,63 @@ static void add_default_route(struct connman_session *session)
 		DBG("session %p %s", session, strerror(-err));
 }
 
+static void del_nat_rules(struct connman_session *session)
+{
+	int err;
+
+	if (!session->fw || session->snat_id == 0)
+		return;
+
+	err = __connman_firewall_disable_rule(session->fw, session->snat_id);
+	if (err < 0) {
+		DBG("could not disable SNAT rule");
+		return;
+	}
+
+	err = __connman_firewall_remove_rule(session->fw, session->snat_id);
+	if (err < 0)
+		DBG("could not remove SNAT rule");
+
+
+	session->snat_id = 0;
+}
+
+static void add_nat_rules(struct connman_session *session)
+{
+	struct connman_ipconfig *ipconfig;
+	const char *addr;
+	char *ifname;
+	int index, id, err;
+
+	if (!session->fw)
+		return;
+
+	DBG("");
+
+	ipconfig = __connman_service_get_ip4config(session->service);
+	index = __connman_ipconfig_get_index(ipconfig);
+	ifname = connman_inet_ifname(index);
+	addr = __connman_ipconfig_get_local(ipconfig);
+
+	id = __connman_firewall_add_rule(session->fw, "nat", "POSTROUTING",
+				"-o %s -j SNAT --to-source %s",
+				ifname, addr);
+	g_free(ifname);
+	if (id < 0) {
+		DBG("failed to add SNAT rule");
+		return;
+	}
+
+	err = __connman_firewall_enable_rule(session->fw, id);
+	if (err < 0) {
+		DBG("could not enable SNAT rule");
+		__connman_firewall_remove_rule(session->fw, id);
+		return;
+	}
+
+	session->snat_id = id;
+}
+
 static void cleanup_routing_table(struct connman_session *session)
 {
 	DBG("");
@@ -385,6 +443,12 @@ static void update_routing_table(struct connman_session *session)
 {
 	del_default_route(session);
 	add_default_route(session);
+}
+
+static void update_nat_rules(struct connman_session *session)
+{
+	del_nat_rules(session);
+	add_nat_rules(session);
 }
 
 static void destroy_policy_config(struct connman_session *session)
@@ -1482,6 +1546,7 @@ static void update_session_state(struct connman_session *session)
 	DBG("session %p state %s", session, state2string(state));
 
 	update_routing_table(session);
+	update_nat_rules(session);
 	session_notify(session);
 }
 
