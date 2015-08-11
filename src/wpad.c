@@ -49,6 +49,8 @@ static void free_wpad(gpointer data)
 {
         struct connman_wpad *wpad = data;
 
+	connman_service_unref(wpad->service);
+
 	g_resolv_unref(wpad->resolv);
 
 	g_strfreev(wpad->addrlist);
@@ -152,7 +154,6 @@ int __connman_wpad_start(struct connman_service *service)
 		return -ENOMEM;
 	}
 
-	wpad->service = service;
 	wpad->resolv = g_resolv_new(index);
 	if (!wpad->resolv) {
 		g_strfreev(nameservers);
@@ -172,10 +173,11 @@ int __connman_wpad_start(struct connman_service *service)
 
 	DBG("hostname %s", wpad->hostname);
 
+	wpad->service = connman_service_ref(service);
+
 	g_resolv_lookup_hostname(wpad->resolv, wpad->hostname,
 							wpad_result, wpad);
 
-	connman_service_ref(service);
 	g_hash_table_replace(wpad_list, GINT_TO_POINTER(index), wpad);
 
 	return 0;
@@ -194,8 +196,7 @@ void __connman_wpad_stop(struct connman_service *service)
 	if (index < 0)
 		return;
 
-	if (g_hash_table_remove(wpad_list, GINT_TO_POINTER(index)))
-		connman_service_unref(service);
+	g_hash_table_remove(wpad_list, GINT_TO_POINTER(index));
 }
 
 int __connman_wpad_init(void)
