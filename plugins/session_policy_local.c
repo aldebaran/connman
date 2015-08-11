@@ -459,6 +459,8 @@ static int load_policy(GKeyFile *keyfile, const char *groupname,
 	str = g_key_file_get_string(keyfile, groupname, "AllowedBearers",
 				NULL);
 	if (str) {
+		g_slist_free(config->allowed_bearers);
+		config->allowed_bearers = NULL;
 		tokens = g_strsplit(str, " ", 0);
 
 		for (i = 0; tokens[i]; i++) {
@@ -623,7 +625,7 @@ static int load_file(const char *filename, struct policy_file *file)
 
 	for (i = 0; groupnames[i]; i++) {
 		group = g_new0(struct policy_group, 1);
-		group->config = g_new0(struct connman_session_config, 1);
+		group->config = connman_session_create_default_config();
 
 		err = load_policy(keyfile, groupnames[i], group);
 		if (err < 0) {
