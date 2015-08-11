@@ -903,7 +903,7 @@ static void config_notify_handler(struct inotify_event *event,
 	if (event->mask & (IN_CREATE | IN_MOVED_TO))
 		create_config(ident);
 
-	if (event->mask & IN_MODIFY) {
+	if (event->mask & (IN_MODIFY | IN_MOVED_TO)) {
 		struct connman_config *config;
 
 		config = g_hash_table_lookup(config_table, ident);
