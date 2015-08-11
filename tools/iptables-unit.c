@@ -24,6 +24,7 @@
 #endif
 
 #include <glib.h>
+#include <errno.h>
 
 #include "../src/connman.h"
 
@@ -412,7 +413,7 @@ static void test_firewall_basic0(void)
 
 	err = __connman_firewall_add_rule(ctx, "filter", "INPUT",
 					"-m mark --mark 999 -j LOG");
-	g_assert(err == 0);
+	g_assert(err >= 0);
 
 	err = __connman_firewall_enable(ctx);
 	g_assert(err == 0);
@@ -441,11 +442,11 @@ static void test_firewall_basic1(void)
 
 	err = __connman_firewall_add_rule(ctx, "filter", "INPUT",
 					"-m mark --mark 999 -j LOG");
-	g_assert(err == 0);
+	g_assert(err >= 0);
 
 	err = __connman_firewall_add_rule(ctx, "filter", "OUTPUT",
 					"-m mark --mark 999 -j LOG");
-	g_assert(err == 0);
+	g_assert(err >= 0);
 
 	err = __connman_firewall_enable(ctx);
 	g_assert(err == 0);
@@ -466,17 +467,44 @@ static void test_firewall_basic2(void)
 
 	err = __connman_firewall_add_rule(ctx, "mangle", "INPUT",
 					"-j CONNMARK --restore-mark");
-	g_assert(err == 0);
+	g_assert(err >= 0);
 
 	err = __connman_firewall_add_rule(ctx, "mangle", "POSTROUTING",
 					"-j CONNMARK --save-mark");
-	g_assert(err == 0);
+	g_assert(err >= 0);
 
 	err = __connman_firewall_enable(ctx);
 	g_assert(err == 0);
 
 	err = __connman_firewall_disable(ctx);
 	g_assert(err == 0);
+
+	__connman_firewall_destroy(ctx);
+}
+
+static void test_firewall_basic3(void)
+{
+	struct firewall_context *ctx;
+	int err, id;
+
+	ctx = __connman_firewall_create();
+	g_assert(ctx);
+
+	id = __connman_firewall_add_rule(ctx, "mangle", "INPUT",
+					"-j CONNMARK --restore-mark");
+	g_assert(id >= 0);
+
+	err = __connman_firewall_enable_rule(ctx, id);
+	g_assert(err == 0);
+
+	err = __connman_firewall_disable_rule(ctx, id);
+	g_assert(err == 0);
+
+	err = __connman_firewall_remove_rule(ctx, id);
+	g_assert(err == 0);
+
+	err = __connman_firewall_disable(ctx);
+	g_assert(err == -ENOENT);
 
 	__connman_firewall_destroy(ctx);
 }
@@ -543,6 +571,7 @@ int main(int argc, char *argv[])
 	g_test_add_func("/firewall/basic0", test_firewall_basic0);
 	g_test_add_func("/firewall/basic1", test_firewall_basic1);
 	g_test_add_func("/firewall/basic2", test_firewall_basic2);
+	g_test_add_func("/firewall/basic3", test_firewall_basic3);
 
 	err = g_test_run();
 

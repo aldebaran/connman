@@ -2,7 +2,7 @@
  *
  *  Connection Manager
  *
- *  Copyright (C) 2013  BMW Car IT GmbH.
+ *  Copyright (C) 2013,2015  BMW Car IT GmbH.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -31,6 +31,7 @@
 #include "connman.h"
 
 #define CHAIN_PREFIX "connman-"
+#define FW_ALL_RULES -1
 
 static const char *builtin_chains[] = {
 	[NF_IP_PRE_ROUTING]	= "PREROUTING",
@@ -46,6 +47,8 @@ struct connman_managed_table {
 };
 
 struct fw_rule {
+	int id;
+	bool enabled;
 	char *table;
 	char *chain;
 	char *rule_spec;
@@ -58,6 +61,7 @@ struct firewall_context {
 static GSList *managed_tables;
 
 static bool firewall_is_up;
+static unsigned int firewall_rule_id;
 
 static int chain_to_index(const char *chain_name)
 {
@@ -267,6 +271,54 @@ void __connman_firewall_destroy(struct firewall_context *ctx)
 	g_free(ctx);
 }
 
+static int firewall_enable_rule(struct fw_rule *rule)
+{
+	int err;
+
+	if (rule->enabled)
+		return -EALREADY;
+
+	DBG("%s %s %s", rule->table, rule->chain, rule->rule_spec);
+
+	err = insert_managed_rule(rule->table, rule->chain, rule->rule_spec);
+	if (err < 0)
+		return err;
+
+	err = __connman_iptables_commit(rule->table);
+	if (err < 0)
+		return err;
+
+	rule->enabled = true;
+
+	return 0;
+}
+
+static int firewall_disable_rule(struct fw_rule *rule)
+{
+	int err;
+
+	if (!rule->enabled)
+		return -EALREADY;
+
+	err = delete_managed_rule(rule->table, rule->chain, rule->rule_spec);
+	if (err < 0) {
+		connman_error("Cannot remove previously installed "
+			"iptables rules: %s", strerror(-err));
+		return err;
+	}
+
+	err = __connman_iptables_commit(rule->table);
+	if (err < 0) {
+		connman_error("Cannot remove previously installed "
+			"iptables rules: %s", strerror(-err));
+		return err;
+	}
+
+	rule->enabled = false;
+
+	return 0;
+}
+
 int __connman_firewall_add_rule(struct firewall_context *ctx,
 				const char *table,
 				const char *chain,
@@ -284,80 +336,109 @@ int __connman_firewall_add_rule(struct firewall_context *ctx,
 
 	rule = g_new0(struct fw_rule, 1);
 
+	rule->id = firewall_rule_id++;
+	rule->enabled = false;
 	rule->table = g_strdup(table);
 	rule->chain = g_strdup(chain);
 	rule->rule_spec = rule_spec;
 
 	ctx->rules = g_list_append(ctx->rules, rule);
-
-	return 0;
+	return rule->id;
 }
 
-static int firewall_disable(GList *rules)
+int __connman_firewall_remove_rule(struct firewall_context *ctx, int id)
 {
 	struct fw_rule *rule;
 	GList *list;
-	int err;
+	int err = -ENOENT;
 
-	for (list = rules; list; list = g_list_previous(list)) {
+	for (list = g_list_last(ctx->rules); list;
+			list = g_list_previous(list)) {
 		rule = list->data;
 
-		err = delete_managed_rule(rule->table,
-						rule->chain, rule->rule_spec);
-		if (err < 0) {
-			connman_error("Cannot remove previously installed "
-				"iptables rules: %s", strerror(-err));
-			return err;
-		}
+		if (rule->id == id || id == FW_ALL_RULES) {
+			ctx->rules = g_list_remove(ctx->rules, rule);
+			cleanup_fw_rule(rule);
+			err = 0;
 
-		err = __connman_iptables_commit(rule->table);
-		if (err < 0) {
-			connman_error("Cannot remove previously installed "
-				"iptables rules: %s", strerror(-err));
-			return err;
+			if (id != FW_ALL_RULES)
+				break;
 		}
 	}
 
-	return 0;
+	return err;
+}
+
+int __connman_firewall_enable_rule(struct firewall_context *ctx, int id)
+{
+	struct fw_rule *rule;
+	GList *list;
+	int err = -ENOENT;
+
+	for (list = g_list_first(ctx->rules); list; list = g_list_next(list)) {
+		rule = list->data;
+
+		if (rule->id == id || id == FW_ALL_RULES) {
+			err = firewall_enable_rule(rule);
+			if (err < 0)
+				break;
+
+			if (id != FW_ALL_RULES)
+				break;
+		}
+	}
+
+	return err;
+}
+
+int __connman_firewall_disable_rule(struct firewall_context *ctx, int id)
+{
+	struct fw_rule *rule;
+	GList *list;
+	int e;
+	int err = -ENOENT;
+
+	for (list = g_list_last(ctx->rules); list;
+			list = g_list_previous(list)) {
+		rule = list->data;
+
+		if (rule->id == id || id == FW_ALL_RULES) {
+			e = firewall_disable_rule(rule);
+
+			/* Report last error back */
+			if (e == 0 && err == -ENOENT)
+				err = 0;
+			else if (e < 0)
+				err = e;
+
+			if (id != FW_ALL_RULES)
+				break;
+		}
+	}
+
+	return err;
 }
 
 int __connman_firewall_enable(struct firewall_context *ctx)
 {
-	struct fw_rule *rule;
-	GList *list;
 	int err;
 
-	for (list = g_list_first(ctx->rules); list;
-			list = g_list_next(list)) {
-		rule = list->data;
-
-		DBG("%s %s %s", rule->table, rule->chain, rule->rule_spec);
-
-		err = insert_managed_rule(rule->table,
-						rule->chain, rule->rule_spec);
-		if (err < 0)
-			goto err;
-
-		err = __connman_iptables_commit(rule->table);
-		if (err < 0)
-			goto err;
+	err = __connman_firewall_enable_rule(ctx, FW_ALL_RULES);
+	if (err < 0) {
+		connman_warn("Failed to install iptables rules: %s",
+				strerror(-err));
+		__connman_firewall_disable_rule(ctx, FW_ALL_RULES);
+		return err;
 	}
 
 	firewall_is_up = true;
 
 	return 0;
-
-err:
-	connman_warn("Failed to install iptables rules: %s", strerror(-err));
-
-	firewall_disable(g_list_previous(list));
-
-	return err;
 }
 
 int __connman_firewall_disable(struct firewall_context *ctx)
 {
-	return firewall_disable(g_list_last(ctx->rules));
+	return __connman_firewall_disable_rule(ctx, FW_ALL_RULES);
 }
 
 bool __connman_firewall_is_up(void)

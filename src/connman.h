@@ -989,6 +989,9 @@ int __connman_firewall_add_rule(struct firewall_context *ctx,
 				const char *table,
 				const char *chain,
 				const char *rule_fmt, ...);
+int __connman_firewall_remove_rule(struct firewall_context *ctx, int id);
+int __connman_firewall_enable_rule(struct firewall_context *ctx, int id);
+int __connman_firewall_disable_rule(struct firewall_context *ctx, int id);
 int __connman_firewall_enable(struct firewall_context *ctx);
 int __connman_firewall_disable(struct firewall_context *ctx);
 bool __connman_firewall_is_up(void);
