@@ -1765,6 +1765,7 @@ struct parse_context {
 	struct xtables_target *xt_t;
 	GList *xt_m;
 	struct xtables_rule_match *xt_rm;
+	int proto;
 };
 
 static int prepare_getopt_args(const char *str, struct parse_context *ctx)
@@ -1804,6 +1805,14 @@ static int parse_xt_modules(int c, bool invert,
 {
 	struct xtables_match *m;
 	struct xtables_rule_match *rm;
+	struct ipt_entry fw;
+
+	memset(&fw, 0, sizeof(fw));
+
+	/* The SNAT parser wants to know the protocol. */
+	if (ctx->proto == 0)
+		ctx->proto = IPPROTO_IP;
+	fw.ip.proto = ctx->proto;
 
 	for (rm = ctx->xt_rm; rm; rm = rm->next) {
 		if (rm->completed != 0)
@@ -1819,7 +1828,7 @@ static int parse_xt_modules(int c, bool invert,
 					+ XT_OPTION_OFFSET_SCALE)
 			continue;
 
-		xtables_option_mpcall(c, ctx->argv, invert, m, NULL);
+		xtables_option_mpcall(c, ctx->argv, invert, m, &fw);
 	}
 
 	if (!ctx->xt_t)
@@ -1833,7 +1842,7 @@ static int parse_xt_modules(int c, bool invert,
 					+ XT_OPTION_OFFSET_SCALE)
 		return 0;
 
-	xtables_option_tpcall(c, ctx->argv, invert, ctx->xt_t, NULL);
+	xtables_option_tpcall(c, ctx->argv, invert, ctx->xt_t, &fw);
 
 	return 0;
 }
@@ -2007,6 +2016,9 @@ static int parse_rule_spec(struct connman_iptables *table,
 			}
 			ctx->xt_m = g_list_append(ctx->xt_m, xt_m);
 
+			break;
+		case 'p':
+			ctx->proto = xtables_parse_protocol(optarg);
 			break;
 		case 'j':
 			/* Target */
