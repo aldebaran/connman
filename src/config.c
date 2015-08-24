@@ -45,6 +45,7 @@ struct connman_config_service {
 	unsigned int ssid_len;
 	char *eap;
 	char *identity;
+	char *anonymous_identity;
 	char *ca_cert_file;
 	char *client_cert_file;
 	char *private_key_file;
@@ -98,6 +99,7 @@ static bool cleanup = false;
 #define SERVICE_KEY_PRV_KEY_PASS       "PrivateKeyPassphrase"
 #define SERVICE_KEY_PRV_KEY_PASS_TYPE  "PrivateKeyPassphraseType"
 #define SERVICE_KEY_IDENTITY           "Identity"
+#define SERVICE_KEY_ANONYMOUS_IDENTITY "AnonymousIdentity"
 #define SERVICE_KEY_PHASE2             "Phase2"
 #define SERVICE_KEY_PASSPHRASE         "Passphrase"
 #define SERVICE_KEY_SECURITY           "Security"
@@ -129,6 +131,7 @@ static const char *service_possible_keys[] = {
 	SERVICE_KEY_PRV_KEY_PASS,
 	SERVICE_KEY_PRV_KEY_PASS_TYPE,
 	SERVICE_KEY_IDENTITY,
+	SERVICE_KEY_ANONYMOUS_IDENTITY,
 	SERVICE_KEY_PHASE2,
 	SERVICE_KEY_PASSPHRASE,
 	SERVICE_KEY_SECURITY,
@@ -220,6 +223,7 @@ free_only:
 	g_free(config_service->ssid);
 	g_free(config_service->eap);
 	g_free(config_service->identity);
+	g_free(config_service->anonymous_identity);
 	g_free(config_service->ca_cert_file);
 	g_free(config_service->client_cert_file);
 	g_free(config_service->private_key_file);
@@ -655,6 +659,13 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 		service->identity = str;
 	}
 
+	str = __connman_config_get_string(keyfile, group,
+					SERVICE_KEY_ANONYMOUS_IDENTITY, NULL);
+	if (str) {
+		g_free(service->anonymous_identity);
+		service->anonymous_identity = str;
+	}
+
 	str = __connman_config_get_string(keyfile, group, SERVICE_KEY_PHASE2, NULL);
 	if (str) {
 		g_free(service->phase2);
@@ -1033,6 +1044,10 @@ static void provision_service_wifi(struct connman_config_service *config,
 	if (config->identity)
 		__connman_service_set_string(service, "Identity",
 							config->identity);
+
+	if (config->anonymous_identity)
+		__connman_service_set_string(service, "AnonymousIdentity",
+						config->anonymous_identity);
 
 	if (config->ca_cert_file)
 		__connman_service_set_string(service, "CACertFile",

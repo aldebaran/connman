@@ -100,6 +100,7 @@ struct connman_service {
 	/* 802.1x settings from the config files */
 	char *eap;
 	char *identity;
+	char *anonymous_identity;
 	char *agent_identity;
 	char *ca_cert_file;
 	char *client_cert_file;
@@ -2800,6 +2801,21 @@ void __connman_service_set_identity(struct connman_service *service,
 					service->identity);
 }
 
+void __connman_service_set_anonymous_identity(struct connman_service *service,
+						const char *anonymous_identity)
+{
+	if (service->immutable || service->hidden)
+		return;
+
+	g_free(service->anonymous_identity);
+	service->anonymous_identity = g_strdup(anonymous_identity);
+
+	if (service->network)
+		connman_network_set_string(service->network,
+					"WiFi.AnonymousIdentity",
+					service->anonymous_identity);
+}
+
 void __connman_service_set_agent_identity(struct connman_service *service,
 						const char *agent_identity)
 {
@@ -4074,6 +4090,9 @@ bool __connman_service_remove(struct connman_service *service)
 	g_free(service->identity);
 	service->identity = NULL;
 
+	g_free(service->anonymous_identity);
+	service->anonymous_identity = NULL;
+
 	g_free(service->agent_identity);
 	service->agent_identity = NULL;
 
@@ -4524,6 +4543,7 @@ static void service_free(gpointer user_data)
 	g_free(service->identifier);
 	g_free(service->eap);
 	g_free(service->identity);
+	g_free(service->anonymous_identity);
 	g_free(service->agent_identity);
 	g_free(service->ca_cert_file);
 	g_free(service->client_cert_file);
@@ -4997,6 +5017,9 @@ void __connman_service_set_string(struct connman_service *service,
 	} else if (g_str_equal(key, "Identity")) {
 		g_free(service->identity);
 		service->identity = g_strdup(value);
+	} else if (g_str_equal(key, "AnonymousIdentity")) {
+		g_free(service->anonymous_identity);
+		service->anonymous_identity = g_strdup(value);
 	} else if (g_str_equal(key, "CACertFile")) {
 		g_free(service->ca_cert_file);
 		service->ca_cert_file = g_strdup(value);
@@ -5839,6 +5862,11 @@ static void prepare_8021x(struct connman_service *service)
 	if (service->identity)
 		connman_network_set_string(service->network, "WiFi.Identity",
 							service->identity);
+
+	if (service->anonymous_identity)
+		connman_network_set_string(service->network,
+						"WiFi.AnonymousIdentity",
+						service->anonymous_identity);
 
 	if (service->ca_cert_file)
 		connman_network_set_string(service->network, "WiFi.CACertFile",

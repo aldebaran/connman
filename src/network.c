@@ -78,6 +78,7 @@ struct connman_network {
 		char *passphrase;
 		char *eap;
 		char *identity;
+		char *anonymous_identity;
 		char *agent_identity;
 		char *ca_cert_path;
 		char *client_cert_path;
@@ -906,6 +907,7 @@ static void network_destruct(struct connman_network *network)
 	g_free(network->wifi.passphrase);
 	g_free(network->wifi.eap);
 	g_free(network->wifi.identity);
+	g_free(network->wifi.anonymous_identity);
 	g_free(network->wifi.agent_identity);
 	g_free(network->wifi.ca_cert_path);
 	g_free(network->wifi.client_cert_path);
@@ -1816,6 +1818,9 @@ int connman_network_set_string(struct connman_network *network,
 	} else if (g_str_equal(key, "WiFi.Identity")) {
 		g_free(network->wifi.identity);
 		network->wifi.identity = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.AnonymousIdentity")) {
+		g_free(network->wifi.anonymous_identity);
+		network->wifi.anonymous_identity = g_strdup(value);
 	} else if (g_str_equal(key, "WiFi.AgentIdentity")) {
 		g_free(network->wifi.agent_identity);
 		network->wifi.agent_identity = g_strdup(value);
@@ -1872,6 +1877,8 @@ const char *connman_network_get_string(struct connman_network *network,
 		return network->wifi.eap;
 	else if (g_str_equal(key, "WiFi.Identity"))
 		return network->wifi.identity;
+	else if (g_str_equal(key, "WiFi.AnonymousIdentity"))
+		return network->wifi.anonymous_identity;
 	else if (g_str_equal(key, "WiFi.AgentIdentity"))
 		return network->wifi.agent_identity;
 	else if (g_str_equal(key, "WiFi.CACertFile"))

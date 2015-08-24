@@ -771,6 +771,8 @@ void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 
 void __connman_service_set_identity(struct connman_service *service,
 					const char *identity);
+void __connman_service_set_anonymous_identity(struct connman_service *service,
+					const char *anonymous_identity);
 void __connman_service_set_agent_identity(struct connman_service *service,
 						const char *agent_identity);
 int __connman_service_set_passphrase(struct connman_service *service,

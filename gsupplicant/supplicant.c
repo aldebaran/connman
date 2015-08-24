@@ -4385,6 +4385,10 @@ static void add_network_security_eap(DBusMessageIter *dict,
 	supplicant_dbus_dict_append_basic(dict, "identity",
 						DBUS_TYPE_STRING,
 						&ssid->identity);
+	if(ssid->anonymous_identity)
+		supplicant_dbus_dict_append_basic(dict, "anonymous_identity",
+						     DBUS_TYPE_STRING,
+						     &ssid->anonymous_identity);
 
 	g_free(eap_value);
 }

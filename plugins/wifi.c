@@ -84,6 +84,7 @@ struct hidden_params {
 	char ssid[32];
 	unsigned int ssid_len;
 	char *identity;
+	char *anonymous_identity;
 	char *passphrase;
 	char *security;
 	GSupplicantScanParams *scan_params;
@@ -2027,6 +2028,8 @@ static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 		ssid->identity = connman_network_get_string(network,
 							"WiFi.AgentIdentity");
 
+	ssid->anonymous_identity = connman_network_get_string(network,
+						"WiFi.AnonymousIdentity");
 	ssid->ca_cert_path = connman_network_get_string(network,
 							"WiFi.CACertFile");
 	ssid->client_cert_path = connman_network_get_string(network,
