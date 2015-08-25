@@ -407,27 +407,6 @@ static void free_ipdevice(gpointer data)
 	g_free(ipdevice);
 }
 
-static void __connman_ipconfig_lower_up(struct connman_ipdevice *ipdevice)
-{
-	DBG("ipconfig ipv4 %p ipv6 %p", ipdevice->config_ipv4,
-					ipdevice->config_ipv6);
-}
-
-static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
-{
-	DBG("ipconfig ipv4 %p ipv6 %p", ipdevice->config_ipv4,
-					ipdevice->config_ipv6);
-
-	if (ipdevice->config_ipv4)
-		connman_inet_clear_address(ipdevice->index,
-					ipdevice->config_ipv4->address);
-
-	if (ipdevice->config_ipv6)
-		connman_inet_clear_ipv6_address(ipdevice->index,
-				ipdevice->config_ipv6->address->local,
-				ipdevice->config_ipv6->address->prefixlen);
-}
-
 static void update_stats(struct connman_ipdevice *ipdevice,
 			const char *ifname, struct rtnl_link_stats *stats)
 {
@@ -577,11 +556,6 @@ update:
 
 	g_list_free(ipconfig_copy);
 
-	if (lower_up)
-		__connman_ipconfig_lower_up(ipdevice);
-	if (lower_down)
-		__connman_ipconfig_lower_down(ipdevice);
-
 out:
 	g_free(ifname);
 }
@@ -621,8 +595,6 @@ void __connman_ipconfig_dellink(int index, struct rtnl_link_stats *stats)
 	}
 
 	g_free(ifname);
-
-	__connman_ipconfig_lower_down(ipdevice);
 
 	g_hash_table_remove(ipdevice_hash, GINT_TO_POINTER(index));
 }
