@@ -219,8 +219,8 @@ static int set_connected_manual(struct connman_network *network)
 	network->connecting = false;
 
 	service = connman_service_lookup_from_network(network);
-
 	ipconfig = __connman_service_get_ip4config(service);
+	__connman_ipconfig_enable(ipconfig);
 
 	if (!__connman_ipconfig_get_local(ipconfig))
 		__connman_service_read_ip4config(service);
@@ -247,6 +247,7 @@ static int set_connected_dhcp(struct connman_network *network)
 
 	service = connman_service_lookup_from_network(network);
 	ipconfig_ipv4 = __connman_service_get_ip4config(service);
+	__connman_ipconfig_enable(ipconfig_ipv4);
 
 	err = __connman_dhcp_start(ipconfig_ipv4, network,
 							dhcp_callback, NULL);

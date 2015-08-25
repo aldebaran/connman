@@ -5779,7 +5779,6 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 	case CONNMAN_SERVICE_STATE_ASSOCIATION:
 		break;
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
-		__connman_ipconfig_enable(ipconfig);
 		break;
 	case CONNMAN_SERVICE_STATE_READY:
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
@@ -5983,11 +5982,6 @@ static int service_connect(struct connman_service *service)
 			__connman_stats_get(service, true,
 						&service->stats_roaming.data);
 		}
-
-		if (service->ipconfig_ipv4)
-			__connman_ipconfig_enable(service->ipconfig_ipv4);
-		if (service->ipconfig_ipv6)
-			__connman_ipconfig_enable(service->ipconfig_ipv6);
 
 		err = __connman_network_connect(service->network);
 	} else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
