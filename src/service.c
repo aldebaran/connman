@@ -3180,6 +3180,8 @@ int __connman_service_reset_ipconfig(struct connman_service *service,
 		else
 			*new_state = service->state_ipv6;
 
+		settings_changed(service, new_ipconfig);
+
 		__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 	}
 
