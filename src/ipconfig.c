@@ -48,7 +48,6 @@ struct connman_ipconfig {
 	const struct connman_ipconfig_ops *ops;
 	void *ops_data;
 
-	bool enabled;
 	enum connman_ipconfig_method method;
 	struct connman_ipaddress *address;
 	struct connman_ipaddress *system;
@@ -1114,7 +1113,6 @@ static struct connman_ipconfig *create_ipv6config(int index)
 	ipv6config->refcount = 1;
 
 	ipv6config->index = index;
-	ipv6config->enabled = false;
 	ipv6config->type = CONNMAN_IPCONFIG_TYPE_IPV6;
 
 	if (!is_ipv6_supported)
@@ -1164,7 +1162,6 @@ struct connman_ipconfig *__connman_ipconfig_create(int index,
 	ipconfig->refcount = 1;
 
 	ipconfig->index = index;
-	ipconfig->enabled = false;
 	ipconfig->type = CONNMAN_IPCONFIG_TYPE_IPV4;
 
 	ipconfig->address = connman_ipaddress_alloc(AF_INET);
@@ -1572,8 +1569,6 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 	} else
 		return -EINVAL;
 
-	ipconfig->enabled = true;
-
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
 					ipdevice->config_ipv4) {
 		ipconfig_list = g_list_remove(ipconfig_list,
@@ -1647,8 +1642,6 @@ int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig)
 
 	if (!ipdevice->config_ipv4 && !ipdevice->config_ipv6)
 		return -EINVAL;
-
-	ipconfig->enabled = false;
 
 	if (ipdevice->config_ipv4 == ipconfig) {
 		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
