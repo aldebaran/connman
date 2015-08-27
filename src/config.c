@@ -720,6 +720,8 @@ static bool load_service(GKeyFile *keyfile, const char *group,
 	} else
 			service->security = CONNMAN_SERVICE_SECURITY_NONE;
 
+	g_free(str);
+
 	service->config_ident = g_strdup(config->ident);
 	service->config_entry = g_strdup_printf("service_%s", service->ident);
 
