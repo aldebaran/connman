@@ -1,3 +1,16 @@
+ver 1.30:
+	Fix issue with pending DNS request during server change.
+	Fix issue with empty strings in nameservers configuration.
+	Fix issue with time servers during IP configuration change.
+	Fix issue with 4-way handshake during roaming.
+	Fix issue with open WiFi networks security.
+	Fix issue with support for WiFi AnonymousIdentity.
+	Fix issue with memory leak and DHCPv6 DUID handling.
+	Fix issue with DHCP client and P2P interaction.
+	Fix issue with handling provision file updates.
+	Fix issue with VPN state updates.
+	Disable 6to4 support by default.
+
 ver 1.29:
 	Fix issue with IPv6 autoconfiguration when disabled.
 	Fix issue with IPv6 temporary route handling.
