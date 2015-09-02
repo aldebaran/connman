@@ -2291,13 +2291,12 @@ int __connman_inet_rtnl_talk(struct __connman_inet_rtnl_handle *rtnl,
 {
 	struct sockaddr_nl nladdr;
 	struct inet_rtnl_cb_data *data;
-	unsigned seq;
 	int err;
 
 	memset(&nladdr, 0, sizeof(nladdr));
 	nladdr.nl_family = AF_NETLINK;
 
-	n->nlmsg_seq = seq = ++rtnl->seq;
+	n->nlmsg_seq = ++rtnl->seq;
 
 	if (callback) {
 		data = g_try_malloc0(sizeof(struct inet_rtnl_cb_data));
