@@ -100,43 +100,77 @@ static void request_input_passphrase_reply(DBusMessage *reply, void *user_data)
 		DBusMessageIter entry, value;
 
 		dbus_message_iter_recurse(&dict, &entry);
-		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING) {
+			error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 			break;
+		}
 
 		dbus_message_iter_get_basic(&entry, &key);
 
 		if (g_str_equal(key, "Identity")) {
 			dbus_message_iter_next(&entry);
 			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
+							!= DBUS_TYPE_VARIANT) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 				break;
+			}
+
 			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_STRING) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
+				break;
+			}
+
 			dbus_message_iter_get_basic(&value, &identity);
 
 		} else if (g_str_equal(key, "Passphrase")) {
 			dbus_message_iter_next(&entry);
 			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
+							!= DBUS_TYPE_VARIANT) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 				break;
+			}
+
 			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_STRING) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
+				break;
+			}
+
 			dbus_message_iter_get_basic(&value, &passphrase);
 
 		} else if (g_str_equal(key, "WPS")) {
-			wps = true;
 
 			dbus_message_iter_next(&entry);
 			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
+							!= DBUS_TYPE_VARIANT) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 				break;
+			}
+
 			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_STRING) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
+				break;
+			}
+
+			wps = true;
 			dbus_message_iter_get_basic(&value, &wpspin);
 			break;
 		} else if (g_str_equal(key, "Name")) {
 			dbus_message_iter_next(&entry);
 			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
+							!= DBUS_TYPE_VARIANT) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 				break;
+			}
+
 			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_STRING) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
+				break;
+			}
+
 			dbus_message_iter_get_basic(&value, &name);
 			name_len = strlen(name);
 		} else if (g_str_equal(key, "SSID")) {
@@ -144,16 +178,22 @@ static void request_input_passphrase_reply(DBusMessage *reply, void *user_data)
 
 			dbus_message_iter_next(&entry);
 			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
+							!= DBUS_TYPE_VARIANT) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 				break;
+			}
 			dbus_message_iter_recurse(&entry, &value);
 			if (dbus_message_iter_get_arg_type(&value)
-							!= DBUS_TYPE_ARRAY)
+							!= DBUS_TYPE_ARRAY) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 				break;
+			}
 			dbus_message_iter_recurse(&value, &array_iter);
 			if (dbus_message_iter_get_arg_type(&array_iter)
-							!= DBUS_TYPE_BYTE)
+							!= DBUS_TYPE_BYTE) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 				break;
+			}
 			dbus_message_iter_get_fixed_array(&array_iter, &name,
 							&name_len);
 		}
@@ -399,17 +439,33 @@ static void request_input_login_reply(DBusMessage *reply, void *user_data)
 		if (g_str_equal(key, "Username")) {
 			dbus_message_iter_next(&entry);
 			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
+							!= DBUS_TYPE_VARIANT) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 				break;
+			}
+
 			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_STRING) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
+				break;
+			}
+
 			dbus_message_iter_get_basic(&value, &username);
 
 		} else if (g_str_equal(key, "Password")) {
 			dbus_message_iter_next(&entry);
 			if (dbus_message_iter_get_arg_type(&entry) !=
-							DBUS_TYPE_VARIANT)
+							DBUS_TYPE_VARIANT) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 				break;
+			}
+
 			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_STRING) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
+				break;
+			}
+
 			dbus_message_iter_get_basic(&value, &password);
 		}
 
@@ -705,8 +761,10 @@ static void request_peer_authorization_reply(DBusMessage *reply,
 		DBusMessageIter entry, value;
 
 		dbus_message_iter_recurse(&dict, &entry);
-		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING) {
+			error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 			break;
+		}
 
 		dbus_message_iter_get_basic(&entry, &key);
 
@@ -715,9 +773,17 @@ static void request_peer_authorization_reply(DBusMessage *reply,
 
 			dbus_message_iter_next(&entry);
 			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
+							!= DBUS_TYPE_VARIANT) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
 				break;
+			}
+
 			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value) != DBUS_TYPE_STRING) {
+				error = CONNMAN_ERROR_INTERFACE ".InvalidArguments";
+				break;
+			}
+
 			dbus_message_iter_get_basic(&value, &wpspin);
 			break;
 		}
