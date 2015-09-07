@@ -63,7 +63,7 @@ static int tunnel_create(struct in_addr *addr)
 {
 	struct ip_tunnel_parm p;
 	struct ifreq ifr;
-	int fd = -1;
+	int fd;
 	int ret;
 
 	/* ip tunnel add tun6to4 mode sit remote any local 1.2.3.4 ttl 64 */
