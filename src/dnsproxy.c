@@ -355,7 +355,7 @@ static int dns_name_length(unsigned char *buf)
 {
 	if ((buf[0] & NS_CMPRSFLGS) == NS_CMPRSFLGS) /* compressed name */
 		return 2;
-	return strlen((char *)buf);
+	return strlen((char *)buf) + 1;
 }
 
 static void update_cached_ttl(unsigned char *buf, int len, int new_ttl)
@@ -1357,7 +1357,7 @@ static int reply_query_type(unsigned char *msg, int len)
 		return 0;
 
 	/* now the query, which is a name and 2 16 bit words */
-	l = dns_name_length(c) + 1;
+	l = dns_name_length(c);
 	c += l;
 	type = c[0] << 8 | c[1];
 
