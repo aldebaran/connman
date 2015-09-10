@@ -53,7 +53,6 @@ struct connman_device {
 							 */
 	bool powered;
 	bool scanning;
-	bool disconnected;
 	char *name;
 	char *node;
 	char *address;
@@ -588,7 +587,6 @@ int connman_device_set_powered(struct connman_device *device,
 
 	__connman_technology_enabled(type);
 
-	connman_device_set_disconnected(device, false);
 	device->scanning = false;
 
 	if (device->driver && device->driver->scan)
@@ -622,8 +620,6 @@ int __connman_device_disconnect(struct connman_device *device)
 	gpointer key, value;
 
 	DBG("device %p", device);
-
-	connman_device_set_disconnected(device, true);
 
 	g_hash_table_iter_init(&iter, device->networks);
 
@@ -748,37 +744,6 @@ int connman_device_set_scanning(struct connman_device *device,
 	__connman_service_auto_connect(CONNMAN_SERVICE_CONNECT_REASON_AUTO);
 
 	return 0;
-}
-
-/**
- * connman_device_set_disconnected:
- * @device: device structure
- * @disconnected: disconnected state
- *
- * Change disconnected state of device (only for device with networks)
- */
-int connman_device_set_disconnected(struct connman_device *device,
-						bool disconnected)
-{
-	DBG("device %p disconnected %d", device, disconnected);
-
-	if (device->disconnected == disconnected)
-		return -EALREADY;
-
-	device->disconnected = disconnected;
-
-	return 0;
-}
-
-/**
- * connman_device_get_disconnected:
- * @device: device structure
- *
- * Get device disconnected state
- */
-bool connman_device_get_disconnected(struct connman_device *device)
-{
-	return device->disconnected;
 }
 
 /**

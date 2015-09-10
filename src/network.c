@@ -136,8 +136,6 @@ static void set_configuration(struct connman_network *network,
 
 	__connman_device_set_network(network->device, network);
 
-	connman_device_set_disconnected(network->device, false);
-
 	service = connman_service_lookup_from_network(network);
 	__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_CONFIGURATION,
@@ -291,8 +289,6 @@ static int manual_ipv6_set(struct connman_network *network,
 						CONNMAN_IPCONFIG_TYPE_IPV6);
 
 	__connman_device_set_network(network->device, network);
-
-	connman_device_set_disconnected(network->device, false);
 
 	connman_network_set_associating(network, false);
 
@@ -558,8 +554,6 @@ static void autoconf_ipv6_set(struct connman_network *network)
 
 	__connman_device_set_network(network->device, network);
 
-	connman_device_set_disconnected(network->device, false);
-
 	service = connman_service_lookup_from_network(network);
 	if (!service)
 		return;
@@ -810,8 +804,6 @@ static void network_change(struct connman_network *network)
 
 	if (!network->connected)
 		return;
-
-	connman_device_set_disconnected(network->device, true);
 
 	if (network->driver && network->driver->disconnect) {
 		network->driver->disconnect(network);
