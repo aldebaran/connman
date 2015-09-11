@@ -820,20 +820,6 @@ static void probe_driver(struct connman_network_driver *driver)
 	}
 }
 
-static void remove_driver(struct connman_network_driver *driver)
-{
-	GSList *list;
-
-	DBG("driver %p name %s", driver, driver->name);
-
-	for (list = network_list; list; list = list->next) {
-		struct connman_network *network = list->data;
-
-		if (network->driver == driver)
-			network_remove(network);
-	}
-}
-
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
 	const struct connman_network_driver *driver1 = a;
@@ -870,11 +856,18 @@ int connman_network_driver_register(struct connman_network_driver *driver)
  */
 void connman_network_driver_unregister(struct connman_network_driver *driver)
 {
+	GSList *list;
+
 	DBG("driver %p name %s", driver, driver->name);
 
 	driver_list = g_slist_remove(driver_list, driver);
 
-	remove_driver(driver);
+	for (list = network_list; list; list = list->next) {
+		struct connman_network *network = list->data;
+
+		if (network->driver == driver)
+			network_remove(network);
+	}
 }
 
 static void network_destruct(struct connman_network *network)
