@@ -1,7 +1,10 @@
 [Unit]
 Description=Connection service
+DefaultDependencies=false
+Conflicts=shutdown.target
+RequiresMountsFor=@localstatedir@/lib/connman
 After=dbus.service network-pre.target
-Before=network.target remote-fs-pre.target
+Before=network.target shutdown.target remote-fs-pre.target
 Wants=network.target remote-fs-pre.target
 
 [Service]
