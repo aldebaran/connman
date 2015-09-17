@@ -6,9 +6,26 @@
 .SH NAME
 ConnMan \- network management daemon
 .SH SYNOPSIS
-.B connmand [\-\-version] | [\-\-help]
+.B connmand
+.RB [\| \-\-version \||\| \-\-help \|]
 .PP
-.B connmand [\-\-config=<filename>] [\-\-debug=<file1>:<file2>:...] [\-\-device=<interface1>,<interface2>,...] [\-\-nodevice=<interface1>,<interface2>,..] [\-\-wifi=<driver1>,<driver2>,...] [\-\-plugin=<plugin1>,<plugin2>,...] [\-\-noplugin=<plugin1>,<plugin2>,...] [\-\-nodaemon] [\-\-nodnsproxy]
+.B connmand
+.RB [\| \-c
+.IR file \|]
+.RB [\| \-d\  \fR[\c
+.IR file1:file2:...\fR] \|]
+.RB [\| \-i
+.IR interface1,interface2,... \|]
+.RB [\| \-I
+.IR interface1,interface2,.. \|]
+.RB [\| \-W
+.IR driver1,driver2,... \|]
+.RB [\| \-p
+.IR plugin1,plugin2,... \|]
+.RB [\| \-P
+.IR plugin1,plugin2,... \|]
+.RB [\| \-n \|]
+.RB [\| \-r \|]
 .SH DESCRIPTION
 The \fIConnMan\fP provides a daemon for managing internet connections
 within devices running the Linux operating system. The Connection Manager is
@@ -23,55 +40,55 @@ use cases.
 .SH OPTIONS
 The following options are supported:
 .TP
-.I "\-\-version"
+.BR \-v ", " \-\-version
 Print the ConnMan software version and exit.
 .TP
-.I "\-\-help"
+.BR \-h ", " \-\-help
 Print ConnMan's available options and exit.
 .TP
-.I "\-\-config=<filename>"
+.BI \-c\  file\fR,\ \fB\-\-config= \fIfile
 Specify configuration file to set up various settings for ConnMan.  If not
-specified, the default value of '<SYSCONFDIR>/connman/main.conf'
-is used; where <SYSCONFDIR> is dependent on your distribution (usually
-it's /etc).  See \fBconnman.conf\fP(5) for more information on configuration
-file. The use of config file is optional and sane default values
+specified, the default value of \fI<SYSCONFDIR>/connman/main.conf\fP
+is used; where \fI<SYSCONFDIR>\fP is dependent on your distribution (usually
+it's \fI/etc\fP).  See \fBconnman.conf\fP(5) for more information on
+configuration file. The use of config file is optional and sane default values
 are used if config file is missing.
 .TP
-.I "\-\-debug=<file1>:<file2>:..."
+.BR \-d\  [ \fIfile1:file2:... ],\  \-\-debug [= \fIfile1:file2:... ]
 Sets how much information ConnMan sends to the log destination (usually
 syslog's "daemon" facility).  If the file options are omitted, then debugging
 information from all the source files are printed. If file options are
 present, then only debug prints from that source file are printed.
-Example: --debug=src/service.c:plugins/wifi.c
+Example: \fB--debug=src/service.c:plugins/wifi.c
 .TP
-.I "\-\-device=<interface1>,<interface2>,..."
+.BI \-i\  if1,if2,... \fR,\ \fB\-\-device= interface1,interface2,...
 Only manage these network interfaces. By default all network interfaces
 are managed.
 .TP
-.I "\-\-nodevice=<interface1>,<interface2>,..."
+.BI \-I\  if1,if2,... \fR,\ \fB\-\-nodevice= interface1,interface2,...
 Never manage these network interfaces.
 .TP
-.I "\-\-plugin=<plugin1>,<plugin2>,..."
+.BI \-p\  plugin1,plugin2,... \fR,\ \fB\-\-plugin= plugin1,plugin2,...
 Load these plugins only. The option can be a pattern containing
 "*" and "?" characters.
 .TP
-.I "\-\-noplugin=<plugin1>,<plugin2>,..."
+.BI \-P\  plugin1,plugin2,... \fR,\ \fB\-\-noplugin= plugin1,plugin2,...
 Never load these plugins. The option can be a pattern containing
 "*" and "?" characters.
 .TP
-.I "\-\-wifi=<driver1>,<driver2>,..."
+.BI \-W\  driver1,driver2,... \fR,\ \fB\-\-wifi= driver1,driver2,...
 Wifi driver that WiFi/Supplicant should use. If omitted, then the value
 of "nl80211,wext" is used by default.
 .TP
-.I "\-\-nodaemon"
+.BR \-n ", " \-\-nodaemon
 Do not daemonize. This is useful for debugging, and directs log output to
 the controlling terminal in addition to syslog.
 .TP
-.I "\-\-nodnsproxy"
+.BR \-r ", " \-\-nodnsproxy
 Do not act as a DNS proxy. By default ConnMan will direct all DNS traffic
 to itself by setting nameserver to 127.0.0.1 in \fBresolv.conf\fP(5) file.
 If this is not desired and you want that all programs call directly some
-DNS server, then you can use the --nodnsproxy option.
+DNS server, then you can use the \fB--nodnsproxy\fP option.
 If this option is used, then ConnMan is not able to cache the DNS queries
 because the DNS traffic is not going through ConnMan and that can cause
 some extra network traffic.
