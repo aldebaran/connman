@@ -448,7 +448,8 @@ EXTRA_DIST += vpn/connman-task.te
 do_subst = $(AM_V_GEN)$(SED) \
 		-e 's,[@]prefix[@],$(prefix),g' \
 		-e 's,[@]sbindir[@],$(sbindir),g' \
-		-e 's,[@]sysconfdir[@],$(sysconfdir),g'
+		-e 's,[@]sysconfdir[@],$(sysconfdir),g' \
+		-e 's,[@]localstatedir[@],$(localstatedir),g'
 
 %.service: %.service.in Makefile
 	$(AM_V_at)$(MKDIR_P) $(dir $@)
