@@ -13,6 +13,7 @@ BusName=net.connman
 Restart=on-failure
 ExecStart=@sbindir@/connmand -n
 StandardOutput=null
+ProtectHome=true
 
 [Install]
 WantedBy=multi-user.target
