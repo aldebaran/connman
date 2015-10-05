@@ -4980,6 +4980,9 @@ int g_supplicant_interface_p2p_connect(GSupplicantInterface *interface,
 		return -ENOTSUP;
 
 	data = dbus_malloc0(sizeof(*data));
+	if (!data)
+		return -ENOMEM;
+
 	data->interface = interface;
 	data->path = g_strdup(interface->path);
 	data->peer = peer_params;
@@ -5124,6 +5127,9 @@ int g_supplicant_interface_p2p_add_service(GSupplicantInterface *interface,
 		return -ENOTSUP;
 
 	data = dbus_malloc0(sizeof(*data));
+	if (!data)
+		return -ENOMEM;
+
 	data->registration = true;
 	data->interface = interface;
 	data->service = p2p_service_params;
@@ -5154,6 +5160,9 @@ int g_supplicant_interface_p2p_del_service(GSupplicantInterface *interface,
 		return -ENOTSUP;
 
 	data = dbus_malloc0(sizeof(*data));
+	if (!data)
+		return -ENOMEM;
+
 	data->interface = interface;
 	data->service = p2p_service_params;
 
@@ -5239,6 +5248,9 @@ int g_supplicant_set_widi_ies(GSupplicantP2PServiceParams *p2p_service_params,
 		return -EFAULT;
 
 	data = dbus_malloc0(sizeof(*data));
+	if (!data)
+		return -ENOMEM;
+
 	data->service = p2p_service_params;
 	data->callback = callback;
 	data->user_data = user_data;
