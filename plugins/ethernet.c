@@ -32,6 +32,7 @@
 
 #include <linux/if_vlan.h>
 #include <linux/sockios.h>
+#include <linux/ethtool.h>
 
 #ifndef IFF_LOWER_UP
 #define IFF_LOWER_UP	0x10000
@@ -83,6 +84,48 @@ static int get_vlan_vid(const char *ifname)
 	return vid;
 }
 
+static int get_dsa_port(const char *ifname)
+{
+	int sk;
+	int dsaport = -1;
+	struct ifreq ifr;
+	struct ethtool_cmd cmd;
+	struct ethtool_drvinfo drvinfocmd;
+	struct vlan_ioctl_args vifr;
+
+	sk = socket(AF_INET, SOCK_STREAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+
+	/* check if it is a vlan and get physical interface name*/
+	vifr.cmd = GET_VLAN_REALDEV_NAME_CMD;
+	strncpy(vifr.device1, ifname, sizeof(vifr.device1));
+
+	if(ioctl(sk, SIOCSIFVLAN, &vifr) >= 0)
+		strncpy(ifr.ifr_name, vifr.u.device2, sizeof(ifr.ifr_name));
+
+	/* get driver info */
+	drvinfocmd.cmd =  ETHTOOL_GDRVINFO;
+	ifr.ifr_data = (caddr_t)&drvinfocmd;
+
+	if (!ioctl(sk, SIOCETHTOOL, &ifr)) {
+		if(!strcmp(drvinfocmd.driver, "dsa")) {
+			/* get dsa port*/
+			cmd.cmd =  ETHTOOL_GSET;
+			ifr.ifr_data = (caddr_t)&cmd;
+
+			if (!ioctl(sk, SIOCETHTOOL, &ifr))
+				dsaport = cmd.phy_address;
+		}
+	}
+	close(sk);
+
+	return dsaport;
+}
+
 static int eth_network_probe(struct connman_network *network)
 {
 	DBG("network %p", network);
@@ -126,7 +169,7 @@ static void add_network(struct connman_device *device,
 			struct ethernet_data *ethernet)
 {
 	struct connman_network *network;
-	int index, vid;
+	int index, vid, dsaport;
 	char *ifname;
 
 	network = connman_network_create("carrier",
@@ -149,14 +192,21 @@ static void add_network(struct connman_device *device,
 	}
 
 	if (!eth_tethering) {
-		char group[10] = "cable";
+		char group[16] = "cable";
+
+		dsaport = get_dsa_port(ifname);
+
 		/*
 		 * Prevent service from starting the reconnect
 		 * procedure as we do not want the DHCP client
 		 * to run when tethering.
 		 */
-		if (vid >= 0)
+		if((vid >= 0) && (dsaport >= 0))
+			snprintf(group, sizeof(group), "p%02x_%03x_cable", dsaport, vid);
+		else if (vid >= 0)
 			snprintf(group, sizeof(group), "%03x_cable", vid);
+		else if (dsaport >= 0)
+			snprintf(group, sizeof(group), "p%02x_cable", dsaport);
 
 		connman_network_set_group(network, group);
 	}
