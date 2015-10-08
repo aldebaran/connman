@@ -169,7 +169,7 @@ static void add_network(struct connman_device *device,
 			struct ethernet_data *ethernet)
 {
 	struct connman_network *network;
-	int index, vid, dsaport;
+	int index;
 	char *ifname;
 
 	network = connman_network_create("carrier",
@@ -182,7 +182,6 @@ static void add_network(struct connman_device *device,
 	ifname = connman_inet_ifname(index);
 	if (!ifname)
 		return;
-	vid = get_vlan_vid(ifname);
 
 	connman_network_set_name(network, "Wired");
 
@@ -193,7 +192,9 @@ static void add_network(struct connman_device *device,
 
 	if (!eth_tethering) {
 		char group[16] = "cable";
+		int vid, dsaport;
 
+		vid = get_vlan_vid(ifname);
 		dsaport = get_dsa_port(ifname);
 
 		/*
