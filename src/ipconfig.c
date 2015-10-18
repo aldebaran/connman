@@ -399,8 +399,10 @@ static void free_ipdevice(gpointer data)
 
 	g_free(ipdevice->address);
 
-	set_ipv6_state(ifname, ipdevice->ipv6_enabled);
-	set_ipv6_privacy(ifname, ipdevice->ipv6_privacy);
+	if (ifname) {
+		set_ipv6_state(ifname, ipdevice->ipv6_enabled);
+		set_ipv6_privacy(ifname, ipdevice->ipv6_privacy);
+	}
 
 	g_free(ifname);
 	g_free(ipdevice);
