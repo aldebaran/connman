@@ -72,7 +72,7 @@ struct {
 	{ "VPNC.LocalPort", "Local Port", "0", OPT_STRING, true, },
 	{ "VPNC.CiscoPort", "Cisco UDP Encapsulation Port", "0", OPT_STRING,
 									true },
-	{ "VPNC.AppVersion", "Application Version", NULL, OPT_STRING, true },
+	{ "VPNC.AppVersion", "Application version", NULL, OPT_STRING, true },
 	{ "VPNC.NATTMode", "NAT Traversal Mode", "cisco-udp", OPT_STRING,
 									true },
 	{ "VPNC.DPDTimeout", "DPD idle timeout (our side)", NULL, OPT_STRING,

@@ -108,13 +108,13 @@ struct {
 	{ "PPPD.RefuseMSCHAP2", "refuse-mschapv2", OPT_PPPD, NULL, OPT_BOOL },
 	{ "PPPD.NoBSDComp", "nobsdcomp", OPT_PPPD, NULL, OPT_BOOL },
 	{ "PPPD.NoPcomp", "nopcomp", OPT_PPPD, NULL, OPT_BOOL },
-	{ "PPPD.UseAccomp", "accomp", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.UseAccomp", "noaccomp", OPT_PPPD, NULL, OPT_BOOL },
 	{ "PPPD.NoDeflate", "nodeflate", OPT_PPPD, NULL, OPT_BOOL },
 	{ "PPPD.ReqMPPE", "require-mppe", OPT_PPPD, NULL, OPT_BOOL },
 	{ "PPPD.ReqMPPE40", "require-mppe-40", OPT_PPPD, NULL, OPT_BOOL },
 	{ "PPPD.ReqMPPE128", "require-mppe-128", OPT_PPPD, NULL, OPT_BOOL },
 	{ "PPPD.ReqMPPEStateful", "mppe-stateful", OPT_PPPD, NULL, OPT_BOOL },
-	{ "PPPD.NoVJ", "no-vj-comp", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.NoVJ", "novj", OPT_PPPD, NULL, OPT_BOOL },
 };
 
 static DBusConnection *connection;

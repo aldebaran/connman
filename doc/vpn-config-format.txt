@@ -88,7 +88,8 @@ OpenVPN VPN supports following options (see openvpn(8) for details):
                                          --auth-user-pass value (O)
  OpenVPN.TLSRemote      --tls-remote     Accept connections only from a host
                                          with X509 name or common name equal
-                                         to name parameter (O)
+                                         to name parameter (O). Deprecated in
+                                         OpenVPN 2.3+.
  OpenVPN.TLSAuth        sub-option of --tls-remote (O)
  OpenVPN.TLSAuthDir     sub-option of --tls-remote (O)
  OpenVPN.Cipher         --cipher         Encrypt packets with cipher algorithm
@@ -113,14 +114,17 @@ VPNC VPN supports following options (see vpnc(8) for details):
  VPNC.Xauth.Password Xauth password        your password (cleartext) (O)
  VPNC.IKE.Authmode   IKE Authmode          IKE Authentication mode (O)
  VPNC.IKE.DHGroup    IKE DH Group          name of the IKE DH Group (O)
- VPNC.PFS Perfect    Forward Secrecy       Diffie-Hellman group to use for PFS (O)
+ VPNC.PFS            Perfect Forward Secrecy    Diffie-Hellman group to use for
+						PFS (O)
  VPNC.Domain         Domain                Domain name for authentication (O)
  VPNC.Vendor         Vendor                vendor of your IPSec gateway (O)
  VPNC.LocalPort      Local Port            local ISAKMP port number to use
- VPNC.CiscoPort      Cisco UDP Encapsulation Port  Local UDP port number to use (O)
- VPNC.AppVersion     Application Version   Application Version to report (O)
+ VPNC.CiscoPort      Cisco UDP Encapsulation Port    Local UDP port number to
+						     use (O)
+ VPNC.AppVersion     Application version   Application Version to report (O)
  VPNC.NATTMode       NAT Traversal Mode    Which NAT-Traversal Method to use (O)
- VPNC.DPDTimeout     DPD idle timeout (our side)  Send DPD packet after timeout (O)
+ VPNC.DPDTimeout     DPD idle timeout (our side)    Send DPD packet after
+						    timeout (O)
  VPNC.SingleDES      Enable Single DES     enables single DES encryption (O)
  VPNC.NoEncryption   Enable no encryption  enables using no encryption for data traffic (O)
 
@@ -162,13 +166,14 @@ L2TP VPN supports following options (see xl2tpd.conf(5) and pppd(8) for details)
  PPPD.RefuseMSCHAP2  refuse-mschapv2        Deny mschapv2 auth (O)
  PPPD.NoBSDComp      nobsdcomp              Disables BSD compression (O)
  PPPD.NoPcomp        nopcomp                Disable protocol compression (O)
- PPPD.UseAccomp      accomp                 Disable address/control compression (O)
+ PPPD.UseAccomp      noaccomp               Disable address/control
+					    compression (O)
  PPPD.NoDeflate      nodeflate              Disable deflate compression (O)
  PPPD.ReqMPPE        require-mppe           Require the use of MPPE (O)
  PPPD.ReqMPPE40      require-mppe-40        Require the use of MPPE 40 bit (O)
  PPPD.ReqMPPE128     require-mppe-128       Require the use of MPPE 128 bit (O)
  PPPD.ReqMPPEStateful mppe-stateful         Allow MPPE to use stateful mode (O)
- PPPD.NoVJ           no-vj-comp             No Van Jacobson compression (O)
+ PPPD.NoVJ           novj                   No Van Jacobson compression (O)
 
 
 PPTP VPN supports following options (see pptp(8) and pppd(8) for details)
@@ -193,7 +198,7 @@ PPTP VPN supports following options (see pptp(8) and pppd(8) for details)
  PPPD.RequirMPPE40   require-mppe-40      Require the use of MPPE 40 bit (O)
  PPPD.RequirMPPE128  require-mppe-128     Require the use of MPPE 128 bit (O)
  PPPD.RequirMPPEStateful mppe-stateful    Allow MPPE to use stateful mode (O)
- PPPD.NoVJ           no-vj-comp           No Van Jacobson compression (O)
+ PPPD.NoVJ           novj                 No Van Jacobson compression (O)
 
 
 Example
