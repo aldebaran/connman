@@ -7118,9 +7118,10 @@ void __connman_service_cleanup(void)
 	if (services_notify->id != 0) {
 		g_source_remove(services_notify->id);
 		service_send_changed(NULL);
-		g_hash_table_destroy(services_notify->remove);
-		g_hash_table_destroy(services_notify->add);
 	}
+
+	g_hash_table_destroy(services_notify->remove);
+	g_hash_table_destroy(services_notify->add);
 	g_free(services_notify);
 
 	dbus_connection_unref(connection);
