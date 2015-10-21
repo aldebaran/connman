@@ -31,10 +31,6 @@ extern "C" {
 #include <dbus/dbus.h>
 #include <glib.h>
 
-typedef enum GDBusMethodFlags GDBusMethodFlags;
-typedef enum GDBusSignalFlags GDBusSignalFlags;
-typedef enum GDBusPropertyFlags GDBusPropertyFlags;
-typedef enum GDBusSecurityFlags GDBusSecurityFlags;
 
 typedef struct GDBusArgInfo GDBusArgInfo;
 typedef struct GDBusMethodTable GDBusMethodTable;
@@ -114,6 +110,11 @@ enum GDBusSecurityFlags {
 	G_DBUS_SECURITY_FLAG_BUILTIN           = (1 << 1),
 	G_DBUS_SECURITY_FLAG_ALLOW_INTERACTION = (1 << 2),
 };
+
+typedef enum GDBusMethodFlags GDBusMethodFlags;
+typedef enum GDBusSignalFlags GDBusSignalFlags;
+typedef enum GDBusPropertyFlags GDBusPropertyFlags;
+typedef enum GDBusSecurityFlags GDBusSecurityFlags;
 
 struct GDBusArgInfo {
 	const char *name;
