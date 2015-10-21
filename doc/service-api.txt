@@ -30,13 +30,12 @@ Methods		dict GetProperties()  [deprecated]
 
 		void ClearProperty(string name)
 
-			Clears the value of the specified property.
+			Clears the value of the specified property. Only
+			the readonly Error property can be cleared using
+			this method call. When cleared the service is reset
+			to the idle state.
 
-			Properties cannot be cleared for hidden WiFi service
-			entries or provisioned services.
-
-			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.InvalidProperty
+			Possible Errors: [service].Error.InvalidProperty
 
 		void Connect()
 
