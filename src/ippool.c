@@ -181,10 +181,10 @@ static uint32_t get_free_block(unsigned int size)
 	 * To only thing we have to make sure is that we terminated if
 	 * there is no block left.
 	 */
-	if (last_block == 0)
-		block = block_16_bits;
+	if (last_block)
+		block = last_block;
 	else
-		block = next_block(last_block);
+		block = block_16_bits;
 
 	do {
 		collision = false;
