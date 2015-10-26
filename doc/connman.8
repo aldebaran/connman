@@ -1,8 +1,8 @@
 .\" connman(8) manual page
 .\"
-.\" Copyright (C) 2012 Intel Corporation
+.\" Copyright (C) 2012,2015 Intel Corporation
 .\"
-.TH CONNMAN "8" "21 August 2012"
+.TH CONNMAN "8" "2015-10-15"
 .SH NAME
 ConnMan \- network management daemon
 .SH SYNOPSIS
@@ -12,18 +12,18 @@ ConnMan \- network management daemon
 .B connmand
 .RB [\| \-c
 .IR file \|]
-.RB [\| \-d\  \fR[\c
-.IR file1:file2:...\fR] \|]
+.RB [\| \-d\  [\c
+.IR file [,...]\|]\|]
 .RB [\| \-i
-.IR interface1,interface2,... \|]
+.IR interface [,...]\|]
 .RB [\| \-I
-.IR interface1,interface2,.. \|]
+.IR interface [,...]\|]
 .RB [\| \-W
-.IR driver1,driver2,... \|]
+.IR driver [,...]\|]
 .RB [\| \-p
-.IR plugin1,plugin2,... \|]
+.IR plugin [,...]\|]
 .RB [\| \-P
-.IR plugin1,plugin2,... \|]
+.IR plugin [,...]\|]
 .RB [\| \-n \|]
 .RB [\| \-r \|]
 .SH DESCRIPTION
@@ -54,31 +54,32 @@ it's \fI/etc\fP).  See \fBconnman.conf\fP(5) for more information on
 configuration file. The use of config file is optional and sane default values
 are used if config file is missing.
 .TP
-.BR \-d\  [ \fIfile1:file2:... ],\  \-\-debug [= \fIfile1:file2:... ]
+.BR \-d\  [ \fIfile [,...]],\  \-\-debug [= \fIfile [,...]]
 Sets how much information ConnMan sends to the log destination (usually
 syslog's "daemon" facility).  If the file options are omitted, then debugging
 information from all the source files are printed. If file options are
-present, then only debug prints from that source file are printed.
-Example: \fB--debug=src/service.c:plugins/wifi.c
+present, then only debug prints from that source file are printed. Example:
+.PP
+           connmand --debug=src/service.c,plugins/wifi.c
 .TP
-.BI \-i\  if1,if2,... \fR,\ \fB\-\-device= interface1,interface2,...
+.BR \-i\ \fIinterface \fR[,...],\  \-\-device= \fIinterface \fR[,...]
 Only manage these network interfaces. By default all network interfaces
 are managed.
 .TP
-.BI \-I\  if1,if2,... \fR,\ \fB\-\-nodevice= interface1,interface2,...
+.BR \-I\ \fIinterface \fR[,...],\  \-\-nodevice= \fIinterface \fR[,...]
 Never manage these network interfaces.
 .TP
-.BI \-p\  plugin1,plugin2,... \fR,\ \fB\-\-plugin= plugin1,plugin2,...
+.BI \-p\  plugin \fR[,...],\ \fB\-\-plugin= plugin \fR[,...]
 Load these plugins only. The option can be a pattern containing
 "*" and "?" characters.
 .TP
-.BI \-P\  plugin1,plugin2,... \fR,\ \fB\-\-noplugin= plugin1,plugin2,...
+.BI \-P\  plugin \fR[,...],\ \fB\-\-noplugin= plugin \fR[,...]
 Never load these plugins. The option can be a pattern containing
 "*" and "?" characters.
 .TP
-.BI \-W\  driver1,driver2,... \fR,\ \fB\-\-wifi= driver1,driver2,...
-Wifi driver that WiFi/Supplicant should use. If omitted, then the value
-of "nl80211,wext" is used by default.
+.BI \-W\  driver \fR[,...],\ \fB\-\-wifi= driver \fR[,...]
+Wifi driver that WiFi/Supplicant should use. If this flag is omitted,
+then the value "nl80211,wext" is used by default.
 .TP
 .BR \-n ", " \-\-nodaemon
 Do not daemonize. This is useful for debugging, and directs log output to
@@ -93,4 +94,4 @@ If this option is used, then ConnMan is not able to cache the DNS queries
 because the DNS traffic is not going through ConnMan and that can cause
 some extra network traffic.
 .SH SEE ALSO
-.BR connman.conf (5).
+.BR connmanctl (1), \ connman.conf (5)
