@@ -1,0 +1,48 @@
+.\" connman-vpn.conf(5) manual page
+.\"
+.\" Copyright (C) 2015 Intel Corporation
+.\"
+.TH "connman-vpn.conf" "5" "2015-10-15" ""
+.SH NAME
+connman-vpn.conf \- ConnMan-VPN configuration file
+.SH SYNOPSIS
+.B /etc/connman/connman-vpn.conf
+.br
+or
+.br
+\fI<SYSCONFDIR>\fB/connman/connman-vpn.conf
+.br
+.RI where\  <SYSCONFDIR> " depends on your distribution or build."
+.SH DESCRIPTION
+.P
+.B connman-vpn.conf
+is a configuration file for ConnMan-VPN. The configuration file is
+optional but it can be used to set up various aspects of ConnMan-VPN's
+behavior. The location of the file may be changed through use of
+the \fB\-\-config= \fRargument for \fBconnman-vpn\fP(8).
+.SH "FILE FORMAT"
+.P
+The configuration file format is key file format.
+It consists of sections (groups) of key-value pairs.
+Lines beginning with a '#' and blank lines are considered comments.
+Sections are started by a header line containing the section enclosed
+in '[' and ']', and ended implicitly by the start of the next section
+or the end of the file. Each key-value pair must be contained in a section.
+.P
+Description of sections and available keys follows:
+.SS [General]
+This section is the only mandatory section of the configuration file.
+.TP
+.BI InputRequestTimeout= secs
+Set input request timeout. Default is 300 seconds. The request for inputs
+like passphrase will timeout after certain amount of time. Use this setting
+to increase the value in case of different user interface designs.
+.SH "EXAMPLE"
+The following example configuration sets InputRequestTimeout to 10 minutes.
+.PP
+.nf
+[General]
+InputRequestTimeout = 600
+.fi
+.SH "SEE ALSO"
+.BR connman (8), \ connman-vpn (8)
