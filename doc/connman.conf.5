@@ -1,25 +1,25 @@
 .\" connman.conf(5) manual page
 .\"
-.\" Copyright (C) 2012 Intel Corporation
+.\" Copyright (C) 2012,2015 Intel Corporation
 .\"
-.TH "connman.conf" "5" "21 August 2012" ""
+.TH "connman.conf" "5" "2015-10-15" ""
 .SH NAME
 main.conf \- ConnMan configuration file
 .SH SYNOPSIS
-/etc/connman/main.conf
+.B /etc/connman/main.conf
 .br
 or
 .br
-\fI<SYSCONFDIR>\fP/connman/main.conf
+\fI<SYSCONFDIR>\fB/connman/main.conf
 .br
-where <SYSCONFDIR> depends on your distribution or build.
+.RI where\  <SYSCONFDIR> " depends on your distribution or build."
 .SH DESCRIPTION
 .P
-.I main.conf
+.B main.conf
 is a configuration file for ConnMan. The configuration file is
 optional but it can be used to set up various aspects of ConnMan's
 behavior. The location of the file may be changed through use of
-the "\-\-config=" argument for \fBconnman\fP (8).
+the \fB\-\-config= \fRargument for \fBconnman\fP(8).
 .SH "FILE FORMAT"
 .P
 The configuration file format is key file format.
@@ -33,47 +33,47 @@ Description of sections and available keys follows:
 .SS [General]
 This section is the only mandatory section of the configuration file.
 .TP
-.B InputRequestTimeout=\fPsecs\fP
+.BI InputRequestTimeout= secs
 Set input request timeout. Default is 120 seconds
 The request for inputs like passphrase will timeout
 after certain amount of time. Use this setting to
 increase the value in case of different user
 interface designs.
 .TP
-.B BrowserLaunchTimeout=\fPsecs\fP
+.BI BrowserLaunchTimeout= secs
 Set browser launch timeout. Default is 300 seconds
 The request for launching a browser for portal pages
 will timeout after certain amount of time. Use this
 setting to increase the value in case of different
 user interface designs.
 .TP
-.B BackgroundScanning=\fPtrue|false\fP
+.BI BackgroundScanning=true\ \fR|\fB\ false
 Enable background scanning. Default is true.
 Background scanning will start every 5 minutes unless
 the scan list is empty. In that case, a simple backoff
 mechanism starting from 10s up to 5 minutes will run.
 .TP
-.B FallbackTimeservers=\fPserver1,server2,...\fP
+.BI FallbackTimeservers= server\fR[,...]
 List of Fallback timeservers separated by ",".
 These timeservers are used for NTP sync when there are
 no timeserver set by the user or by the service.
 These can contain mixed combination of fully qualified
 domain names, IPv4 and IPv6 addresses.
 .TP
-.B FallbackNameservers=\fPserver1,server2,...\fP
+.BI FallbackNameservers= server\fR[,...]
 List of fallback nameservers separated by "," appended
 to the list of nameservers given by the service. The
 nameserver entries must be in numeric format, host
 names are ignored.
 .TP
-.B DefaultAutoConnectTechnologies=\fPtechnology1,technology2,...\fP
+.BI DefaultAutoConnectTechnologies= technology\fR[,...]
 List of technologies that are marked autoconnectable
 by default, separated by commas ",". The default value
 for this entry when empty is ethernet,wifi,cellular.
 Services that are automatically connected must have been
 set up and saved to storage beforehand.
 .TP
-.B PreferredTechnologies=\fPtechnology1,technology2,...\fP
+.BI PreferredTechnologies= technology\fR[,...]
 List of preferred technologies from the most preferred
 one to the least preferred one separated by commas ",".
 Services of the listed technology type will be tried one
@@ -86,19 +86,19 @@ of a preferred technology type in state 'online' will get
 the default route when compared to either a non-preferred
 type or a preferred type further down in the list.
 .TP
-.B NetworkInterfaceBlacklist=\fPinterface1,interface2,...\fP
+.BI NetworkInterfaceBlacklist= interface\fR[,...]
 List of blacklisted network interfaces separated by ",".
 Found interfaces will be compared to the list and will
 not be handled by connman, if their first characters
 match any of the list entries. Default value is
 vmnet,vboxnet,virbr,ifb.
 .TP
-.B AllowHostnameUpdates=\fPtrue|false\fP
+.BI AllowHostnameUpdates=true\ \fR|\fB\ false
 Allow connman to change the system hostname. This can
 happen for example if we receive DHCP hostname option.
 Default value is true.
 .TP
-.B SingleConnectedTechnology=\fPtrue|false\fP
+.BI SingleConnectedTechnology=true\ \fR|\fB\ false
 Keep only a single connected technology at any time. When a new
 service is connected by the user or a better one is found according
 to PreferredTechnologies, the new service is kept connected and all
@@ -110,7 +110,7 @@ user will be used until going out of network coverage. With this
 setting enabled applications will notice more network breaks than
 normal. Default value is false.
 .TP
-.B TetheringTechnologies=\fPtechnology1,technology2,...\fP
+.BI TetheringTechnologies= technology\fR[,...]
 List of technologies that are allowed to enable tethering separated by ",".
 The default value is wifi,bluetooth,gadget. Only those technologies listed
 here are used for tethering. If one wants to tether ethernet,
@@ -122,14 +122,23 @@ normal operation of these networks. Due to this ethernet is not
 tethered by default. Do not activate ethernet tethering unless you
 really know what you are doing.
 .TP
-.B PersistentTetheringMode=\fPtrue|false\fP
+.BI PersistentTetheringMode=true\ \fR|\fB\ false
 Restore earlier tethering status when returning from offline mode,
 re-enabling a technology, and after restarts and reboots.
 Default value is false.
 .TP
-.B Enable6to4=\fPtrue|false\fP
+.BI Enable6to4=true\ \fR|\fB\ false
 Automatically enable Anycast 6to4 if possible. This is not recommended, as the
 use of 6to4 will generally lead to a severe degradation of connection quality.
 See RFC6343.  Default value is false (as recommended by RFC6343 section 4.1).
+.SH "EXAMPLE"
+The following example configuration disables hostname updates and enables
+ethernet tethering.
+.PP
+.nf
+[General]
+AllowHostnameUpdates = false
+TetheringTechnologies = ethernet,wifi,bluetooth,gadget
+.fi
 .SH "SEE ALSO"
-.BR Connman (8)
+.BR connman (8)
