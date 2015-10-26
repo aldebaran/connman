@@ -1,0 +1,424 @@
+.\" connman-vpn-provider.config(5) manual page
+.\"
+.\" Copyright (C) 2015 Intel Corporation
+.\"
+.TH "connection_name.config" "5" "2015-10-15" ""
+.SH NAME
+connection_name.config \- ConnMan vpn connection provisioning file
+.SH SYNOPSIS
+.B /var/lib/connman-vpn/\fIconnection-name\fB.config
+.SH DESCRIPTION
+.P
+\fIConnMan\fP's vpn connections are configured with so called
+"\fBprovisioning files\fP" which reside under \fI/var/lib/connman-vpn/\fP.
+The files can be named anything, as long as they contain only printable
+ascii characers, for example letters, numbers and underscores. The file
+must end with \fB.config\fP. Each VPN connection requires a provisioning
+file, but multiple connections can be specified in the same file.
+.SH "FILE FORMAT"
+.P
+The configuration file format is key file format.
+It consists of sections (groups) of key-value pairs.
+Lines beginning with a '#' and blank lines are considered comments.
+Sections are started by a header line containing the section enclosed
+in '[' and ']', and ended implicitly by the start of the next section
+or the end of the file. Each key-value pair must be contained in a section.
+.P
+Description of sections and available keys follows:
+.SS [global]
+This section is optional, and can be used to describe the actual file. The
+two allowed fields for this section are:
+.TP
+.BI Name= name
+Name of the network.
+.TP
+.BI Description= description
+Description of the network.
+.SS [provider_*]
+Each provisioned connection must start with a [provider_*] tag,
+with * replaced by an unique name within the file.
+The following fields are mandatory:
+.TP
+.B Type=OpenConnect \fR|\fB OpenVPN \fR|\fB VPNC \fR|\fB L2TP \fR|\fB PPTP
+Specifies the VPN type.
+.TP
+.BI Host= IP
+VPN server IP address.
+.TP
+.BI Domain= domain
+Domain name for the VPN service.
+.TP
+The following field is optional:
+.TP
+.BI Networks= network / netmask / gateway [,...]
+Networks behind the VPN. If all traffic should go through the VPN, this
+field can be left out. The gateway can be left out. For IPv6 addresses,
+only the prefix length is accepted as the netmask.
+.SS OpenConnect
+The following keys can be used for \fBopenconnect\fP(8) networks:
+.TP
+.BI OpenConnect.ServerCert= cert
+SHA1 fingerprint of the VPN server's certificate.
+.TP
+.BI OpenConnect.CACert= cert
+File containing additional CA certificates in addition to the system
+trusted certificate authorities.
+.TP
+.BI OpenConnect.ClientCert= cert
+Client certificate, if needed by web authentication.
+.TP
+.BI OpenConnect.MTU= mtu
+Request \fImtu\fP from the server as the MTU of the tunnel.
+.TP
+.BI OpenConnect.Cookie= cookie
+The resulting cookie of the authentication process. As the cookie lifetime
+can be very limited, it does not usually make sense to add it into the
+configuration file.
+.TP
+.BI OpenConnect.VPNHost= host
+The final VPN server to use after completing the web authentication. Only
+usable for extremely simple VPN configurations and should normally be set
+only via the VPN Agent API.
+.PP
+If \fBOpenConnect.Cookie\fP, \fBOpenConnect.VPNHost\fP or
+\fBOpenConnect.ServerCert\fP are missing, the VPN Agent will be contacted
+to supply the information.
+.SS OpenVPN
+The following keys are mandatory for \fBopenvpn\fP(8) networks:
+.TP
+.BI OpenVPN.CACert= cert
+Certificate authority file.
+.TP
+.BI OpenVPN.Cert= cert
+Local peer's signed certificate.
+.TP
+.BI OpenVPN.Cert= cert
+Local peer's signed certificate.
+.TP
+.BI OpenVPN.Key= key
+Local peer's private key.
+.TP
+The following keys are optional for \fBopenvpn\fP(8) networks:
+.TP
+.BI OpenVPN.MTU= mtu
+MTU of the tunnel.
+.TP
+.B OpenVPN.NSCertType=client \fR|\fB server
+Peer certificate type, either \fBclient\fP or \fBserver\fP.
+.TP
+.BI OpenVPN.Protocol= protocol
+Use \fIprotocol\fP.
+.TP
+.BI OpenVPN.Port= port
+TCP/UDP port number.
+.TP
+.B OpenVPN.AuthUserPass=true \fR|\fB false
+Authenticate on the server using username/password.
+.TP
+.BI OpenVPN.AskPass= file
+Get certificate password from \fIfile\fP.
+.TP
+.B OpenVPN.AuthNoCache=true \fR|\fB false
+Don't cache AskPass or AuthUserPass value.
+.TP
+.BI OpenVPN.TLSRemote= name
+Accept connections only from a host with X509 name or common
+name equal to \fIname\fP.
+.TP
+.BI OpenVPN.TLSAuth= file
+Use \fIfile\fP for HMAC authentication.
+.TP
+.BI OpenVPN.TLSAuthDir= direction
+Use \fIdirection\fP for HMAC authentication direction.
+.TP
+.BI OpenVPN.Cipher= cipher
+Use \fIcipher\fP as the cipher.
+.TP
+.B OpenVPN.Auth=true \fR|\fB false
+Use HMAC authentication.
+.TP
+.B OpenVPN.CompLZO=yes \fR|\fB no \fR|\fB adaptive
+Use fast LZO compression.
+.TP
+.B OpenVPN.RemoteCertTls=client \fR|\fB server
+Require that remote certificate is signed based on RFC3280 TLS rules.
+.TP
+.BI OpenVPN.ConfigFile= file
+OpenVPN config file for extra options not supported by the OpenVPN plugin.
+.SS VPNC
+The following key is mandatory for \fBvpnc\fP(8) networks:
+.TP
+.BI VPNC.IPSec.ID= id
+Group username.
+.TP
+The following keys are optional for \fBvpnc\fP(8) networks:
+.TP
+.BI VPNC.IPSec.Secret= secret
+Group password.
+.TP
+.BI VPNC.XAuth.Username= username
+Username.
+.TP
+.BI VPNC.XAuth.Password= password
+Password.
+.TP
+.BI VPNC.IKE.Authmode= mode
+IKE authentication mode.
+.TP
+.BI VPNC.IKE.DHGroup= group
+IKE DH group name.
+.TP
+.BI VPNC.PFS= group
+Diffie-Hellman group for perfect forward secrecy.
+.TP
+.BI VPNC.Domain= domain
+Domain name for authentication.
+.TP
+.BI VPNC.Vendor= vendor
+Vendor of the IPSec gateway.
+.TP
+.BI VPNC.LocalPort= port
+Local ISAKMP port number to use.
+.TP
+.BI VPNC.CiscoPort= port
+Cisco UDP Encapsulation Port.
+.TP
+.BI VPNC.AppVersion= version
+Application version to report.
+.TP
+.BI VPNC.NATTMode= mode
+NAT-Traversal Method to use.
+.TP
+.BI VPNC.DPDTimeout= timeout
+DPD idle timeout.
+.TP
+.B VPNC.SingleDES=true \fR|\fB false
+Enable single DES encryption.
+.TP
+.B VPNC.NoEncryption=true \fR|\fB false
+Enable usage of no encryption for data traffic.
+.SS L2TP
+The following keys are optional for l2tp (\fBxl2tp.conf\fP(5), \fBpppd\fP(8))
+networks:
+.TP
+.BI L2TP.User= user
+L2TP username.
+.TP
+.BI L2TP.Password= password
+L2TP password.
+.TP
+.BI L2TP.BPS= bps
+Max bandwidth to use.
+.TP
+.BI L2TP.TXBPS= bps
+Max transmit bandwidth to use.
+.TP
+.BI L2TP.RXBPS= bps
+Max receive bandwidth to use.
+.TP
+.B L2TP.LengthBit=yes \fR|\fB no
+Use length bit.
+.TP
+.B L2TP.Challenge=yes \fR|\fB no
+Use challenge authentication.
+.TP
+.BI L2TP.DefaultRoute= route
+Add \fIroute\fP to the routing tables.
+.TP
+.B L2TP.FlowBit=yes \fR|\fB no
+Use seq numbers.
+.TP
+.BI L2TP.TunnelRWS= size
+Window size.
+.TP
+.B L2TP.Exclusive=yes \fR|\fB no
+Use only one control channel.
+.TP
+.B L2TP.Redial=yes \fR|\fB no
+Redial if disconnected.
+.TP
+.BI L2TP.RedialTimeout= timeout
+Redial timeout.
+.TP
+.BI L2TP.MaxRedials= count
+Maximum amount of redial tries.
+.TP
+.B L2TP.RequirePAP=yes \fR|\fB no
+Require PAP.
+.TP
+.B L2TP.RequireCHAP=yes \fR|\fB no
+Require CHAP.
+.TP
+.B L2TP.ReqAuth=yes \fR|\fB no
+Require authentication.
+.TP
+.B L2TP.AccessControl=yes \fR|\fB no
+Use access control.
+.TP
+.BI L2TP.AuthFile= file
+Authentication file location.
+.TP
+.BI L2TP.ListenAddr= address
+Listen address.
+.TP
+.B L2TP.IPSecSaref=yes \fR|\fB no
+Listen address.
+.TP
+.BI L2TP.Port= port
+UDP port used.
+.TP
+.BI PPPD.EchoFailure= count
+Echo failure count.
+.TP
+.BI PPPD.EchoFailure= count
+Dead peer check count.
+.TP
+.BI PPPD.EchoInterval= interval
+Dead peer check interval.
+.TP
+.BI PPPD.Debug= level
+Debug level.
+.TP
+.B PPPD.RefuseEAP=true \fR|\fB false
+Refuse EAP authentication.
+.TP
+.B PPPD.RefusePAP=true \fR|\fB false
+Refuse PAP authentication.
+.TP
+.B PPPD.RefuseCHAP=true \fR|\fB false
+Refuse CHAP authentication.
+.TP
+.B PPPD.RefuseMSCHAP=true \fR|\fB false
+Refuse MSCHAP authentication.
+.TP
+.B PPPD.RefuseMSCHAP2=true \fR|\fB false
+Refuse MSCHAPv2 authentication.
+.TP
+.B PPPD.NoBSDComp=true \fR|\fB false
+Disable BSD compression.
+.TP
+.B PPPD.NoPcomp=true \fR|\fB false
+Disable protocol compression.
+.TP
+.B PPPD.UseAccomp=true \fR|\fB false
+Disable Access/Control compression.
+.TP
+.B PPPD.NoDeflate=true \fR|\fB false
+Disable deflate compression.
+.TP
+.B PPPD.ReqMPPE=true \fR|\fB false
+Require the use of MPPE.
+.TP
+.B PPPD.ReqMPPE40=true \fR|\fB false
+Require the use of MPPE 40 bit.
+.TP
+.B PPPD.ReqMPPE128=true \fR|\fB false
+Require the use of MPPE 128 bit.
+.TP
+.B PPPD.ReqMPPEStateful=true \fR|\fB false
+Allow MPPE to use stateful mode.
+.TP
+.B PPPD.NoVJ=true \fR|\fB false
+No Van Jacobson compression.
+.SS PPTP
+The following keys are optional for \fBpptp\fP(8) (see also \fBpppd\fP(8))
+networks:
+.TP
+.BI PPTP.User= username
+Username.
+.TP
+.BI PPTP.Password= password
+Password.
+.TP
+.BI PPPD.EchoFailure= count
+Echo failure count.
+.TP
+.BI PPPD.EchoFailure= count
+Dead peer check count.
+.TP
+.BI PPPD.EchoInterval= interval
+Dead peer check interval.
+.TP
+.BI PPPD.Debug= level
+Debug level.
+.TP
+.B PPPD.RefuseEAP=true \fR|\fB false
+Refuse EAP authentication.
+.TP
+.B PPPD.RefusePAP=true \fR|\fB false
+Refuse PAP authentication.
+.TP
+.B PPPD.RefuseCHAP=true \fR|\fB false
+Refuse CHAP authentication.
+.TP
+.B PPPD.RefuseMSCHAP=true \fR|\fB false
+Refuse MSCHAP authentication.
+.TP
+.B PPPD.RefuseMSCHAP2=true \fR|\fB false
+Refuse MSCHAPv2 authentication.
+.TP
+.B PPPD.NoBSDComp=true \fR|\fB false
+Disable BSD compression.
+.TP
+.B PPPD.NoPcomp=true \fR|\fB false
+Disable protocol compression.
+.TP
+.B PPPD.UseAccomp=true \fR|\fB false
+Disable Access/Control compression.
+.TP
+.B PPPD.NoDeflate=true \fR|\fB false
+Disable deflate compression.
+.TP
+.B PPPD.ReqMPPE=true \fR|\fB false
+Require the use of MPPE.
+.TP
+.B PPPD.ReqMPPE40=true \fR|\fB false
+Require the use of MPPE 40 bit.
+.TP
+.B PPPD.ReqMPPE128=true \fR|\fB false
+Require the use of MPPE 128 bit.
+.TP
+.B PPPD.ReqMPPEStateful=true \fR|\fB false
+Allow MPPE to use stateful mode.
+.TP
+.B PPPD.NoVJ=true \fR|\fB false
+No Van Jacobson compression.
+
+.SH "EXAMPLE"
+This is a configuration file for a VPN providing L2TP, OpenVPN and
+OpenConnect services. It could, for example, be in the file
+.B /var/lib/connman-vpn/example.config\fR.
+.PP
+.nf
+[global]
+Name = Example
+Description = Example VPN configuration
+
+[provider_l2tp]
+Type = L2TP
+Name = Connection to corporate network
+Host = 1.2.3.4
+Domain = corporate.com
+Networks = 10.10.30.0/24
+L2TP.User = username
+
+[provider_openconnect]
+Type = OpenConnect
+Name = Connection to corporate network using Cisco VPN
+Host = 7.6.5.4
+Domain = corporate.com
+Networks = 10.10.20.0/255.255.255.0/10.20.1.5,192.168.99.1/24,2001:db8::1/64
+OpenConnect.ServerCert = 263AFAB4CB2E6621D12E90182008AEF44AEFA031
+OpenConnect.CACert = /etc/certs/certificate.p12
+
+[provider_openvpn]
+Type = OpenVPN
+Name = Connection to corporate network using OpenVPN
+Host = 3.2.5.6
+Domain = my.home.network
+OpenVPN.CACert = /etc/certs/cacert.pem
+OpenVPN.Cert = /etc/certs/cert.pem
+OpenVPN.Key = /etc/certs/cert.key
+.fi
+.SH "SEE ALSO"
+.BR connmanctl (1),\  connman (8),\  connman-vpn (8)
