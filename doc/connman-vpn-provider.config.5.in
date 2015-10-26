@@ -6,11 +6,11 @@
 .SH NAME
 connection_name.config \- ConnMan vpn connection provisioning file
 .SH SYNOPSIS
-.B /var/lib/connman-vpn/\fIconnection-name\fB.config
+.B @vpn_storagedir@/\fIconnection-name\fB.config
 .SH DESCRIPTION
 .P
 \fIConnMan\fP's vpn connections are configured with so called
-"\fBprovisioning files\fP" which reside under \fI/var/lib/connman-vpn/\fP.
+"\fBprovisioning files\fP" which reside under \fI@vpn_storagedir@/\fP.
 The files can be named anything, as long as they contain only printable
 ascii characers, for example letters, numbers and underscores. The file
 must end with \fB.config\fP. Each VPN connection requires a provisioning
@@ -387,7 +387,7 @@ No Van Jacobson compression.
 .SH "EXAMPLE"
 This is a configuration file for a VPN providing L2TP, OpenVPN and
 OpenConnect services. It could, for example, be in the file
-.B /var/lib/connman-vpn/example.config\fR.
+.B @vpn_storagedir@/example.config\fR.
 .PP
 .nf
 [global]

@@ -64,8 +64,12 @@ unit/test-nat
 doc/*.bak
 doc/*.stamp
 doc/connman.*
-!doc/connman.8
-!doc/connman.conf.5
+doc/*.1
+doc/*.5
+doc/*.8
+!doc/*.1.in
+!doc/*.5.in
+!doc/*.8.in
 doc/connman-*.txt
 
 vpn/builtin.h

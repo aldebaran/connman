@@ -6,13 +6,7 @@
 .SH NAME
 main.conf \- ConnMan configuration file
 .SH SYNOPSIS
-.B /etc/connman/main.conf
-.br
-or
-.br
-\fI<SYSCONFDIR>\fB/connman/main.conf
-.br
-.RI where\  <SYSCONFDIR> " depends on your distribution or build."
+.B @sysconfdir@/connman/main.conf
 .SH DESCRIPTION
 .P
 .B main.conf

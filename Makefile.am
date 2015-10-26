@@ -248,8 +248,6 @@ include Makefile.plugins
 if CLIENT
 bin_PROGRAMS += client/connmanctl
 
-MANUAL_PAGES += doc/connmanctl.1
-
 client_connmanctl_SOURCES = client/dbus_helpers.h client/dbus_helpers.c \
 			client/services.h client/services.c \
 			client/commands.h client/commands.c \
@@ -380,14 +378,22 @@ EXTRA_DIST += doc/overview-api.txt doc/behavior-api.txt \
 				doc/vpn-config-format.txt \
 				doc/vpn-connection-api.txt \
 				doc/vpn-manager-api.txt doc/vpn-overview.txt \
-				doc/session-policy-format.txt
+				doc/session-policy-format.txt \
+				doc/connmanctl.1.in doc/connman.conf.5.in \
+				doc/connman-service.config.5.in \
+				doc/connman-vpn.conf.5.in \
+				doc/connman-vpn-provider.config.5.in \
+				doc/connman.8.in doc/connman-vpn.8.in
 
 EXTRA_DIST += src/main.conf \
 		src/eduroam.config
 
-MANUAL_PAGES += doc/connman.8 doc/connman.conf.5
+MANUAL_PAGES += doc/connmanctl.1 doc/connman.conf.5 \
+		doc/connman-service.config.5 doc/connman-vpn.conf.5 \
+		doc/connman-vpn-provider.config.5 \
+		doc/connman.8 doc/connman-vpn.8
 
-dist_man_MANS = $(MANUAL_PAGES)
+nodist_man_MANS = $(MANUAL_PAGES)
 
 pkgconfigdir = $(libdir)/pkgconfig
 
@@ -449,7 +455,21 @@ do_subst = $(AM_V_GEN)$(SED) \
 		-e 's,[@]prefix[@],$(prefix),g' \
 		-e 's,[@]sbindir[@],$(sbindir),g' \
 		-e 's,[@]sysconfdir[@],$(sysconfdir),g' \
+		-e 's,[@]storagedir[@],$(storagedir),g' \
+		-e 's,[@]vpn_storagedir[@],$(vpn_storagedir),g' \
 		-e 's,[@]localstatedir[@],$(localstatedir),g'
+
+%.1 : %.1.in
+	$(AM_V_at)$(MKDIR_P) $(dir $@)
+	$(do_subst) < $< > $@
+
+%.5 : %.5.in
+	$(AM_V_at)$(MKDIR_P) $(dir $@)
+	$(do_subst) < $< > $@
+
+%.8 : %.8.in
+	$(AM_V_at)$(MKDIR_P) $(dir $@)
+	$(do_subst) < $< > $@
 
 %.service: %.service.in Makefile
 	$(AM_V_at)$(MKDIR_P) $(dir $@)
@@ -468,4 +488,4 @@ include/connman/%.h: $(abs_top_srcdir)/include/%.h
 	$(AM_V_GEN)$(LN_S) $< $@
 
 clean-local:
-	@$(RM) -rf include/connman
+	@$(RM) -rf include/connman $(MANUAL_PAGES)

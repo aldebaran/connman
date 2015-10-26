@@ -48,9 +48,8 @@ Print ConnMan's available options and exit.
 .TP
 .BI \-c\  file\fR,\ \fB\-\-config= \fIfile
 Specify configuration file to set up various settings for ConnMan.  If not
-specified, the default value of \fI<SYSCONFDIR>/connman/main.conf\fP
-is used; where \fI<SYSCONFDIR>\fP is dependent on your distribution (usually
-it's \fI/etc\fP).  See \fBconnman.conf\fP(5) for more information on
+specified, the default value of \fI@sysconfdir@/connman/main.conf\fP
+is used.  See \fBconnman.conf\fP(5) for more information on
 configuration file. The use of config file is optional and sane default values
 are used if config file is missing.
 .TP

@@ -6,13 +6,7 @@
 .SH NAME
 connman-vpn.conf \- ConnMan-VPN configuration file
 .SH SYNOPSIS
-.B /etc/connman/connman-vpn.conf
-.br
-or
-.br
-\fI<SYSCONFDIR>\fB/connman/connman-vpn.conf
-.br
-.RI where\  <SYSCONFDIR> " depends on your distribution or build."
+.B @sysconfdir@/connman/connman-vpn.conf
 .SH DESCRIPTION
 .P
 .B connman-vpn.conf
