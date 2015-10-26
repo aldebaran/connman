@@ -1,0 +1,197 @@
+.\" connman-service.config(5) manual page
+.\"
+.\" Copyright (C) 2015 Intel Corporation
+.\"
+.TH "service-name.config" "5" "2015-10-15" ""
+.SH NAME
+service-name.config \- ConnMan service provisioning file
+.SH SYNOPSIS
+.B /var/lib/connman/\fIservice-name\fB.config
+.SH DESCRIPTION
+.P
+\fIConnMan\fP's services are configured with so called
+"\fBprovisioning files\fP" which reside under \fI/var/lib/connman/\fP.
+The files can be named anything, as long as they end in \fB.config\fP.
+The provisioning files can be used to configure for example secured
+wireless access points which need complex authentication, for example
+eduroam, or for static IPs and so on. Each provisioning file can be
+used for multiple services at once.
+.SH "FILE FORMAT"
+.P
+The configuration file format is key file format.
+It consists of sections (groups) of key-value pairs.
+Lines beginning with a '#' and blank lines are considered comments.
+Sections are started by a header line containing the section enclosed
+in '[' and ']', and ended implicitly by the start of the next section
+or the end of the file. Each key-value pair must be contained in a section.
+.P
+Description of sections and available keys follows:
+.SS [global]
+This section is optional, and can be used to describe the actual file. The
+two allowed fields for this section are:
+.TP
+.BI Name= name
+Name of the network.
+.TP
+.BI Description= description
+Description of the network.
+.SS [service_*]
+Each provisioned service must start with a [service_*] tag, with * replaced
+by an unique name within the file.
+The allowed fields are:
+.TP
+.B Type=ethernet \fR|\fB wifi
+Mandatory. Other types than ethernet or wifi are not supported.
+.TP
+.BI IPv4=off \ \fR|\  dhcp\ \fR|\  network / netmask / gateway
+IPv4 settings for the service. If set to \fBoff\fP, IPv4 won't be used.
+If set to \fBdhcp\fP, dhcp will be used to obtain the network settings.
+\fInetmask\fP can be specified as length of the mask rather than the
+mask itself. The gateway can be omitted when using a static IP.
+.TP
+.BI IPv6=off \ \fR|\  auto\ \fR|\  network / prefixlength / gateway
+IPv6 settings for the service. If set to \fBoff\fP, IPv6 won't be used.
+If set to \fBauto\fP, settings will be obtained from the network.
+.TP
+.B IPv6.Privacy=disabled \fR|\fB enabled \fR|\fB preferred
+IPv6 privacy settings as per RFC3041.
+.TP
+.BI MAC= address
+MAC address of the interface to be used. If not specified, the first
+found interface is used. Must be in format ab:cd:ef:01:23:45.
+.TP
+.BI Nameservers= servers
+Comma separated list of nameservers.
+.TP
+.BI SearchDomains= domains
+Comma separated list of DNS search domains.
+.TP
+.BI Timeservers= servers
+Comma separated list of timeservers.
+.TP
+.BI Domain= domain
+Domain name to be used.
+.TP
+The following keys can only be used for wireless networks:
+.TP
+.BI Name= name
+A string representation of an network SSID. If the SSID field is
+present, the Name field is ignored. If the SSID field is not present,
+this field is mandatory.
+.TP
+.BI SSID= ssid
+SSID: A hexadecimal representation of an 802.11 SSID. Use this format to
+encode special characters including starting or ending spaces.
+.TP
+.BI Passphrase= passphrase
+RSN/WPA/WPA2 Passphrase.
+.TP
+.BI Security= type
+The security type of the network. Possible values are \fBpsk\fP
+(WPA/WPA2 PSK), \fBieee8021x\fP (WPA EAP), \fBnone\fP and \fBwep\fP.
+When not set, the default value is \fBieee8021x\fP if an EAP type is
+configured, \fBpsk\fP if a passphrase is present and \fBnone\fP otherwise.
+.TP
+.B Hidden=true \fR|\fB false
+If set to \fBtrue\fP, then this AP is hidden. If missing or set to
+\fBfalse\fP, then AP is not hidden.
+.TP
+.B EAP=tls \fR|\fB ttls \fR|\fB peap
+EAP type to use. Only \fBtls\fP, \fBttls\fP and \fBpeap\fP are supported.
+.TP
+.BI CACertFile= file
+Path to the CA certificate file. Only PEM and DER formats are supported.
+.TP
+.BI PrivateKeyFile= file
+Path to the private key file. Only PEM, DER and PFX formats are supported.
+.TP
+.BI PrivateKeyPassphrase= passphrase
+Passphrase of the private key.
+.TP
+.B PrivateKeyPassphraseType=fsid
+If specified, use the private key's fsid as the passphrase, and ignore the
+PrivateKeyPassphrase field.
+.TP
+.BI Identity= identity
+Identity string for EAP.
+.TP
+.BI AnonymousIdentity= identity
+Anonymous identity string for EAP.
+.TP
+.BI Phase2= type
+Inner authentication type with for \fBEAP=tls\fP or \fBEAP=ttls\fP. Prefix
+the value with \fBEAP-\fP to indicate usage of EAP-based authentication
+method (should only be used with \fBEAP=ttls\fP).
+.SH "EXAMPLE"
+.SS Eduroam
+This is a configuration file for eduroam networks. This file could for
+example be /var/lib/connman/eduroam.config. Your university's exact
+settings might be different.
+.PP
+.nf
+[service_eduroam]
+Type = wifi
+Name = eduroam
+EAP = peap
+Phase2 = MSCHAPV2
+CACertFile = /etc/ssl/certs/UNIV_CA.crt
+.fi
+.SS Complex networking
+This is a configuration file for a network providing EAP-TLS, EAP-TTLS and
+EAP-PEAP services. The respective SSIDs are tls_ssid, ttls_ssid and peap_ssid
+and the file name could be /var/lib/connman/complex.config.
+.PP
+Please note that the SSID entry is for hexadecimal encoded SSID (e.g. "SSID =
+746c735f73736964"). If your SSID does not contain any exotic character then
+you should use the Name entry instead (e.g. "Name = tls_ssid").
+.PP
+.nf
+[global]
+Name = Example
+Description = Example network configuration
+
+[service_tls]
+Type = wifi
+SSID = 746c735f73736964
+EAP = tls
+CACertFile = /home/user/.certs/ca.pem
+ClientCertFile = /home/user/devlp/.certs/client.pem
+PrivateKeyFile = /home/user/.certs/client.fsid.pem
+PrivateKeyPassphraseType = fsid
+Identity = user
+
+[service_ttls]
+Type = wifi
+Name = ttls_ssid
+EAP = ttls
+CACertFile = /home/user/.cert/ca.pem
+Phase2 = MSCHAPV2
+Identity = user
+
+[service_peap]
+Type = wifi
+Name = peap_ssid
+EAP = peap
+CACertFile = /home/user/.cert/ca.pem
+Phase2 = MSCHAPV2
+Identity = user
+
+[service_home_ethernet]
+Type = ethernet
+IPv4 = 192.168.1.42/255.255.255.0/192.168.1.1
+IPv6 = 2001:db8::42/64/2001:db8::1
+MAC = 01:02:03:04:05:06
+Nameservers = 10.2.3.4,192.168.1.99
+SearchDomains = my.home,isp.net
+Timeservers = 10.172.2.1,ntp.my.isp.net
+Domain = my.home
+
+[service_home_wifi]
+Type = wifi
+Name = my_home_wifi
+Passphrase = password
+IPv4 = 192.168.2.2/255.255.255.0/192.168.2.1
+MAC = 06:05:04:03:02:01
+.fi
+.SH "SEE ALSO"
+.BR connman (8)
