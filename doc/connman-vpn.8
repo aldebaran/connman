@@ -1,0 +1,62 @@
+.\" connman-vpn(8) manual page
+.\"
+.\" Copyright (C) 2015 Intel Corporation
+.\"
+.TH CONNMAN-VPN "8" "2015-10-15"
+.SH NAME
+ConnMan-VPN \- VPN management daemon
+.SH SYNOPSIS
+.B connman-vpnd
+.RB [\| \-\-version \||\| \-\-help \|]
+.PP
+.B connman-vpnd
+.RB [\| \-c
+.IR file \|]
+.RB [\| \-d\  [\c
+.IR file [,...]\|]\|]
+.RB [\| \-p
+.IR plugin [,...]\|]
+.RB [\| \-P
+.IR plugin [,...]\|]
+.RB [\| \-n \|]
+.RB [\| \-r \|]
+.SH DESCRIPTION
+The \fIConnMan-VPN\fP provides a daemon for managing vpn connections together
+with \fBconnmand\fP(8). The Connection Manager is designed to be slim and to
+use as few resources as possible. The VPN daemon supports \fBopenconnect\fP(8),
+\fBopenvpn\fP(8), \fBvpnc\fP(8) and L2TP/PPTP (\fBxl2tpd.conf\fP(5),
+\fBpptp\fP(8), \fBpppd\fP(8)).
+.P
+.SH OPTIONS
+The following options are supported:
+.TP
+.BR \-v ", " \-\-version
+Print the ConnMan-VPN software version and exit.
+.TP
+.BR \-h ", " \-\-help
+Print ConnMan-VPN's available options and exit.
+.TP
+.BI \-c\  file\fR,\ \fB\-\-config= \fIfile
+Specify configuration file to set up various settings for ConnMan.  If not
+specified, the default value of \fI<SYSCONFDIR>/connman/connman-vpn.conf\fP
+is used; where \fI<SYSCONFDIR>\fP is dependent on your distribution (usually
+it's \fI/etc\fP).  See \fBconnman-vpn.conf\fP(5) for more information on
+configuration file. The use of config file is optional and sane default values
+are used if config file is missing.
+.TP
+.BR \-d\  [ \fIfile [,...]],\  \-\-debug [= \fIfile [,...]]
+Sets how much information ConnMan-VPN sends to the log destination (usually
+syslog's "daemon" facility).  If the file options are omitted, then debugging
+information from all the source files are printed. If file options are
+present, then only debug prints from that source file are printed. Example:
+.PP
+           connman-vpnd --debug=vpn/vpn-provider.c,vpn/vpn-config.c
+.TP
+.BR \-n ", " \-\-nodaemon
+Do not daemonize. This is useful for debugging, and directs log output to
+the controlling terminal in addition to syslog.
+.TP
+.BR \-r ", " \-\-routes
+Manage VPN routes instead of telling \fBconnmand\fP(8) to do it.
+.SH SEE ALSO
+.BR connmanctl (1), \ connmand (8)
