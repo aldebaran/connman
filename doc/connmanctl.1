@@ -1,66 +1,54 @@
-.TH connmanctl 1 07/31/2012 "" "User Commands for Connman CLI"
+.TH connmanctl 1 "2015-10-15" ""
 .SH
 NAME
 connmanctl \- Connman CLI
 .SH
 SYNOPSIS
-.BR connmanctl " ["
-.BR enable " <technology> | "
-.BR offlinemode "] ["
-.BR disable " <technology> | "
-.BR offlinemode "] ["
-.BR technologies "] ["
-.BR state "] ["
-.BR services " [\-\-properties <service>]] ["
-.BR scan " <technology>] ["
-.BR connect " <service>] ["
-.BR config " <service> \-\-<option> ARGS...] ["
-.BR help " | \-\-help]"
+.BR connmanctl \ [\|\c
+.BI state\fR\ |
+.BI technologies\fR\ |
+.BI enable \ technology\fR|offline\ |
+.BI disable \ technology\fR|offline\ |
+.BI tether \ technology\ \fRon|off\ |
+.BI tether\fR\ wifi\ on|off\  ssid\ passphrase\fR\ |
+.BR services \ [\fIservice\fR]\ |
+.BI peers \ peer\fR\ |
+.BI scan \ technology\fR\ |
+.RI \fBconnect \ service | peer \ |
+.RI \fBdisconnect \ service | peer \ |
+.B config \ \fIservice\ option\ arg\fR...\ |
+.BR vpnconnections \ [\fIconnection\fR]\ |
+.BI help \fR\|]
 .PP
 .SH
 DESCRIPTION
 Connmanctl is a Connman command line interface which can be run in two modes:
 a plain synchronous command input, and an asynchronous interactive shell.
-To run a specific command the user may enter connmanctl <command> [options]
-[args], or enter connmanctl; in this case, the program will drop into the
-interactive shell.
+To run a specific command the user may enter
+.RI \fBconnmanctl\  command\  [ options ] \fR
+or just \fBconnmanctl\fR, in the latter case an interactive shell will start.
 .PP
-Connmantl can handle most simple network connections. It is able to enable/
-disable any technology that exists on the system, display a list of
-services available, connect to/disconnect from any unsecured networks,
-show properties of the system, the technologies, and any individual
-service, and configure all of the properties. It is also able to monitor
-changes in the properties of the services, technologies, and the system.
+Connmanctl can handle most network connections. It can be used to
+enable/disable any technology that exists on the system, display a list of
+services available, connect/disconnect networks, show properties of the system,
+the technologies, and any individual service, and configure all of the
+properties. It is also able to monitor changes in the properties of the
+services, technologies, and the system.
 .PP
 In the interactive shell, all of the same commands can be used. It
-provides quicker usage when needing to use connmanctl more extensively.
+provides quicker usage when needing to use connmanctl more extensively. In
+addition, connecting to protected wireless access points for the first time
+requires interactive shell.
 .SH
 COMMANDS AND OPTIONS
 .TP
-.BR "help | \-\-help | " "(no arguments)"
+.B help
 Shows the abbreviated help menu in the terminal.
 .PP
 .TP
-.BR enable " <technology>"
-Enables the given technology type (e.g. ethernet, wifi, 3g, etc.)
-Turns power on to the technology, but doesn't connect unless
-there is a service with autoconnect set to True.
-.PP
-.TP
-.BR disable " <technology>"
-Disables the given technology type. Turns power off to the
-technology and disconnects if it is already connected.
-.PP
-.TP
-.B enable offlinemode
-Enables offline mode. Disconnects and powers down all
-technologies system-wide, however each technology can be powered
-back on individually.
-.PP
-.TP
-.B disable offlinemode
-Disables offline mode. Technologies are powered back on according
-to their individual policies.
+.B state
+Shows the system properties. Includes ths online state of the
+system, offline mode, and session mode.
 .PP
 .TP
 .B technologies
@@ -69,122 +57,225 @@ their properties. See the properties section of the Technology
 API for explanations of each property.
 .PP
 .TP
-.B state
-Shows the system properties. Includes ths online state of the
-system, offline mode, and session mode.
+.BI enable \ technology
+Enables the given technology type (e.g. ethernet, wifi, 3g, etc.)
+Turns power on to the technology, but doesn't connect unless
+there is a service with autoconnect set to True.
 .PP
 .TP
-.BR scan " <technology>"
-Scans for new services on the given technology.
+.BI disable \ technology
+Disables the given technology type. Turns power off to the
+technology and disconnects if it is already connected.
+.PP
+.TP
+.B enable offline
+Enables offline mode. Disconnects and powers down all
+technologies system-wide, however each technology can be powered
+back on individually.
+.PP
+.TP
+.B disable offline
+Disables offline mode. Technologies are powered back on according
+to their individual policies.
+.PP
+.TP
+.BI tether \ technology \ on \ \fR|\  off
+Enable or disable tethering on \fItechnology\fR. Ethernet cannot be tethered
+by default since tethering it usually breaks local networks. See
+.BR connman.conf (5)
+for enabling.
+.PP
+.TP
+.BR tether\ wifi\ on \ |\  off \ \fIssid\ passphrase
+Enable or disable wireless tethering, as well set the SSID and passphrase.
 .PP
 .TP
 .B services
-Shows a list of all available service names. This includes the
-names of wifi networks, the wired ethernet connection, names of
-bluetooth devices, etc. These are the names used when a
-<service> command is called for. The service name
-(e.g. Joes-wifi), the service path (e.g.
-wifi_6834534139723_managed_none), or the full service path (e.g.
-/net/connman/Service/wifi_5467631...) are all accepted as valid
-input. An asterisk in front of the service indicates that the
-service is favorited, and a "C" indicates a service that is
-already connected.
+Shows a list of all available services. This includes the
+nearby wifi networks, the wired ethernet connections, bluetooth devices, etc.
+An asterisk in front of the service indicates that the service
+has been connected before.
 .PP
 .TP
-.BR "services \-\-properties" " <service>"
-Shows a list of all properties for that service. See the
-properties section of the Service API for explanations of each
-property.
+.BI services \ service
+Shows a list of all properties for that service.
+Only the service path (e.g. wifi_6834534139723_managed_none)
+is accepted as a parameter.
 .PP
 .TP
-.BR connect " <service>"
-Connects to the given service if it is unsecured.
+.BI scan \ technology
+Scans for new services on the given technology.
 .PP
 .TP
-.BR disconnect " <service>"
+.BI connect \ service
+Connects to the given service. Some services need a so-called
+\fBprovisioning file\fR in order to connect to them, see
+\fBconnman-service.config\fR(5).
+.PP
+.TP
+.BI disconnect \ service
 Disconnects from the given service.
 .PP
 .TP
-.BR config " <service> " \-\-<option>
-Configures a writable property of the given service to the
-value(s) entered after --<option>.
+.BI move-before \ service\ target-service
+Prefer connecting to \fIservice\fR over \fItarget-service\fR.
 .PP
 .TP
-.BR monitor " [\-\-<option>]"
-Listens for and displays DBus signals sent by Connman. The option indicates
-which signals you want to subscribe to. If no option is entered, it displays
-all signals from all interfaces.
+.BI move-after \ service\ target-service
+Prefer connecting to \fItarget-service\fR over \fIservice\fR.
 .PP
+.TP
+.BI config \ service\ option\ arg\fR...
+Configures a writable property of the given service to the value(s) entered
+after \fIoption\fR. See the \fBConfig Options\fR subsection for details.
+.PP
+.TP
+.BI monitor \ target
+Listens for and displays DBus signals sent by Connman. If a currently monitored
+property changes, the changes will be shown. If no \fItarget\fR is specified,
+all changes will be shown. See the \fBMonitor Options\fR subsection for a
+summary of parameters.
+.PP
+.TP
+.BI vpnconnections
+Shows a list of all available vpn connections.
+.PP
+.TP
+.BI vpnconnections \ connection
+Shows the current properties of \fIconnection\fR.
+.PP
+.SS
+Commands only available in interactive mode:
+.PP
+.TP
+.BR agent\ on \ |\  off
+Enable or disable the wireless agent, used for entering wireless
+network passphrases. See the \fBEXAMPLE\fR section of this man page for
+an example of connecting to a wireless access point.
+.PP
+.TP
+.BR vpnagent\ on \ |\  off
+Enable or disable the vpn agent, used for entering vpn credentials.
 .SS
 Config Options:
 .PP
 .TP
-.B \-\-autoconnect=y/n
+.BR \fBautoconnect\ on \ |\  off
 Sets the autoconnect property of the service.
 .PP
 .TP
-.B \-\-ipv4
-Configures the IPv4 settings for the service. Enter the settings
-in the order "Method", "Address", "Netmask", then "Gateway"
-after the argument. See the properties section of the Service
-API for more information on these settings and the values
-accepted for them. It also displays a list of changes to both the
-IPv4 settings, and incidental changes to other values related to
-it.
+.BR ipv4\ off \ |\  dhcp \ |\  manual\ \fIaddress\ netmask\ gateway
+Configures the IPv4 settings for the service. The argument
+\fBoff\fR means that IPv4 won't be used, \fBdhcp\fR means that
+dhcp will be used to get the settings and \fBmanual\fR means
+that the given arguments will be used as IPv4 settings.
+.IR address ,\  netmask " and " gateway
+must be valid IPv4 addresses. See the \fBEXAMPLE\fR section
+of this man page for details.
 .PP
 .TP
-.B \-\-ipv6
-Configures the IPv6 settings for the service. Enter the settings
-in the order "Method", "Address", "PrefixLength", "Gateway", then
-"Privacy". See the properties section of the Service API for more
-information on these settings and the values accepted for them.
-It also displays a list of entered changes to the IPv6 settings,
-and incidental changes to other values related to it.
+.BR ipv6\ off \ |\  auto \ |\  manual\ \fIaddress\ prefixlength\ gateway
+Configures the IPv6 settings for the service. The argument
+\fBoff\fR means that IPv6 won't be used, \fBauto\fR means that
+settings will be asked from the network and \fBmanual\fR means
+that the given arguments will be used as IPv6 settings.
+.IR address " and " gateway
+must be valid IPv4 addresses. \fIprefixlength\fR is the length
+of the prefix in bits. See the \fBEXAMPLE\fR section of this man
+page for details.
 .PP
 .TP
-.B \-\-nameservers
-Adds to the list of manually configured domain name servers.
-Enter the name servers after the argument separated by spaces.
+.BI nameservers\  dns\fR\ [...]
+Set the list of nameservers, separated by spaces.
 .PP
 .TP
-.B \-\-timeservers
-Adds to the list of manually configured time servers. Enter the
-time servers after the argument separated by spaces.
+.BI timeservers\  server\fR\ [...]
+Set the list of timeservers, separated by spaces.
 .PP
 .TP
-.B \-\-domains
-Adds to the list of manually configured search domains. Enter
-the domains after the argument, separated by spaces.
+.BI domains\  domain\fR\ [...]
+Set the list of search domains, separated by spaces.
 .PP
 .TP
-.B \-\-proxy
-Configures the IPv6 settings for the service. Enter the settings in the
-order "Method", "URL". If the Method is set to "direct", no other arguments
-are taken. If the Method is set to "auto", the URL is optional. To set the
-Servers and Excludes manually, enter "manual" followed by "servers" with a
-list of servers separated by spaces. Then, optionally, the word "excludes"
-followed by a list of excludes separated by spaces. e.g. "./connmanctl config
-joes-wifi \-\-proxy manual servers serv1 serv2 serv3 excludes excl1 excl2"
+.BR proxy\ direct \ |\  auto\fI\ URL \ |\  manual\ \fIserver [...]\ [--excludes\  \fIserver [...]]
+Configures the proxy settings for the service. \fBdirect\fR means that no
+proxy will be used. If using \fBauto\fR without a parameter, the network
+will be asked for the proxy settings. Otherwise, use \fIURL\fR as an
+proxy autoconfiguration URL. When set to \fBmanual\fR, the first list of servers
+is used as proxy servers, and the traffic to the second list of servers are
+excluded from the proxy. The list of excluded servers is optional. See the
+\fBEXAMPLE\fR section of this man page for details.
 .PP
 .SS
 Monitor Options:
 .PP
 .TP
-.B \-\-services
-Listens for and displays the PropertyChanged signal from the Service interface.
-Also displays the service name (e.g. Joes-wifi) that the property is part of.
-More information, including a list of possible properties can be found in the
-Service API.
+.BR services\  [ off ]
+Listens for changes to services, for example a service getting an IP address.
 .PP
 .TP
-.B \-\-tech
-Listens for and displays the PropertyChanged signal from the Technology
-interface. More information, including a list of possible properties can be
-found in the Technology API.
+.BR tech\  [ off ]
+Listens for changes to technologies, for example a technology getting enabled.
 .PP
 .TP
-.B \-\-manager
-Listens for and displays the PropertyChanged, ServicesChanged, TechnologyAdded,
-and TechnologyRemoved signals from the Manager interface. More information on
-these signals and a list of possible properties can be found in the Manager API.
+.BR manager\  [ off ]
+Listens for the changes to global properties, available technologies,
+services, and peers.
 .PP
+.TP
+.BR vpnmanager\  [ off ]
+Listens for added or removed vpn connections.
+.PP
+.TP
+.BR vpnconnection\  [ off ]
+Listens for the changes to vpn connections, for example connecting to a VPN.
+.PP
+.SH
+EXAMPLE
+Listing available technologies:
+.PP
+      $ connmanctl technologies
+.PP
+Listing available services:
+.PP
+      $ connmanctl services
+.PP
+Scanning for wireless networks:
+.PP
+      $ connmanctl scan wifi
+.PP
+Using the interactive mode to access a wireless access point:
+.PP
+      $ connmanctl
+      connmanctl> agent on
+      Agent registered
+      connmanctl> connect wifi_100ba9d170fc_666f6f626172_managed_psk
+      Agent RequestInput wifi_100ba9d170fc_666f6f626172_managed_psk
+        Passphrase = [ Type=psk, Requirement=mandatory ]
+      Passphrase? password
+      Connected wifi_100ba9d170fc_666f6f626172_managed_psk
+      connmanctl>
+.PP
+Configuring a static IP from the command line:
+.PP
+      $ connmanctl config wifi_100ba9d170fc_666f6f626172_managed_psk ipv4 manual 192.168.1.101 255.255.255.0 192.168.1.1
+.PP
+Changing the IP back to dhcp:
+.PP
+      $ connmanctl config wifi_100ba9d170fc_666f6f626172_managed_psk ipv4 dhcp
+.PP
+Setting a proxy server:
+.PP
+      $ connmanctl config wifi_100ba9d170fc_666f6f626172_managed_psk proxy manual proxy.example.com
+.PP
+Setting multiple proxy servers:
+.PP
+      $ connmanctl config wifi_100ba9d170fc_666f6f626172_managed_psk proxy manual proxy.example.com http://httpproxy.example.com --excludes internal.example.com
+.PP
+Tethering a wireless connection (ssid "SSID", passphrase "password"):
+.PP
+      $ connmanctl tether wifi on SSID password
+.PP
+.SH
+SEE ALSO
+.BR connman.conf (5), \ connman (8)
