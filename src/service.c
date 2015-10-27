@@ -3516,6 +3516,41 @@ static void set_error(struct connman_service *service,
 				DBUS_TYPE_STRING, &str);
 }
 
+static void remove_timeout(struct connman_service *service)
+{
+	if (service->timeout > 0) {
+		g_source_remove(service->timeout);
+		service->timeout = 0;
+	}
+}
+
+static void reply_pending(struct connman_service *service, int error)
+{
+	remove_timeout(service);
+
+	if (service->pending) {
+		connman_dbus_reply_pending(service->pending, error, NULL);
+		service->pending = NULL;
+	}
+
+	if (service->provider_pending) {
+		connman_dbus_reply_pending(service->provider_pending,
+				error, service->path);
+		service->provider_pending = NULL;
+	}
+}
+
+static void service_complete(struct connman_service *service)
+{
+	reply_pending(service, EIO);
+
+	if (service->connect_reason != CONNMAN_SERVICE_CONNECT_REASON_USER)
+		__connman_service_auto_connect(service->connect_reason);
+
+	g_get_current_time(&service->modified);
+	service_save(service);
+}
+
 static DBusMessage *clear_property(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -3530,8 +3565,8 @@ static DBusMessage *clear_property(DBusConnection *conn,
 	if (g_str_equal(name, "Error")) {
 		set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 
-		g_get_current_time(&service->modified);
-		service_save(service);
+		__connman_service_clear_error(service);
+		service_complete(service);
 	} else
 		return __connman_error_invalid_property(msg);
 
@@ -3847,30 +3882,6 @@ static void vpn_auto_connect(void)
 
 	vpn_autoconnect_timeout =
 		g_timeout_add_seconds(0, run_vpn_auto_connect, NULL);
-}
-
-static void remove_timeout(struct connman_service *service)
-{
-	if (service->timeout > 0) {
-		g_source_remove(service->timeout);
-		service->timeout = 0;
-	}
-}
-
-static void reply_pending(struct connman_service *service, int error)
-{
-	remove_timeout(service);
-
-	if (service->pending) {
-		connman_dbus_reply_pending(service->pending, error, NULL);
-		service->pending = NULL;
-	}
-
-	if (service->provider_pending) {
-		connman_dbus_reply_pending(service->provider_pending,
-						error, service->path);
-		service->provider_pending = NULL;
-	}
 }
 
 bool
@@ -5030,17 +5041,6 @@ void __connman_service_set_search_domains(struct connman_service *service,
 	service->domains = g_strdupv(domains);
 
 	searchdomain_add_all(service);
-}
-
-static void service_complete(struct connman_service *service)
-{
-	reply_pending(service, EIO);
-
-	if (service->connect_reason != CONNMAN_SERVICE_CONNECT_REASON_USER)
-		__connman_service_auto_connect(service->connect_reason);
-
-	g_get_current_time(&service->modified);
-	service_save(service);
 }
 
 static void report_error_cb(void *user_context, bool retry,
