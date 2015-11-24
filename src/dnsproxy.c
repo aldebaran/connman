@@ -2695,6 +2695,11 @@ static void append_domain(int index, const char *domain)
 	update_domain(index, domain, true);
 }
 
+static void remove_domain(int index, const char *domain)
+{
+	update_domain(index, domain, false);
+}
+
 static void flush_requests(struct server_data *server)
 {
 	GSList *list;
@@ -2777,8 +2782,14 @@ int __connman_dnsproxy_remove(int index, const char *domain,
 {
 	DBG("index %d server %s", index, server);
 
-	if (!server)
+	if (!server && !domain)
 		return -EINVAL;
+
+	if (!server) {
+		remove_domain(index, domain);
+
+		return 0;
+	}
 
 	if (g_str_equal(server, "127.0.0.1"))
 		return -ENODEV;
