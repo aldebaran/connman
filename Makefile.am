@@ -161,8 +161,8 @@ endif
 
 CLEANFILES = src/connman.conf $(BUILT_SOURCES) $(service_files)
 
-statedir = $(localstatedir)/run/connman
-vpn_statedir = $(localstatedir)/run/connman-vpn
+statedir = $(runstatedir)/connman
+vpn_statedir = $(runstatedir)/connman-vpn
 
 if VPN
 vpn_plugindir = $(libdir)/connman/plugins-vpn
