@@ -63,8 +63,10 @@ endif
 
 if SYSTEMD
 systemdunitdir = @SYSTEMD_UNITDIR@
-
 systemdunit_DATA = src/connman.service
+
+tmpfilesdir = @SYSTEMD_TMPFILESDIR@
+nodist_tmpfiles_DATA = scripts/connman_resolvconf.conf
 
 if VPN
 systemdunit_DATA += vpn/connman-vpn.service
@@ -153,7 +155,8 @@ vpn_connman_vpnd_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/vpn/vpn.ver
 endif
 
-BUILT_SOURCES = $(local_headers) src/builtin.h $(service_files) scripts/connman
+BUILT_SOURCES = $(local_headers) src/builtin.h $(service_files) \
+	scripts/connman scripts/connman_resolvconf.conf
 
 if VPN
 BUILT_SOURCES += vpn/builtin.h
@@ -386,7 +389,8 @@ EXTRA_DIST += doc/overview-api.txt doc/behavior-api.txt \
 				doc/connman.8.in doc/connman-vpn.8.in
 
 EXTRA_DIST += src/main.conf \
-		src/eduroam.config
+		src/eduroam.config \
+		scripts/connman_resolvconf.conf.in
 
 MANUAL_PAGES += doc/connmanctl.1 doc/connman.conf.5 \
 		doc/connman-service.config.5 doc/connman-vpn.conf.5 \
@@ -457,7 +461,8 @@ do_subst = $(AM_V_GEN)$(SED) \
 		-e 's,[@]sysconfdir[@],$(sysconfdir),g' \
 		-e 's,[@]storagedir[@],$(storagedir),g' \
 		-e 's,[@]vpn_storagedir[@],$(vpn_storagedir),g' \
-		-e 's,[@]localstatedir[@],$(localstatedir),g'
+		-e 's,[@]localstatedir[@],$(localstatedir),g' \
+		-e 's,[@]runstatedir[@],$(runstatedir),g'
 
 %.1 : %.1.in
 	$(AM_V_at)$(MKDIR_P) $(dir $@)
@@ -476,6 +481,10 @@ do_subst = $(AM_V_GEN)$(SED) \
 	$(do_subst) < $< > $@
 
 scripts/connman: scripts/connman.in Makefile
+	$(AM_V_at)$(MKDIR_P) $(dir $@)
+	$(do_subst) < $< > $@
+
+scripts/connman_resolvconf.conf: scripts/connman_resolvconf.conf.in
 	$(AM_V_at)$(MKDIR_P) $(dir $@)
 	$(do_subst) < $< > $@
 

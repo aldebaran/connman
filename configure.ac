@@ -254,6 +254,14 @@ if (test -n "${path_systemdunit}"); then
 fi
 AM_CONDITIONAL(SYSTEMD, test -n "${path_systemdunit}")
 
+AC_ARG_WITH([tmpfilesdir], AC_HELP_STRING([--with-tmpfilesdir=DIR],
+	[path to systemd tmpfiles.d directory]), [path_tmpfiles=${withval}],
+		[path_tmpfiles="`$PKG_CONFIG --variable=tmpfilesdir systemd`"])
+if (test -n "${path_tmpfiles}"); then
+	SYSTEMD_TMPFILESDIR="${path_tmpfiles}"
+	AC_SUBST(SYSTEMD_TMPFILESDIR)
+fi
+
 PKG_CHECK_MODULES(XTABLES, xtables >= 1.4.11, dummy=yes,
 				AC_MSG_ERROR(Xtables library is required))
 AC_SUBST(XTABLES_CFLAGS)
