@@ -2649,7 +2649,7 @@ static bool resolv(struct request_data *req,
 	return false;
 }
 
-static void append_domain(int index, const char *domain)
+static void update_domain(int index, const char *domain, bool append)
 {
 	GSList *list;
 
@@ -2680,11 +2680,19 @@ static void append_domain(int index, const char *domain)
 			}
 		}
 
-		if (!dom_found) {
+		if (!dom_found && append) {
 			data->domains =
 				g_list_append(data->domains, g_strdup(domain));
+		} else if (dom_found && !append) {
+			data->domains =
+				g_list_remove(data->domains, dom);
 		}
 	}
+}
+
+static void append_domain(int index, const char *domain)
+{
+	update_domain(index, domain, true);
 }
 
 static void flush_requests(struct server_data *server)
