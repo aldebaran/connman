@@ -134,6 +134,7 @@ static struct connman_ipconfig *create_ip4config(struct connman_service *service
 static struct connman_ipconfig *create_ip6config(struct connman_service *service,
 		int index);
 
+static int searchdomain_add_all(struct connman_service *service);
 
 struct find_data {
 	const char *path;
@@ -968,17 +969,15 @@ static int nameserver_add_all(struct connman_service *service,
 				service->nameservers_config[i]);
 			i++;
 		}
-
-		return 0;
-	}
-
-	if (service->nameservers) {
+	} else if (service->nameservers) {
 		while (service->nameservers[i]) {
 			nameserver_add(service, type,
 				service->nameservers[i]);
 			i++;
 		}
 	}
+
+	searchdomain_add_all(service);
 
 	return 0;
 }
@@ -1122,6 +1121,8 @@ int __connman_service_nameserver_append(struct connman_service *service,
 		service->nameservers = nameservers;
 		nameserver_add(service, CONNMAN_IPCONFIG_TYPE_ALL, nameserver);
 	}
+
+	searchdomain_add_all(service);
 
 	return 0;
 }
@@ -5380,7 +5381,6 @@ static int service_indicate_state(struct connman_service *service)
 		g_get_current_time(&service->modified);
 		service_save(service);
 
-		searchdomain_add_all(service);
 		dns_changed(service);
 		domain_changed(service);
 		proxy_changed(service);
