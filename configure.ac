@@ -1,6 +1,8 @@
 AC_PREREQ(2.60)
 AC_INIT(connman, 1.30)
 
+AC_CONFIG_MACRO_DIR([m4])
+
 AM_INIT_AUTOMAKE([foreign subdir-objects color-tests])
 AC_CONFIG_HEADERS([config.h])
 
@@ -30,6 +32,8 @@ m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
 
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
+
+gl_CONFIGMAKE_PREP
 
 AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization],
 			[disable code optimization through compiler]), [
