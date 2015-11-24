@@ -9,6 +9,11 @@ if [ -f @sysconfdir@/default/connman ] ; then
 	. @sysconfdir@/default/connman
 fi
 
+if [ "CONNMAN_RUNSTATEDIR_RESOLVCONF" != "no" ] ; then
+    mkdir -p @runstatedir@/connman
+    ln -sf @runstatedir@/connman/resolv.conf /etc/
+fi
+
 set -e
 
 do_start() {
