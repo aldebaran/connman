@@ -474,6 +474,8 @@ static int service_load(struct connman_service *service)
 
 				connman_network_set_blob(service->network,
 					"WiFi.SSID", ssid, hex_ssid_len / 2);
+
+				g_free(ssid);
 			}
 
 			g_free(hex_ssid);
