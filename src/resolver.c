@@ -611,6 +611,28 @@ int __connman_resolver_redo_servers(int index)
 					entry->server);
 	}
 
+	/*
+	 * We want to re-add all search domains back to search
+	 * domain lists as they just got removed for RDNSS IPv6-servers
+	 * (above).
+	 * Removal of search domains is not necessary
+	 * as there can be only one instance of each search domain
+	 * in the each dns-servers search domain list.
+        */
+
+	for (list = entry_list; list; list = list->next) {
+		struct entry_data *entry = list->data;
+
+		if (entry->index != index)
+			continue;
+
+		if (entry->server)
+			continue;
+
+		__connman_dnsproxy_append(entry->index, entry->domain,
+					NULL);
+	}
+
 	return 0;
 }
 
