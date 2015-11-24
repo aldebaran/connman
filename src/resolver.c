@@ -389,18 +389,6 @@ static int append_resolver(int index, const char *domain,
 
 		entry->timeout = g_timeout_add_seconds(interval,
 				resolver_refresh_cb, entry);
-
-		/*
-		 * We update the service only for those nameservers
-		 * that are automagically added via netlink (lifetime > 0)
-		 */
-		if (server && entry->index >= 0) {
-			struct connman_service *service;
-			service = __connman_service_lookup_from_index(entry->index);
-			if (service)
-				__connman_service_nameserver_append(service,
-								server, true);
-		}
 	}
 
 	if (entry->index >= 0 && entry->server)
@@ -412,6 +400,18 @@ static int append_resolver(int index, const char *domain,
 		__connman_dnsproxy_append(entry->index, domain, server);
 	else
 		__connman_resolvfile_append(entry->index, domain, server);
+
+	/*
+	 * We update the service only for those nameservers
+	 * that are automagically added via netlink (lifetime > 0)
+	 */
+	if (server && entry->index >= 0 && lifetime) {
+		struct connman_service *service;
+		service = __connman_service_lookup_from_index(entry->index);
+		if (service)
+			__connman_service_nameserver_append(service,
+							server, true);
+	}
 
 	return 0;
 }
