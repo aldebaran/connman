@@ -35,6 +35,9 @@
 
 #include "connman.h"
 
+#define RESOLV_CONF_STATEDIR STATEDIR"/resolv.conf"
+#define RESOLV_CONF_ETC "/etc/resolv.conf"
+
 #define RESOLVER_FLAG_PUBLIC (1 << 0)
 
 /*
@@ -130,11 +133,19 @@ static int resolvfile_export(void)
 
 	old_umask = umask(022);
 
-	fd = open("/etc/resolv.conf", O_RDWR | O_CREAT | O_CLOEXEC,
+	fd = open(RESOLV_CONF_STATEDIR, O_RDWR | O_CREAT | O_CLOEXEC,
 					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	if (fd < 0) {
-		err = -errno;
-		goto done;
+		connman_warn_once("Cannot create "RESOLV_CONF_STATEDIR" "
+			"falling back to "RESOLV_CONF_ETC);
+
+		fd = open(RESOLV_CONF_ETC, O_RDWR | O_CREAT | O_CLOEXEC,
+					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+		if (fd < 0) {
+			err = -errno;
+			goto done;
+		}
 	}
 
 	if (ftruncate(fd, 0) < 0) {
