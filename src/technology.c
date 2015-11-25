@@ -1145,6 +1145,13 @@ static void technology_put(struct connman_technology *technology)
 
 	g_slist_free(technology->device_list);
 
+    if (technology->pending_reply) {
+        dbus_message_unref(technology->pending_reply);
+        technology->pending_reply = NULL;
+        g_source_remove(technology->pending_timeout);
+        technology->pending_timeout = 0;
+    }
+
 	g_free(technology->path);
 	g_free(technology->regdom);
 	g_free(technology->tethering_ident);
