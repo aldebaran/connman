@@ -34,6 +34,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #include <glib.h>
 
@@ -117,12 +118,12 @@ static struct timespec mtx_time;
 static int transmit_fd = 0;
 
 static char *timeserver = NULL;
-static struct sockaddr_in timeserver_addr;
+static struct sockaddr_in6 timeserver_addr;
 static gint poll_id = 0;
 static gint timeout_id = 0;
 static guint retries = 0;
 
-static void send_packet(int fd, const char *server, uint32_t timeout);
+static void send_packet(int fd, struct sockaddr *server, uint32_t timeout);
 
 static void next_server(void)
 {
@@ -143,17 +144,19 @@ static gboolean send_timeout(gpointer user_data)
 	if (retries++ == NTP_SEND_RETRIES)
 		next_server();
 	else
-		send_packet(transmit_fd, timeserver, timeout << 1);
+		send_packet(transmit_fd, (struct sockaddr *)&timeserver_addr, timeout << 1);
 
 	return FALSE;
 }
 
-static void send_packet(int fd, const char *server, uint32_t timeout)
+static void send_packet(int fd, struct sockaddr *server, uint32_t timeout)
 {
 	struct ntp_msg msg;
-	struct sockaddr_in addr;
 	struct timeval transmit_timeval;
 	ssize_t len;
+	void * addr;
+	int size;
+	char ipaddrstring[INET6_ADDRSTRLEN + 1];
 
 	/*
 	 * At some point, we could specify the actual system precision with:
@@ -168,10 +171,16 @@ static void send_packet(int fd, const char *server, uint32_t timeout)
 	msg.poll = 10;	// max
 	msg.precision = NTP_PRECISION_S;
 
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(123);
-	addr.sin_addr.s_addr = inet_addr(server);
+	if (server->sa_family == AF_INET) {
+		size = sizeof(struct sockaddr_in);
+		addr = (void *)&(((struct sockaddr_in *)&timeserver_addr)->sin_addr);
+	} else if (server->sa_family == AF_INET6) {
+		size = sizeof(struct sockaddr_in6);
+		addr = (void *)&timeserver_addr.sin6_addr;
+	} else {
+		connman_error("Family is neither ipv4 nor ipv6");
+		return;
+	}
 
 	gettimeofday(&transmit_timeval, NULL);
 	clock_gettime(CLOCK_MONOTONIC, &mtx_time);
@@ -180,10 +189,12 @@ static void send_packet(int fd, const char *server, uint32_t timeout)
 	msg.xmttime.fraction = htonl(transmit_timeval.tv_usec * 1000);
 
 	len = sendto(fd, &msg, sizeof(msg), MSG_DONTWAIT,
-						&addr, sizeof(addr));
+						server, size);
+
 	if (len < 0) {
 		connman_error("Time request for server %s failed (%d/%s)",
-			server, errno, strerror(errno));
+			inet_ntop(server->sa_family, addr, ipaddrstring, sizeof(ipaddrstring)),
+			errno, strerror(errno));
 
 		if (errno == ENETUNREACH)
 			__connman_timeserver_sync_next();
@@ -192,7 +203,8 @@ static void send_packet(int fd, const char *server, uint32_t timeout)
 	}
 
 	if (len != sizeof(msg)) {
-		connman_error("Broken time request for server %s", server);
+		connman_error("Broken time request for server %s",
+			inet_ntop(server->sa_family, addr, ipaddrstring, sizeof(ipaddrstring)));
 		return;
 	}
 
@@ -213,7 +225,7 @@ static gboolean next_poll(gpointer user_data)
 	if (!timeserver || transmit_fd == 0)
 		return FALSE;
 
-	send_packet(transmit_fd, timeserver, NTP_SEND_TIMEOUT);
+	send_packet(transmit_fd, (struct sockaddr *)&timeserver_addr, NTP_SEND_TIMEOUT);
 
 	return FALSE;
 }
@@ -363,7 +375,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
 	unsigned char buf[128];
-	struct sockaddr_in sender_addr;
+	struct sockaddr_in6 sender_addr;
 	struct msghdr msg;
 	struct iovec iov;
 	struct cmsghdr *cmsg;
@@ -372,6 +384,9 @@ static gboolean received_data(GIOChannel *channel, GIOCondition condition,
 	char aux[128];
 	ssize_t len;
 	int fd;
+	int size;
+	void * addr_ptr;
+	void * src_ptr;
 
 	if (condition & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
 		connman_error("Problem with timer server channel");
@@ -396,8 +411,20 @@ static gboolean received_data(GIOChannel *channel, GIOCondition condition,
 	if (len < 0)
 		return TRUE;
 
-	if (timeserver_addr.sin_addr.s_addr != sender_addr.sin_addr.s_addr)
-		/* only accept messages from the timeserver */
+	if (sender_addr.sin6_family == AF_INET) {
+		size = 4;
+		addr_ptr = &((struct sockaddr_in *)&timeserver_addr)->sin_addr;
+		src_ptr = &((struct sockaddr_in *)&sender_addr)->sin_addr;
+	} else if (sender_addr.sin6_family == AF_INET6) {
+		size = 16;
+		addr_ptr = &((struct sockaddr_in6 *)&timeserver_addr)->sin6_addr;
+		src_ptr = &((struct sockaddr_in6 *)&sender_addr)->sin6_addr;
+	} else {
+		connman_error("Not a valid family type");
+		return TRUE;
+	}
+
+	if(memcmp(addr_ptr, src_ptr, size) != 0)
 		return TRUE;
 
 	tv = NULL;
@@ -422,36 +449,76 @@ static gboolean received_data(GIOChannel *channel, GIOCondition condition,
 static void start_ntp(char *server)
 {
 	GIOChannel *channel;
-	struct sockaddr_in addr;
+	struct addrinfo hint;
+	struct addrinfo *info;
+	struct sockaddr * addr;
+	struct sockaddr_in  * in4addr;
+	struct sockaddr_in6 in6addr;
+	int size;
+	int family;
 	int tos = IPTOS_LOWDELAY, timestamp = 1;
+	int ret;
 
 	if (!server)
 		return;
 
-	DBG("server %s", server);
+	memset(&hint, 0, sizeof(hint));
+	hint.ai_family = AF_UNSPEC;
+	hint.ai_socktype = SOCK_DGRAM;
+	hint.ai_flags = AI_NUMERICHOST | AI_PASSIVE;
+	ret = getaddrinfo(server, NULL, &hint, &info);
+
+	if (ret) {
+		connman_error("cannot get server info");
+		return;
+	}
+
+	family = info->ai_family;
+
+	memcpy(&timeserver_addr, info->ai_addr, info->ai_addrlen);
+	memset(&in6addr, 0, sizeof(in6addr));
+
+	if (family == AF_INET) {
+		((struct sockaddr_in *)&timeserver_addr)->sin_port = htons(123);
+		in4addr = (struct sockaddr_in *)&in6addr;
+		in4addr->sin_family = family;
+		addr = (struct sockaddr *)in4addr;
+		size = sizeof(struct sockaddr_in);
+	} else if (family == AF_INET6) {
+		timeserver_addr.sin6_port = htons(123);
+		in6addr.sin6_family = family;
+		addr = (struct sockaddr *)&in6addr;
+		size = sizeof(in6addr);
+	} else {
+		connman_error("Family is neither ipv4 nor ipv6");
+		return;
+	}
+	freeaddrinfo(info);
+
+	DBG("server %s family %d", server, family);
 
 	if (channel_watch > 0)
 		goto send;
 
-	transmit_fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (transmit_fd < 0) {
-		connman_error("Failed to open time server socket");
-		return;
+	transmit_fd = socket(family, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+
+	if (transmit_fd <= 0) {
+                connman_error("Failed to open time server socket");
+                return;
 	}
 
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-
-	if (bind(transmit_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+	if (bind(transmit_fd, (struct sockaddr *) addr, size) < 0) {
 		connman_error("Failed to bind time server socket");
 		close(transmit_fd);
 		return;
 	}
 
-	if (setsockopt(transmit_fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0) {
-		connman_error("Failed to set type of service option");
-		close(transmit_fd);
-		return;
+	if (family == AF_INET) {
+		if (setsockopt(transmit_fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0) {
+			connman_error("Failed to set type of service option");
+			close(transmit_fd);
+			return;
+		}
 	}
 
 	if (setsockopt(transmit_fd, SOL_SOCKET, SO_TIMESTAMP, &timestamp,
@@ -479,7 +546,7 @@ static void start_ntp(char *server)
 	g_io_channel_unref(channel);
 
 send:
-	send_packet(transmit_fd, server, NTP_SEND_TIMEOUT);
+	send_packet(transmit_fd, (struct sockaddr*)&timeserver_addr, NTP_SEND_TIMEOUT);
 }
 
 int __connman_ntp_start(char *server)
@@ -493,7 +560,6 @@ int __connman_ntp_start(char *server)
 		g_free(timeserver);
 
 	timeserver = g_strdup(server);
-	timeserver_addr.sin_addr.s_addr = inet_addr(server);
 
 	start_ntp(timeserver);
 
