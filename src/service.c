@@ -134,8 +134,6 @@ static struct connman_ipconfig *create_ip4config(struct connman_service *service
 static struct connman_ipconfig *create_ip6config(struct connman_service *service,
 		int index);
 
-static int searchdomain_add_all(struct connman_service *service);
-
 struct find_data {
 	const char *path;
 	struct connman_service *service;
@@ -942,6 +940,56 @@ static bool nameserver_available(struct connman_service *service,
 	return false;
 }
 
+static int searchdomain_add_all(struct connman_service *service)
+{
+	int index, i = 0;
+
+	if (!is_connected(service))
+		return -ENOTCONN;
+
+	index = __connman_service_get_index(service);
+	if (index < 0)
+		return -ENXIO;
+
+	if (service->domains) {
+		while (service->domains[i]) {
+			connman_resolver_append(index, service->domains[i],
+						NULL);
+			i++;
+		}
+
+		return 0;
+	}
+
+	if (service->domainname)
+		connman_resolver_append(index, service->domainname, NULL);
+
+	return 0;
+
+}
+
+static int searchdomain_remove_all(struct connman_service *service)
+{
+	int index, i = 0;
+
+	if (!is_connected(service))
+		return -ENOTCONN;
+
+	index = __connman_service_get_index(service);
+	if (index < 0)
+		return -ENXIO;
+
+	while (service->domains && service->domains[i]) {
+		connman_resolver_remove(index, service->domains[i], NULL);
+		i++;
+	}
+
+	if (service->domainname)
+		connman_resolver_remove(index, service->domainname, NULL);
+
+	return 0;
+}
+
 static int nameserver_add(struct connman_service *service,
 			enum connman_ipconfig_type type,
 			const char *nameserver)
@@ -1020,55 +1068,7 @@ static int nameserver_remove_all(struct connman_service *service,
 		i++;
 	}
 
-	return 0;
-}
-
-static int searchdomain_add_all(struct connman_service *service)
-{
-	int index, i = 0;
-
-	if (!is_connected(service))
-		return -ENOTCONN;
-
-	index = __connman_service_get_index(service);
-	if (index < 0)
-		return -ENXIO;
-
-	if (service->domains) {
-		while (service->domains[i]) {
-			connman_resolver_append(index, service->domains[i],
-						NULL);
-			i++;
-		}
-
-		return 0;
-	}
-
-	if (service->domainname)
-		connman_resolver_append(index, service->domainname, NULL);
-
-	return 0;
-
-}
-
-static int searchdomain_remove_all(struct connman_service *service)
-{
-	int index, i = 0;
-
-	if (!is_connected(service))
-		return -ENOTCONN;
-
-	index = __connman_service_get_index(service);
-	if (index < 0)
-		return -ENXIO;
-
-	while (service->domains && service->domains[i]) {
-		connman_resolver_remove(index, service->domains[i], NULL);
-		i++;
-	}
-
-	if (service->domainname)
-		connman_resolver_remove(index, service->domainname, NULL);
+	searchdomain_remove_all(service);
 
 	return 0;
 }
