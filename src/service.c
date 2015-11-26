@@ -5320,6 +5320,10 @@ static int service_indicate_state(struct connman_service *service)
 	service->state = new_state;
 	state_changed(service);
 
+	if (!is_connected_state(service, old_state) &&
+			is_connected_state(service, new_state))
+		searchdomain_add_all(service);
+
 	switch(new_state) {
 	case CONNMAN_SERVICE_STATE_UNKNOWN:
 
