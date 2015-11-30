@@ -2162,6 +2162,7 @@ static void interface_added(GSupplicantInterface *interface)
 		if (!wifi)
 			return;
 
+		wifi->interface = interface;
 		g_supplicant_interface_set_data(interface, wifi);
 		p2p_iface_list = g_list_append(p2p_iface_list, wifi);
 		wifi->p2p_device = true;
