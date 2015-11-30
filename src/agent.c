@@ -524,12 +524,12 @@ void connman_agent_cancel(void *user_context)
 								user_context) {
 				DBG("cancel pending %p", request);
 
+				agent->queue = g_list_delete_link(agent->queue,
+									list);
+
 				request->callback(NULL, request->user_data);
 
 				agent_request_free(request);
-
-				agent->queue = g_list_delete_link(agent->queue,
-									list);
 			}
 
 			list = next;
