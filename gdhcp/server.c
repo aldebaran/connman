@@ -214,9 +214,6 @@ static struct dhcp_lease *add_lease(GDHCPServer *dhcp_server, uint32_t expire,
 	g_hash_table_insert(dhcp_server->nip_lease_hash,
 				GINT_TO_POINTER((int) lease->lease_nip), lease);
 
-	if (dhcp_server->lease_added_cb)
-		dhcp_server->lease_added_cb(lease->lease_mac, yiaddr);
-
 	return lease;
 }
 
@@ -616,6 +613,9 @@ static void send_ACK(GDHCPServer *dhcp_server,
 	send_packet_to_client(dhcp_server, &packet);
 
 	add_lease(dhcp_server, 0, packet.chaddr, packet.yiaddr);
+
+	if (dhcp_server->lease_added_cb)
+		dhcp_server->lease_added_cb(packet.chaddr, packet.yiaddr);
 }
 
 static void send_NAK(GDHCPServer *dhcp_server,
