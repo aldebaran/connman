@@ -35,10 +35,13 @@
 
 static DBusConnection *connection;
 static GMainLoop *main_loop;
+static int timeout = 0;
+static int exit_value = 0;
 
 static gboolean option_version = FALSE;
 static gchar *option_interface = NULL;
 static gchar *option_ignore = NULL;
+static gint option_timeout = 120;
 
 struct devices {
 	char **interface;
@@ -50,6 +53,9 @@ static GOptionEntry options[] = {
 	  "Specify networking device or interface", "DEV" },
 	{ "ignore", 'I', 0, G_OPTION_ARG_STRING, &option_ignore,
 	  "Specify networking device or interface to ignore", "DEV" },
+	{ "timeout", 0, 0, G_OPTION_ARG_INT, &option_timeout,
+	  "Time to wait for network going online. Default is 120 seconds.",
+	  "seconds" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 	  "Show version information and exit" },
 	{ NULL },
@@ -353,6 +359,15 @@ static DBusHandlerResult manager_property_changed(DBusConnection *connection,
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static gboolean timeout_triggered(gpointer user_data)
+{
+	exit_value = -ETIMEDOUT;
+	g_main_loop_quit(main_loop);
+	timeout = 0;
+
+	return FALSE;
+}
+
 int main(int argc, char *argv[])
 {
 	const char *filter = "type='signal',interface='"
@@ -417,9 +432,14 @@ int main(int argc, char *argv[])
 		goto cleanup;
 	}
 
+	if (option_timeout)
+		timeout = g_timeout_add_seconds(option_timeout,
+						timeout_triggered, NULL);
+
 	manager_get_properties(&devices);
 
 	g_main_loop_run(main_loop);
+	err = exit_value;
 
 cleanup:
 	dbus_bus_remove_match(connection, filter, NULL);
@@ -434,6 +454,8 @@ fail:
 free:
 	g_strfreev(devices.interface);
 	g_strfreev(devices.ignore);
+	if (timeout)
+		g_source_remove(timeout);
 
 	return -err;
 }
