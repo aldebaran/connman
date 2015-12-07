@@ -36,6 +36,14 @@
 static DBusConnection *connection;
 static GMainLoop *main_loop;
 
+static gboolean option_version = FALSE;
+
+static GOptionEntry options[] = {
+	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
+	  "Show version information and exit" },
+	{ NULL },
+};
+
 static bool state_online(DBusMessageIter *iter)
 {
 	char *str;
@@ -150,7 +158,29 @@ int main(int argc, char *argv[])
 	const char *filter = "type='signal',interface='"
 		CONNMAN_MANAGER_INTERFACE "'";
 	int err = 0;
+	GError *g_err = NULL;
 	DBusError dbus_err;
+	GOptionContext *context;
+
+	context = g_option_context_new(NULL);
+	g_option_context_add_main_entries(context, options, NULL);
+
+	if (!g_option_context_parse(context, &argc, &argv, &g_err)) {
+		if (g_err) {
+			fprintf(stderr, "%s\n", g_err->message);
+			g_error_free(g_err);
+		} else
+			fprintf(stderr, "An unknown error occurred\n");
+
+		return EOPNOTSUPP;
+	}
+
+        g_option_context_free(context);
+
+        if (option_version) {
+		fprintf(stdout, "%s\n", VERSION);
+		return 0;
+	}
 
 	dbus_error_init(&dbus_err);
 	connection = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, &dbus_err);
