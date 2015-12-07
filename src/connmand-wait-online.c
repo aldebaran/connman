@@ -38,14 +38,18 @@ static GMainLoop *main_loop;
 
 static gboolean option_version = FALSE;
 static gchar *option_interface = NULL;
+static gchar *option_ignore = NULL;
 
 struct devices {
 	char **interface;
+	char **ignore;
 };
 
 static GOptionEntry options[] = {
 	{ "interface", 'i', 0, G_OPTION_ARG_STRING, &option_interface,
 	  "Specify networking device or interface", "DEV" },
+	{ "ignore", 'I', 0, G_OPTION_ARG_STRING, &option_ignore,
+	  "Specify networking device or interface to ignore", "DEV" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 	  "Show version information and exit" },
 	{ NULL },
@@ -57,6 +61,13 @@ static bool compare_interface(const char *interface, struct devices *devices)
 
 	if (!interface || !devices)
 		return false;
+
+	for (i = 0; devices->ignore && devices->ignore[i]; i++)
+		if (!strcmp(interface, devices->ignore[i]))
+			return false;
+
+	if (!devices->interface)
+		return true;
 
 	for (i = 0; devices->interface[i]; i++)
 		if (!strcmp(interface, devices->interface[i]))
@@ -348,7 +359,7 @@ int main(int argc, char *argv[])
 		CONNMAN_MANAGER_INTERFACE "'";
 	int err = 0;
 	GError *g_err = NULL;
-	struct devices devices = { NULL };
+	struct devices devices = { NULL, NULL };
 	DBusError dbus_err;
 	GOptionContext *context;
 
@@ -370,6 +381,11 @@ int main(int argc, char *argv[])
 	if (option_interface) {
 		devices.interface = g_strsplit(option_interface, ",", -1);
 		g_free(option_interface);
+	}
+
+	if (option_ignore) {
+		devices.ignore = g_strsplit(option_ignore, ",", -1);
+		g_free(option_ignore);
 	}
 
         if (option_version) {
@@ -417,6 +433,7 @@ fail:
 	dbus_error_free(&dbus_err);
 free:
 	g_strfreev(devices.interface);
+	g_strfreev(devices.ignore);
 
 	return -err;
 }
