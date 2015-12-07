@@ -97,7 +97,7 @@ unit_objects =
 
 MANUAL_PAGES =
 
-sbin_PROGRAMS = src/connmand
+sbin_PROGRAMS = src/connmand src/connmand-wait-online
 
 src_connmand_SOURCES = $(gdhcp_sources) $(gweb_sources) \
 			$(builtin_sources) $(shared_sources) src/connman.ver \
@@ -124,6 +124,11 @@ src_connmand_LDADD = gdbus/libgdbus-internal.la $(builtin_libadd) \
 
 src_connmand_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/connman.ver
+
+src_connmand_wait_online_SOURCES = src/connmand-wait-online.c
+
+src_connmand_wait_online_LDADD = gdbus/libgdbus-internal.la \
+			@GLIB_LIBS@ @DBUS_LIBS@
 
 if VPN
 vpn_plugin_LTLIBRARIES =
