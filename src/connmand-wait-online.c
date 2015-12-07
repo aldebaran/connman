@@ -24,16 +24,67 @@
 #endif
 
 #include <stdio.h>
+#include <string.h>
 #include <glib.h>
 #include <errno.h>
+#include <stdbool.h>
+#include <dbus/dbus.h>
 
 #include <gdbus.h>
+#include <connman/dbus.h>
 
 static DBusConnection *connection;
 static GMainLoop *main_loop;
 
+static bool state_online(DBusMessageIter *iter)
+{
+	char *str;
+	DBusMessageIter variant;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
+		return false;
+
+	dbus_message_iter_get_basic(iter, &str);
+	if (strcmp(str, "State"))
+		return false;
+
+	dbus_message_iter_next(iter);
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_VARIANT)
+		return false;
+
+	dbus_message_iter_recurse(iter, &variant);
+
+	if (dbus_message_iter_get_arg_type(&variant) != DBUS_TYPE_STRING)
+		return false;
+
+	dbus_message_iter_get_basic(&variant, &str);
+	if (strcmp(str, "ready") && strcmp(str, "online"))
+		return false;
+
+	return true;
+}
+
+static DBusHandlerResult manager_property_changed(DBusConnection *connection,
+                DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter;
+
+	if (dbus_message_is_signal(message, CONNMAN_MANAGER_INTERFACE,
+					"PropertyChanged")) {
+		dbus_message_iter_init(message, &iter);
+
+		if (state_online(&iter))
+			g_main_loop_quit(main_loop);
+	}
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
 int main(int argc, char *argv[])
 {
+	const char *filter = "type='signal',interface='"
+		CONNMAN_MANAGER_INTERFACE "'";
 	int err = 0;
 	DBusError dbus_err;
 
@@ -49,7 +100,24 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
+	dbus_connection_add_filter(connection, manager_property_changed,
+				NULL, NULL);
+
+	dbus_bus_add_match(connection, filter, &dbus_err);
+
+	if (dbus_error_is_set(&dbus_err)) {
+		fprintf(stderr, "Error: %s\n", dbus_err.message);
+
+		err = -ENOPROTOOPT;
+		goto cleanup;
+	}
+
 	g_main_loop_run(main_loop);
+
+cleanup:
+	dbus_bus_remove_match(connection, filter, NULL);
+	dbus_connection_remove_filter(connection, manager_property_changed,
+				NULL);
 
 	dbus_connection_unref(connection);
 	g_main_loop_unref(main_loop);
