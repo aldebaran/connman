@@ -505,6 +505,8 @@ error:
 	close(fd);
 	g_free(iface);
 	g_free(path);
+	if (pn)
+		g_free(pn->owner);
 	g_free(pn);
 	return err;
 }
