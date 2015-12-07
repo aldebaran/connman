@@ -37,12 +37,33 @@ static DBusConnection *connection;
 static GMainLoop *main_loop;
 
 static gboolean option_version = FALSE;
+static gchar *option_interface = NULL;
+
+struct devices {
+	char **interface;
+};
 
 static GOptionEntry options[] = {
+	{ "interface", 'i', 0, G_OPTION_ARG_STRING, &option_interface,
+	  "Specify networking device or interface", "DEV" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 	  "Show version information and exit" },
 	{ NULL },
 };
+
+static bool compare_interface(const char *interface, struct devices *devices)
+{
+	int i;
+
+	if (!interface || !devices)
+		return false;
+
+	for (i = 0; devices->interface[i]; i++)
+		if (!strcmp(interface, devices->interface[i]))
+			return true;
+
+	return false;
+}
 
 static bool state_online(DBusMessageIter *iter)
 {
@@ -73,7 +94,165 @@ static bool state_online(DBusMessageIter *iter)
 	return true;
 }
 
-static void manager_properties_online(DBusMessageIter *iter)
+static bool service_properties_online(DBusMessageIter *array_entry,
+				struct devices *devices)
+{
+	bool interface = !devices;
+	bool state = false;
+	DBusMessageIter dict, dict_entry, variant, eth_array, eth_dict,
+		eth_variant;
+	char *str;
+
+	for (dbus_message_iter_recurse(array_entry, &dict);
+	     dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY;
+	     dbus_message_iter_next(&dict)) {
+
+		dbus_message_iter_recurse(&dict, &dict_entry);
+		if (dbus_message_iter_get_arg_type(&dict_entry)
+				!= DBUS_TYPE_STRING)
+			continue;
+
+		if (state_online(&dict_entry)) {
+			state = true;
+			continue;
+		}
+
+		dbus_message_iter_recurse(&dict, &dict_entry);
+
+		dbus_message_iter_get_basic(&dict_entry, &str);
+
+		if (devices && !strcmp(str, "Ethernet")) {
+			dbus_message_iter_next(&dict_entry);
+
+			if (dbus_message_iter_get_arg_type(&dict_entry)
+					!= DBUS_TYPE_VARIANT)
+				break;
+
+			dbus_message_iter_recurse(&dict_entry, &variant);
+			if (dbus_message_iter_get_arg_type(&variant)
+					!= DBUS_TYPE_ARRAY)
+				break;
+
+			for (dbus_message_iter_recurse(&variant, &eth_array);
+			     dbus_message_iter_get_arg_type(&eth_array)
+				     == DBUS_TYPE_DICT_ENTRY;
+			     dbus_message_iter_next(&eth_array)) {
+
+				dbus_message_iter_recurse(&eth_array, &eth_dict);
+
+				if (dbus_message_iter_get_arg_type(&eth_dict)
+						!= DBUS_TYPE_STRING)
+					continue;
+
+				dbus_message_iter_get_basic(&eth_dict, &str);
+				if (!strcmp(str, "Interface")) {
+
+					dbus_message_iter_next(&eth_dict);
+					if (dbus_message_iter_get_arg_type(&eth_dict)
+							!= DBUS_TYPE_VARIANT)
+						break;
+
+					dbus_message_iter_recurse(&eth_dict,
+								&eth_variant);
+					if (dbus_message_iter_get_arg_type(&eth_variant)
+							!= DBUS_TYPE_STRING)
+						break;
+
+					dbus_message_iter_get_basic(&eth_variant,
+								&str);
+					interface = compare_interface(str,
+								devices);
+
+					break;
+				}
+			}
+		}
+
+		if (state && interface) {
+			g_main_loop_quit(main_loop);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static void services_dict_online(DBusMessageIter *iter, struct devices *devices)
+{
+	DBusMessageIter array, array_entry;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	for (dbus_message_iter_recurse(iter, &array);
+	     dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRUCT;
+	     dbus_message_iter_next(&array)) {
+
+		dbus_message_iter_recurse(&array, &array_entry);
+
+		if (dbus_message_iter_get_arg_type(&array_entry) !=
+				DBUS_TYPE_OBJECT_PATH)
+			break;
+
+		dbus_message_iter_next(&array_entry);
+
+		if (dbus_message_iter_get_arg_type(&array_entry) !=
+				DBUS_TYPE_ARRAY)
+			continue;
+
+		if (service_properties_online(&array_entry, devices))
+			break;
+	}
+}
+
+static void manager_get_services_return(DBusPendingCall *call,
+					void *user_data)
+{
+	struct devices *devices = user_data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+                goto fail;
+
+        if (!dbus_message_iter_init(reply, &iter))
+                goto fail;
+
+	services_dict_online(&iter, devices);
+
+fail:
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+}
+
+static void manager_get_services(struct devices *devices)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	message = dbus_message_new_method_call(CONNMAN_SERVICE,
+					CONNMAN_MANAGER_PATH,
+					CONNMAN_MANAGER_INTERFACE,
+					"GetServices");
+	if (!message)
+		return;
+
+	if (!dbus_connection_send_with_reply(connection, message, &call, -1))
+                goto fail;
+
+        if (!call)
+                goto fail;
+
+	dbus_pending_call_set_notify(call, manager_get_services_return,
+				devices, NULL);
+
+fail:
+        dbus_message_unref(message);
+}
+
+static void manager_properties_online(DBusMessageIter *iter,
+				struct devices *devices)
 {
 	DBusMessageIter array, dict_entry;
 
@@ -87,7 +266,11 @@ static void manager_properties_online(DBusMessageIter *iter)
 		dbus_message_iter_recurse(&array, &dict_entry);
 
 		if (state_online(&dict_entry)) {
-			g_main_loop_quit(main_loop);
+			if (devices)
+				manager_get_services(devices);
+			else
+				g_main_loop_quit(main_loop);
+
 			break;
 		}
 	}
@@ -95,6 +278,7 @@ static void manager_properties_online(DBusMessageIter *iter)
 
 static void manager_get_properties_return(DBusPendingCall *call, void *user_data)
 {
+	struct devices *devices = user_data;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 
@@ -105,14 +289,14 @@ static void manager_get_properties_return(DBusPendingCall *call, void *user_data
         if (!dbus_message_iter_init(reply, &iter))
                 goto fail;
 
-	manager_properties_online(&iter);
+	manager_properties_online(&iter, devices);
 
 fail:
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
 }
 
-static void manager_get_properties(void)
+static void manager_get_properties(struct devices *devices)
 {
 	DBusMessage *message;
 	DBusPendingCall *call;
@@ -131,7 +315,7 @@ static void manager_get_properties(void)
                 goto fail;
 
 	dbus_pending_call_set_notify(call, manager_get_properties_return,
-				NULL, NULL);
+				devices, NULL);
 
 fail:
         dbus_message_unref(message);
@@ -140,14 +324,19 @@ fail:
 static DBusHandlerResult manager_property_changed(DBusConnection *connection,
                 DBusMessage *message, void *user_data)
 {
+	struct devices *devices = user_data;
 	DBusMessageIter iter;
 
 	if (dbus_message_is_signal(message, CONNMAN_MANAGER_INTERFACE,
 					"PropertyChanged")) {
 		dbus_message_iter_init(message, &iter);
 
-		if (state_online(&iter))
-			g_main_loop_quit(main_loop);
+		if (state_online(&iter)) {
+			if (devices)
+				manager_get_services(devices);
+			else
+				g_main_loop_quit(main_loop);
+		}
 	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
@@ -159,6 +348,7 @@ int main(int argc, char *argv[])
 		CONNMAN_MANAGER_INTERFACE "'";
 	int err = 0;
 	GError *g_err = NULL;
+	struct devices devices = { NULL };
 	DBusError dbus_err;
 	GOptionContext *context;
 
@@ -177,9 +367,14 @@ int main(int argc, char *argv[])
 
         g_option_context_free(context);
 
+	if (option_interface) {
+		devices.interface = g_strsplit(option_interface, ",", -1);
+		g_free(option_interface);
+	}
+
         if (option_version) {
 		fprintf(stdout, "%s\n", VERSION);
-		return 0;
+		goto free;
 	}
 
 	dbus_error_init(&dbus_err);
@@ -195,7 +390,7 @@ int main(int argc, char *argv[])
 	main_loop = g_main_loop_new(NULL, FALSE);
 
 	dbus_connection_add_filter(connection, manager_property_changed,
-				NULL, NULL);
+				&devices, NULL);
 
 	dbus_bus_add_match(connection, filter, &dbus_err);
 
@@ -206,20 +401,22 @@ int main(int argc, char *argv[])
 		goto cleanup;
 	}
 
-	manager_get_properties();
+	manager_get_properties(&devices);
 
 	g_main_loop_run(main_loop);
 
 cleanup:
 	dbus_bus_remove_match(connection, filter, NULL);
 	dbus_connection_remove_filter(connection, manager_property_changed,
-				NULL);
+				&devices);
 
 	dbus_connection_unref(connection);
 	g_main_loop_unref(main_loop);
 
 fail:
 	dbus_error_free(&dbus_err);
+free:
+	g_strfreev(devices.interface);
 
 	return -err;
 }
