@@ -65,6 +65,70 @@ static bool state_online(DBusMessageIter *iter)
 	return true;
 }
 
+static void manager_properties_online(DBusMessageIter *iter)
+{
+	DBusMessageIter array, dict_entry;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	for (dbus_message_iter_recurse(iter, &array);
+	     dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY;
+	     dbus_message_iter_next(&array)) {
+
+		dbus_message_iter_recurse(&array, &dict_entry);
+
+		if (state_online(&dict_entry)) {
+			g_main_loop_quit(main_loop);
+			break;
+		}
+	}
+}
+
+static void manager_get_properties_return(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter;
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+                goto fail;
+
+        if (!dbus_message_iter_init(reply, &iter))
+                goto fail;
+
+	manager_properties_online(&iter);
+
+fail:
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+}
+
+static void manager_get_properties(void)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	message = dbus_message_new_method_call(CONNMAN_SERVICE,
+					CONNMAN_MANAGER_PATH,
+					CONNMAN_MANAGER_INTERFACE,
+					"GetProperties");
+	if (!message)
+		return;
+
+	if (!dbus_connection_send_with_reply(connection, message, &call, -1))
+                goto fail;
+
+        if (!call)
+                goto fail;
+
+	dbus_pending_call_set_notify(call, manager_get_properties_return,
+				NULL, NULL);
+
+fail:
+        dbus_message_unref(message);
+}
+
 static DBusHandlerResult manager_property_changed(DBusConnection *connection,
                 DBusMessage *message, void *user_data)
 {
@@ -111,6 +175,8 @@ int main(int argc, char *argv[])
 		err = -ENOPROTOOPT;
 		goto cleanup;
 	}
+
+	manager_get_properties();
 
 	g_main_loop_run(main_loop);
 
