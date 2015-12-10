@@ -1487,7 +1487,7 @@ static gboolean cm_context_added(DBusConnection *conn,
 	const char *path = dbus_message_get_path(message);
 	char *context_path;
 	struct modem_data *modem;
-	DBusMessageIter iter, properties;
+	DBusMessageIter iter, properties, dict;
 
 	DBG("%s", path);
 
@@ -1503,6 +1503,13 @@ static gboolean cm_context_added(DBusConnection *conn,
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &properties);
 
+	/* Sometimes, we get an array instead of dict */
+	if (dbus_message_iter_get_arg_type(&properties) == DBUS_TYPE_ARRAY) {
+		/* Must recurse again */
+		dbus_message_iter_recurse(&properties, &dict);
+		if (add_cm_context(modem, context_path, &dict) != 0)
+			return TRUE;
+	}
 	if (add_cm_context(modem, context_path, &properties) != 0)
 		return TRUE;
 
