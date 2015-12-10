@@ -1172,14 +1172,6 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 
 	DBG("%s context path %s", modem->path, context_path);
 
-	if (modem->context) {
-		/*
-		 * We have already assigned a context to this modem
-		 * and we do only support one Internet context.
-		 */
-		return -EALREADY;
-	}
-
 	context = network_context_alloc(context_path);
 	if (!context)
 		return -ENOMEM;
@@ -1438,7 +1430,7 @@ static void cm_get_contexts_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (add_cm_context(modem, context_path, &value) == 0)
+		if (add_cm_context(modem, context_path, &value))
 			break;
 
 		dbus_message_iter_next(&dict);
