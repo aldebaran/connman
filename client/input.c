@@ -103,8 +103,9 @@ static void rl_handler(char *input)
 	}
 
 	if (len > 0) {
-
-		add_history(input);
+		HIST_ENTRY *previous = history_get(where_history());
+		if(!previous || strcmp(previous->line, input))
+			add_history(input);
 
 		err = __connmanctl_commands(connection, trim_args, len);
 
