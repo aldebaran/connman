@@ -150,6 +150,7 @@ struct modem_data {
 	struct connman_network *network;
 
 	struct network_context *context;
+	GSList *context_list;
 
 	/* Modem Interface */
 	char *serial;
@@ -217,6 +218,23 @@ static char *get_ident(const char *path)
 		return NULL;
 
 	return pos + 1;
+}
+
+static struct network_context *get_context_with_path(GSList *context_list,
+						const gchar *path)
+{
+	GSList *list;
+
+	DBG("path %s", path);
+
+	for (list = context_list; list; list = list->next) {
+		struct network_context *context = list->data;
+
+		if (g_strcmp0(context->path, path) == 0)
+			return context;
+	}
+
+	return NULL;
 }
 
 static struct network_context *network_context_alloc(const char *path)
@@ -1205,6 +1223,7 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 	modem->context = context;
 	modem->active = active;
 
+	modem->context_list = g_slist_prepend(modem->context_list, context);
 	g_hash_table_replace(context_hash, g_strdup(context_path), modem);
 
 	if (modem->valid_apn && modem->attached &&
@@ -1217,23 +1236,44 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 }
 
 static void remove_cm_context(struct modem_data *modem,
-				const char *context_path)
+				struct network_context *context)
 {
 	if (!modem->context)
+		return;
+	if (!modem->context_list)
+		return;
+	if (!context)
 		return;
 
 	if (modem->network)
 		remove_network(modem);
 
-	g_hash_table_remove(context_hash, context_path);
+	g_hash_table_remove(context_hash, context->path);
+
+	modem->context_list = g_slist_remove(modem->context_list, context);
 
 	network_context_free(modem->context);
 	modem->context = NULL;
 
 	modem->valid_apn = false;
+}
 
-	if (modem->network)
-		remove_network(modem);
+static void remove_all_contexts(struct modem_data *modem)
+{
+	GSList *list = NULL;
+
+	DBG("");
+
+	if (modem->context_list == NULL)
+		return;
+
+	for (list = modem->context_list; list; list = list->next) {
+		struct network_context *context = list->data;
+
+		remove_cm_context(modem, context);
+	}
+	g_slist_free(modem->context_list);
+	modem->context_list = NULL;
 }
 
 static gboolean context_changed(DBusConnection *conn,
@@ -1451,6 +1491,7 @@ static gboolean cm_context_removed(DBusConnection *conn,
 	const char *path = dbus_message_get_path(message);
 	const char *context_path;
 	struct modem_data *modem;
+	struct network_context *context;
 	DBusMessageIter iter;
 
 	DBG("context path %s", path);
@@ -1464,7 +1505,8 @@ static gboolean cm_context_removed(DBusConnection *conn,
 	if (!modem)
 		return TRUE;
 
-	remove_cm_context(modem, context_path);
+	context = get_context_with_path(modem->context_list, context_path);
+	remove_cm_context(modem, context);
 
 	return TRUE;
 }
@@ -2149,14 +2191,11 @@ static void modem_update_interfaces(struct modem_data *modem,
 			dbus_pending_call_unref(modem->call_get_contexts);
 			modem->call_get_contexts = NULL;
 		}
-		if (modem->context) {
-			DBG("removing context %s", modem->context->path);
-			remove_cm_context(modem, modem->context->path);
-		}
+		remove_all_contexts(modem);
 	}
 
 	if (api_removed(old_ifaces, new_ifaces, OFONO_API_CDMA_CM))
-		remove_cm_context(modem, modem->context->path);
+		remove_all_contexts(modem);
 
 	if (api_removed(old_ifaces, new_ifaces, OFONO_API_NETREG))
 		remove_network(modem);
@@ -2365,11 +2404,12 @@ static void remove_modem(gpointer data)
 		dbus_pending_call_unref(modem->call_get_contexts);
 	}
 
+	/* Must remove the contexts before the device */
+	if (modem->context_list)
+		remove_all_contexts(modem);
+
 	if (modem->device)
 		destroy_device(modem);
-
-	if (modem->context)
-		remove_cm_context(modem, modem->context->path);
 
 	g_free(modem->serial);
 	g_free(modem->name);
