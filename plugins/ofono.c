@@ -152,7 +152,6 @@ struct modem_data {
 
 	struct connman_device *device;
 
-	struct network_context *context;
 	GSList *context_list;
 
 	/* Modem Interface */
@@ -669,10 +668,16 @@ static void cdma_cm_set_powered_reply(struct modem_data *modem,
 static int cdma_cm_set_powered(struct modem_data *modem, dbus_bool_t powered)
 {
 	int err;
+	struct network_context *context = NULL;
+
+	if (!modem->context_list)
+		return -1;
 
 	DBG("%s powered %d", modem->path, powered);
 
-	err = set_property(modem, modem->context, modem->path,
+	/* In case of CDMA, there is only one context */
+	context = modem->context_list->data;
+	err = set_property(modem, context, modem->path,
 				OFONO_CDMA_CM_INTERFACE,
 				"Powered", DBUS_TYPE_BOOLEAN,
 				&powered,
@@ -1232,7 +1237,6 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 	if (ip_protocol)
 		set_context_ipconfig(context, ip_protocol);
 
-	modem->context = context;
 	context->active = active;
 
 	modem->context_list = g_slist_prepend(modem->context_list, context);
@@ -1248,8 +1252,6 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 static void remove_cm_context(struct modem_data *modem,
 				struct network_context *context)
 {
-	if (!modem->context)
-		return;
 	if (!modem->context_list)
 		return;
 	if (!context)
@@ -1261,8 +1263,8 @@ static void remove_cm_context(struct modem_data *modem,
 		remove_network(modem, context);
 	modem->context_list = g_slist_remove(modem->context_list, context);
 
-	network_context_free(modem->context);
-	modem->context = NULL;
+	network_context_free(context);
+	context = NULL;
 }
 
 static void remove_all_contexts(struct modem_data *modem)
@@ -1330,11 +1332,11 @@ static gboolean context_changed(DBusConnection *conn,
 	if (g_str_equal(key, "Settings")) {
 		DBG("%s Settings", modem->path);
 
-		extract_ipv4_settings(&value, modem->context);
+		extract_ipv4_settings(&value, context);
 	} else if (g_str_equal(key, "IPv6.Settings")) {
 		DBG("%s IPv6.Settings", modem->path);
 
-		extract_ipv6_settings(&value, modem->context);
+		extract_ipv6_settings(&value, context);
 	} else if (g_str_equal(key, "Active")) {
 		dbus_bool_t active;
 
@@ -1386,7 +1388,7 @@ static gboolean context_changed(DBusConnection *conn,
 
 		dbus_message_iter_get_basic(&value, &ip_protocol);
 
-		set_context_ipconfig(modem->context, ip_protocol);
+		set_context_ipconfig(context, ip_protocol);
 	}
 
 	return TRUE;
@@ -1843,7 +1845,7 @@ static gboolean cdma_netreg_changed(DBusConnection *conn,
 	if (modem->registered)
 		add_cdma_network(modem);
 	else
-		remove_network(modem, modem->context);
+		remove_all_networks(modem);
 
 	return TRUE;
 }
@@ -1878,7 +1880,7 @@ static void cdma_netreg_properties_reply(struct modem_data *modem,
 	if (modem->registered)
 		add_cdma_network(modem);
 	else
-		remove_network(modem, modem->context);
+		remove_all_networks(modem);
 }
 
 static int cdma_netreg_get_properties(struct modem_data *modem)
@@ -1898,7 +1900,7 @@ static void cm_update_attached(struct modem_data *modem,
 	DBG("%s Attached %d", modem->path, modem->attached);
 
 	if (!modem->attached) {
-		remove_network(modem, modem->context);
+		remove_all_networks(modem);
 		return;
 	}
 
@@ -1959,6 +1961,7 @@ static gboolean cm_changed(DBusConnection *conn, DBusMessage *message,
 static void cdma_cm_update_powered(struct modem_data *modem,
 					DBusMessageIter *value)
 {
+	struct network_context *context =  NULL;
 	dbus_bool_t cdma_cm_powered;
 
 	dbus_message_iter_get_basic(value, &cdma_cm_powered);
@@ -1966,13 +1969,15 @@ static void cdma_cm_update_powered(struct modem_data *modem,
 
 	DBG("%s CDMA cm Powered %d", modem->path, modem->cdma_cm_powered);
 
-	if (!modem->context)
+	if (!modem->context_list)
 		return;
 
+	/* In case of CDMA, there is only one context */
+	context = modem->context_list->data;
 	if (modem->cdma_cm_powered)
-		set_connected(modem, modem->context);
+		set_connected(modem, context);
 	else
-		set_disconnected(modem->context);
+		set_disconnected(context);
 }
 
 static void cdma_cm_update_settings(struct modem_data *modem,
@@ -1980,7 +1985,7 @@ static void cdma_cm_update_settings(struct modem_data *modem,
 {
 	DBG("%s Settings", modem->path);
 
-	extract_ipv4_settings(value, modem->context);
+	extract_ipv4_settings(value, modem->context_list->data);
 }
 
 static gboolean cdma_cm_changed(DBusConnection *conn,
@@ -1995,7 +2000,7 @@ static gboolean cdma_cm_changed(DBusConnection *conn,
 	if (!modem)
 		return TRUE;
 
-	if (modem->online && !modem->context)
+	if (modem->online && !modem->context_list)
 		cdma_netreg_get_properties(modem);
 
 	if (!dbus_message_iter_init(message, &iter))
