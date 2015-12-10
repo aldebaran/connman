@@ -2315,8 +2315,8 @@ static gboolean modem_changed(DBusConnection *conn, DBusMessage *message,
 
 		DBG("%s Powered %d", modem->path, modem->powered);
 
-		if (!modem->powered)
-			modem_set_powered(modem, TRUE);
+		/* Set the powered according to the value */
+		modem_set_powered(modem, powered);
 	} else if (g_str_equal(key, "Online")) {
 		dbus_bool_t online;
 
