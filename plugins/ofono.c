@@ -141,6 +141,9 @@ struct network_context {
 	enum connman_ipconfig_method ipv6_method;
 	struct connman_ipaddress *ipv6_address;
 	char *ipv6_nameservers;
+
+	bool active;
+	bool valid_apn; /* APN is 'valid' if length > 0 */
 };
 
 struct modem_data {
@@ -167,10 +170,6 @@ struct modem_data {
 	/* ConnectionManager Interface */
 	bool attached;
 	bool cm_powered;
-
-	/* ConnectionContext Interface */
-	bool active;
-	bool valid_apn; /* APN is 'valid' if length > 0 */
 
 	/* SimManager Interface */
 	char *imsi;
@@ -1196,9 +1195,9 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 
 			dbus_message_iter_get_basic(&value, &apn);
 			if (apn && strlen(apn) > 0)
-				modem->valid_apn = true;
+				context->valid_apn = true;
 			else
-				modem->valid_apn = false;
+				context->valid_apn = false;
 
 			DBG("%s AccessPointName '%s'", modem->path, apn);
 		}  else if (g_str_equal(key, "Protocol") &&
@@ -1221,12 +1220,12 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 		set_context_ipconfig(context, ip_protocol);
 
 	modem->context = context;
-	modem->active = active;
+	context->active = active;
 
 	modem->context_list = g_slist_prepend(modem->context_list, context);
 	g_hash_table_replace(context_hash, g_strdup(context_path), modem);
 
-	if (modem->valid_apn && modem->attached &&
+	if (context->valid_apn && modem->attached &&
 			has_interface(modem->interfaces,
 				OFONO_API_NETREG)) {
 		add_network(modem);
@@ -1254,8 +1253,6 @@ static void remove_cm_context(struct modem_data *modem,
 
 	network_context_free(modem->context);
 	modem->context = NULL;
-
-	modem->valid_apn = false;
 }
 
 static void remove_all_contexts(struct modem_data *modem)
@@ -1280,6 +1277,7 @@ static gboolean context_changed(DBusConnection *conn,
 				DBusMessage *message,
 				void *user_data)
 {
+	struct network_context *context = NULL;
 	const char *context_path = dbus_message_get_path(message);
 	struct modem_data *modem = NULL;
 	DBusMessageIter iter, value;
@@ -1289,6 +1287,10 @@ static gboolean context_changed(DBusConnection *conn,
 
 	modem = g_hash_table_lookup(context_hash, context_path);
 	if (!modem)
+		return TRUE;
+
+	context = get_context_with_path(modem->context_list, context_path);
+	if (!context)
 		return TRUE;
 
 	if (!dbus_message_iter_init(message, &iter))
@@ -1316,11 +1318,11 @@ static gboolean context_changed(DBusConnection *conn,
 		dbus_bool_t active;
 
 		dbus_message_iter_get_basic(&value, &active);
-		modem->active = active;
+		context->active = active;
 
-		DBG("%s Active %d", modem->path, modem->active);
+		DBG("%s Active %d", modem->path, context->active);
 
-		if (modem->active)
+		if (context->active)
 			set_connected(modem);
 		else
 			set_disconnected(modem);
@@ -1332,7 +1334,7 @@ static gboolean context_changed(DBusConnection *conn,
 		DBG("%s AccessPointName %s", modem->path, apn);
 
 		if (apn && strlen(apn) > 0) {
-			modem->valid_apn = true;
+			context->valid_apn = true;
 
 			if (modem->network)
 				return TRUE;
@@ -1346,10 +1348,10 @@ static gboolean context_changed(DBusConnection *conn,
 
 			add_network(modem);
 
-			if (modem->active)
+			if (context->active)
 				set_connected(modem);
 		} else {
-			modem->valid_apn = false;
+			context->valid_apn = false;
 
 			if (!modem->network)
 				return TRUE;
@@ -1666,6 +1668,8 @@ static gboolean netreg_changed(DBusConnection *conn, DBusMessage *message,
 static void netreg_properties_reply(struct modem_data *modem,
 					DBusMessageIter *dict)
 {
+	GSList *list = NULL;
+
 	DBG("%s", modem->path);
 
 	while (dbus_message_iter_get_arg_type(dict) == DBUS_TYPE_DICT_ENTRY) {
@@ -1690,7 +1694,7 @@ static void netreg_properties_reply(struct modem_data *modem,
 		dbus_message_iter_next(dict);
 	}
 
-	if (!modem->context) {
+	if (!modem->context_list) {
 		/*
 		 * netgreg_get_properties() was issued after we got
 		 * cm_get_contexts_reply() where we create the
@@ -1701,12 +1705,15 @@ static void netreg_properties_reply(struct modem_data *modem,
 		 */
 		return;
 	}
+	/* Check for all contexts if they are valids and/or actives */
+	for (list = modem->context_list; list; list = list->next) {
+		struct network_context *context = list->data;
 
-	if (modem->valid_apn)
-		add_network(modem);
-
-	if (modem->active)
-		set_connected(modem);
+		if (context->valid_apn)
+			add_network(modem);
+		if (context->active)
+			set_connected(modem);
+	}
 }
 
 static int netreg_get_properties(struct modem_data *modem)
