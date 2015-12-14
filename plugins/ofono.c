@@ -1116,7 +1116,7 @@ static void remove_network(struct modem_data *modem,
 {
 	DBG("%s", modem->path);
 
-	if (!context)
+	if (!context || !context->network)
 		return;
 
 	DBG("network %p", context->network);
