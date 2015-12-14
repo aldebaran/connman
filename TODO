@@ -200,23 +200,9 @@ VPN
 Tools
 =====
 
-- Add Clock API and MoveBefore/MoveAfter support to connmanctl
+- Add Clock API support to connmanctl
 
    Priority: Low
    Complexity: C2
 
-   The connmanctl command line tool should support Clock API and Service API
-   MoveBefore/MoveAfter.
-
-
-User Interface
-==============
-
-- GNOME3 UI
-
-   Priority: Low
-   Complexity: C4
-
-   A GNOME3 shell user interface would make it easier for mainstream distros
-   users to use ConnMan. Continue/restart the work at
-   https://github.com/connectivity/gnome-extension-connman
+   The connmanctl command line tool should support Clock API.
