@@ -1,3 +1,16 @@
+ver 1.31:
+	Fix issue with DNS TTL and CLASS field length.
+	Fix issue with handling of ClearProperty method.
+	Fix issue with subnet assignment for tethering.
+	Fix issue with search domain reconfiguration.
+	Fix issue with Bluetooth adapter handling.
+	Fix issue with DHCP handling and OFFER stage.
+	Add support for handling multiple contexts.
+	Add support for handling IPv6 timeservers.
+	Add support for handling DSA interfaces.
+	Add support for symlinking resolv.conf file.
+	Add support for connman-wait-online service.
+
 ver 1.30:
 	Fix issue with pending DNS request during server change.
 	Fix issue with empty strings in nameservers configuration.
