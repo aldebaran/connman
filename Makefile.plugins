@@ -27,8 +27,6 @@ builtin_sources += plugins/wifi.c $(gsupplicant_sources)
 endif
 
 if BLUETOOTH
-builtin_modules += bluetooth_legacy
-builtin_sources += plugins/bluetooth_legacy.c
 builtin_modules += bluetooth
 builtin_sources += plugins/bluetooth.c
 endif
