@@ -135,6 +135,8 @@ void __connman_log_cleanup(gboolean backtrace);
 void __connman_log_enable(struct connman_debug_desc *start,
 					struct connman_debug_desc *stop);
 
+#include <connman/backtrace.h>
+
 #include <connman/option.h>
 
 #include <connman/setting.h>
