@@ -114,6 +114,8 @@ static bool apply_dhcp_invalidate_on_network(struct connman_dhcp *dhcp)
 			__connman_service_nameserver_remove(service,
 						dhcp->nameservers[i], false);
 		}
+		g_strfreev(dhcp->nameservers);
+		dhcp->nameservers = NULL;
 	}
 
 	return true;
