@@ -2259,9 +2259,11 @@ hangup:
 		g_free(server->incoming_reply);
 		server->incoming_reply = NULL;
 
-		for (list = request_list; list; list = list->next) {
+		list = request_list;
+		while (list) {
 			struct request_data *req = list->data;
 			struct domain_hdr *hdr;
+			list = list->next;
 
 			if (req->protocol == IPPROTO_UDP)
 				continue;
