@@ -108,6 +108,8 @@ static bool apply_dhcp_invalidate_on_network(struct connman_dhcp *dhcp)
 			__connman_service_timeserver_remove(service,
 							dhcp->timeservers[i]);
 		}
+		g_strfreev(dhcp->timeservers);
+		dhcp->timeservers = NULL;
 	}
 	if (dhcp->nameservers) {
 		for (i = 0; dhcp->nameservers[i]; i++) {
