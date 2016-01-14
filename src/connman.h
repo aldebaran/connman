@@ -493,8 +493,6 @@ void __connman_connection_gateway_remove(struct connman_service *service,
 int __connman_connection_get_vpn_index(int phy_index);
 
 bool __connman_connection_update_gateway(void);
-void __connman_connection_gateway_activate(struct connman_service *service,
-					enum connman_ipconfig_type type);
 
 int __connman_ntp_start(char *server);
 void __connman_ntp_stop();

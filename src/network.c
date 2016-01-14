@@ -285,9 +285,6 @@ static int manual_ipv6_set(struct connman_network *network,
 	if (err < 0)
 		return err;
 
-	__connman_connection_gateway_activate(service,
-						CONNMAN_IPCONFIG_TYPE_IPV6);
-
 	__connman_device_set_network(network->device, network);
 
 	connman_network_set_associating(network, false);

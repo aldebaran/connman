@@ -771,24 +771,6 @@ static void update_order(void)
 	}
 }
 
-void __connman_connection_gateway_activate(struct connman_service *service,
-					enum connman_ipconfig_type type)
-{
-	struct gateway_data *data = NULL;
-
-	data = g_hash_table_lookup(gateway_hash, service);
-	if (!data)
-		return;
-
-	DBG("gateway %p/%p type %d", data->ipv4_gateway,
-					data->ipv6_gateway, type);
-
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		data->ipv4_gateway->active = true;
-	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		data->ipv6_gateway->active = true;
-}
-
 static void add_host_route(int family, int index, const char *gateway,
 			enum connman_service_type service_type)
 {
