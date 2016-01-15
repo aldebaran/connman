@@ -302,7 +302,7 @@ the "idle" state since the service is not connected.
 		      |                                          |
 		      +------------------------------------------+
 
-The different states should no be used by the user interface to trigger
+The different states should not be used by the user interface to trigger
 advanced actions. The state transitions are provided for the sole purpose
 to give the user feedback on what is currently going on. Especially in
 cases where networks are flaky or DHCP servers take a long time these
