@@ -36,10 +36,13 @@ src/connman.conf
 src/connman.service
 src/net.connman.service
 src/*-connman.rules
+src/connman-wait-online.service
+src/connmand-wait-online
 plugins/connman.policy
 scripts/connman
 scripts/openconnect-script
 scripts/openvpn-script
+scripts/connman_resolvconf.conf
 client/connmanctl
 tools/wispr
 tools/dhcp-test
