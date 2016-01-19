@@ -4785,6 +4785,12 @@ static void service_list_sort(void)
 	}
 }
 
+int __connman_service_compare(const struct connman_service *a,
+					const struct connman_service *b)
+{
+	return service_compare(a, b);
+}
+
 /**
  * connman_service_get_type:
  * @service: service structure
