@@ -577,37 +577,35 @@ static bool choose_default_gateway(struct gateway_data *data,
 	 * this one as default. If the other one is already active
 	 * we mark this one as non default.
 	 */
-	if (data->ipv4_gateway) {
-		if (candidate->ipv4_gateway &&
-				!candidate->ipv4_gateway->active) {
+	if (data->ipv4_gateway && candidate->ipv4_gateway) {
+
+		if (!candidate->ipv4_gateway->active) {
 			DBG("ipv4 downgrading %p", candidate);
 			unset_default_gateway(candidate,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
 		}
-		if (candidate->ipv4_gateway &&
-				candidate->ipv4_gateway->active &&
-				candidate->order > data->order) {
+
+		if (candidate->ipv4_gateway->active &&
+				__connman_service_compare(candidate->service,
+							data->service) < 0) {
 			DBG("ipv4 downgrading this %p", data);
-			unset_default_gateway(data,
-						CONNMAN_IPCONFIG_TYPE_IPV4);
+			unset_default_gateway(data, CONNMAN_IPCONFIG_TYPE_IPV4);
 			downgraded = true;
 		}
 	}
 
-	if (data->ipv6_gateway) {
-		if (candidate->ipv6_gateway &&
-				!candidate->ipv6_gateway->active) {
+	if (data->ipv6_gateway && candidate->ipv6_gateway) {
+		if (!candidate->ipv6_gateway->active) {
 			DBG("ipv6 downgrading %p", candidate);
 			unset_default_gateway(candidate,
 						CONNMAN_IPCONFIG_TYPE_IPV6);
 		}
 
-		if (candidate->ipv6_gateway &&
-				candidate->ipv6_gateway->active &&
-				candidate->order > data->order) {
+		if (candidate->ipv6_gateway->active &&
+			__connman_service_compare(candidate->service,
+						data->service) < 0) {
 			DBG("ipv6 downgrading this %p", data);
-			unset_default_gateway(data,
-						CONNMAN_IPCONFIG_TYPE_IPV6);
+			unset_default_gateway(data, CONNMAN_IPCONFIG_TYPE_IPV6);
 			downgraded = true;
 		}
 	}
