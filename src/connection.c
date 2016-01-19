@@ -558,25 +558,13 @@ static void unset_default_gateway(struct gateway_data *data,
 
 static struct gateway_data *find_default_gateway(void)
 {
-	struct gateway_data *found = NULL;
-	unsigned int order = 0;
-	GHashTableIter iter;
-	gpointer value, key;
+	struct connman_service *service;
 
-	g_hash_table_iter_init(&iter, gateway_hash);
+	service = __connman_service_get_default();
+	if (!service)
+		return NULL;
 
-	while (g_hash_table_iter_next(&iter, &key, &value)) {
-		struct gateway_data *data = value;
-
-		if (!found || data->order > order) {
-			found = data;
-			order = data->order;
-
-			DBG("default %p order %d", found, order);
-		}
-	}
-
-	return found;
+	return g_hash_table_lookup(gateway_hash, service);
 }
 
 static bool choose_default_gateway(struct gateway_data *data,
