@@ -6623,12 +6623,6 @@ unsigned int __connman_service_get_order(struct connman_service *service)
 	return order;
 }
 
-void __connman_service_update_ordering(void)
-{
-	if (service_list && service_list->next)
-		service_list = g_list_sort(service_list, service_compare);
-}
-
 static enum connman_service_type convert_network_type(struct connman_network *network)
 {
 	enum connman_network_type type = connman_network_get_type(network);

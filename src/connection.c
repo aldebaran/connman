@@ -977,8 +977,6 @@ bool __connman_connection_update_gateway(void)
 
 	default_gateway = find_default_gateway();
 
-	__connman_service_update_ordering();
-
 	DBG("default %p", default_gateway);
 
 	/*
