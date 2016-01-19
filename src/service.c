@@ -347,6 +347,19 @@ static enum connman_service_proxy_method string2proxymethod(const char *method)
 		return CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN;
 }
 
+static void set_split_routing(struct connman_service *service, bool value)
+{
+	if (service->type != CONNMAN_SERVICE_TYPE_VPN)
+		return;
+
+	service->do_split_routing = value;
+
+	if (service->do_split_routing)
+		service->order = 0;
+	else
+		service->order = 10;
+}
+
 int __connman_service_load_modifiable(struct connman_service *service)
 {
 	GKeyFile *keyfile;
@@ -367,8 +380,10 @@ int __connman_service_load_modifiable(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_P2P:
 		break;
 	case CONNMAN_SERVICE_TYPE_VPN:
-		service->do_split_routing = g_key_file_get_boolean(keyfile,
-				service->identifier, "SplitRouting", NULL);
+		set_split_routing(service, g_key_file_get_boolean(keyfile,
+							service->identifier,
+							"SplitRouting", NULL));
+
 		/* fall through */
 	case CONNMAN_SERVICE_TYPE_WIFI:
 	case CONNMAN_SERVICE_TYPE_GADGET:
@@ -421,8 +436,10 @@ static int service_load(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_P2P:
 		break;
 	case CONNMAN_SERVICE_TYPE_VPN:
-		service->do_split_routing = g_key_file_get_boolean(keyfile,
-				service->identifier, "SplitRouting", NULL);
+		set_split_routing(service, g_key_file_get_boolean(keyfile,
+							service->identifier,
+							"SplitRouting", NULL));
+
 		autoconnect = g_key_file_get_boolean(keyfile,
 				service->identifier, "AutoConnect", &error);
 		if (!error)
@@ -4223,11 +4240,11 @@ static DBusMessage *move_service(DBusConnection *conn,
 			return __connman_error_invalid_service(msg);
 		}
 
-		target->do_split_routing = true;
+		set_split_routing(target, true);
 	} else
-		target->do_split_routing = false;
+		set_split_routing(target, false);
 
-	service->do_split_routing = false;
+	set_split_routing(service, false);
 
 	target4 = __connman_ipconfig_get_method(target->ipconfig_ipv4);
 	target6 = __connman_ipconfig_get_method(target->ipconfig_ipv6);
