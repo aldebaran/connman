@@ -46,7 +46,6 @@ struct gateway_config {
 struct gateway_data {
 	int index;
 	struct connman_service *service;
-	unsigned int order;
 	struct gateway_config *ipv4_gateway;
 	struct gateway_config *ipv6_gateway;
 	bool default_checked;
@@ -380,8 +379,6 @@ static struct gateway_data *add_gateway(struct connman_service *service,
 	}
 
 	data->service = service;
-
-	data->order = __connman_service_get_order(service);
 
 	/*
 	 * If the service is already in the hash, then we
@@ -741,22 +738,6 @@ static struct gateway_data *find_active_gateway(void)
 	return NULL;
 }
 
-static void update_order(void)
-{
-	GHashTableIter iter;
-	gpointer value, key;
-
-	DBG("");
-
-	g_hash_table_iter_init(&iter, gateway_hash);
-
-	while (g_hash_table_iter_next(&iter, &key, &value)) {
-		struct gateway_data *data = value;
-
-		data->order = __connman_service_get_order(data->service);
-	}
-}
-
 static void add_host_route(int family, int index, const char *gateway,
 			enum connman_service_type service_type)
 {
@@ -993,8 +974,6 @@ bool __connman_connection_update_gateway(void)
 
 	if (!gateway_hash)
 		return updated;
-
-	update_order();
 
 	default_gateway = find_default_gateway();
 
