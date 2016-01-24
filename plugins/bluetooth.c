@@ -718,12 +718,16 @@ static bool tethering_create(const char *path,
 
 	DBG("path %s bridge %s", path, bridge);
 
-	if (!bridge)
+	if (!bridge) {
+		g_free(tethering);
 		return -EINVAL;
+	}
 
 	proxy = g_dbus_proxy_new(client, path, "org.bluez.NetworkServer1");
-	if (!proxy)
+	if (!proxy) {
+		g_free(tethering);
 		return false;
+	}
 
 	tethering->technology = technology;
 	tethering->bridge = g_strdup(bridge);
