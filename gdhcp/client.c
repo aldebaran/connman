@@ -2681,6 +2681,7 @@ static gboolean ipv4ll_announce_timeout(gpointer dhcp_data)
 		dhcp_client->ipv4ll_available_cb(dhcp_client,
 					dhcp_client->ipv4ll_available_data);
 	dhcp_client->conflicts = 0;
+	dhcp_client->timeout = 0;
 
 	return FALSE;
 }
@@ -2712,6 +2713,8 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 	int re;
 	uint32_t addr;
 	uint64_t rand;
+
+	remove_timeouts(dhcp_client);
 
 	if (dhcp_client->type == G_DHCP_IPV6) {
 		if (dhcp_client->information_req_cb) {
