@@ -1566,6 +1566,9 @@ struct xtables_globals iptables_globals = {
 	.option_offset = 0,
 	.opts = iptables_opts,
 	.orig_opts = iptables_opts,
+#if XTABLES_VERSION_CODE > 10
+	.compat_rev = xtables_compatible_revision,
+#endif
 };
 
 static struct xtables_target *prepare_target(struct connman_iptables *table,
