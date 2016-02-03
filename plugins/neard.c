@@ -534,10 +534,8 @@ static void register_agent(void)
 			&path, DBUS_TYPE_STRING, &type, DBUS_TYPE_INVALID);
 
 	if (!dbus_connection_send_with_reply(connection, message,
-						&register_call, TIMEOUT)) {
-		dbus_message_unref(message);
+						&register_call, TIMEOUT))
 		goto out;
-	}
 
 	if (!dbus_pending_call_set_notify(register_call,
 						register_agent_cb, NULL, NULL))
