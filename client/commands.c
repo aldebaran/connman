@@ -855,7 +855,7 @@ static int cmd_service_move_after(char *args[], int num,
 		struct connman_option *options)
 {
 	const char *iface = "net.connman.Service";
-	struct move_service *services = g_new(struct move_service, 1);
+	struct move_service *services;
 
 	if (num > 3)
 		return -E2BIG;
@@ -865,6 +865,8 @@ static int cmd_service_move_after(char *args[], int num,
 
 	if (check_dbus_name(args[1]) == false)
 		return -EINVAL;
+
+	services = g_new(struct move_service, 1);
 
 	services->service = g_strdup_printf("/net/connman/service/%s", args[1]);
 	services->target = g_strdup_printf("/net/connman/service/%s", args[2]);
