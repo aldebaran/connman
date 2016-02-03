@@ -132,6 +132,12 @@ static void read_uevent(struct interface_data *interface)
 		interface->device_type = CONNMAN_DEVICE_TYPE_ETHERNET;
 	}
 
+    if (strncmp(name, "usb", 3) == 0) {
+        interface->service_type = CONNMAN_SERVICE_TYPE_GADGET;
+        interface->device_type = CONNMAN_DEVICE_TYPE_GADGET;
+        goto out;
+    }
+
 	filename = g_strdup_printf("/sys/class/net/%s/uevent", name);
 
 	f = fopen(filename, "re");
