@@ -2050,21 +2050,21 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 						(char *)reply + offset, eom,
 						ptr, uncompressed, NS_MAXDNAME,
 						&uptr);
-				if (ptr == NULL)
+				if (!ptr)
 					goto out;
 
 				ptr = uncompress(ntohs(hdr->nscount),
 						(char *)reply + offset, eom,
 						ptr, uncompressed, NS_MAXDNAME,
 						&uptr);
-				if (ptr == NULL)
+				if (!ptr)
 					goto out;
 
 				ptr = uncompress(ntohs(hdr->arcount),
 						(char *)reply + offset, eom,
 						ptr, uncompressed, NS_MAXDNAME,
 						&uptr);
-				if (ptr == NULL)
+				if (!ptr)
 					goto out;
 
 				/*

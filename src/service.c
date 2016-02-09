@@ -3653,7 +3653,7 @@ void __connman_service_set_active_session(bool enable, GSList *list)
 	else
 		active_count--;
 
-	while (list != NULL) {
+	while (list) {
 		enum connman_service_type type = GPOINTER_TO_INT(list->data);
 
 		switch (type) {

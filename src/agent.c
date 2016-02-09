@@ -586,7 +586,7 @@ static void agent_release(struct connman_agent *agent, const char *interface)
 
 	message = dbus_message_new_method_call(agent->owner, agent->path,
 						interface, "Release");
-	if (message == NULL) {
+	if (!message) {
 		connman_error("Couldn't allocate D-Bus message");
 		return;
 	}
