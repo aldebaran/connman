@@ -447,7 +447,6 @@ static int check_ipv6_addr_prefix(GSList *prefixes, char *address)
 		if (!slash)
 			continue;
 
-		prefix = g_strndup(prefix, slash - prefix);
 		len = strtol(slash + 1, NULL, 10);
 		if (len < 3 || len > 128)
 			break;
@@ -458,6 +457,7 @@ static int check_ipv6_addr_prefix(GSList *prefixes, char *address)
 		left = plen % 8;
 		i = 16 - count;
 
+		prefix = g_strndup(prefix, slash - prefix);
 		inet_pton(AF_INET6, prefix, &addr_prefix);
 		inet_pton(AF_INET6, address, &addr);
 
