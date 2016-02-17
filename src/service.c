@@ -3761,6 +3761,7 @@ static bool auto_connect_service(GList *services,
 		reason2string(reason));
 
 	ignore[CONNMAN_SERVICE_TYPE_VPN] = true;
+	ignore[CONNMAN_SERVICE_TYPE_GADGET] = true;
 
 	for (list = services; list; list = list->next) {
 		service = list->data;
