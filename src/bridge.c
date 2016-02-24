@@ -56,7 +56,7 @@ static int set_forward_delay(const char *name, unsigned int delay)
 	if (!f)
 		return -errno;
 
-	fprintf(f, "%d", delay);
+	fprintf(f, "%u", delay);
 
 	fclose(f);
 
