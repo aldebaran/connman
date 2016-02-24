@@ -249,6 +249,47 @@ struct _GSupplicantGroup {
 	GSList *members;
 };
 
+struct interface_data {
+	GSupplicantInterface *interface;
+	char *path; /* Interface path cannot be taken from interface (above) as
+		     * it might have been freed already.
+		     */
+	GSupplicantInterfaceCallback callback;
+	void *user_data;
+	bool network_remove_in_progress;
+	GSupplicantSSID *ssid;
+};
+
+struct interface_create_data {
+	char *ifname;
+	char *driver;
+	char *bridge;
+	GSupplicantInterface *interface;
+	GSupplicantInterfaceCallback callback;
+	void *user_data;
+};
+
+struct interface_connect_data {
+	GSupplicantInterface *interface;
+	char *path;
+	GSupplicantInterfaceCallback callback;
+	void *user_data;
+	union {
+		GSupplicantSSID *ssid;
+		GSupplicantPeerParams *peer;
+	};
+};
+
+struct interface_scan_data {
+	GSupplicantInterface *interface;
+	char *path;
+	GSupplicantInterfaceCallback callback;
+	GSupplicantScanParams *scan_params;
+	void *user_data;
+};
+
+static int network_remove(struct interface_data *data);
+
 static inline void debug(const char *format, ...)
 {
 	char str[256];
@@ -3476,43 +3517,6 @@ GSupplicantPeer *g_supplicant_interface_peer_lookup(GSupplicantInterface *interf
 	return peer;
 }
 
-struct interface_data {
-	GSupplicantInterface *interface;
-	char *path; /* Interface path cannot be taken from interface (above) as
-		     * it might have been freed already.
-		     */
-	GSupplicantInterfaceCallback callback;
-	void *user_data;
-};
-
-struct interface_create_data {
-	char *ifname;
-	char *driver;
-	char *bridge;
-	GSupplicantInterface *interface;
-	GSupplicantInterfaceCallback callback;
-	void *user_data;
-};
-
-struct interface_connect_data {
-	GSupplicantInterface *interface;
-	char *path;
-	GSupplicantInterfaceCallback callback;
-	union {
-		GSupplicantSSID *ssid;
-		GSupplicantPeerParams *peer;
-	};
-	void *user_data;
-};
-
-struct interface_scan_data {
-	GSupplicantInterface *interface;
-	char *path;
-	GSupplicantInterfaceCallback callback;
-	GSupplicantScanParams *scan_params;
-	void *user_data;
-};
-
 static void interface_create_data_free(struct interface_create_data *data)
 {
 	g_free(data->ifname);
@@ -4105,7 +4109,6 @@ static void interface_add_network_result(const char *error,
 
 	SUPPLICANT_DBG("PATH: %s", path);
 
-	g_free(interface->network_path);
 	interface->network_path = g_strdup(path);
 
 	supplicant_dbus_method_call(data->interface->path,
@@ -4656,7 +4659,8 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 							void *user_data)
 {
 	struct interface_connect_data *data;
-	int ret;
+	struct interface_data *intf_data;
+	int ret = 0;
 
 	if (!interface)
 		return -EINVAL;
@@ -4685,12 +4689,44 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 			SUPPLICANT_INTERFACE ".Interface.WPS",
 			"ProcessCredentials", DBUS_TYPE_BOOLEAN_AS_STRING,
 			wps_process_credentials, wps_start, data, interface);
-	} else
-		ret = supplicant_dbus_method_call(interface->path,
-			SUPPLICANT_INTERFACE ".Interface", "AddNetwork",
-			interface_add_network_params,
-			interface_add_network_result, data,
-			interface);
+	} else {
+		/* By the time there is a request for connect and the network
+		 * path is not NULL it means that connman has not removed the
+		 * previous network pointer. This can happen in the case AP
+		 * deauthenticated client and connman does not remove the
+		 * previously connected network pointer. This causes supplicant
+		 * to reallocate the memory for struct wpa_ssid again even if it
+		 * is the same SSID. This causes memory usage of wpa_supplicnat
+		 * to go high. The idea here is that if the previously connected
+		 * network is not removed at the time of next connection attempt
+		 * check if the network path is not NULL. In case it is non-NULL
+		 * first remove the network and then once removal is successful, add
+		 * the network.
+		 */
+
+		if (interface->network_path != NULL) {
+			g_free(data->path);
+			dbus_free(data);
+
+			intf_data = dbus_malloc0(sizeof(*intf_data));
+			if (!intf_data)
+				return -ENOMEM;
+
+			intf_data->interface = interface;
+			intf_data->path = g_strdup(interface->path);
+			intf_data->callback = callback;
+			intf_data->ssid = ssid;
+			intf_data->user_data = user_data;
+			intf_data->network_remove_in_progress = TRUE;
+			network_remove(intf_data);
+		} else {
+			ret = supplicant_dbus_method_call(interface->path,
+					SUPPLICANT_INTERFACE ".Interface", "AddNetwork",
+					interface_add_network_params,
+					interface_add_network_result, data,
+					interface);
+		}
+        }
 
 	if (ret < 0) {
 		g_free(data->path);
@@ -4705,6 +4741,7 @@ static void network_remove_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct interface_data *data = user_data;
+	struct interface_connect_data *connect_data;
 	int result = 0;
 
 	SUPPLICANT_DBG("");
@@ -4716,11 +4753,31 @@ static void network_remove_result(const char *error,
 			result = -ECONNABORTED;
 	}
 
+        g_free(data->interface->network_path);
+        data->interface->network_path = NULL;
+
+	if (data->network_remove_in_progress == TRUE) {
+		data->network_remove_in_progress = FALSE;
+		connect_data = dbus_malloc0(sizeof(*connect_data));
+		if (!connect_data)
+			return;
+
+		connect_data->interface = data->interface;
+		connect_data->path = g_strdup(data->path);
+		connect_data->callback = data->callback;
+		connect_data->ssid = data->ssid;
+		connect_data->user_data = data->user_data;
+
+		supplicant_dbus_method_call(data->interface->path,
+			SUPPLICANT_INTERFACE ".Interface", "AddNetwork",
+			interface_add_network_params,
+			interface_add_network_result, connect_data,
+			connect_data->interface);
+	} else {
+		if (data->callback)
+			data->callback(result, data->interface, data->user_data);
+	}
 	g_free(data->path);
-
-	if (data->callback)
-		data->callback(result, data->interface, data->user_data);
-
 	dbus_free(data);
 }
 
