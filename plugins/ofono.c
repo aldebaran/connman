@@ -284,7 +284,7 @@ static void network_context_free(struct network_context *context)
 	connman_ipaddress_free(context->ipv6_address);
 	g_free(context->ipv6_nameservers);
 
-	free(context);
+	g_free(context);
 }
 
 static void set_connected(struct modem_data *modem,
