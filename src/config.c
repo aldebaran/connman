@@ -1550,13 +1550,16 @@ struct connman_config_entry **connman_config_get_entries(const char *type)
 	g_hash_table_iter_init(&iter_file, config_table);
 	while (g_hash_table_iter_next(&iter_file, &key, &value)) {
 		struct connman_config *config_file = value;
+		struct connman_config_entry **tmp_entries = entries;
 
 		count = g_hash_table_size(config_file->service_table);
 
 		entries = g_try_realloc(entries, (i + count + 1) *
 					sizeof(struct connman_config_entry *));
-		if (!entries)
+		if (!entries) {
+			g_free(tmp_entries);
 			return NULL;
+		}
 
 		g_hash_table_iter_init(&iter_config,
 						config_file->service_table);
@@ -1589,10 +1592,14 @@ struct connman_config_entry **connman_config_get_entries(const char *type)
 	}
 
 	if (entries) {
+		struct connman_config_entry **tmp_entries = entries;
+
 		entries = g_try_realloc(entries, (i + 1) *
 					sizeof(struct connman_config_entry *));
-		if (!entries)
+		if (!entries) {
+			g_free(tmp_entries);
 			return NULL;
+		}
 
 		entries[i] = NULL;
 
