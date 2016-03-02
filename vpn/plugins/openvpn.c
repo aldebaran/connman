@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <net/if.h>
+#include <linux/if_tun.h>
 
 #include <glib.h>
 
@@ -71,6 +72,7 @@ struct {
 	{ "OpenVPN.CompLZO", "--comp-lzo", 0 },
 	{ "OpenVPN.RemoteCertTls", "--remote-cert-tls", 1 },
 	{ "OpenVPN.ConfigFile", "--config", 1 },
+	{ "OpenVPN.DeviceType", NULL, 1 },
 };
 
 struct nameserver_entry {
@@ -362,7 +364,15 @@ static int ov_connect(struct vpn_provider *provider,
 					connman_task_get_path(task));
 
 	connman_task_add_argument(task, "--dev", if_name);
-	connman_task_add_argument(task, "--dev-type", "tun");
+	option = vpn_provider_get_string(provider, "OpenVPN.DeviceType");
+	if (option) {
+		connman_task_add_argument(task, "--dev-type", option);
+	} else {
+		/*
+		 * Default to tun for backwards compatibility.
+		 */
+		connman_task_add_argument(task, "--dev-type", "tun");
+	}
 
 	connman_task_add_argument(task, "--persist-tun", NULL);
 
@@ -395,10 +405,31 @@ done:
 	return err;
 }
 
+static int ov_device_flags(struct vpn_provider *provider)
+{
+	const char *option;
+
+	option = vpn_provider_get_string(provider, "OpenVPN.DeviceType");
+	if (!option) {
+		return IFF_TUN;
+	}
+
+	if (g_str_equal(option, "tap")) {
+		return IFF_TAP;
+	}
+
+	if (!g_str_equal(option, "tun")) {
+		connman_warn("bad OpenVPN.DeviceType value, falling back to tun");
+	}
+
+	return IFF_TUN;
+}
+
 static struct vpn_driver vpn_driver = {
 	.notify	= ov_notify,
 	.connect	= ov_connect,
 	.save		= ov_save,
+	.device_flags = ov_device_flags,
 };
 
 static int openvpn_init(void)
