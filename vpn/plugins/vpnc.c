@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <net/if.h>
+#include <linux/if_tun.h>
 
 #include <glib.h>
 
@@ -287,7 +288,15 @@ static int vc_connect(struct vpn_provider *provider,
 	connman_task_add_argument(task, "--no-detach", NULL);
 
 	connman_task_add_argument(task, "--ifname", if_name);
-	connman_task_add_argument(task, "--ifmode", "tun");
+	option = vpn_provider_get_string(provider, "VPNC.DeviceType");
+	if (option) {
+		connman_task_add_argument(task, "--ifmode", option);
+	} else {
+		/*
+		 * Default to tun for backwards compatibility.
+		 */
+		connman_task_add_argument(task, "--ifmode", "tun");
+	}
 
 	connman_task_add_argument(task, "--script",
 				SCRIPTDIR "/openconnect-script");
@@ -329,11 +338,32 @@ static int vc_error_code(struct vpn_provider *provider, int exit_code)
 	}
 }
 
+static int vc_device_flags(struct vpn_provider *provider)
+{
+	const char *option;
+
+	option = vpn_provider_get_string(provider, "VPNC.DeviceType");
+	if (!option) {
+		return IFF_TUN;
+	}
+
+	if (g_str_equal(option, "tap")) {
+		return IFF_TAP;
+	}
+
+	if (!g_str_equal(option, "tun")) {
+		connman_warn("bad VPNC.DeviceType value, falling back to tun");
+	}
+
+	return IFF_TUN;
+}
+
 static struct vpn_driver vpn_driver = {
 	.notify		= vc_notify,
 	.connect	= vc_connect,
 	.error_code	= vc_error_code,
 	.save		= vc_save,
+	.device_flags	= vc_device_flags,
 };
 
 static int vpnc_init(void)
