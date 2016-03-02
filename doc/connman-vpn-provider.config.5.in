@@ -145,6 +145,10 @@ Require that remote certificate is signed based on RFC3280 TLS rules.
 .TP
 .BI OpenVPN.ConfigFile= file
 OpenVPN config file for extra options not supported by the OpenVPN plugin.
+.TP
+.BI OpenVPN.DeviceType= tun \fR|\fB tap
+Whether the VPN should use a tun (OSI layer 3) or tap (OSI layer 2) device.
+Defaults to tun if omitted.
 .SS VPNC
 The following key is mandatory for \fBvpnc\fP(8) networks:
 .TP
