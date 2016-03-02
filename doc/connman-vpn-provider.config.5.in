@@ -201,6 +201,10 @@ Enable single DES encryption.
 .TP
 .B VPNC.NoEncryption=true \fR|\fB false
 Enable usage of no encryption for data traffic.
+.TP
+.BI VPNC.DeviceType= tun \fR|\fB tap
+Whether the VPN should use a tun (OSI layer 3) or tap (OSI layer 2) device.
+Defaults to tun if omitted.
 .SS L2TP
 The following keys are optional for l2tp (\fBxl2tp.conf\fP(5), \fBpppd\fP(8))
 networks:
