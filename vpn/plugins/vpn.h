@@ -50,6 +50,7 @@ struct vpn_driver {
 	void (*disconnect) (struct vpn_provider *provider);
 	int (*error_code) (struct vpn_provider *provider, int exit_code);
 	int (*save) (struct vpn_provider *provider, GKeyFile *keyfile);
+	int (*device_flags) (struct vpn_provider *provider);
 };
 
 int vpn_register(const char *name, struct vpn_driver *driver,
