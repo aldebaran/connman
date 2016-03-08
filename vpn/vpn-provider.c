@@ -811,16 +811,20 @@ static gchar **create_network_list(GSList *networks, gsize *count)
 {
 	GSList *list;
 	gchar **result = NULL;
+	gchar **prev_result;
 	unsigned int num_elems = 0;
 
 	for (list = networks; list; list = g_slist_next(list)) {
 		struct vpn_route *route = list->data;
 		int family;
 
+		prev_result = result;
 		result = g_try_realloc(result,
 				(num_elems + 1) * sizeof(gchar *));
-		if (!result)
+		if (!result) {
+			g_free(prev_result);
 			return NULL;
+		}
 
 		switch (route->family) {
 		case AF_INET:
@@ -841,9 +845,12 @@ static gchar **create_network_list(GSList *networks, gsize *count)
 		num_elems++;
 	}
 
+	prev_result = result;
 	result = g_try_realloc(result, (num_elems + 1) * sizeof(gchar *));
-	if (!result)
+	if (!result) {
+		g_free(prev_result);
 		return NULL;
+	}
 
 	result[num_elems] = NULL;
 	*count = num_elems;
