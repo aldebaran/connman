@@ -181,17 +181,15 @@ static void find_srcaddr(struct sort_result *res)
 	if (fd < 0)
 		return;
 
-	if (connect(fd, &res->dst.sa, sizeof(res->dst)) < 0) {
-		close(fd);
-		return;
-	}
+	if (connect(fd, &res->dst.sa, sizeof(res->dst)) < 0)
+		goto out;
 
-	if (getsockname(fd, &res->src.sa, &sl) < 0) {
-		close(fd);
-		return;
-	}
+	if (getsockname(fd, &res->src.sa, &sl) < 0)
+		goto out;
 
 	res->reachable = true;
+
+out:
 	close(fd);
 }
 
