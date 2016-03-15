@@ -33,6 +33,7 @@ static bool assert_rule(const char *table_name, const char *rule)
 	char *cmd, *output, **lines;
 	GError **error = NULL;
 	int i;
+	bool ret = true;
 
 	cmd = g_strdup_printf(IPTABLES_SAVE " -t %s", table_name);
 	g_spawn_command_line_sync(cmd, &output, NULL, NULL, error);
@@ -46,12 +47,12 @@ static bool assert_rule(const char *table_name, const char *rule)
 		if (g_strcmp0(lines[i], rule) == 0)
 			break;
 	}
-	g_strfreev(lines);
 
 	if (!lines[i])
-		return false;
+		ret = false;
 
-	return true;
+	g_strfreev(lines);
+	return ret;
 }
 
 static void assert_rule_exists(const char *table_name, const char *rule)
