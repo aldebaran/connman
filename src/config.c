@@ -975,6 +975,10 @@ char *__connman_config_get_string(GKeyFile *key_file,
 	if (!str)
 		return NULL;
 
+	/* passphrases can have spaces in the end */
+	if (!g_strcmp0(key, SERVICE_KEY_PASSPHRASE))
+		return str;
+
 	return g_strchomp(str);
 }
 
