@@ -2688,6 +2688,7 @@ static void update_domain(int index, const char *domain, bool append)
 		} else if (dom_found && !append) {
 			data->domains =
 				g_list_remove(data->domains, dom);
+			g_free(dom);
 		}
 	}
 }
