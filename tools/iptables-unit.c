@@ -41,6 +41,8 @@ static bool assert_rule(const char *table_name, const char *rule)
 
 	lines = g_strsplit(output, "\n", 0);
 	g_free(output);
+	if (!lines)
+		return false;
 
 	for (i = 0; lines[i]; i++) {
 		DBG("lines[%02d]: %s\n", i, lines[i]);
