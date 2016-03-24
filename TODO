@@ -141,16 +141,10 @@ WiFi
   wifi's technology set_regdom implementation. Removing autoscan fallback.
   (Note: should be done around the end 2012)
 
+
 Bluetooth
 =========
 
-- Remove Bluez 4.x support
-
-  Priority: Low
-  Complexity: C1
-
-  Remove plugins/bluetooth-legacy.c support in about 6 month (July 2013) or
-  when Bluez 4.x usage becomes minimal.
 
 Cellular
 ========
