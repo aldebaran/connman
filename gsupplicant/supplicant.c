@@ -181,7 +181,6 @@ struct _GSupplicantInterface {
 	GHashTable *bss_mapping;
 	void *data;
 	const char *pending_peer_path;
-	char * added_ssid;
 };
 
 struct g_supplicant_bss {
@@ -617,7 +616,6 @@ static void remove_interface(gpointer data)
 	g_free(interface->wps_cred.key);
 	g_free(interface->path);
 	g_free(interface->network_path);
-	g_free(interface->added_ssid);
 	g_free(interface->ifname);
 	g_free(interface->driver);
 	g_free(interface->bridge);
@@ -4113,9 +4111,6 @@ static void interface_add_network_result(const char *error,
 
 	interface->network_path = g_strdup(path);
 
-	g_free(interface->added_ssid);
-	interface->added_ssid = g_strdup(data->ssid->ssid);
-
 	supplicant_dbus_method_call(data->interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "SelectNetwork",
 			interface_select_network_params,
@@ -4713,17 +4708,6 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 			g_free(data->path);
 			dbus_free(data);
 
-			/* If this add network is for the same SSID for which
-			 * wpa_supplicant already has a profile then do not need
-			 * to add another profile. Only if the profile that needs
-			 * to get added is different from what is there in wpa_s
-			 * delete the current one. interface->added_ssid is populated
-			 * once add network request is successful.*/
-
-			if (g_strcmp0(interface->added_ssid, ssid->ssid) == 0) {
-				return -EALREADY;
-			}
-
 			intf_data = dbus_malloc0(sizeof(*intf_data));
 			if (!intf_data)
 				return -ENOMEM;
@@ -4771,9 +4755,6 @@ static void network_remove_result(const char *error,
 
         g_free(data->interface->network_path);
         data->interface->network_path = NULL;
-
-	g_free(data->interface->added_ssid);
-	data->interface->added_ssid = NULL;
 
 	if (data->network_remove_in_progress == TRUE) {
 		data->network_remove_in_progress = FALSE;
