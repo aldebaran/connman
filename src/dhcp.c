@@ -26,6 +26,11 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <net/ethernet.h>
+
+#ifndef IPV6_MIN_MTU
+#define IPV6_MIN_MTU 1280
+#endif
 
 #include <connman/ipconfig.h>
 #include <include/setting.h>
@@ -327,6 +332,20 @@ static bool apply_lease_available_on_network(GDHCPClient *dhcp_client,
 		return false;
 	}
 
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_MTU);
+	if (option && option->data) {
+		int mtu, index, err;
+
+		mtu = atoi(option->data);
+
+		if (mtu >= IPV6_MIN_MTU && mtu <= ETH_DATA_LEN) {
+			index = __connman_ipconfig_get_index(dhcp->ipconfig);
+			err = connman_inet_set_mtu(index, mtu);
+
+			DBG("MTU %d index %d err %d", mtu, index, err);
+		}
+	}
+
 	option = g_dhcp_client_get_option(dhcp_client, 252);
 	if (option)
 		pac = g_strdup(option->data);
@@ -544,6 +563,7 @@ static int dhcp_initialize(struct connman_dhcp *dhcp)
 		g_dhcp_client_set_request(dhcp_client, G_DHCP_DOMAIN_NAME);
 		g_dhcp_client_set_request(dhcp_client, G_DHCP_NTP_SERVER);
 		g_dhcp_client_set_request(dhcp_client, 252);
+		g_dhcp_client_set_request(dhcp_client, G_DHCP_MTU);
 	}
 
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_SUBNET);
