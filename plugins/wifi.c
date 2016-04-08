@@ -71,6 +71,9 @@
 #define P2P_LISTEN_PERIOD 500
 #define P2P_LISTEN_INTERVAL 2000
 
+#define ASSOC_STATUS_NO_CLIENT 17
+#define LOAD_SHAPING_MAX_RETRIES 3
+
 static struct connman_technology *wifi_technology = NULL;
 static struct connman_technology *p2p_technology = NULL;
 
@@ -128,6 +131,7 @@ struct wifi_data {
 	unsigned flags;
 	unsigned int watch;
 	int retries;
+	int load_shaping_retries;
 	struct hidden_params *hidden;
 	bool postpone_hidden;
 	struct wifi_tethering_info *tethering_param;
@@ -144,6 +148,8 @@ struct wifi_data {
 	bool p2p_connecting;
 	bool p2p_device;
 	int servicing;
+	int disconnect_code;
+	int assoc_code;
 };
 
 static GList *iface_list = NULL;
@@ -2291,6 +2297,19 @@ static bool handle_wps_completion(GSupplicantInterface *interface,
 	return true;
 }
 
+static bool handle_assoc_status_code(GSupplicantInterface *interface,
+                                     struct wifi_data *wifi)
+{
+	if (wifi->state == G_SUPPLICANT_STATE_ASSOCIATING &&
+			wifi->assoc_code == ASSOC_STATUS_NO_CLIENT &&
+			wifi->load_shaping_retries < LOAD_SHAPING_MAX_RETRIES) {
+		wifi->load_shaping_retries ++;
+		return TRUE;
+	}
+	wifi->load_shaping_retries = 0;
+	return FALSE;
+}
+
 static bool handle_4way_handshake_failure(GSupplicantInterface *interface,
 					struct connman_network *network,
 					struct wifi_data *wifi)
@@ -2382,6 +2401,10 @@ static void interface_state(GSupplicantInterface *interface)
 			break;
 
 		connman_network_set_connected(network, true);
+
+		wifi->disconnect_code = 0;
+		wifi->assoc_code = 0;
+		wifi->load_shaping_retries = 0;
 		break;
 
 	case G_SUPPLICANT_STATE_DISCONNECTED:
@@ -2399,6 +2422,9 @@ static void interface_state(GSupplicantInterface *interface)
 		if (is_idle(wifi))
 			break;
 
+		if (handle_assoc_status_code(interface, wifi))
+			break;
+
 		/* If previous state was 4way-handshake, then
 		 * it's either: psk was incorrect and thus we retry
 		 * or if we reach the maximum retries we declare the
@@ -2406,12 +2432,6 @@ static void interface_state(GSupplicantInterface *interface)
 		if (handle_4way_handshake_failure(interface,
 						network, wifi))
 			break;
-
-		/* We disable the selected network, if not then
-		 * wpa_supplicant will loop retrying */
-		if (g_supplicant_interface_enable_selected_network(interface,
-						FALSE) != 0)
-			DBG("Could not disable selected network");
 
 		connman_network_set_connected(network, false);
 		connman_network_set_associating(network, false);
@@ -2935,6 +2955,25 @@ static void debug(const char *str)
 		connman_debug("%s", str);
 }
 
+static void disconnect_reasoncode(GSupplicantInterface *interface,
+				int reasoncode)
+{
+	struct wifi_data *wifi = g_supplicant_interface_get_data(interface);
+
+	if (wifi != NULL) {
+		wifi->disconnect_code = reasoncode;
+	}
+}
+
+static void assoc_status_code(GSupplicantInterface *interface, int status_code)
+{
+	struct wifi_data *wifi = g_supplicant_interface_get_data(interface);
+
+	if (wifi != NULL) {
+		wifi->assoc_code = status_code;
+	}
+}
+
 static const GSupplicantCallbacks callbacks = {
 	.system_ready		= system_ready,
 	.system_killed		= system_killed,
@@ -2953,6 +2992,8 @@ static const GSupplicantCallbacks callbacks = {
 	.peer_changed		= peer_changed,
 	.peer_request		= peer_request,
 	.debug			= debug,
+	.disconnect_reasoncode  = disconnect_reasoncode,
+	.assoc_status_code      = assoc_status_code,
 };
 
 

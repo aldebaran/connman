@@ -150,6 +150,13 @@ struct _GSupplicantWpsCredentials {
 	char *key;
 };
 
+struct added_network_information {
+	char * ssid;
+	GSupplicantSecurity security;
+	char * passphrase;
+	char * private_passphrase;
+};
+
 struct _GSupplicantInterface {
 	char *path;
 	char *network_path;
@@ -181,6 +188,7 @@ struct _GSupplicantInterface {
 	GHashTable *bss_mapping;
 	void *data;
 	const char *pending_peer_path;
+	struct added_network_information network_info;
 };
 
 struct g_supplicant_bss {
@@ -387,6 +395,70 @@ static GSupplicantState string2state(const char *state)
 	return G_SUPPLICANT_STATE_UNKNOWN;
 }
 
+static bool compare_network_parameters(GSupplicantInterface *interface,
+				GSupplicantSSID *ssid)
+{
+	if (memcmp(interface->network_info.ssid, ssid->ssid, ssid->ssid_len))
+		return FALSE;
+
+	if (interface->network_info.security != ssid->security)
+		return FALSE;
+
+	if (interface->network_info.passphrase &&
+			g_strcmp0(interface->network_info.passphrase,
+				ssid->passphrase) != 0) {
+		return FALSE;
+	}
+
+	if (interface->network_info.private_passphrase &&
+			g_strcmp0(interface->network_info.private_passphrase,
+				ssid->private_key_passphrase) != 0) {
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static void remove_network_information(GSupplicantInterface * interface)
+{
+	g_free(interface->network_info.ssid);
+	g_free(interface->network_info.passphrase);
+	g_free(interface->network_info.private_passphrase);
+	interface->network_info.ssid = NULL;
+	interface->network_info.passphrase = NULL;
+	interface->network_info.private_passphrase = NULL;
+}
+
+static int store_network_information(GSupplicantInterface * interface,
+				GSupplicantSSID *ssid)
+{
+	interface->network_info.ssid = g_malloc(ssid->ssid_len + 1);
+	if (interface->network_info.ssid != NULL) {
+		memcpy(interface->network_info.ssid, ssid->ssid,
+			ssid->ssid_len);
+		interface->network_info.ssid[ssid->ssid_len] = '\0';
+	} else {
+		return -ENOMEM;
+	}
+
+	interface->network_info.security = ssid->security;
+
+	if ((ssid->security == G_SUPPLICANT_SECURITY_WEP ||
+		ssid->security == G_SUPPLICANT_SECURITY_PSK ||
+		ssid->security == G_SUPPLICANT_SECURITY_NONE) &&
+		ssid->passphrase) {
+		interface->network_info.passphrase = g_strdup(ssid->passphrase);
+	}
+
+	if (ssid->security == G_SUPPLICANT_SECURITY_IEEE8021X &&
+			ssid->private_key_passphrase) {
+		interface->network_info.private_passphrase =
+			g_strdup(ssid->private_key_passphrase);
+	}
+
+	return 0;
+}
+
 static void callback_system_ready(void)
 {
 	if (system_ready)
@@ -576,6 +648,33 @@ static void callback_peer_request(GSupplicantPeer *peer)
 	callbacks_pointer->peer_request(peer);
 }
 
+static void callback_disconnect_reason_code(GSupplicantInterface *interface,
+					int reason_code)
+{
+	if (!callbacks_pointer)
+		return;
+
+	if (!callbacks_pointer->disconnect_reasoncode)
+		return;
+
+	if (reason_code != 0)
+		callbacks_pointer->disconnect_reasoncode(interface,
+							reason_code);
+}
+
+static void callback_assoc_status_code(GSupplicantInterface *interface,
+				int status_code)
+{
+	if (!callbacks_pointer)
+		return;
+
+	if (!callbacks_pointer->assoc_status_code)
+		return;
+
+	callbacks_pointer->assoc_status_code(interface, status_code);
+
+}
+
 static void remove_group(gpointer data)
 {
 	GSupplicantGroup *group = data;
@@ -619,6 +718,7 @@ static void remove_interface(gpointer data)
 	g_free(interface->ifname);
 	g_free(interface->driver);
 	g_free(interface->bridge);
+	remove_network_information(interface);
 	g_free(interface);
 }
 
@@ -2135,9 +2235,22 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 	} else if (g_strcmp0(key, "Networks") == 0) {
 		supplicant_dbus_array_foreach(iter, interface_network_added,
 								interface);
-	} else
+	} else if (g_strcmp0(key, "DisconnectReason") == 0) {
+		int reason_code;
+		if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
+			dbus_message_iter_get_basic(iter, &reason_code);
+			callback_disconnect_reason_code(interface, reason_code);
+		}
+	} else if (g_strcmp0(key, "AssocStatusCode") == 0) {
+		int status_code;
+		if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
+			dbus_message_iter_get_basic(iter, &status_code);
+			callback_assoc_status_code(interface, status_code);
+		}
+	} else {
 		SUPPLICANT_DBG("key %s type %c",
 				key, dbus_message_iter_get_arg_type(iter));
+	}
 }
 
 static void scan_network_update(DBusMessageIter *iter, void *user_data)
@@ -4111,6 +4224,8 @@ static void interface_add_network_result(const char *error,
 
 	interface->network_path = g_strdup(path);
 
+	store_network_information(interface, data->ssid);
+
 	supplicant_dbus_method_call(data->interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "SelectNetwork",
 			interface_select_network_params,
@@ -4708,6 +4823,20 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 			g_free(data->path);
 			dbus_free(data);
 
+			/*
+			 * If this add network is for the same network for
+			 * which wpa_supplicant already has a profile then do
+			 * not need to add another profile. Only if the
+			 * profile that needs to get added is different from
+			 * what is there in wpa_s delete the current one. A
+			 * network is identified by its SSID, security_type
+			 * and passphrase (private passphrase in case security
+			 * type is 802.11x).
+			 */
+			if (compare_network_parameters(interface, ssid)) {
+				return -EALREADY;
+			}
+
 			intf_data = dbus_malloc0(sizeof(*intf_data));
 			if (!intf_data)
 				return -ENOMEM;
@@ -4753,8 +4882,10 @@ static void network_remove_result(const char *error,
 			result = -ECONNABORTED;
 	}
 
-        g_free(data->interface->network_path);
-        data->interface->network_path = NULL;
+	g_free(data->interface->network_path);
+	data->interface->network_path = NULL;
+
+	remove_network_information(data->interface);
 
 	if (data->network_remove_in_progress == TRUE) {
 		data->network_remove_in_progress = FALSE;

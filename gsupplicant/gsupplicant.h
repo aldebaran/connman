@@ -353,6 +353,10 @@ struct _GSupplicantCallbacks {
 					GSupplicantPeerState state);
 	void (*peer_request) (GSupplicantPeer *peer);
 	void (*debug) (const char *str);
+	void (*disconnect_reasoncode)(GSupplicantInterface *interface,
+				int reasoncode);
+	void (*assoc_status_code)(GSupplicantInterface *interface,
+				int reasoncode);
 };
 
 typedef struct _GSupplicantCallbacks GSupplicantCallbacks;
