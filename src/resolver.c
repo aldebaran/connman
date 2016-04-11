@@ -218,7 +218,7 @@ int __connman_resolvfile_remove(int index, const char *domain,
 	return resolvfile_export();
 }
 
-static void append_fallback_nameservers(void)
+void __connman_resolver_append_fallback_nameservers(void)
 {
 	GSList *list;
 
@@ -295,7 +295,7 @@ static void remove_entries(GSList *entries)
 
 	g_slist_free(entries);
 
-	append_fallback_nameservers();
+	__connman_resolver_append_fallback_nameservers();
 }
 
 static gboolean resolver_expire_cb(gpointer user_data)

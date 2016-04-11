@@ -248,6 +248,7 @@ int __connman_inet_get_address_netmask(int ifindex,
 
 int __connman_resolver_init(gboolean dnsproxy);
 void __connman_resolver_cleanup(void);
+void __connman_resolver_append_fallback_nameservers(void);
 int __connman_resolvfile_append(int index, const char *domain, const char *server);
 int __connman_resolvfile_remove(int index, const char *domain, const char *server);
 int __connman_resolver_redo_servers(int index);
