@@ -438,7 +438,8 @@ int __connman_firewall_enable(struct firewall_context *ctx)
 
 int __connman_firewall_disable(struct firewall_context *ctx)
 {
-	return __connman_firewall_disable_rule(ctx, FW_ALL_RULES);
+	__connman_firewall_disable_rule(ctx, FW_ALL_RULES);
+	return __connman_firewall_remove_rule(ctx, FW_ALL_RULES);
 }
 
 bool __connman_firewall_is_up(void)
