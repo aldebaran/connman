@@ -25,7 +25,10 @@
 #endif
 
 #include <errno.h>
-#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "connman.h"
 
@@ -42,20 +45,37 @@ struct connman_nat {
 
 static int enable_ip_forward(bool enable)
 {
-	FILE *f;
+	static char value = 0;
+	int f, err = 0;
 
-	f = fopen("/proc/sys/net/ipv4/ip_forward", "r+");
-	if (!f)
+	if ((f = open("/proc/sys/net/ipv4/ip_forward", O_CLOEXEC)) < 0)
 		return -errno;
 
-	if (enable)
-		fprintf(f, "1");
-	else
-		fprintf(f, "0");
+	if (!value) {
+		if (read(f, &value, sizeof(value)) < 0)
+			value = 0;
+	}
 
-	fclose(f);
+	if (enable) {
+		char allow = '1';
 
-	return 0;
+		if (write (f, &allow, sizeof(allow)) < 0)
+			err = -errno;
+	} else {
+		char deny = '0';
+
+		if (value)
+			deny = value;
+
+		if (write(f, &deny, sizeof(deny)) < 0)
+			err = -errno;
+
+		value = 0;
+	}
+
+	close(f);
+
+	return err;
 }
 
 static int enable_nat(struct connman_nat *nat)
