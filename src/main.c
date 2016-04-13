@@ -57,6 +57,8 @@ static char *default_blacklist[] = {
 	"vboxnet",
 	"virbr",
 	"ifb",
+	"ve-",
+	"vb-",
 	NULL
 };
 
