@@ -1127,9 +1127,6 @@ int __connman_service_nameserver_append(struct connman_service *service,
 		return -ENOMEM;
 
 	nameservers[len] = g_strdup(nameserver);
-	if (!nameservers[len])
-		return -ENOMEM;
-
 	nameservers[len + 1] = NULL;
 
 	if (is_auto) {
