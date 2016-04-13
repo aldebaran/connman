@@ -5405,16 +5405,6 @@ static int service_indicate_state(struct connman_service *service)
 
 		reply_pending(service, 0);
 
-		g_get_current_time(&service->modified);
-		service_save(service);
-
-		dns_changed(service);
-		domain_changed(service);
-		proxy_changed(service);
-
-		if (old_state != CONNMAN_SERVICE_STATE_ONLINE)
-			__connman_notifier_connect(service->type);
-
 		if (service->type == CONNMAN_SERVICE_TYPE_WIFI &&
 			connman_network_get_bool(service->network,
 						"WiFi.UseWPS")) {
@@ -5428,6 +5418,16 @@ static int service_indicate_state(struct connman_service *service)
 			connman_network_set_bool(service->network,
 							"WiFi.UseWPS", false);
 		}
+
+		g_get_current_time(&service->modified);
+		service_save(service);
+
+		dns_changed(service);
+		domain_changed(service);
+		proxy_changed(service);
+
+		if (old_state != CONNMAN_SERVICE_STATE_ONLINE)
+			__connman_notifier_connect(service->type);
 
 		method = __connman_ipconfig_get_method(service->ipconfig_ipv6);
 		if (method == CONNMAN_IPCONFIG_METHOD_OFF)
