@@ -720,7 +720,7 @@ static bool tethering_create(const char *path,
 
 	if (!bridge) {
 		g_free(tethering);
-		return -EINVAL;
+		return false;
 	}
 
 	proxy = g_dbus_proxy_new(client, path, "org.bluez.NetworkServer1");
