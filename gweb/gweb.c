@@ -1465,6 +1465,9 @@ GWebParser *g_web_parser_new(const char *begin, const char *end,
 {
 	GWebParser *parser;
 
+	if (!begin || !end)
+		return NULL;
+
 	parser = g_try_new0(GWebParser, 1);
 	if (!parser)
 		return NULL;
@@ -1473,12 +1476,6 @@ GWebParser *g_web_parser_new(const char *begin, const char *end,
 
 	parser->begin_token = g_strdup(begin);
 	parser->end_token = g_strdup(end);
-
-	if (!parser->begin_token) {
-		g_free(parser);
-		return NULL;
-	}
-
 	parser->func = func;
 	parser->user_data = user_data;
 
