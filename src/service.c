@@ -2831,7 +2831,7 @@ void __connman_service_set_agent_identity(struct connman_service *service,
 					service->agent_identity);
 }
 
-static int check_passphrase(enum connman_service_security security,
+int __connman_service_check_passphrase(enum connman_service_security security,
 		const char *passphrase)
 {
 	guint i;
@@ -2898,7 +2898,7 @@ int __connman_service_set_passphrase(struct connman_service *service,
 			service->security != CONNMAN_SERVICE_SECURITY_8021X)
 		return -EINVAL;
 
-	err = check_passphrase(service->security, passphrase);
+	err = __connman_service_check_passphrase(service->security, passphrase);
 
 	if (err < 0)
 		return err;
