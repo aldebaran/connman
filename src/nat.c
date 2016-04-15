@@ -48,7 +48,7 @@ static int enable_ip_forward(bool enable)
 	static char value = 0;
 	int f, err = 0;
 
-	if ((f = open("/proc/sys/net/ipv4/ip_forward", O_CLOEXEC)) < 0)
+	if ((f = open("/proc/sys/net/ipv4/ip_forward", O_CLOEXEC | O_RDWR)) < 0)
 		return -errno;
 
 	if (!value) {
