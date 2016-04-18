@@ -1,3 +1,16 @@
+ver 1.32:
+	Fix issue with DNS proxy response handling.
+	Fix issue with nameservers after DHCP renewal.
+	Fix issue with DHCP request and IP link local.
+	Fix issue with DHCP timer removal handling.
+	Fix issue with missing MTU option from DHCP.
+	Fix issue with passphrases and space characters.
+	Fix issue with passphrases after WPS provisioning.
+	Fix issue with memory leak and wpa_supplicant.
+	Fix issue with memory leak and service ordering.
+	Add support for handling OpenVPN TAP devices.
+	Remove support for BlueZ 4.x interfaces.
+
 ver 1.31:
 	Fix issue with DNS TTL and CLASS field length.
 	Fix issue with handling of ClearProperty method.
