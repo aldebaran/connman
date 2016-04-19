@@ -5694,6 +5694,8 @@ static gboolean redo_wispr(gpointer user_data)
 	struct connman_service *service = wispr_data->service;
 	int refcount = service->refcount - 1;
 
+        service->online_timeout = 0;
+
 	connman_service_unref(service);
 	if (refcount == 0) {
 		DBG("Service %p already removed", service);
@@ -5701,8 +5703,6 @@ static gboolean redo_wispr(gpointer user_data)
 		service->online_data = 0;
 		return FALSE;
 	}
-
-	service->online_timeout = 0;
 
 	__connman_wispr_start(service, wispr_data->type);
 	service->online_data = 0;
