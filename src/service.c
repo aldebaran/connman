@@ -5711,6 +5711,17 @@ static gboolean redo_wispr(gpointer user_data)
 	return FALSE;
 }
 
+static void cancel_online_check(struct connman_service *service)
+{
+	if (service->online_timeout > 0) {
+		connman_service_unref(service);
+		g_source_remove(service->online_timeout);
+		service->online_timeout = 0;
+		g_free(service->online_data);
+		service->online_data = 0;
+	}
+}
+
 int __connman_service_online_check_failed(struct connman_service *service,
 					enum connman_ipconfig_type type)
 {
@@ -6138,13 +6149,7 @@ int __connman_service_disconnect(struct connman_service *service)
 
 	reply_pending(service, ECONNABORTED);
 
-	if (service->online_timeout > 0) {
-		connman_service_unref(service);
-		g_source_remove(service->online_timeout);
-		service->online_timeout = 0;
-		g_free(service->online_data);
-		service->online_data = 0;
-	}
+        cancel_online_check(service);
 
 	if (service->network) {
 		err = __connman_network_disconnect(service->network);
@@ -6950,7 +6955,7 @@ void __connman_service_remove_from_network(struct connman_network *network)
 
 	__connman_connection_gateway_remove(service,
 					CONNMAN_IPCONFIG_TYPE_ALL);
-
+        cancel_online_check(service);
 	connman_service_unref(service);
 }
 
