@@ -3186,6 +3186,8 @@ static int enable_wifi_tethering(struct connman_technology *technology,
 			continue;
 
 		ifname = g_supplicant_interface_get_ifname(wifi->interface);
+		if (!ifname)
+			continue;
 
 		if (wifi->ap_supported == WIFI_AP_NOT_SUPPORTED) {
 			DBG("%s does not support AP mode (detected)", ifname);
@@ -3220,8 +3222,6 @@ static int enable_wifi_tethering(struct connman_technology *technology,
 			goto failed;
 
 		info->ifname = g_strdup(ifname);
-		if (!info->ifname)
-			goto failed;
 
 		wifi->tethering_param->technology = technology;
 		wifi->tethering_param->ssid = ssid_ap_init(identifier, passphrase);
