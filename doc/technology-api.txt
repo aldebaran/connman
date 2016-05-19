@@ -63,6 +63,9 @@ Properties	boolean Powered [readwrite]
 			If this property is True it means that at least one
 			service of this technology is in ready state.
 
+			In case of P2P technology, this property indicates
+			if the peer is fully connected to another peer.
+
 		string Name [readonly]
 
 			Name of this technology.

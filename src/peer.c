@@ -905,6 +905,7 @@ int connman_peer_set_state(struct connman_peer *peer,
 		break;
 	case CONNMAN_PEER_STATE_READY:
 		reply_pending(peer, 0);
+		__connman_technology_set_connected(CONNMAN_SERVICE_TYPE_P2P, true);
 		break;
 	case CONNMAN_PEER_STATE_DISCONNECT:
 		if (peer->connection_master)
@@ -913,7 +914,7 @@ int connman_peer_set_state(struct connman_peer *peer,
 			__connman_dhcp_stop(peer->ipconfig);
 		peer->connection_master = false;
 		peer->sub_device = NULL;
-
+		__connman_technology_set_connected(CONNMAN_SERVICE_TYPE_P2P, false);
 		break;
 	case CONNMAN_PEER_STATE_FAILURE:
 		if (manage_peer_error(peer) == 0)
