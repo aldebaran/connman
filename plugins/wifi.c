@@ -2101,7 +2101,21 @@ static int network_connect(struct connman_network *network)
 		wifi->pending_network = network;
 		g_free(ssid);
 	} else {
+
+		/*
+		 * This is the network that is going to get plumbed into wpa_s
+		 * Mark the previous network that is plumbed in wpa_s as not
+		 * connectable and then the current one as connectable.
+		 * This flag will be used to ensure that the network that is
+		 * sitting in wpa_s never gets marked unavailable even though
+		 * the scan did not find this network.
+		 */
+		if (wifi->network) {
+			connman_network_set_connectable(wifi->network, false);
+		}
+
 		wifi->network = connman_network_ref(network);
+		connman_network_set_connectable(wifi->network, true);
 		wifi->retries = 0;
 
 		return g_supplicant_interface_connect(interface, ssid,
@@ -2125,6 +2139,7 @@ static void disconnect_callback(int result, GSupplicantInterface *interface,
 	}
 
 	if (wifi->network) {
+		connman_network_set_connectable(wifi->network, false);
 		connman_network_set_connected(wifi->network, false);
 		wifi->network = NULL;
 	}
@@ -2740,6 +2755,22 @@ static void network_removed(GSupplicantNetwork *network)
 
 	connman_network = connman_device_get_network(wifi->device, identifier);
 	if (!connman_network)
+		return;
+
+	/*
+	 * wpa_s did not find this network in last scan and hence it generated
+	 * this callback. In case if this is the network with which device
+	 * was connected to, even though network_removed was called, wpa_s
+	 * will keep trying to connect to the same network and once the
+	 * network is back, it will proceed with the connection. Now if
+	 * connman would have removed this network from network hash table,
+	 * on a successful connection complete indication service state
+	 * machine will not move. End result would be only a L2 level
+	 * connection and no IP address. This check ensures that even if the
+	 * network_removed gets called for the previously connected network
+	 * do not remove it from network hash table.
+	 */
+	if (wifi->network == connman_network)
 		return;
 
 	wifi->networks = g_slist_remove(wifi->networks, connman_network);
