@@ -256,6 +256,9 @@ static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	DBG("No lease available ipv4ll %d client %p", ipv4ll_running,
 		dhcp->ipv4ll_client);
 
+	if (dhcp->timeout > 0)
+		g_source_remove(dhcp->timeout);
+
 	dhcp->timeout = g_timeout_add_seconds(RATE_LIMIT_INTERVAL,
 						dhcp_retry_cb,
 						dhcp);
