@@ -3,7 +3,7 @@ Description=Connection service
 DefaultDependencies=false
 Conflicts=shutdown.target
 RequiresMountsFor=@localstatedir@/lib/connman
-After=dbus.service network-pre.target systemd-sysusers.service
+After=dbus.service network-pre.target systemd-sysusers.service wpa_supplicant.service
 Before=network.target multi-user.target shutdown.target
 Wants=network.target
 
