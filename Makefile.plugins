@@ -216,6 +216,11 @@ builtin_modules += nmcompat
 builtin_sources += plugins/nmcompat.c
 endif
 
+if PROVISION
+builtin_modules += provision
+builtin_sources += plugins/provision.c
+endif
+
 if TIST
 if TIST_BUILTIN
 builtin_modules += tist

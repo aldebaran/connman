@@ -279,6 +279,11 @@ AC_ARG_ENABLE(nmcompat, AC_HELP_STRING([--enable-nmcompat],
 			[enable_nmcompat=${enableval}], [enable_nmcompat="no"])
 AM_CONDITIONAL(NMCOMPAT, test "${enable_nmcompat}" != "no")
 
+AC_ARG_ENABLE(provision, AC_HELP_STRING([--enable-provision],
+				[enable Provision API support]),
+			[enable_provision=${enableval}], [enable_provision="no"])
+AM_CONDITIONAL(PROVISION, test "${enable_provision}" != "no")
+
 AC_ARG_ENABLE(polkit, AC_HELP_STRING([--enable-polkit],
 				[enable PolicyKit support]),
 			[enable_polkit=${enableval}], [enable_polkit="no"])
