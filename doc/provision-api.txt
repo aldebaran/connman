@@ -1,0 +1,65 @@
+Provision API [EXPERIMENTAL]
+=============================
+
+Many information are duplicated from the config-format.txt, in the same directory.
+
+Service		net.connman
+Interface	net.connman.Provision
+Object path	/
+
+Methods		dict Get(string name)
+
+			Returns properties for the name config. See the
+			properties sections for available properties.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void Set(dict properties)
+
+			Create a new 802.1x configuration.
+			Possible Errors: [service].Error.InvalidArguments
+
+		array{string} List()
+
+			Return a list of config name.
+			May be used to remove some of them.
+
+		void Del(string name)
+
+			Delete a configuration for the given name.
+
+
+Properties	string Name
+
+			The name of the WiFi services also know as SSID.
+
+		string EAP
+
+			The authentication method.
+			Possible values are "tls", "ttls", "peap".
+
+		string Phase2
+
+			Phase 2 authentication method.
+                        We currently tested only "MSCHAPV2".
+                        These parameter are not interpreted by ConnMan
+                        but directly sent to wpa_supplicant.
+
+		string CACertFile
+
+                        The path to the certification file to authicate the CA.
+                        We currently support PEM or DER files.
+
+		string ClientCertFile
+
+                        The path to the certification file to authicate the client.
+                        We currently support PEM or DER files.
+
+		string Identity
+
+			Identity string for EAP, your SSO username, or whatever linked
+                        to the CA.
+
+		string Passphrase
+
+			The password linked to the username.
