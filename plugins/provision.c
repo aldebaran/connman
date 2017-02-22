@@ -133,7 +133,7 @@ static int creds_is_valid(struct wpa_entreprise_creds *creds)
 static int parse_provision_creds(struct wpa_entreprise_creds *creds,
 				 DBusMessageIter *iter)
 {
-	DBusMessageIter subiter, dictiter;
+	DBusMessageIter subiter, dictiter, variantiter;
 	dbus_message_iter_recurse(iter, &subiter);
 	do {
 		char *key;
@@ -148,9 +148,10 @@ static int parse_provision_creds(struct wpa_entreprise_creds *creds,
 		if (!dbus_message_iter_next(&dictiter))
 			return -1;
 		if (dbus_message_iter_get_arg_type(&dictiter) !=
-		    DBUS_TYPE_STRING)
+		    DBUS_TYPE_VARIANT)
 			return -1;
-		dbus_message_iter_get_basic(&dictiter, &value);
+		dbus_message_iter_recurse(&dictiter, &variantiter);
+		dbus_message_iter_get_basic(&variantiter, &value);
 
 		if (!g_strcmp0(key, "Name"))
 			creds->name = value;
@@ -295,7 +296,7 @@ static const GDBusMethodTable service_methods[] = {
 	  GDBUS_ARGS({ "properties", "a{sv}" }),
 	  provision_get) },
 	{ GDBUS_METHOD("Set",
-	  GDBUS_ARGS({ "value", "a{ss}" }),
+	  GDBUS_ARGS({ "value", "a{sv}" }),
 	  NULL, provision_set) },
 	{ GDBUS_METHOD("List",
 	  NULL,
