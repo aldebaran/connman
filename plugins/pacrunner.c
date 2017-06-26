@@ -178,11 +178,6 @@ static void create_proxy_configuration(void)
 		g_free(interface);
 	}
 
-	str = connman_service_get_domainname(default_service);
-	if (str)
-		connman_dbus_dict_append_array(&dict, "Domains",
-					DBUS_TYPE_STRING, append_string, &str);
-
 	str_list = connman_service_get_nameservers(default_service);
 	if (str_list)
 		connman_dbus_dict_append_array(&dict, "Nameservers",
