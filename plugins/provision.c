@@ -85,8 +85,8 @@ static DBusMessage *provision_get(DBusConnection *conn,
 				       DBUS_TYPE_STRING, &ident);
 	for (i = 0; keys[i] != 0; i++) {
 		key = keys[i];
-		/* Filter out Passphrase and Identity for privacy */
-		if (!g_strcmp0(key, "Passphrase") || !g_strcmp0(key, "Identity"))
+		/* Filter out Passphrase for privacy */
+		if (!g_strcmp0(key, "Passphrase"))
 			continue;
 		str = g_key_file_get_string(file, category, key, &error);
 		if (error != 0) {
